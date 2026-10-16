@@ -147,7 +147,7 @@ dev = [
 
     "mypy>=1.13.0",
 
-    "bandit[toml]>=1.8.0",
+    "bandit[toml]>=1.9.4",
 
     "pre-commit>=4.0.1",
 

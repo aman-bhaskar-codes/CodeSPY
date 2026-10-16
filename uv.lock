@@ -681,7 +681,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "aiosqlite", specifier = ">=0.20.0" },
-    { name = "bandit", extras = ["toml"], specifier = ">=1.8.0" },
+    { name = "bandit", extras = ["toml"], specifier = ">=1.9.4" },
     { name = "boto3-stubs", extras = ["essential"] },
     { name = "debugpy" },
     { name = "hypothesis", specifier = ">=6.122.0" },
