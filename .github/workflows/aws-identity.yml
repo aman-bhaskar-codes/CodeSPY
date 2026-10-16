@@ -1,0 +1,17 @@
+name: AWS identity validation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  identity:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_VALIDATION_ROLE_ARN }}
+          aws-region: ap-south-1
+          role-duration-seconds: 900
+      - run: aws sts get-caller-identity --query Arn --output text
