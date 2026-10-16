@@ -23,6 +23,8 @@ The supplied Codeopsy plan is the architectural reference; CodeSPY is the reques
 5. Start Docker Desktop, then `docker compose up -d`. This starts dependencies only.
 6. Run `uv run pre-commit install` inside this Git repository.
 
+Local service addresses: PostgreSQL `127.0.0.1:5432`, Redis `127.0.0.1:6379`, and SearXNG `http://127.0.0.1:18080`. Credentials are local-only in ignored `.env`. `make stop` stops CodeSPY services without deleting database data.
+
 See [setup status](docs/SETUP_STATUS.md), [complete plan mapping](docs/PROJECT_PLAN.md), [AWS onboarding](docs/AWS_SETUP.md), and [decisions](docs/adr/0001-setup-boundaries.md).
 
 ## License

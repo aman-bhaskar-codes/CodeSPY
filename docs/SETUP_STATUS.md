@@ -15,10 +15,21 @@ Date: 2026-10-16. Scope: professional setup only; no application implementation.
 - Configured GitHub AWS role secret and Mumbai region; manual workflow prepared.
 - Verified AWS root MFA enabled and no root access keys. Existing USD 5 account budget preserved.
 
-## In progress
+## Additional verification completed
 
-- Python package installation, Chromium runtime, native toolchain, Ghidra archive and local container images downloading.
-- GitHub setup CI and AWS OIDC workflow require a first pushed commit and verification.
+- Installed the Python environment; `uv pip check` passed and pip-audit reports no known vulnerabilities.
+- Python and Node Playwright both launched Chromium successfully.
+- Core SDK imports, Tree-sitter parsing and libmagic passed smoke checks.
+- Semgrep 1.181.0 is isolated from application packages; native tool versions verified in TOOLCHAIN.md.
+- Ghidra 12.1.4 official archive checksum matched; headless launcher printed expected usage (exit 1 with no analysis target).
+- PostgreSQL 16 is healthy with vector 0.8.7 and pg_trgm 1.6; Redis PONG; SearXNG config endpoint HTTP 200.
+- Container digests pinned; local Git hooks pass; committed-history gitleaks scan found no leaks.
+- GitHub setup CI and actual main-branch AWS OIDC authentication succeeded.
+
+## Final handover checks completed
+
+- AWS OpenTofu provider 6.69.1 downloaded and signature-verified; lockfile generated. AWS CLI v2 installed; exact version recorded in TOOLCHAIN.md.
+- The setup CI and AWS OIDC workflows passed; final configuration changes are published with the handover.
 
 ## Intentionally deferred or owner-dependent
 

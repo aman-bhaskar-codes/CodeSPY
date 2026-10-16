@@ -13,3 +13,5 @@ Defer Multi-AZ RDS, ElastiCache, always-on ALB, NAT gateways, custom domains, an
 Teardown checklist: ECS tasks/services, ALB/listeners/target groups, databases/final snapshots, caches, NAT gateways, public IPv4 allocations, EBS volumes, worker instances, logs, ECR images, S3 objects/versions, hosted zones, secrets, and residual backups. Confirm billing after teardown. Never delete a shared account resource without checking ownership.
 
 Anthropic and Gemini API charges are separate from AWS credits unless a specifically eligible AWS billing arrangement is chosen. The PDF specifies direct provider APIs. No paid inference calls were made during setup.
+
+Account check found an existing USD 5 monthly budget with actual 85%/100% and forecast 100% notifications. That stronger existing account-level budget was preserved; no duplicate budget or new recipients were added.

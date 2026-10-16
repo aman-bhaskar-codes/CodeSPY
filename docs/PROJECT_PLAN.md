@@ -5,7 +5,7 @@ All 8 PDF pages reviewed. The document is a requirements/reference source, not p
 ## Phase 0: BOOTSTRAP
 
 Toolchains, lockfiles, GitHub metadata, local dependency services; application skeleton deferred by owner request.
-Status: setup in progress
+Status: setup artifacts prepared; see SETUP_STATUS.md for verified checks and owner-dependent prerequisites
 
 ## Phase 1: DATABASE
 

@@ -1,28 +1,28 @@
 name: codespy
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-codespy}
       POSTGRES_USER: ${POSTGRES_USER:-codespy}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports: ["127.0.0.1:5432:5432"]
-    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    volumes: ["postgres-data:/var/lib/postgresql/data", "./infra/postgres/001-extensions.sql:/docker-entrypoint-initdb.d/001-extensions.sql:ro"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
   redis:
-    image: redis:7.4-alpine
+    image: redis:7.4-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
     command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes']
     ports: ["127.0.0.1:6379:6379"]
     volumes: ["redis-data:/data"]
   searxng:
-    image: searxng/searxng:latest
-    ports: ["127.0.0.1:8080:8080"]
+    image: searxng/searxng:latest@sha256:d7ac1a4c215ae9ea1e3e46b114aa94e4bc4e37f94e773559682491c9a18a7404
+    ports: ["127.0.0.1:18080:8080"]
     volumes: ["./infra/searxng/settings.yml:/etc/searxng/settings.yml:ro"]
     environment:
       SEARXNG_SECRET: ${SEARXNG_SECRET:?Set SEARXNG_SECRET in .env}

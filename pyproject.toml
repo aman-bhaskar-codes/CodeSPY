@@ -4,7 +4,7 @@ version = "0.0.0"
 description = "CodeSPY evidence-first source and binary investigation platform"
 requires-python = ">=3.12,<3.13"
 dependencies = [
- "fastapi", "uvicorn[standard]", "pydantic-settings", "sqlalchemy[asyncio]>=2,<3",
+ "fastapi", "uvicorn[standard]", "pydantic-settings", "sqlalchemy[asyncio]>=2.0,<2.1",
  "asyncpg", "alembic", "pgvector", "httpx", "celery[sqs,redis]", "redis",
  "mcp", "anthropic", "google-genai", "tree-sitter", "tree-sitter-python",
  "tree-sitter-javascript", "tree-sitter-typescript", "tree-sitter-java", "tree-sitter-go",
@@ -12,8 +12,7 @@ dependencies = [
  "python-magic", "sse-starlette", "opentelemetry-sdk", "opentelemetry-exporter-otlp", "langfuse"
 ]
 [dependency-groups]
-dev = ["ruff", "mypy", "pytest", "pytest-asyncio", "pytest-cov", "hypothesis", "pre-commit", "debugpy", "bandit", "pip-audit", "boto3-stubs[essential]", "awscli"]
-analysis = ["semgrep"]
+dev = ["ruff", "mypy", "pytest", "pytest-asyncio", "pytest-cov", "hypothesis", "pre-commit", "debugpy", "bandit", "pip-audit", "boto3-stubs[essential]"]
 [tool.uv]
 package = false
 [tool.ruff]

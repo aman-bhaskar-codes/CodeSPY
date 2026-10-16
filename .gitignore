@@ -21,3 +21,4 @@ test-results/
 !*.tfvars.example
 .DS_Store
 .secrets.baseline
+.tools/

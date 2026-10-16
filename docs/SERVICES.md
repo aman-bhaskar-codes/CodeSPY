@@ -3,7 +3,7 @@
 | Requirement       | Selected setup                              | Remaining requirement                                                            |
 | ----------------- | ------------------------------------------- | -------------------------------------------------------------------------------- |
 | API and workers   | FastAPI, async SQLAlchemy, Celery           | No API or worker implementation                                                  |
-| Local database    | PostgreSQL 16 + pgvector container          | Start Docker; extensions/migrations come later                                   |
+| Local database    | PostgreSQL 16 + pgvector container          | Running locally; vector/pg_trgm enabled; application migrations later            |
 | Lexical retrieval | PostgreSQL FTS planned                      | True BM25 implementation/extension decision                                      |
 | Embeddings        | pgvector client                             | PDF does not choose embedding model, vector dimension, license, cost or provider |
 | Local queue/cache | Redis container                             | Worker behavior and cache policy later                                           |
@@ -13,10 +13,10 @@
 | Authentication    | Authlib and JWT libraries                   | GitHub/Google OAuth registration and callback URLs                               |
 | Tracing           | OpenTelemetry and Langfuse SDKs             | Choose self-hosted/hosted Langfuse; OTLP endpoint                                |
 | Source parsers    | Tree-sitter + Python/JS/TS/Java/Go grammars | Other languages added only with adapter tests                                    |
-| Native/binary     | Ghidra, Rizin, JADX, WABT, Semgrep          | Version verification and isolated execution                                      |
+| Native/binary     | Ghidra, Rizin, JADX, WABT, Semgrep          | Versions verified; runtime target execution remains restricted                   |
 | IaC               | OpenTofu, Terraform-compatible HCL          | Account/region, state backend, provider lock and resource plan                   |
-| Browser           | Python and Node Playwright                  | Chromium download and startup verification                                       |
+| Browser           | Python and Node Playwright                  | Chromium installed; Python/Node startup verified                                 |
 | Secrets           | local ignored .env; future Secrets Manager  | Do not put credentials in repository or chat                                     |
 | Fine-tuning       | Phase 7 isolated GPU environment            | No GPU dependencies or model weights installed on this Mac                       |
 
-OpenTofu is used for the Terraform-compatible CLI to keep the setup open-source. No infrastructure resources are defined or applied in this setup phase. Container tags require digest locking once the Docker engine is repaired and image pulls can be verified.
+OpenTofu is used for the Terraform-compatible CLI to keep the setup open-source. No infrastructure resources are defined or applied in this setup phase. Container images were pulled, verified locally and pinned by digest.

@@ -6,7 +6,7 @@
     "Action": "sts:AssumeRoleWithWebIdentity",
     "Condition": {"StringEquals": {
       "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-      "token.actions.githubusercontent.com:sub": "repo:aman-bhaskar-codes/CodeSPY:ref:refs/heads/main"
+      "token.actions.githubusercontent.com:sub": "repo:aman-bhaskar-codes@220306985/CodeSPY@1422375387:ref:refs/heads/main"
     }}
   }]
 }
