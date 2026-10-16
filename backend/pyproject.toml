@@ -34,7 +34,7 @@ dependencies = [
 
     # --- Database, Async ORM, Migrations & Vector Search ---
 
-    "sqlalchemy[asyncio]>=2.0.36",
+    "sqlalchemy[asyncio]>=2.1.4",
 
     "asyncpg>=0.30.0",
 
