@@ -95,7 +95,7 @@ dependencies = [
 
     # --- Security, Auth, Cryptography & Upload Validation ---
 
-    "pyjwt[crypto]>=2.10.0",
+    "pyjwt[crypto]>=2.15.1",
 
     "pwdlib[argon2]>=0.2.1",
 
