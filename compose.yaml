@@ -1,31 +1,55 @@
 name: codespy
 services:
   postgres:
+    restart: unless-stopped
     image: pgvector/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-codespy}
       POSTGRES_USER: ${POSTGRES_USER:-codespy}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports: ["127.0.0.1:5432:5432"]
-    volumes: ["postgres-data:/var/lib/postgresql/data", "./infra/postgres/001-extensions.sql:/docker-entrypoint-initdb.d/001-extensions.sql:ro"]
+    volumes: ["postgres-data:/var/lib/postgresql/data", "./docker/postgres/init-extensions.sql:/docker-entrypoint-initdb.d/001-extensions.sql:ro"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
   redis:
+    restart: unless-stopped
     image: redis:7.4-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
-    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes']
+    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lfu']
     ports: ["127.0.0.1:6379:6379"]
     volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 10
   searxng:
+    restart: unless-stopped
     image: searxng/searxng:latest@sha256:d7ac1a4c215ae9ea1e3e46b114aa94e4bc4e37f94e773559682491c9a18a7404
     ports: ["127.0.0.1:18080:8080"]
-    volumes: ["./infra/searxng/settings.yml:/etc/searxng/settings.yml:ro"]
+    volumes: ["./docker/searxng/settings.yml:/etc/searxng/settings.yml:ro"]
     environment:
       SEARXNG_SECRET: ${SEARXNG_SECRET:?Set SEARXNG_SECRET in .env}
+  localstack:
+    image: localstack/localstack:3.8.1@sha256:b279c01f4cfb8f985a482e4014cabc1e2697b9d7a6c8c8db2e40f4d9f93687c7
+    restart: unless-stopped
+    ports: ["127.0.0.1:4566:4566"]
+    environment:
+      SERVICES: s3,sqs,secretsmanager,events
+      DEFAULT_REGION: ap-south-1
+      AWS_DEFAULT_REGION: ap-south-1
+      PERSISTENCE: "0"
+    volumes: ["localstack-data:/var/lib/localstack"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 volumes:
+  localstack-data:
   postgres-data:
   redis-data:

@@ -1,6 +1,6 @@
 # Additional connected planning tools
 
-GitHub is the project source of truth. User added GitBook, Miro and Figma connections during setup. No content was created in these services pending their intended roles.
+GitHub is the project source of truth. User added GitBook, Miro and Figma connections during setup. The owner explicitly chose to keep them available for later; no content was created.
 
 GitBook orientation: the connected account returned zero organizations. A GitBook organization/workspace must be available before a CodeSPY docs space can be created.
 

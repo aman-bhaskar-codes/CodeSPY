@@ -1,30 +1,27 @@
 # Verified local toolchain
 
-| Component                   | Verified version  |
-| --------------------------- | ----------------- |
-| Python                      | 3.12.12           |
-| Node / npm                  | 24.18.0 / 11.16.0 |
-| FastAPI                     | 0.143.3           |
-| SQLAlchemy                  | 2.0.54            |
-| React                       | 19.3.1            |
-| TypeScript                  | 5.9.3             |
-| Tailwind                    | 4.3.3             |
-| Semgrep (isolated)          | 1.181.0           |
-| Rizin                       | 0.9.1             |
-| JADX                        | 1.5.6             |
-| WABT                        | 1.0.42            |
-| gitleaks                    | 8.30.1            |
-| OpenTofu                    | 1.13.1            |
-| OpenJDK                     | 27                |
-| PostgreSQL vector / pg_trgm | 0.8.7 / 1.6       |
-| Docker Engine               | 29.0.1            |
+| Component                   | Version     |
+| --------------------------- | ----------- |
+| Python                      | 3.12.12     |
+| Project Node                | 22.23.3     |
+| JDK                         | 21.0.12.1   |
+| FastAPI                     | 0.143.3     |
+| SQLAlchemy                  | 2.0.54      |
+| Arq                         | 0.28.0      |
+| Ghidra                      | 12.1.4      |
+| Binwalk                     | 3.1.0       |
+| Unblob container            | 26.6.4      |
+| ASAR                        | 4.3.1       |
+| Semgrep                     | 1.181.0     |
+| Rizin                       | 0.9.1       |
+| JADX                        | 1.5.6       |
+| WABT                        | 1.0.42      |
+| Gitleaks                    | 8.30.1      |
+| Terraform                   | 1.16.6      |
+| OpenTofu                    | 1.13.1      |
+| LocalStack                  | 3.8.1       |
+| PostgreSQL vector / pg_trgm | 0.8.7 / 1.6 |
 
-Python and npm packages are locked in uv.lock and package-lock.json. External tools are installed via Homebrew except Semgrep and Ghidra, which live in ignored .tools/. Ghidra release 12.1.4 archive checksum matched the official GitHub release SHA-256: ddac49f903da9d5bac833e5cc79395098b9c33cfd3279be5f31bd00387d2d4db. The archive is not committed.
+Source `scripts/env.sh` to select project Node 22, JDK 21 and ignored `.tools` installations. The machine's global Node default is preserved. Root `uv.lock` and both npm lockfiles capture package versions; `backend/uv.lock` links to the workspace lock. Local executables and environments are not committed. Fresh machines must install the external tools separately; `make tools` handles isolated Semgrep only.
 
-The local ignored .env records JAVA_HOME, GHIDRA_INSTALL_DIR and PLAYWRIGHT_BROWSERS_PATH. CLI tools do not automatically source .env; export those settings in a terminal when needed. The installed browser runtime was smoke-tested through both Python and Node Playwright. Semgrep may need SSL_CERT_FILE=/etc/ssl/cert.pem on this Mac; TLS verification remains enabled.
-
-AWS CLI v2.38.1 is installed separately through Homebrew for modern SSO workflows; CLI v1 was removed from the application environment. The connected AWS plugin supplies authenticated account access. No long-lived local AWS access keys or local profile were created.
-
-Use `make install`, `make services`, `make checks`, `make stop`; `make tools` recreates the isolated Semgrep installation. Ghidra is an official external distribution: https://github.com/NationalSecurityAgency/ghidra/releases/tag/Ghidra_12.1.4_build . Source binaries are not executed during setup.
-
-AWS OpenTofu provider 6.69.1 was downloaded with signature verification and locked in infra/terraform/.terraform.lock.hcl. Provider configuration passed fmt and validate. No resource plan or apply was run.
+Official Ghidra and Terraform downloads were checksum verified. Unblob uses a pinned container with networking disabled. SDK installation does not configure or validate provider access. API keys and AWS account actions are owner-managed and prohibited for the assistant.

@@ -1,41 +1,26 @@
-# Setup status
+# Phase 0 handoff — ready for Phase 1 on command
 
-Date: 2026-10-16. Scope: professional setup only; no application implementation.
+Updated 2026-10-16. Professional setup only; no application features implemented.
 
-## Completed and verified
+## Verified before shutdown
 
-- Read all eight pages of the supplied plan and mapped phases 0-7 into docs.
-- Created the public CodeSPY repository, enabled dependency alerts/updates, confirmed secret scanning and push protection.
-- Initialized isolated main branch and local GitHub noreply commit identity.
-- Downloaded project-local CPython 3.12.12; generated uv.lock.
-- Installed frontend packages and exact direct versions; npm audit reports zero vulnerabilities after DOMPurify patching.
-- Generated ignored local credentials; confirmed .env, .venv, node_modules are ignored.
-- Docker Desktop 29.0.1 running; Compose config validation passed.
-- Created GitHub OIDC provider and /codespy/CodeSPYGitHubValidation role after explicit approval; read back exact main-only trust and identity-only inline permission.
-- Configured GitHub AWS role secret and Mumbai region; manual workflow prepared.
-- Verified AWS root MFA enabled and no root access keys. Existing USD 5 account budget preserved.
+- Local acceptance: **101 passed, 0 failed** (including live dependency services).
+- Python dependency consistency and vulnerability audit passed.
+- Frontend TypeScript configuration, ESLint and npm vulnerability audit passed.
+- All pre-commit checks passed, including Gitleaks, Ruff and formatting.
+- Ghidra headless launcher smoke check passed with JDK 21.
+- Locked backend/frontend dependencies, MIT license, issue templates, setup docs and local infrastructure are prepared.
 
-## Additional verification completed
+## Shutdown and ownership
 
-- Installed the Python environment; `uv pip check` passed and pip-audit reports no known vulnerabilities.
-- Python and Node Playwright both launched Chromium successfully.
-- Core SDK imports, Tree-sitter parsing and libmagic passed smoke checks.
-- Semgrep 1.181.0 is isolated from application packages; native tool versions verified in TOOLCHAIN.md.
-- Ghidra 12.1.4 official archive checksum matched; headless launcher printed expected usage (exit 1 with no analysis target).
-- PostgreSQL 16 is healthy with vector 0.8.7 and pg_trgm 1.6; Redis PONG; SearXNG config endpoint HTTP 200.
-- Container digests pinned; local Git hooks pass; committed-history gitleaks scan found no leaks.
-- GitHub setup CI and actual main-branch AWS OIDC authentication succeeded.
+- PostgreSQL, Redis, SearXNG and LocalStack stopped and containers removed with `docker compose down`; named data volumes preserved.
+- Browser automation session reset; no further Chrome access authorized.
+- Automatic setup CI triggers and Dependabot scheduling disabled. Manual setup validation remains available for later.
+- No Phase 1 implementation or automatic restart. Await the owner's explicit command.
+- All API keys and further AWS account work belong to the owner. No API keys were generated or configured. Earlier cloud resources are documented in AWS_SETUP.md; they were not accessed or removed during shutdown.
 
-## Final handover checks completed
+## Resume only when requested
 
-- AWS OpenTofu provider 6.69.1 downloaded and signature-verified; lockfile generated. AWS CLI v2 installed; exact version recorded in TOOLCHAIN.md.
-- The setup CI and AWS OIDC workflows passed; final configuration changes are published with the handover.
+Read AGENTS.md and .codex/USER_PREFERENCES.md. Use `source scripts/env.sh` for the project toolchain. Dependency services can later be started with `make services`; run `make verify` after startup. Live-service verification is expected to fail while services are intentionally stopped.
 
-## Intentionally deferred or owner-dependent
-
-- No application code, tests, migrations, agent logic, analyzers or UI implementation.
-- Paid cloud compute/database/hosting provisioning deferred until working demo and cost estimate.
-- API keys, OAuth registrations, embedding provider/dimensions, Langfuse endpoint and license selection pending.
-- Credit balance, expiry, eligibility and billing contacts not independently verified.
-- Human AWS access should migrate from root connection to an appropriate federated identity.
-- GPU training/model weights remain isolated Phase 7 work.
+The original runbook's external account/key tasks are owner-managed exclusions, not completed validations. Application builds, application tests and deployed product behavior have not been implemented or claimed.

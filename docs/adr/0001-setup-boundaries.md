@@ -1,8 +1,8 @@
 # ADR 0001: setup boundaries
 
 - No application code, migrations, DSA implementation, agents, UI, deployment, or fine-tuning during setup.
-- Choose Celery (Redis locally, SQS in AWS); do not install competing Arq orchestration.
-- Choose Terraform-compatible HCL with OpenTofu for future AWS IaC, not both Terraform and CDK. No resource declarations until account/region/cost scope is known.
+- Updated by the detailed Phase 0 runbook: install Arq, replacing the earlier provisional Celery choice. Queue integration remains future implementation.
+- Choose Terraform-compatible HCL with OpenTofu for future AWS IaC, not both Terraform and CDK. Cloud account access is now prohibited for the assistant; infrastructure examples are owner-managed.
 - Retain both graph UI libraries for evaluation; choose one during frontend design.
 - tsvector/GIN with ts_rank is PostgreSQL full-text search, not BM25. True BM25 needs an explicit implementation or compatible extension; RDS compatibility must be checked.
 - Gemini 2.5 Pro documentation lists a 1,048,576-token input limit. Do not assume a 2M window. Model IDs remain account-verified configuration, not hardcoded promises.

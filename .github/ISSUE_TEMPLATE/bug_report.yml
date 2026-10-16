@@ -1,0 +1,14 @@
+name: Bug report
+description: Report a reproducible defect.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include reproduction steps and expected behavior. Never include secrets or private artifacts.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and verification

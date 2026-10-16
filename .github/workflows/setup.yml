@@ -1,5 +1,5 @@
 name: Setup validation
-on: [push, pull_request, workflow_dispatch]
+on: [workflow_dispatch]
 permissions:
   contents: read
 jobs:
@@ -7,15 +7,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.12"
-      - run: uv sync --frozen
-      - run: uv run pre-commit run --all-files
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "22"
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - run: uv sync --all-packages --all-groups --frozen
+      - run: uv run pre-commit run --all-files
       - run: npm ci --ignore-scripts
+      - run: npm --prefix frontend ci --ignore-scripts
       - run: npm run format:check
-# Application lint/type/test gates are added with the first implementation.
+      - run: uv run ruff check scripts
+      - run: uv run python scripts/verify_phase0.py --scope static
+      - run: npm --prefix frontend audit --audit-level=high
+  # This job never signs in to AWS or configures provider API keys.
+  # Application build/type/test gates are introduced with real application sources.
+
+  local-services:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: ci-local-postgres-only
+      REDIS_PASSWORD: ci-local-redis-only
+      SEARXNG_SECRET: ci-local-searxng-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-packages --all-groups --frozen
+      - run: docker compose up -d --wait --wait-timeout 90
+      - run: bash scripts/bootstrap_local.sh
+      - run: uv run python scripts/verify_phase0.py --scope services
+      - if: always()
+        run: docker compose down

@@ -1,5 +1,3 @@
-# Phase 0: BOOTSTRAP
+# Phase 0 bootstrap
 
-Toolchains, lockfiles, GitHub metadata, local dependency services; application skeleton deferred by owner request.
-
-Setup-only boundary applies. Implementation and verification evidence will be specified when this phase is authorized.
+See [current handoff](phases/PHASE_0_PROFESSIONAL_SETUP.md) and [setup status](SETUP_STATUS.md). Services are intentionally off; Phase 1 awaits an explicit command.

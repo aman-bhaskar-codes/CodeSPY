@@ -1,28 +1,11 @@
 [project]
-name = "codespy"
-version = "0.0.0"
-description = "CodeSPY evidence-first source and binary investigation platform"
+name = "codespy-workspace"
+version = "0.1.0"
 requires-python = ">=3.12,<3.13"
-dependencies = [
- "fastapi", "uvicorn[standard]", "pydantic-settings", "sqlalchemy[asyncio]>=2.0,<2.1",
- "asyncpg", "alembic", "pgvector", "httpx", "celery[sqs,redis]", "redis",
- "mcp", "anthropic", "google-genai", "tree-sitter", "tree-sitter-python",
- "tree-sitter-javascript", "tree-sitter-typescript", "tree-sitter-java", "tree-sitter-go",
- "trafilatura", "ddgs", "playwright", "authlib", "pyjwt[crypto]", "python-multipart",
- "python-magic", "sse-starlette", "opentelemetry-sdk", "opentelemetry-exporter-otlp", "langfuse"
-]
+dependencies = []
 [dependency-groups]
-dev = ["ruff", "mypy", "pytest", "pytest-asyncio", "pytest-cov", "hypothesis", "pre-commit", "debugpy", "bandit", "pip-audit", "boto3-stubs[essential]"]
+dev = ["pre-commit", "ruff", "mypy", "pip-audit"]
 [tool.uv]
 package = false
-[tool.ruff]
-target-version = "py312"
-line-length = 100
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "ASYNC"]
-[tool.mypy]
-python_version = "3.12"
-strict = true
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
+[tool.uv.workspace]
+members = ["backend"]

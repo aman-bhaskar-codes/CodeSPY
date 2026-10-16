@@ -1,0 +1,10 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "DenyPrivilegedUseWithoutMFA",
+    "Effect": "Deny",
+    "NotAction": ["iam:CreateVirtualMFADevice", "iam:EnableMFADevice", "iam:ResyncMFADevice", "iam:ListMFADevices", "iam:ListVirtualMFADevices", "iam:GetUser", "iam:ChangePassword", "iam:GetAccountPasswordPolicy", "sts:GetSessionToken"],
+    "Resource": "*",
+    "Condition": {"BoolIfExists": {"aws:MultiFactorAuthPresent": "false"}}
+  }]
+}

@@ -1,19 +1,29 @@
-# AWS onboarding and production prerequisites
+# AWS setup ownership
 
-Status: approved GitHub OIDC provider and identity-validation role created; no database, hosting, compute, queue or storage resources provisioned. Region: ap-south-1 (Mumbai). See infra/aws/README.md for verified account findings.
+**Owner-managed. Do not access the AWS account.** The owner explicitly stopped all assistant AWS access on 2026-10-16. This overrides the runbook, older plans and any pending sign-in. No further browser visits, real AWS CLI commands or AWS connector calls are permitted without a new explicit instruction.
 
-Required owner inputs: target account and authenticated profile, region, monthly spend cap, budget alert recipient, repository visibility, production domain and ownership. Do not infer region from timezone.
+## Recorded work before that instruction
 
-Account formalities: verify root MFA, root access-key absence, billing contacts and alternate contacts; establish IAM Identity Center/SSO for humans; confirm CloudTrail and retention; establish budget alerts and cost allocation tags (Project=CodeSPY, Environment, Owner, CostCenter, ManagedBy). Budget alerts are not a hard spending cap.
+The following API operations reported success before access was stopped. They have not been re-read since the stop instruction:
 
-GitHub delivery: create an OIDC provider if absent; trust only the exact repo and protected environment/ref with sts audience; separate plan and deploy roles; scope PassRole to required task roles; separate ECS execution role from application task role. Store application API keys in Secrets Manager only after account selection. Configure branch protection and environment approval rules.
+- Mumbai (`ap-south-1`) selected; AWS CLI v2 installed locally.
+- Root MFA was observed enabled and root access keys absent.
+- Approved GitHub OIDC provider and identity-only validation role were created; the earlier manual authentication workflow succeeded. No deployment rights were added to that role.
+- State bucket `codespy-tfstate-<ACCOUNT_ID>-ap-south-1` created with AES256 encryption, versioning, public-access blocks and an HTTPS-only bucket policy.
+- On-demand DynamoDB lock table `codespy-terraform-locks` created.
+- ECR repositories `codespy-backend`, `codespy-worker`, `codespy-frontend` created with immutable tags and scan-on-push settings.
+- `codespy/prod/api-keys` created as a clearly labelled placeholder containing REPLACE values; it contains no real provider credentials from this setup.
+- `CodeSPY-Monthly-Dev-Budget` created with USD 25 monthly alerts at 80% and 100% to the owner-provided address; the existing USD 5 Portfolio Website budget was preserved. Both are account-level alerts, not hard spending caps.
+- Reserved ECS task/execution/worker roles created with ECS trust and no attached runtime data permissions.
+- After explicit approval, `codespy-aman` and `codespy-admins` were created with AdministratorAccess and the prepared MFA-required policy. No access keys or console password were created.
+- Named codespy CLI profile prepared with region/output settings only. The launched short-lived login expired/cancelled without completing authentication.
 
-Terraform state: encrypted, versioned, access-controlled S3 state, locking compatible with the selected Terraform version, separate environment keys and least-privilege state role. Never commit state or secrets.
+No application RDS, ECS services, ElastiCache, load balancer, NAT gateway, hosting or inference deployment was performed. The recorded resources remain unchanged; the assistant did not delete or roll back resources after account access was prohibited.
 
-Network: VPC with private workload/data subnets, security groups by service, explicit outbound policy and NAT/endpoint cost review. Untrusted analysis workers must be isolated from application credentials and private data services.
+## Owner's later manual work
 
-Planned services: Route53 and ACM; CloudFront; ALB; ECR/ECS Fargate; RDS PostgreSQL 16 with supported pgvector/pg_trgm extensions and Multi-AZ; ElastiCache Redis; encrypted S3 with versioning/lifecycle; SQS queues and DLQs; Secrets Manager; CloudWatch and OpenTelemetry. Assess Langfuse hosting separately. Firecracker requires separate Linux/KVM-capable worker infrastructure.
+The owner controls password/MFA enrollment, CLI authentication, provider credentials, cloud configuration review, cost/credit eligibility and eventual deployment. Remote-backend examples are in infra/terraform/environments; they are not initialized against the real account by the local verifier.
 
-Before provisioning: account/region availability, quotas, RDS extensions, model availability, monthly cost estimate, tags, logging retention, TLS/domain validation, restore and rollback plan. Paid services in the plan are not collectively free.
+The Secrets Manager placeholder is a real AWS resource and may incur the service's normal storage charge. See https://aws.amazon.com/secrets-manager/pricing/ . No new chargeable inference or hosting has been started by this local setup.
 
-Recovery: define numeric RPO/RTO; automated backups up to 35 days, retention/lifecycle policies, restore drills, and tested blue/green rollback. Never claim guaranteed zero loss.
+LocalStack is separate local infrastructure and always uses an explicit loopback endpoint and dummy credentials. Local verification must never fall back to a real AWS profile.
