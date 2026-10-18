@@ -125,12 +125,26 @@ async def test_duplicate_publication_serializes(factory):
 
 async def test_snapshot_seal_vs_file_insert(factory, engine):
     _svc, ctx, snap, _run, _files = await scenario(factory)
-    # Sealed parent is locked by one writer; waiting inserts must inspect committed sealed state.
+    # Start with a committed building snapshot and race its actual sealing update.
+    building_id = uuid4()
+    async with engine.begin() as setup:
+        await setup.execute(
+            insert(source_snapshots).values(
+                org_id=ctx.org_id,
+                id=building_id,
+                repository_id=snap.repository_id,
+                artifact_id=snap.artifact_id,
+                admission_config_hash="a" * 64,
+                identity_hash=uuid4().hex * 2,
+            )
+        )
     ready = asyncio.Event()
     pid = []
     async with engine.begin() as holder:
         await holder.execute(
-            select(source_snapshots).where(source_snapshots.c.id == snap.id).with_for_update()
+            update(source_snapshots)
+            .where(source_snapshots.c.id == building_id)
+            .values(state="sealed", manifest_hash="a" * 64, sealed_at=text("CURRENT_TIMESTAMP"))
         )
 
         async def late_file():
@@ -143,7 +157,7 @@ async def test_snapshot_seal_vs_file_insert(factory, engine):
                         await c.execute(
                             insert(source_files).values(
                                 org_id=ctx.org_id,
-                                snapshot_id=snap.id,
+                                snapshot_id=building_id,
                                 id=uuid4(),
                                 path="late.py",
                                 sha256="a" * 64,

@@ -1,0 +1,16 @@
+Local acceptance, 18 October 2026
+
+uv lock --check: resolved 206 packages; existing lock retained.
+pytest backend/tests/unit: 31 passed.
+phase1_db.py test --suite integration: 21 passed.
+phase1_db.py test --suite migrations: 3 passed.
+phase1_db.py test --suite performance: 1 passed, 100000 nodes / 300000 edges.
+phase1_demo.py: nodes=2, edges=1, evidence=2, derivations=1; replay, rollback, scope rejection, stale rejection all true; owned database removed.
+mypy --config-file backend/pyproject.toml backend/app: no issues in 29 modules.
+ruff check/format: passed.
+pre-commit run --all-files: all hooks passed, including private key detection and Gitleaks.
+phase1_db.py cleanup: owned disposable container and network removed; developer volumes untouched.
+
+The integration count includes concurrency and demo smoke cases. It is not added again for separate verification commands. PostgreSQL 16.15; vector0.8.7; pg_trgm1.6; citext1.6; uuid-ossp1.1. Query plans and local timings: phase1-query-plans.json.
+
+These are sanitized command outcomes, not credentials or raw SQL failure traces. Reproduce with the README commands. GitHub CI independently validates Linux behavior for the pull request head.
