@@ -61,3 +61,7 @@ crash.log
 
 # Workspace virtual environment alias
 backend/.venv
+
+.phase1-test*.env
+.phase1-test*.json
+work/

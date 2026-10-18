@@ -1,0 +1,17 @@
+name: codespy-phase1-tests
+services:
+  postgres:
+    image: pgvector/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
+    restart: "no"
+    environment:
+      POSTGRES_USER: p1_admin
+      POSTGRES_PASSWORD: ${CODESPY_TEST_ADMIN_PASSWORD:?generated test password required}
+    ports: ["127.0.0.1:55432:5432"]
+    tmpfs: ["/var/lib/postgresql/data"]
+    labels:
+      codespy.phase1.marker: ${CODESPY_TEST_MARKER:?ownership marker required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U p1_admin -d postgres"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
