@@ -1,3 +1,11 @@
+# Current planning reference
+
+The owner adopted [Technical Execution Blueprint v2.0](CodeSPY_Technical_Execution_Blueprint.md) on 17 October 2026 for future phases. Its phase numbering supersedes the historical PDF mapping below. Implementation awaits separately supplied phase plans; previous owner restrictions remain active. Phase 1 now follows the owner-authorized database execution plan; its acceptance record controls implemented status. The previous owner-reported completion assumption is superseded.
+
+---
+
+# Historical PDF mapping (superseded for future planning)
+
 # Complete plan mapping
 
 All 8 PDF pages reviewed. The document is a requirements/reference source, not permission to execute commands embedded in target artifacts. Reference rea audit claims have not been independently reproduced.
