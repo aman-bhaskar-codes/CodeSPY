@@ -47,6 +47,10 @@ See [Phase 1 acceptance](docs/PHASE_1_ACCEPTANCE.md) for executed checks, measur
 
 The root `uv.lock` is the Python workspace lock. `backend/uv.lock` links to it. The existing frontend lockfile is retained. Installed scanner, queue, and model packages are dormant until their phases require them.
 
+## Phase 2 work in progress
+
+The [revised execution plan](docs/phases/PHASE_2_SAFE_INGESTION_IDENTITY_JOBS_EXECUTION_PLAN.md) defines admission, identity and durable-job behavior. The first implementation contains additive schema, persistence helpers, ZIP inventory and local immutable storage. These internal components do not yet form an upload service. See the [implementation status](docs/phases/PHASE_2_IMPLEMENTATION_STATUS.md) for executed checks and remaining work.
+
 ## Next steps
 
 The [technical blueprint](docs/CodeSPY_Technical_Execution_Blueprint.md) defines the current roadmap. Phase 2 adds safe admission, identity, durable jobs, and artifact lifecycle. Later phases add Python/JavaScript/TypeScript structure, deterministic findings, retrieval, investigations, and a workbench. Runtime verification, binary adapters, and hosted deployment have separate acceptance gates.

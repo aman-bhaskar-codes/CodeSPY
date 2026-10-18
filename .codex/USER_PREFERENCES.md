@@ -23,3 +23,7 @@ All existing prohibitions remain: no AWS account access, no API-key setup, no Ch
 ## Phase 1 execution authorization — 18 October 2026
 
 The owner explicitly requested implementation of the supplied Phase 1 database plan and professional GitHub delivery. This authorizes database code, migrations, a disposable PostgreSQL test cluster and the plan-specific PR/manual CI. Preserve developer services/volumes and stop the disposable cluster at handoff. Other restrictions remain, including AWS, API keys, Chrome and later-phase work. The new Phase 1 plan supersedes the blueprint's older owner-reported completion assumption.
+
+## Phase 2 execution authorization — 18 October 2026
+
+The owner explicitly answered “Revise the plan, then implement Phase 2.” This authorizes the revised Phase 2 application work, additive migrations and owned disposable local tests described in its plan. It does not authorize AWS account access, real service/API-key setup, browser automation, deployment or merging. Stop owned test resources at handoff and preserve developer services, files and volumes.

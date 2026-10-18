@@ -1,10 +1,11 @@
 from app.db.base import Base
-from app.models import tables  # noqa: F401 -- register mappings for this isolated test
-from sqlalchemy import ForeignKeyConstraint
+from app.models import tables
+from sqlalchemy import ForeignKeyConstraint, Table
 
 
 def test_twelve_tables_and_scoped_edge_keys():
-    assert len(Base.metadata.tables) == 12
+    # Phase 1 keeps twelve original mappings; Phase 2 registers additive metadata.
+    assert len([v for v in vars(tables).values() if isinstance(v, Table)]) == 12
     edges = Base.metadata.tables["cpg_edges"]
     fks = [c for c in edges.constraints if isinstance(c, ForeignKeyConstraint)]
     assert len(fks) == 3

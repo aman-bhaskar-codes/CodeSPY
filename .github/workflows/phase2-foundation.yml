@@ -1,0 +1,27 @@
+name: Phase 2 foundation
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "scripts/phase2_db.py"
+      - "compose.phase2-tests.yaml"
+      - ".github/workflows/phase2-foundation.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  phase2-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-packages --all-groups --frozen
+      - run: uv run --frozen --all-packages --all-groups pytest -c backend/pyproject.toml backend/tests/unit backend/tests/phase2/unit backend/tests/phase2/admission backend/tests/phase2/ports
+      - run: uv run --frozen --all-packages --all-groups python scripts/phase2_db.py prepare --env-out work/phase2-ci.env
+      - run: uv run --frozen --all-packages --all-groups python scripts/phase2_db.py test --env-file work/phase2-ci.env --suite migrations
+      - run: uv run --frozen --all-packages --all-groups python scripts/phase2_db.py test --env-file work/phase2-ci.env --suite integration
+      - if: always() && hashFiles('work/phase2-ci.env') != ''
+        run: uv run --frozen --all-packages --all-groups python scripts/phase2_db.py cleanup --env-file work/phase2-ci.env
