@@ -1,4 +1,5 @@
 from app.db.base import Base
+from app.models import tables  # noqa: F401 -- register mappings for this isolated test
 from sqlalchemy import ForeignKeyConstraint
 
 
