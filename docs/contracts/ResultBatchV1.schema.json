@@ -1,0 +1,398 @@
+{
+  "$defs": {
+    "CoverageV1": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": ["complete", "partial", "unknown", "unavailable"],
+          "title": "Status",
+          "type": "string"
+        },
+        "scope_description": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Scope Description",
+          "type": "string"
+        },
+        "admitted_count": {
+          "minimum": 0,
+          "title": "Admitted Count",
+          "type": "integer"
+        },
+        "processed_count": {
+          "minimum": 0,
+          "title": "Processed Count",
+          "type": "integer"
+        },
+        "omitted_count": {
+          "minimum": 0,
+          "title": "Omitted Count",
+          "type": "integer"
+        },
+        "truncated": {
+          "title": "Truncated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "status",
+        "scope_description",
+        "admitted_count",
+        "processed_count",
+        "omitted_count",
+        "truncated"
+      ],
+      "title": "CoverageV1",
+      "type": "object"
+    },
+    "DerivationCreateV1": {
+      "additionalProperties": false,
+      "properties": {
+        "child_id": {
+          "format": "uuid",
+          "title": "Child Id",
+          "type": "string"
+        },
+        "parent_id": {
+          "format": "uuid",
+          "title": "Parent Id",
+          "type": "string"
+        }
+      },
+      "required": ["child_id", "parent_id"],
+      "title": "DerivationCreateV1",
+      "type": "object"
+    },
+    "EdgeCreateV1": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "source_local_id": {
+          "format": "uuid",
+          "title": "Source Local Id",
+          "type": "string"
+        },
+        "target_local_id": {
+          "format": "uuid",
+          "title": "Target Local Id",
+          "type": "string"
+        },
+        "edge_kind": {
+          "enum": ["AST_CHILD", "IMPORTS", "CALLS_CANDIDATE"],
+          "title": "Edge Kind",
+          "type": "string"
+        },
+        "support_evidence_id": {
+          "format": "uuid",
+          "title": "Support Evidence Id",
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": true,
+          "title": "Properties"
+        }
+      },
+      "required": [
+        "id",
+        "source_local_id",
+        "target_local_id",
+        "edge_kind",
+        "support_evidence_id"
+      ],
+      "title": "EdgeCreateV1",
+      "type": "object"
+    },
+    "EvidenceEnvelopeV1": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/$defs/RunRef"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "file_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File Id"
+        },
+        "range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceRangeV1"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "provider_name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Provider Name",
+          "type": "string"
+        },
+        "provider_version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Provider Version",
+          "type": "string"
+        },
+        "operation": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Operation",
+          "type": "string"
+        },
+        "observation_mode": {
+          "enum": ["static", "runtime", "external"],
+          "title": "Observation Mode",
+          "type": "string"
+        },
+        "basis": {
+          "enum": ["observed", "derived", "inferred"],
+          "title": "Basis",
+          "type": "string"
+        },
+        "coverage_status": {
+          "enum": ["complete", "partial", "unknown", "unavailable"],
+          "title": "Coverage Status",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "id",
+        "provider_name",
+        "provider_version",
+        "operation",
+        "observation_mode",
+        "basis",
+        "coverage_status",
+        "captured_at"
+      ],
+      "title": "EvidenceEnvelopeV1",
+      "type": "object"
+    },
+    "NodeCreateV1": {
+      "additionalProperties": false,
+      "properties": {
+        "local_id": {
+          "format": "uuid",
+          "title": "Local Id",
+          "type": "string"
+        },
+        "file_id": {
+          "format": "uuid",
+          "title": "File Id",
+          "type": "string"
+        },
+        "node_kind": {
+          "enum": ["module", "class", "function", "method", "call", "import"],
+          "title": "Node Kind",
+          "type": "string"
+        },
+        "symbol_name": {
+          "maxLength": 2048,
+          "title": "Symbol Name",
+          "type": "string"
+        },
+        "qualified_name": {
+          "maxLength": 2048,
+          "title": "Qualified Name",
+          "type": "string"
+        },
+        "range": {
+          "$ref": "#/$defs/SourceRangeV1"
+        },
+        "attributes": {
+          "additionalProperties": true,
+          "title": "Attributes",
+          "type": "object"
+        }
+      },
+      "required": [
+        "local_id",
+        "file_id",
+        "node_kind",
+        "symbol_name",
+        "qualified_name",
+        "range"
+      ],
+      "title": "NodeCreateV1",
+      "type": "object"
+    },
+    "RunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "snapshot_id": {
+          "format": "uuid",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["org_id", "snapshot_id", "run_id"],
+      "title": "RunRef",
+      "type": "object"
+    },
+    "SourceRangeV1": {
+      "additionalProperties": false,
+      "description": "Half-open UTF-8 bytes; one-based lines, zero-based byte columns.",
+      "properties": {
+        "start_byte": {
+          "minimum": 0,
+          "title": "Start Byte",
+          "type": "integer"
+        },
+        "end_byte": {
+          "minimum": 0,
+          "title": "End Byte",
+          "type": "integer"
+        },
+        "start_line": {
+          "minimum": 1,
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "end_line": {
+          "minimum": 1,
+          "title": "End Line",
+          "type": "integer"
+        },
+        "start_col": {
+          "minimum": 0,
+          "title": "Start Col",
+          "type": "integer"
+        },
+        "end_col": {
+          "minimum": 0,
+          "title": "End Col",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_byte",
+        "end_byte",
+        "start_line",
+        "end_line",
+        "start_col",
+        "end_col"
+      ],
+      "title": "SourceRangeV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "$ref": "#/$defs/RunRef"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/NodeCreateV1"
+      },
+      "maxItems": 1000,
+      "title": "Nodes",
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/EvidenceEnvelopeV1"
+      },
+      "maxItems": 1000,
+      "title": "Evidence",
+      "type": "array"
+    },
+    "edges": {
+      "items": {
+        "$ref": "#/$defs/EdgeCreateV1"
+      },
+      "maxItems": 2000,
+      "title": "Edges",
+      "type": "array"
+    },
+    "derivations": {
+      "items": {
+        "$ref": "#/$defs/DerivationCreateV1"
+      },
+      "maxItems": 2000,
+      "title": "Derivations",
+      "type": "array"
+    },
+    "disposition": {
+      "enum": ["completed", "partial"],
+      "title": "Disposition",
+      "type": "string"
+    },
+    "coverage": {
+      "$ref": "#/$defs/CoverageV1"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Limitations",
+      "type": "array"
+    }
+  },
+  "required": ["scope", "disposition", "coverage"],
+  "title": "ResultBatchV1",
+  "type": "object"
+}

@@ -1,0 +1,165 @@
+{
+  "$defs": {
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "$ref": "#/$defs/RunRef"
+        },
+        "evidence_id": {
+          "format": "uuid",
+          "title": "Evidence Id",
+          "type": "string"
+        }
+      },
+      "required": ["scope", "evidence_id"],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "RunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "snapshot_id": {
+          "format": "uuid",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["org_id", "snapshot_id", "run_id"],
+      "title": "RunRef",
+      "type": "object"
+    },
+    "SourceRangeV1": {
+      "additionalProperties": false,
+      "description": "Half-open UTF-8 bytes; one-based lines, zero-based byte columns.",
+      "properties": {
+        "start_byte": {
+          "minimum": 0,
+          "title": "Start Byte",
+          "type": "integer"
+        },
+        "end_byte": {
+          "minimum": 0,
+          "title": "End Byte",
+          "type": "integer"
+        },
+        "start_line": {
+          "minimum": 1,
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "end_line": {
+          "minimum": 1,
+          "title": "End Line",
+          "type": "integer"
+        },
+        "start_col": {
+          "minimum": 0,
+          "title": "Start Col",
+          "type": "integer"
+        },
+        "end_col": {
+          "minimum": 0,
+          "title": "End Col",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_byte",
+        "end_byte",
+        "start_line",
+        "end_line",
+        "start_col",
+        "end_col"
+      ],
+      "title": "SourceRangeV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "$ref": "#/$defs/RunRef"
+    },
+    "rule": {
+      "title": "Rule",
+      "type": "string"
+    },
+    "family": {
+      "title": "Family",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "severity": {
+      "enum": ["info", "low", "medium", "high", "critical"],
+      "title": "Severity",
+      "type": "string"
+    },
+    "severity_basis": {
+      "title": "Severity Basis",
+      "type": "string"
+    },
+    "locations": {
+      "items": {
+        "$ref": "#/$defs/SourceRangeV1"
+      },
+      "title": "Locations",
+      "type": "array"
+    },
+    "support": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRef"
+      },
+      "title": "Support",
+      "type": "array"
+    },
+    "verification_disposition": {
+      "default": "proposed",
+      "enum": [
+        "proposed",
+        "supported-static",
+        "verified-scenario",
+        "contradicted",
+        "unresolved"
+      ],
+      "title": "Verification Disposition",
+      "type": "string"
+    },
+    "remediation": {
+      "title": "Remediation",
+      "type": "string"
+    }
+  },
+  "required": [
+    "scope",
+    "rule",
+    "family",
+    "title",
+    "severity",
+    "severity_basis",
+    "locations",
+    "support",
+    "remediation"
+  ],
+  "title": "FindingDraftV1",
+  "type": "object"
+}

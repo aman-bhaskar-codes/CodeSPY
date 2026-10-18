@@ -1,0 +1,100 @@
+{
+  "$defs": {
+    "RunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "snapshot_id": {
+          "format": "uuid",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["org_id", "snapshot_id", "run_id"],
+      "title": "RunRef",
+      "type": "object"
+    },
+    "SourceRangeV1": {
+      "additionalProperties": false,
+      "description": "Half-open UTF-8 bytes; one-based lines, zero-based byte columns.",
+      "properties": {
+        "start_byte": {
+          "minimum": 0,
+          "title": "Start Byte",
+          "type": "integer"
+        },
+        "end_byte": {
+          "minimum": 0,
+          "title": "End Byte",
+          "type": "integer"
+        },
+        "start_line": {
+          "minimum": 1,
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "end_line": {
+          "minimum": 1,
+          "title": "End Line",
+          "type": "integer"
+        },
+        "start_col": {
+          "minimum": 0,
+          "title": "Start Col",
+          "type": "integer"
+        },
+        "end_col": {
+          "minimum": 0,
+          "title": "End Col",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_byte",
+        "end_byte",
+        "start_line",
+        "end_line",
+        "start_col",
+        "end_col"
+      ],
+      "title": "SourceRangeV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "scope": {
+      "$ref": "#/$defs/RunRef"
+    },
+    "file_id": {
+      "format": "uuid",
+      "title": "File Id",
+      "type": "string"
+    },
+    "range": {
+      "$ref": "#/$defs/SourceRangeV1"
+    },
+    "content_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "profile_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Profile Hash",
+      "type": "string"
+    }
+  },
+  "required": ["scope", "file_id", "range", "content_hash", "profile_hash"],
+  "title": "ChunkRefV1",
+  "type": "object"
+}

@@ -1,0 +1,58 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "provider": {
+      "title": "Provider",
+      "type": "string"
+    },
+    "model_id": {
+      "title": "Model Id",
+      "type": "string"
+    },
+    "revision": {
+      "title": "Revision",
+      "type": "string"
+    },
+    "dimensions": {
+      "exclusiveMinimum": 0,
+      "title": "Dimensions",
+      "type": "integer"
+    },
+    "distance": {
+      "enum": ["cosine", "l2", "inner_product"],
+      "title": "Distance",
+      "type": "string"
+    },
+    "normalization": {
+      "title": "Normalization",
+      "type": "string"
+    },
+    "element_type": {
+      "enum": ["float32", "float16"],
+      "title": "Element Type",
+      "type": "string"
+    },
+    "chunker_version": {
+      "title": "Chunker Version",
+      "type": "string"
+    },
+    "profile_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Profile Hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "provider",
+    "model_id",
+    "revision",
+    "dimensions",
+    "distance",
+    "normalization",
+    "element_type",
+    "chunker_version",
+    "profile_hash"
+  ],
+  "title": "EmbeddingProfileV1",
+  "type": "object"
+}
