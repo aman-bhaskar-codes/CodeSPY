@@ -1,0 +1,37 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "job_id": {
+      "format": "uuid",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "attempt_id": {
+      "format": "uuid",
+      "title": "Attempt Id",
+      "type": "string"
+    },
+    "fence": {
+      "exclusiveMinimum": 0,
+      "title": "Fence",
+      "type": "integer"
+    },
+    "owner": {
+      "title": "Owner",
+      "type": "string"
+    },
+    "expiry": {
+      "format": "date-time",
+      "title": "Expiry",
+      "type": "string"
+    },
+    "heartbeat": {
+      "format": "date-time",
+      "title": "Heartbeat",
+      "type": "string"
+    }
+  },
+  "required": ["job_id", "attempt_id", "fence", "owner", "expiry", "heartbeat"],
+  "title": "AttemptLeaseV1",
+  "type": "object"
+}

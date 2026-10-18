@@ -1,0 +1,178 @@
+{
+  "$defs": {
+    "RunRef": {
+      "additionalProperties": false,
+      "properties": {
+        "org_id": {
+          "format": "uuid",
+          "title": "Org Id",
+          "type": "string"
+        },
+        "snapshot_id": {
+          "format": "uuid",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": ["org_id", "snapshot_id", "run_id"],
+      "title": "RunRef",
+      "type": "object"
+    },
+    "SourceRangeV1": {
+      "additionalProperties": false,
+      "description": "Half-open UTF-8 bytes; one-based lines, zero-based byte columns.",
+      "properties": {
+        "start_byte": {
+          "minimum": 0,
+          "title": "Start Byte",
+          "type": "integer"
+        },
+        "end_byte": {
+          "minimum": 0,
+          "title": "End Byte",
+          "type": "integer"
+        },
+        "start_line": {
+          "minimum": 1,
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "end_line": {
+          "minimum": 1,
+          "title": "End Line",
+          "type": "integer"
+        },
+        "start_col": {
+          "minimum": 0,
+          "title": "Start Col",
+          "type": "integer"
+        },
+        "end_col": {
+          "minimum": 0,
+          "title": "End Col",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start_byte",
+        "end_byte",
+        "start_line",
+        "end_line",
+        "start_col",
+        "end_col"
+      ],
+      "title": "SourceRangeV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scope": {
+      "$ref": "#/$defs/RunRef"
+    },
+    "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+    },
+    "file_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "File Id"
+    },
+    "range": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SourceRangeV1"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "provider_name": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Provider Name",
+      "type": "string"
+    },
+    "provider_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Provider Version",
+      "type": "string"
+    },
+    "operation": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Operation",
+      "type": "string"
+    },
+    "observation_mode": {
+      "enum": ["static", "runtime", "external"],
+      "title": "Observation Mode",
+      "type": "string"
+    },
+    "basis": {
+      "enum": ["observed", "derived", "inferred"],
+      "title": "Basis",
+      "type": "string"
+    },
+    "coverage_status": {
+      "enum": ["complete", "partial", "unknown", "unavailable"],
+      "title": "Coverage Status",
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "title": "Payload",
+      "type": "object"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "captured_at": {
+      "format": "date-time",
+      "title": "Captured At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "scope",
+    "id",
+    "provider_name",
+    "provider_version",
+    "operation",
+    "observation_mode",
+    "basis",
+    "coverage_status",
+    "captured_at"
+  ],
+  "title": "EvidenceEnvelopeV1",
+  "type": "object"
+}

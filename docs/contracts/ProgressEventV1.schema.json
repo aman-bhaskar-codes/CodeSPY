@@ -1,0 +1,44 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "run_id": {
+      "format": "uuid",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "sequence": {
+      "minimum": 1,
+      "title": "Sequence",
+      "type": "integer"
+    },
+    "event_type": {
+      "title": "Event Type",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "public_payload": {
+      "additionalProperties": true,
+      "title": "Public Payload",
+      "type": "object"
+    }
+  },
+  "required": [
+    "run_id",
+    "sequence",
+    "event_type",
+    "timestamp",
+    "public_payload"
+  ],
+  "title": "ProgressEventV1",
+  "type": "object"
+}
