@@ -1,88 +1,60 @@
 # CodeSPY
 
-**Evidence-first agentic reverse engineering for source repositories, application bundles, and binaries.**
+CodeSPY is a repository analysis project. The planned application will help developers explore unfamiliar code, inspect findings, and trace explanations back to source evidence.
 
-[![Setup validation](https://github.com/aman-bhaskar-codes/CodeSPY/actions/workflows/setup.yml/badge.svg)](https://github.com/aman-bhaskar-codes/CodeSPY/actions/workflows/setup.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg)](backend/pyproject.toml)
-[![React 19 + TypeScript](https://img.shields.io/badge/React-19%20%2B%20TypeScript-61DAFB.svg)](frontend/package.json)
+The current implementation is the **local database foundation**. It stores organizations, repository snapshots, analysis runs, graph records, and evidence. It does not yet acquire repositories, analyze source code, serve an API, or provide a user interface.
 
-**Phase 0: setup only.** No application API, ORM schema, DSA engine, agent workflow or workbench has been implemented. The capabilities below are the project roadmap, not claims of delivered software.
+## What works
 
-## Planned platform
+- PostgreSQL schema with tenant, snapshot, and run constraints.
+- Async persistence services with explicit transaction ownership.
+- Immutable source manifests and atomic result publication.
+- Content-based replay checks and stale lifecycle rejection.
+- Four explicit Alembic revisions, a guarded test database, and a synthetic demo.
 
-CodeSPY aims to turn repository, bundle and binary evidence into traceable architecture and behavior explanations. Inspired by [morluto/rea](https://github.com/morluto/rea), the planned platform combines:
+Evidence records describe their provider, location, basis, coverage, and limitations. Storing a record does not establish that a claim is correct. This local foundation is not a hosted authorization boundary; row-level security and public access controls remain future work.
 
-- A pure-Python Code Property Graph and DSA engine for syntax, control flow, data flow, call graphs and incremental indexing.
-- Evidence provenance and a reconstruction obligation ledger distinguishing verified findings, static inference, runtime observation and unknown coverage.
-- Hybrid graph retrieval with PostgreSQL/pgvector and lexical search; the exact BM25 approach remains an architecture decision.
-- Configurable Claude/Gemini routing and working, episodic, semantic and procedural memory.
-- Isolated adapters for source, Electron, Android, WebAssembly and native-binary analysis.
-- An accessible React workbench, FastAPI REST/SSE API, and a later cloud demonstration.
+## Run the database checks
 
-Performance, recall, context-window and recovery targets require future measurement. See [architecture decisions](docs/adr/0001-setup-boundaries.md).
-
-## Repository
-
-| Path        | Responsibility                                                                 |
-| ----------- | ------------------------------------------------------------------------------ |
-| `backend/`  | Python package metadata; future API, analyzers, agents, graph engine and tests |
-| `frontend/` | React/TypeScript package metadata, tooling configuration and future workbench  |
-| `docker/`   | PostgreSQL extension initialization and SearXNG settings                       |
-| `infra/`    | Owner-managed cloud/bootstrap documentation and provider configuration         |
-| `scripts/`  | Local setup and read-only acceptance checks                                    |
-| `docs/`     | Phase guides, decisions, toolchain and setup evidence                          |
-
-The Python environment and canonical `uv.lock` are at repository root; `backend/uv.lock` points to the canonical workspace lock. Frontend packages have their own `frontend/package-lock.json`; the root npm package supplies documentation/convenience commands.
-
-## Local setup
-
-Prerequisites: Python 3.12 through uv, Node 22 through fnm, JDK 21, Docker with Compose v2, and the tools recorded in [TOOLCHAIN.md](docs/TOOLCHAIN.md).
+Requirements: Python 3.12, [uv](https://docs.astral.sh/uv/), and Docker with Compose v2. No API keys or cloud account are needed. The test harness starts only PostgreSQL on `127.0.0.1:55432`, using temporary storage and generated local test credentials. It does not read the developer `.env` or use its database volumes.
 
 ```bash
-source scripts/env.sh
-make install
-cp .env.example .env
-# Set independent local PostgreSQL, Redis and SearXNG secrets in ignored .env.
-make services
-make bootstrap-local
-make verify
+uv sync --all-packages --all-groups --frozen
+make phase1-unit
+uv run --frozen --all-packages --all-groups python scripts/phase1_db.py prepare --env-out .phase1-test.env
+make phase1-test
+make phase1-demo
+uv run --frozen --all-packages --all-groups python scripts/phase1_db.py cleanup --env-file .phase1-test.env
 ```
 
-Existing local credentials are preserved during updates. Never overwrite an existing `.env` with the example.
+Each integration suite gets a separate database created from migrations. Cleanup checks the test container's ownership marker and port binding before removing it. Keep the ignored ownership file if setup fails; it is needed for cleanup. Never commit it.
 
-| Local service            | Address                  |
-| ------------------------ | ------------------------ |
-| PostgreSQL 16 + pgvector | `127.0.0.1:5432`         |
-| Redis 7.4                | `127.0.0.1:6379`         |
-| SearXNG                  | `http://127.0.0.1:18080` |
-| LocalStack               | `http://127.0.0.1:4566`  |
+For the larger query-plan fixture, run `make phase1-performance` before cleanup. It measures selective reads over 100,000 nodes and 300,000 edges; it does not establish a general latency guarantee.
 
-LocalStack uses explicit dummy credentials and a loopback endpoint. It does not use a real AWS account. `make stop` stops this project's containers while preserving database volumes.
+See [Phase 1 acceptance](docs/PHASE_1_ACCEPTANCE.md) for executed checks, measured plans, and limitations, and [database operations](docs/PHASE_1_DATABASE.md) for migration and role details.
 
-`make checks` runs dependency/configuration hygiene. `make verify` checks local tools, dependencies, database extensions, service health, local emulator resources and Chromium. Application build/tests will be exercised when application sources exist; their command definitions alone are not verification evidence.
+## Layout
 
-## Credentials and account ownership
+| Path               | Contents                                                             |
+| ------------------ | -------------------------------------------------------------------- |
+| `backend/app/`     | Contracts, database metadata, repositories, and persistence services |
+| `backend/alembic/` | Historical database revisions                                        |
+| `backend/tests/`   | Unit, PostgreSQL integration, migration, and query-plan tests        |
+| `frontend/`        | Reserved React/TypeScript workspace; no application screens yet      |
+| `scripts/`         | Local test harness, fixture, demo, and setup checks                  |
+| `docs/`            | Plans, decisions, operations, and acceptance records                 |
+| `infra/`           | Infrastructure configuration and owner-managed cloud notes           |
 
-**All LLM/service API keys are configured manually by the owner.** Setup does not generate, retrieve or validate them. The owner also manages all AWS account access; the assistant must not open the account, sign in, or make real AWS API/CLI/connector calls. Blank template fields are deliberate.
+The root `uv.lock` is the Python workspace lock. `backend/uv.lock` links to it. The existing frontend lockfile is retained. Installed scanner, queue, and model packages are dormant until their phases require them.
 
-A GitHub OAuth client was registered during earlier setup; its client secret was not generated. Cloud bootstrap changes made before the owner's stop instruction are recorded in [AWS_SETUP.md](docs/AWS_SETUP.md), without claiming a deployed application. GitBook, Miro and Figma are reserved for later.
+## Next steps
 
-## Roadmap
+The [technical blueprint](docs/CodeSPY_Technical_Execution_Blueprint.md) defines the current roadmap. Phase 2 adds safe admission, identity, durable jobs, and artifact lifecycle. Later phases add Python/JavaScript/TypeScript structure, deterministic findings, retrieval, investigations, and a workbench. Runtime verification, binary adapters, and hosted deployment have separate acceptance gates.
 
-| Phase | Intended outcome                                                           |
-| ----- | -------------------------------------------------------------------------- |
-| 0     | Reproducible tooling, repository formalities and local dependency services |
-| 1     | Database schema, constraints, async ORM and migrations                     |
-| 2     | DSA/CPG engine and source/bundle/binary adapters                           |
-| 3     | Hybrid graph retrieval, memory and evidence ledger                         |
-| 4     | Multi-model routing, investigation DAG and tool integrations               |
-| 5     | API/SSE, authentication, authorization and security hardening              |
-| 6     | Accessible three-pane workbench                                            |
-| 7     | Evaluation, optional specialist training and cloud portfolio demo          |
+Phase 1 incorporates the blueprint's foundation reconciliation step. Each later phase starts from the accepted code and its own execution plan.
 
-See [the project plan](docs/PROJECT_PLAN.md), [Phase 0 acceptance](docs/SETUP_STATUS.md), [contributing](CONTRIBUTING.md), and [security policy](SECURITY.md).
+## Project boundaries
 
-## License
+API keys and AWS account access are managed manually by the owner. Local database work does not require either. The existing all-service setup workflow and dependency schedules remain paused; the Phase 1 workflow validates database changes on pull requests or manual runs. Services are left stopped after local handoff.
 
-[MIT](LICENSE), Copyright 2026 CodeSPY Contributors. Third-party tools retain their own licenses; their binaries and analyzed artifacts are not committed here.
+[Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [MIT license](LICENSE)

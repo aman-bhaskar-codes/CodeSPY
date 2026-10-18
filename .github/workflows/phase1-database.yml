@@ -1,0 +1,40 @@
+name: Database foundation
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "scripts/phase1*.py"
+      - "compose.phase1-tests.yaml"
+      - "uv.lock"
+      - ".github/workflows/phase1-database.yml"
+  workflow_dispatch:
+    inputs:
+      performance:
+        description: Run the larger query-plan fixture
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  # Preserve the required check context configured during Phase 0.
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-packages --all-groups --frozen
+      - run: uv run --frozen --all-packages --all-groups ruff check backend/app backend/tests backend/alembic scripts/phase1*.py
+      - run: uv run --frozen --all-packages --all-groups ruff format --check backend/app backend/tests backend/alembic scripts/phase1*.py
+      - run: uv run --frozen --all-packages --all-groups mypy --config-file backend/pyproject.toml backend/app
+      - run: uv run --frozen --all-packages --all-groups pre-commit run --all-files
+      - run: make phase1-unit
+      - run: uv run --frozen --all-packages --all-groups python scripts/phase1_db.py prepare --env-out .phase1-test.env
+      - run: make phase1-test
+      - run: make phase1-demo
+      - if: github.event_name == 'workflow_dispatch' && inputs.performance
+        run: make phase1-performance
+      - if: always() && hashFiles('.phase1-test.env') != ''
+        run: uv run --frozen --all-packages --all-groups python scripts/phase1_db.py cleanup --env-file .phase1-test.env
