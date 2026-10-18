@@ -43,7 +43,7 @@ class AnalysisRepository:
         if row:
             if any(row[k] != v for k, v in values.items()):
                 raise DuplicateConflict("request key has different input")
-            return RunRecord(**row)
+            return RunRecord(**{k: row[k] for k in RunRecord.model_fields})
         row = (
             (
                 await self.session.execute(
@@ -55,7 +55,7 @@ class AnalysisRepository:
             .mappings()
             .one()
         )
-        return RunRecord(**row)
+        return RunRecord(**{k: row[k] for k in RunRecord.model_fields})
 
     async def get(
         self, ctx: TenantContext, ref: RunRef, *, lock: bool = False, published: bool = False
@@ -71,4 +71,4 @@ class AnalysisRepository:
             raise ScopeViolation("run unavailable in scope")
         if published and row["status"] not in ("completed", "partial"):
             raise NotPublished("run has no published result")
-        return RunRecord(**row)
+        return RunRecord(**{k: row[k] for k in RunRecord.model_fields})
