@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from hashlib import sha256
 from uuid import uuid4
 
 from app.contracts.evidence import EvidenceEnvelopeV1
@@ -19,6 +20,24 @@ from app.domain.source_ranges import SourceRangeV1
 from app.repositories.identity_repository import IdentityRepository
 from app.services.persistence import PersistenceService
 
+FIXTURE_SOURCES = {
+    "a.py": b"def demo():\n    return 1\n",
+    "é.py": "def café():\r\n    return 2\r\n".encode(),
+}
+
+
+def fixture_files(ids):
+    return [
+        SourceFileCreate(
+            id=file_id,
+            path=path,
+            sha256=sha256(source).hexdigest(),
+            size_bytes=len(source),
+            language="python",
+        )
+        for file_id, (path, source) in zip(ids, FIXTURE_SOURCES.items(), strict=True)
+    ]
+
 
 async def scenario(factory):
     async with transaction(factory) as s:
@@ -33,20 +52,19 @@ async def scenario(factory):
         ),
     )
     ids = [uuid4(), uuid4()]
-    files = [
-        SourceFileCreate(
-            id=ids[0], path="a.py", sha256="a" * 64, size_bytes=100, language="python"
-        ),
-        SourceFileCreate(
-            id=ids[1], path="é.py", sha256="b" * 64, size_bytes=100, language="python"
-        ),
-    ]
+    files = fixture_files(ids)
+    artifact_bytes = b"".join(
+        path.encode("utf-8") + b"\0" + source
+        for path, source in FIXTURE_SOURCES.items()
+    )
     snapshot = await service.create_snapshot(
         ctx,
         SnapshotCreate(
             repository_id=repo.id,
             artifact=ArtifactCreate(
-                sha256="c" * 64, size_bytes=200, storage_key="fixture/source"
+                sha256=sha256(artifact_bytes).hexdigest(),
+                size_bytes=len(artifact_bytes),
+                storage_key="fixture/source",
             ),
             admission_config_hash="d" * 64,
         ),

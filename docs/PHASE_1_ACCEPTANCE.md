@@ -17,13 +17,13 @@ Locked packages retained: SQLAlchemy 2.0.54, Alembic 1.20.0, asyncpg 0.32.0, psy
 ## Executed checks
 
 - `uv lock --check` and locked backend dependency tree: passed using a workspace-local uv cache.
-- Unit suite: 30 passed; connection validation/redaction, strict Python vs JSON contracts, canonical JSON, ranges, paths, coverage and harness safeguards.
-- PostgreSQL integration suite: 20 passed; publication/replay/rollback, scope keys, role checks, raw trigger/CHECK behavior, timeout/cancellation, cursor pagination and coordinated races.
+- Unit suite: 31 passed; connection validation/redaction, strict Python vs JSON contracts, canonical JSON, ranges, paths, coverage and harness safeguards.
+- PostgreSQL integration suite: 21 passed; publication/replay/rollback, scope keys, role checks, raw trigger/CHECK behavior, timeout/cancellation, cursor pagination and coordinated races.
 - Migration suite: 3 passed; exact 12-table schema, one head, no metadata drift, trigger catalog, source-preserving upgrade and disposable downgrade/re-upgrade. Extensions remain installed.
 - Performance suite: 1 passed; 100,000 nodes / 300,000 edges, with owner-refreshed statistics.
 - Strict mypy: passed on 29 application modules.
 - Ruff lint and formatting: passed on application, migrations, tests and Phase 1 scripts.
-- Standalone demo: two nodes, one edge, two evidence records, one derivation; same-result replay, changed-result rejection, rollback, foreign-scope denial and stale-write rejection passed. Its database was removed after engine disposal.
+- Standalone demo: two nodes, one edge, two evidence records, one derivation; same-result replay, changed-result rejection, rollback, foreign-scope denial and stale-write rejection passed. Its database was removed after engine disposal. Fixture digests and sizes come from known UTF-8 source bytes, including CRLF and a Unicode identifier.
 
 Commands are reproducible through `make phase1-unit`, `make phase1-test`, `make phase1-demo`, and `make phase1-performance` after the README preparation command. There are no SQLite substitutes or skipped integration checks in these counts. Concurrency cases are included in the integration count, not counted twice.
 

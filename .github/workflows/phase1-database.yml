@@ -6,6 +6,9 @@ on:
       - "scripts/phase1*.py"
       - "compose.phase1-tests.yaml"
       - "uv.lock"
+      - "pyproject.toml"
+      - "Makefile"
+      - ".pre-commit-config.yaml"
       - ".github/workflows/phase1-database.yml"
   workflow_dispatch:
     inputs:

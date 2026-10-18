@@ -88,12 +88,25 @@ def url(values, database, user, password, driver="postgresql+psycopg"):
     )
 
 
-def provision(values, database):
+def provision_extensions(values, database):
+    validate_target(
+        host=values["CODESPY_TEST_HOST"],
+        port=int(values["CODESPY_TEST_PORT"]),
+        database=database,
+        marker=values["CODESPY_TEST_MARKER"],
+        project=PROJECT,
+    )
     with connect(values, database) as c:
         for ext in ["uuid-ossp", "citext", "pg_trgm", "vector"]:
             c.execute(
                 sql.SQL("CREATE EXTENSION IF NOT EXISTS {}").format(sql.Identifier(ext))
             )
+        return dict(c.execute("SELECT extname,extversion FROM pg_extension").fetchall())
+
+
+def provision(values, database):
+    provision_extensions(values, database)
+    with connect(values, database) as c:
         c.execute("CREATE SCHEMA codespy_test_guard")
         c.execute("CREATE TABLE codespy_test_guard.ownership(marker text NOT NULL)")
         c.execute(
@@ -289,6 +302,7 @@ def main():
         test_suite(values, args.suite)
     else:
         verify_marker(values, values["CODESPY_TEST_DATABASE"])
+        provision_extensions(values, values["CODESPY_TEST_DATABASE"])
         with connect(values, values["CODESPY_TEST_DATABASE"]) as c:
             print("PostgreSQL", c.execute("SHOW server_version").fetchone()[0])
             print(

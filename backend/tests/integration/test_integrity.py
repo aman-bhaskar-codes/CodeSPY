@@ -303,3 +303,12 @@ async def test_null_coverage_status_cannot_publish(factory):
                     finished_at=datetime.now(UTC),
                 )
             )
+
+
+async def test_extension_provisioning_is_idempotent(db_values):
+    from scripts import phase1_db as db
+
+    first = db.provision_extensions(db_values, db_values["CODESPY_TEST_DATABASE"])
+    second = db.provision_extensions(db_values, db_values["CODESPY_TEST_DATABASE"])
+    assert first == second
+    assert {"vector", "pg_trgm", "citext", "uuid-ossp"} <= first.keys()

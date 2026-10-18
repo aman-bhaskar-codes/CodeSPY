@@ -86,3 +86,16 @@ def test_artifact_keys_are_opaque_not_urls():
             size_bytes=1,
             storage_key="https://example.test/object?credential=fixture",
         )
+
+
+def test_demo_metadata_comes_from_known_utf8_sources():
+    from hashlib import sha256
+
+    from scripts.phase1_fixture import FIXTURE_SOURCES, fixture_files
+
+    ids = [uuid4(), uuid4()]
+    files = fixture_files(ids)
+    assert b"\r\n" in FIXTURE_SOURCES["é.py"]
+    for file in files:
+        assert file.sha256 == sha256(FIXTURE_SOURCES[file.path]).hexdigest()
+        assert file.size_bytes == len(FIXTURE_SOURCES[file.path])
