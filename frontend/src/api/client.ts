@@ -4,6 +4,8 @@ import type {
   SubmissionRecordV1,
   JobRecordV2,
   InventoryPageV1,
+  AnalysisAcceptedV1,
+  ArchitectureReportV1,
 } from "./generated/types.gen";
 
 export class ApiError extends Error {
@@ -45,6 +47,36 @@ export const api = {
   inventory: (id: string, cursor: string | null, signal?: AbortSignal) =>
     request<InventoryPageV1>(
       `/snapshots/${id}/inventory?limit=50${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}`,
+      { signal },
+    ),
+  createAnalysis: (
+    repoId: string,
+    snapshotId: string,
+    csrf: string,
+    key?: string,
+    includePrefixes?: string[],
+  ) =>
+    request<AnalysisAcceptedV1>(`/repositories/${repoId}/analyses`, {
+      method: "POST",
+      headers: mutationHeaders(csrf, key),
+      body: JSON.stringify({
+        snapshot_id: snapshotId,
+        include_prefixes: includePrefixes ?? [],
+        profile: "structural-small-v1",
+      }),
+    }),
+  analysisReport: (repoId: string, runId: string, signal?: AbortSignal) =>
+    request<ArchitectureReportV1>(
+      `/repositories/${repoId}/analyses/${runId}/report`,
+      { signal },
+    ),
+  snapshotStructuralReport: (
+    repoId: string,
+    snapshotId: string,
+    signal?: AbortSignal,
+  ) =>
+    request<ArchitectureReportV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/structural-report`,
       { signal },
     ),
 };

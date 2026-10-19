@@ -9,6 +9,7 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
+from app.analyzers.reporting import render_json, render_markdown
 from app.contracts.http import (
     EventPageV2,
     GitHubAcquisitionV1,
@@ -21,8 +22,15 @@ from app.contracts.http import (
     SessionV1,
 )
 from app.contracts.ingestion import SubmissionRecordV1, UploadReservationV1
-from app.contracts.jobs import JobRecordV2, RetryResponseV1
+from app.contracts.jobs import JobRecordV2, JobRecordV3, RetryResponseV1
 from app.contracts.persistence import RepositoryCreate, RepositoryRecord
+from app.contracts.structure import (
+    AnalysisAcceptedV1,
+    AnalysisConfigV1,
+    ArchitectureReportV1,
+    StructuralAnalysisRequestV1,
+    StructuralLimitsV1,
+)
 from app.db.transaction import transaction
 from app.domain.canonical_json import canonical_bytes
 from app.domain.errors import (
@@ -49,6 +57,7 @@ from app.security.sessions import SessionService, token_digest
 from app.services.github_acquisition import GitHubAcquisitionService
 from app.services.jobs import JobService
 from app.services.retries import RetryService
+from app.services.structural_analysis import StructuralAnalysisService
 from app.services.submissions import SubmissionService
 from app.services.webhooks import GitHubWebhookService
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -123,6 +132,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     jobs = JobService(ports.factory)
     retries = RetryService(ports.factory, ports.store)
     submissions = SubmissionService(ports.factory, ports.store)
+    structural = StructuralAnalysisService(ports.factory)
     cursors = CursorCodec(secrets.token_bytes(32))
 
     def error(status: int, code: str) -> JSONResponse:
@@ -628,12 +638,14 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         return await submissions.cancel(ctx, submission_id)
 
     @app.get("/api/v1/jobs/{job_id}")
-    async def get_job(request: Request, job_id: UUID) -> JobRecordV2:
+    async def get_job(request: Request, job_id: UUID) -> JobRecordV2 | JobRecordV3:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id)
         return await jobs.get(ctx, job_id)
 
     @app.post("/api/v1/jobs/{job_id}/cancel")
-    async def cancel_job(request: Request, response: Response, job_id: UUID) -> JobRecordV2:
+    async def cancel_job(
+        request: Request, response: Response, job_id: UUID
+    ) -> JobRecordV2 | JobRecordV3:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id, write=True)
         result = await jobs.request_cancel(ctx, job_id)
         response.status_code = 202 if result.state == "cancelling" else 200
@@ -774,6 +786,102 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             ),
         )
 
+    @app.post("/api/v1/repositories/{repository_id}/analyses", status_code=202)
+    async def create_analysis(request: Request, repository_id: UUID) -> AnalysisAcceptedV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        body = await json_body(request, StructuralAnalysisRequestV1)
+        config = AnalysisConfigV1(
+            toolchain_hash="0" * 64,
+            include_prefixes=body.include_prefixes,
+            limits=StructuralLimitsV1(),
+        )
+        spec, job = await structural.create_analysis_spec(
+            ctx, repository_id, body.snapshot_id, config, key(request)
+        )
+        return AnalysisAcceptedV1(
+            spec_id=spec.id,
+            job_id=job.id,
+            snapshot_id=body.snapshot_id,
+        )
+
+    @app.get("/api/v1/repositories/{repository_id}/analyses/{run_id}/report")
+    async def get_analysis_report(
+        request: Request, repository_id: UUID, run_id: UUID
+    ) -> ArchitectureReportV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as s:
+            from app.models.phase3_tables import structural_reports
+
+            row = (
+                (
+                    await s.execute(
+                        select(structural_reports).where(
+                            structural_reports.c.org_id == ctx.org_id,
+                            structural_reports.c.repository_id == repository_id,
+                            structural_reports.c.run_id == run_id,
+                        )
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+            if not row:
+                raise HTTPException(404)
+            return ArchitectureReportV1.model_validate(row["report_json"])
+
+    @app.get("/api/v1/repositories/{repository_id}/analyses/{run_id}/export")
+    async def export_analysis_report(
+        request: Request, repository_id: UUID, run_id: UUID, format: str = "json"
+    ) -> Response:
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as s:
+            from app.models.phase3_tables import structural_reports
+
+            row = (
+                (
+                    await s.execute(
+                        select(structural_reports).where(
+                            structural_reports.c.org_id == ctx.org_id,
+                            structural_reports.c.repository_id == repository_id,
+                            structural_reports.c.run_id == run_id,
+                        )
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+            if not row:
+                raise HTTPException(404)
+            report = ArchitectureReportV1.model_validate(row["report_json"])
+
+        if format == "markdown":
+            content = render_markdown(report)
+            media_type = "text/markdown; charset=utf-8"
+            filename = f"report-{run_id}.md"
+        else:
+            content = render_json(report)
+            media_type = "application/json"
+            filename = f"report-{run_id}.json"
+
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={
+                "X-Content-Type-Options": "nosniff",
+                "Content-Disposition": f'attachment; filename="{filename}"',
+            },
+        )
+
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/structural-report")
+    async def get_snapshot_structural_report(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> ArchitectureReportV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        report = await structural.get_report_by_snapshot(ctx, repository_id, snapshot_id)
+        if not report:
+            raise HTTPException(404)
+        return report
+
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
             schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
@@ -783,6 +891,8 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 UploadReservationV1,
                 GitHubAcquisitionV1,
                 GitHubBindingV1,
+                StructuralAnalysisRequestV1,
+                AnalysisAcceptedV1,
             )
             for model in contract_models:
                 components[model.__name__] = model.model_json_schema(
@@ -793,6 +903,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 ("/api/v1/repositories/{repository_id}/github-binding", GitHubBindingV1),
                 ("/api/v1/repositories/{repository_id}/uploads", UploadReservationV1),
                 ("/api/v1/repositories/{repository_id}/github-acquisitions", GitHubAcquisitionV1),
+                ("/api/v1/repositories/{repository_id}/analyses", StructuralAnalysisRequestV1),
             )
             for path, model in body_contracts:
                 schema["paths"][path]["post"]["requestBody"] = {

@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import and_, func, insert, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.contracts.jobs import AttemptLeaseV2, EnqueueJobV2, JobRecordV2
+from app.contracts.jobs import AttemptLeaseV2, EnqueueJobV2, EnqueueJobV3, JobRecordV2, JobRecordV3
 from app.contracts.persistence import RunCreate
 from app.db.time import database_now
 from app.db.transaction import transaction
@@ -17,7 +17,14 @@ from app.domain.scope import RunRef, TenantContext
 from app.models.phase2_tables import PHASE2_TABLES
 from app.models.tables import analysis_runs
 from app.repositories.event_repository import append_event
-from app.repositories.job_repository import attempts, job_record, jobs, load_job, worker_context
+from app.repositories.job_repository import (
+    attempts,
+    job_record,
+    job_record_v3,
+    jobs,
+    load_job,
+    worker_context,
+)
 from app.repositories.outbox_repository import enqueue_wakeup
 from app.security.authorization import lock_scope, require_repository
 from app.services.persistence import PersistenceService
@@ -35,8 +42,9 @@ class JobService:
         self.lease_seconds = lease_seconds
         self.persistence = PersistenceService(factory)
 
-    async def enqueue(self, ctx: TenantContext, request: EnqueueJobV2) -> JobRecordV2:
-        request = EnqueueJobV2.model_validate(request.model_dump())
+    async def enqueue(
+        self, ctx: TenantContext, request: EnqueueJobV2 | EnqueueJobV3
+    ) -> JobRecordV2 | JobRecordV3:
         if request.request_key.startswith(("job:", "child:")):
             raise ValueError("reserved request namespace")
         async with transaction(self.factory) as s:
@@ -44,10 +52,12 @@ class JobService:
                 s, ctx.org_id, ctx.principal_id, request.repository_id, request.snapshot_id
             )
             row = await self._enqueue(s, ctx, request)
+        if isinstance(request, EnqueueJobV3) or row.get("operation") == "analyze_structure":
+            return job_record_v3(row)
         return job_record(row)
 
     async def _enqueue(
-        self, s: AsyncSession, ctx: TenantContext, request: EnqueueJobV2
+        self, s: AsyncSession, ctx: TenantContext, request: EnqueueJobV2 | EnqueueJobV3
     ) -> dict[str, Any]:
         digest = semantic_digest(request.model_dump())
         old = (
@@ -100,7 +110,7 @@ class JobService:
         await append_event(s, row, "queued")
         return row
 
-    async def get(self, ctx: TenantContext, job_id: UUID) -> JobRecordV2:
+    async def get(self, ctx: TenantContext, job_id: UUID) -> JobRecordV2 | JobRecordV3:
         async with transaction(self.factory) as s:
             row = await load_job(s, ctx.org_id, job_id)
             await require_repository(s, ctx.org_id, ctx.principal_id, row["repository_id"])
@@ -115,6 +125,8 @@ class JobService:
                     .order_by(jobs.c.created_at.desc(), jobs.c.id.desc())
                     .limit(1)
                 )
+        if row.get("operation") == "analyze_structure":
+            return job_record_v3(row)
         return job_record(row)
 
     async def _locked(
@@ -213,7 +225,9 @@ class JobService:
                 return "obsolete"
             assert ctx is not None
             attempt_id = uuid4()
-            run_id = uuid4() if job["operation"] == "inventory_snapshot" else None
+            run_id = (
+                uuid4() if job["operation"] in ("inventory_snapshot", "analyze_structure") else None
+            )
             fence = job["fence"] + 1
             row = (
                 (
@@ -269,15 +283,36 @@ class JobService:
             )
             await worker_context(s, lease)
             if run_id:
+                if job["operation"] == "analyze_structure":
+                    from app.models.phase3_tables import analysis_specs
+
+                    spec_row = (
+                        (
+                            await s.execute(
+                                select(analysis_specs).where(
+                                    analysis_specs.c.org_id == org_id,
+                                    analysis_specs.c.id == job["analysis_spec_id"],
+                                )
+                            )
+                        )
+                        .mappings()
+                        .one()
+                    )
+                    analyzer_name = "codespy-structure"
+                    run_config = dict(spec_row["config_json"])
+                else:
+                    analyzer_name = "source-inventory"
+                    run_config = {"policy_hash": job["config_hash"]}
+
                 run = await self.persistence._create_run_in_session(
                     s,
                     ctx,
                     RunCreate(
                         snapshot_id=job["snapshot_id"],
                         request_key=f"job:{job_id}:attempt:{job['attempt_count']}",
-                        analyzer_name="source-inventory",
+                        analyzer_name=analyzer_name,
                         analyzer_version="1",
-                        config={"policy_hash": job["config_hash"]},
+                        config=run_config,
                     ),
                     run_id=run_id,
                     worker_binding=(job_id, attempt_id, fence),

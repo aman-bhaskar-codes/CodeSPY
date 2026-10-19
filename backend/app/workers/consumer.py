@@ -8,7 +8,7 @@ from uuid import uuid4
 from app.adapters.github.http import ProviderFailure
 from app.admission.zip_inventory import AdmissionRejected
 from app.contracts.ingestion import AdmissionPolicyV1, ArtifactManifestV1
-from app.contracts.jobs import AttemptLeaseV2, JobEnvelopeV2
+from app.contracts.jobs import AttemptLeaseV2, JobEnvelopeV2, JobEnvelopeV3
 from app.db.transaction import transaction
 from app.domain.errors import (
     DuplicateConflict,
@@ -21,6 +21,7 @@ from app.ports.queue import Delivery, QueuePort
 from app.repositories.job_repository import load_job
 from app.services.job_finalization import JobFinalizer
 from app.services.jobs import JobService
+from app.workers.operations.analyze_structure import StructuralAnalysisOperation
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -41,11 +42,13 @@ class JobConsumer:
         queue: QueuePort,
         finalizer: JobFinalizer,
         processor: AdmissionProcessor,
+        structural_operation: StructuralAnalysisOperation | None = None,
     ) -> None:
         self.factory = factory
         self.queue = queue
         self.finalizer = finalizer
         self.processor = processor
+        self.structural_operation = structural_operation
         self.jobs = JobService(factory)
 
     async def _ack(self, receipt: str) -> None:
@@ -59,12 +62,16 @@ class JobConsumer:
             logger.warning("invalid_queue_envelope")
             await self._ack(delivery.receipt)
             return
+        envelope: JobEnvelopeV2 | JobEnvelopeV3
         try:
-            envelope = JobEnvelopeV2.model_validate_json(delivery.body)
+            envelope = JobEnvelopeV3.model_validate_json(delivery.body)
         except ValidationError:
-            logger.warning("invalid_queue_envelope")
-            await self._ack(delivery.receipt)
-            return
+            try:
+                envelope = JobEnvelopeV2.model_validate_json(delivery.body)
+            except ValidationError:
+                logger.warning("invalid_queue_envelope")
+                await self._ack(delivery.receipt)
+                return
         async with transaction(self.factory) as s:
             job = await load_job(s, envelope.org_id, envelope.job_id)
             source_kind = (
@@ -113,10 +120,18 @@ class JobConsumer:
                 await self.finalizer.finish_admission(
                     lease, prepared, before_lock=enter_finalization
                 )
-            else:
+            elif envelope.operation == "inventory_snapshot":
                 batch = await self.finalizer.inventory_batch(lease)
                 await enter_finalization()
                 await self.finalizer.finish_inventory(lease, batch)
+            elif envelope.operation == "analyze_structure":
+                if self.structural_operation is None:
+                    raise RuntimeError("structural analysis operation not configured on consumer")
+                await self.structural_operation.execute(
+                    lease, enter_finalization=enter_finalization
+                )
+            else:
+                raise ValueError(f"unknown operation {envelope.operation}")
 
         operation = asyncio.create_task(operate())
 

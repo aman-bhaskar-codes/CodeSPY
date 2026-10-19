@@ -165,43 +165,30 @@ dev = [
 ]
 
 [tool.ruff]
-
 target-version = "py312"
-
 line-length = 100
-
 src = ["app", "tests"]
+extend-exclude = ["* 2.py"]
 
 [tool.ruff.lint]
-
 select = ["E", "F", "I", "B", "UP", "N", "S", "ASYNC", "C4", "SIM", "RUF"]
-
 ignore = ["S101"]
 
 [tool.mypy]
-
 python_version = "3.12"
-
 strict = true
-
 warn_return_any = true
-
 warn_unused_configs = true
-
 disallow_untyped_defs = true
-
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
-
 asyncio_mode = "auto"
 pythonpath = [".", ".."]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_default_test_loop_scope = "function"
 markers = ["integration: real PostgreSQL", "concurrency: coordinated independent connections", "performance: dedicated large fixture"]
-
 testpaths = ["tests"]
-
 addopts = "-ra -q --strict-markers"
 
 [tool.uv]
@@ -210,3 +197,4 @@ package = false
 [tool.ruff.lint.per-file-ignores]
 "app/domain/errors.py" = ["N818"] # Public error names are specified by the phase contract.
 "tests/unit/test_foundation.py" = ["S105", "S106"] # Synthetic URL escaping fixture.
+"app/adapters/typescript.py" = ["S603", "S607"] # Subprocess call to isolated sidecar in qualified container.

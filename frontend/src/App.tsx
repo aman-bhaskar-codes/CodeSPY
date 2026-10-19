@@ -10,6 +10,7 @@ import type {
   SubmissionRecordV1,
   RetryResponseV1,
 } from "./api/generated/types.gen";
+import { StructuralReportView } from "./features/structure/StructuralReportView";
 
 const terminal = new Set(["succeeded", "partial", "failed", "cancelled"]);
 function selectedId(name: string): string | null {
@@ -48,6 +49,7 @@ export default function App() {
   const [validation, setValidation] = useState("");
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [pages, setPages] = useState<(string | null)[]>([null]);
+  const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const cancelButton = useRef<HTMLButtonElement>(null);
   const uploadKey = useRef(crypto.randomUUID());
@@ -118,6 +120,39 @@ export default function App() {
     queryFn: ({ signal }) =>
       api.inventory(snapshot!, pages.at(-1) ?? null, signal),
     enabled: !!snapshot && !!session.data,
+  });
+  const structuralReport = useQuery({
+    queryKey: ["structuralReport", repository, snapshot],
+    queryFn: ({ signal }) =>
+      api.snapshotStructuralReport(repository, snapshot!, signal),
+    enabled: !!snapshot && !!repository && !!session.data,
+    retry: false,
+  });
+  const analysisJob = useQuery({
+    queryKey: ["job", analysisJobId],
+    queryFn: ({ signal }) => api.job(analysisJobId!, signal),
+    enabled: !!analysisJobId && !!session.data,
+    refetchInterval: (query) =>
+      query.state.data && terminal.has(query.state.data.state) ? false : 1500,
+  });
+  useEffect(() => {
+    if (analysisJob.data?.state === "succeeded") {
+      void client.invalidateQueries({
+        queryKey: ["structuralReport", repository, snapshot],
+      });
+    }
+  }, [analysisJob.data?.state, client, repository, snapshot]);
+  const analyze = useMutation({
+    mutationFn: async () => {
+      if (!repository || !snapshot || !session.data)
+        throw new Error("missing input");
+      const res = await api.createAnalysis(
+        repository,
+        snapshot,
+        session.data.csrf_token,
+      );
+      setAnalysisJobId(res.job_id);
+    },
   });
   const upload = useMutation({
     mutationFn: async () => {
@@ -410,8 +445,10 @@ export default function App() {
                     setJobId(null);
                     setFile(null);
                     setPages([null]);
+                    setAnalysisJobId(null);
                     upload.reset();
                     action.reset();
+                    analyze.reset();
                     uploadKey.current = crypto.randomUUID();
                     if (input.current) input.current.value = "";
                   }}
@@ -512,6 +549,54 @@ export default function App() {
                 </>
               )}
             </section>
+            {snapshot && repository && (
+              <section aria-labelledby="structural-title">
+                <div className="section-heading">
+                  <h2 id="structural-title">Structural Architecture</h2>
+                  <span className="muted">
+                    Deterministic syntax & graph analysis · Phase 3
+                  </span>
+                </div>
+                {structuralReport.data ? (
+                  <StructuralReportView
+                    report={structuralReport.data}
+                    repositoryId={repository}
+                  />
+                ) : (
+                  <div>
+                    <p>
+                      Analyze syntax trees, symbol references, and framework
+                      boundaries for this snapshot.
+                    </p>
+                    {analyze.isPending ||
+                    (analysisJob.data &&
+                      !terminal.has(analysisJob.data.state)) ? (
+                      <p role="status">
+                        Analyzing architecture (
+                        {analysisJob.data?.state ?? "starting"})…
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busy || analyze.isPending}
+                        onClick={() => analyze.mutate()}
+                      >
+                        Analyze architecture
+                      </button>
+                    )}
+                    {analyze.isError && (
+                      <p role="alert">{problem(analyze.error)}</p>
+                    )}
+                    {analysisJob.data?.state === "failed" && (
+                      <p role="alert">
+                        Structural analysis failed:{" "}
+                        {analysisJob.data.failure_code ?? "unknown error"}.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
           </>
         )}
       </main>

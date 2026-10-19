@@ -71,9 +71,9 @@ The root `uv.lock` is the Python workspace lock. `backend/uv.lock` links to it. 
 
 Phase 2 ingestion, identity and durable inventory jobs are implemented locally. See the [acceptance record](docs/PHASE_2_ACCEPTANCE.md) for executed checks and deferred live-provider, browser and hosted gates.
 
-Phase 3 structural analysis is in toolchain qualification. Its [execution plan](docs/phases/PHASE_3_STRUCTURAL_ANALYSIS_EXECUTION_PLAN.md), [decisions](docs/adr/0003-structural-analysis.md) and [capability record](docs/capabilities/structural-small-v1.md) distinguish qualified parser/compiler fixtures from the analyzer that remains to be built. No structural-analysis endpoint or job is enabled yet.
+Phase 3 deterministic structural analysis is implemented locally across Python, JavaScript, and TypeScript with Tree-sitter and TypeScript compiler sidecars, pure graph algorithms, framework boundary observers, isolated pipeline execution, DB-fenced publication, OpenAPI export endpoints, and React UI visualization. See the [Phase 3 acceptance record](docs/PHASE_3_ACCEPTANCE.md) for executed checks, boundaries and nonclaims.
 
-The [technical blueprint](docs/CodeSPY_Technical_Execution_Blueprint.md) governs later structural analysis, deterministic findings, retrieval, investigations and the workbench. Runtime verification, binary adapters and hosted deployment have separate gates.
+The [technical blueprint](docs/CodeSPY_Technical_Execution_Blueprint.md) governs later deterministic findings, retrieval, investigations and the workbench. Runtime verification, binary adapters and hosted deployment have separate gates.
 
 ## Project boundaries
 
