@@ -114,7 +114,12 @@ def extract(unit: SourceUnitV1, budget: AnalysisBudget) -> FileObservationsV1:
             new_parent_qname = qname
             new_container_key = key
 
-        elif node.type in ("function_declaration", "function", "generator_function_declaration"):
+        elif node.type in (
+            "function_declaration",
+            "function_signature",
+            "function",
+            "generator_function_declaration",
+        ):
             name_node = node.child_by_field_name("name")
             name = (
                 unit.data[name_node.start_byte : name_node.end_byte].decode("utf-8")

@@ -176,6 +176,10 @@ class DockerAnalysisRunner(DockerAdmissionRunner):
                 raw = await self._transfer(name)
                 if hashlib.sha256(raw).hexdigest() != summary.get("sha256"):
                     raise AnalysisProcessError("analyzer_output_invalid")
+                self.last_metrics = {
+                    "rss_kib": summary.get("rss_kib"),
+                    "cgroup_peak_bytes": summary.get("cgroup_peak_bytes"),
+                }
                 return StructuralDraftV1.model_validate_json(raw)
         except TimeoutError:
             raise AnalysisProcessError("analysis_timeout") from None

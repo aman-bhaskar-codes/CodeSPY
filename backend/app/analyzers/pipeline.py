@@ -63,9 +63,11 @@ def analyze(
         else:
             file_obs = extract_syntax(unit, actual_budget)
         limit = source_input.config.limits
-        # Reserve one evidence identity for each observation and framework/diagnostic locations.
-        if len(all_symbols) + len(file_obs.symbols) > min(
-            limit.nodes, limit.evidence // 2, limit.edges // 2
+        # Preserve complete file observations; never cut a declaration/candidate set in half.
+        containment = sum(s.container_key is not None for s in [*all_symbols, *file_obs.symbols])
+        if (
+            len(all_symbols) + len(file_obs.symbols) > min(limit.nodes, limit.evidence)
+            or containment > limit.edges
         ):
             reader.omitted.append((unit.path, "output_capacity"))
             continue
@@ -247,7 +249,9 @@ def analyze(
         if reader.omitted or any(f.has_syntax_errors for f in files_obs)
         else "complete",
         resolution="partial" if ts_incomplete or resolution_truncated else "complete",
-        framework="partial" if framework_truncated else "complete",
+        framework="partial"
+        if framework_truncated or any(d.stage == "framework" for d in all_diagnostics)
+        else "complete",
         graph="partial" if reader.omitted or resolution_truncated else "complete",
         omissions=omissions,
     )

@@ -170,3 +170,70 @@ async def test_structural_cancel_retry_preserves_spec_and_allocates_new_run(fact
         await StructuralAnalysisOperation(
             factory, store, StructuralFinalizer(factory, store), FixtureRunner()
         ).execute(lease)
+
+
+async def test_scoped_api_summary_sections_graph_evidence_and_export(factory, tmp_path):
+    import httpx
+    from app.api.application import ApiSettings, ApplicationPorts, create_app
+    from app.domain.canonical_json import canonical_bytes
+    from app.security.sessions import SessionService
+
+    ctx, spec, _, lease, store = await structural(factory, tmp_path)
+    report = await StructuralAnalysisOperation(
+        factory, store, StructuralFinalizer(factory, store), FixtureRunner()
+    ).execute(lease)
+    issued = await SessionService(factory).issue(ctx.principal_id)
+    app = create_app(
+        ApiSettings(environment="test", auth_mode="local_fixture", origin="http://testserver"),
+        ApplicationPorts(factory, store, ctx),
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://testserver",
+        cookies={"codespy_dev": issued.token},
+    ) as client:
+        base = f"/api/v1/repositories/{spec.repository_id}/analyses/{report.run_ref.run_id}"
+        small = await client.get(base + "/report")
+        assert small.status_code == 200 and not small.json()["symbols"]
+        assert len(small.content) <= 65536
+        section = await client.get(base + "/report/symbols?limit=1")
+        assert section.status_code == 200 and len(section.json()["items"]) == 1
+        cursor = section.json()["next_cursor"]
+        assert (
+            await client.get(base + "/report/excerpts", params={"after": cursor})
+        ).status_code == 422
+        graph = await client.get(base + "/graph")
+        assert graph.status_code == 200 and graph.json()["nodes"]
+        ev = await client.get(base + f"/evidence/{report.evidence_map[0].physical_id}")
+        assert ev.status_code == 200 and ev.json()["evidence"]["scope"]["run_id"] == str(
+            report.run_ref.run_id
+        )
+        exported = await client.get(base + "/export?format=json")
+        assert exported.content == canonical_bytes(report.model_dump())
+        traversal = await client.post(
+            base + "/traversal",
+            json={"seeds": [graph.json()["nodes"][0]["local_id"]], "edge_kind": "AST_CHILD"},
+            headers={"origin": "http://testserver", "x-csrf-token": issued.csrf},
+        )
+        assert traversal.status_code == 200
+        assert (await client.post(base + "/traversal", json={})).status_code == 403
+        disabled = await client.post(
+            f"/api/v1/repositories/{spec.repository_id}/analyses",
+            json={"snapshot_id": str(spec.snapshot_id)},
+            headers={
+                "origin": "http://testserver",
+                "x-csrf-token": issued.csrf,
+                "idempotency-key": "disabled",
+            },
+        )
+        assert disabled.status_code == 503 and disabled.json()["code"] == "analysis_unavailable"
+        async with factory() as s, s.begin():
+            await s.execute(
+                text(
+                    "UPDATE repository_grants SET revoked_at=clock_timestamp() "
+                    "WHERE org_id=:org AND repository_id=:repo"
+                ),
+                {"org": ctx.org_id, "repo": spec.repository_id},
+            )
+        assert (await client.get(base + "/report")).status_code == 404
+        assert (await client.get(base + "/graph")).status_code == 404

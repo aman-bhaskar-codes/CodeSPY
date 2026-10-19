@@ -9,6 +9,7 @@ from uuid import uuid5
 
 from app.analyzers.identities import normalize_report, observation_key
 from app.analyzers.positions import SourceIndex
+from app.analyzers.source import DIALECTS
 from app.contracts.evidence import EvidenceEnvelopeV1
 from app.contracts.persistence import CoverageV1, EdgeCreateV1, NodeCreateV1, ResultBatchV1
 from app.contracts.structure import (
@@ -60,6 +61,40 @@ def materialize_result(
     if len(locations) > limits.evidence or len(symbols) > limits.nodes:
         raise ValueError("result capacity exceeded")
     files = {f.file_id: f for f in source.files}
+    requested = {
+        f.file_id
+        for f in source.files
+        if f.eligible
+        and Path(f.path).suffix.casefold() in DIALECTS
+        and (
+            not source.config.include_prefixes
+            or any(
+                f.path == p or f.path.startswith(p + "/") for p in source.config.include_prefixes
+            )
+        )
+    }
+    processed = {s.file_id for s in draft.symbols if s.kind == "module"}
+    omitted = {o.file_id for o in draft.coverage.omissions}
+    if (
+        draft.coverage.inventoried_files != len(source.files)
+        or draft.coverage.eligible_files != sum(f.eligible for f in source.files)
+        or draft.coverage.excluded_files != sum(not f.eligible for f in source.files)
+        or draft.coverage.requested_files != len(requested)
+        or draft.coverage.processed_files != len(processed)
+        or draft.coverage.omitted_files != len(omitted)
+        or len(omitted) != len(draft.coverage.omissions)
+        or processed & omitted
+        or processed | omitted != requested
+        or any(
+            o.file_id not in files or o.path != files[o.file_id].path
+            for o in draft.coverage.omissions
+        )
+        or draft.coverage.resolution_records != len(draft.resolutions)
+        or draft.coverage.resolved != sum(r.status == "resolved" for r in draft.resolutions)
+        or draft.coverage.ambiguous != sum(r.status == "ambiguous" for r in draft.resolutions)
+        or draft.coverage.unresolved != sum(r.status == "unresolved" for r in draft.resolutions)
+    ):
+        raise ValueError("draft coverage differs from source identity")
     required = {loc.file_id for loc in locations}
     if not required <= files.keys():
         raise ValueError("foreign source identity")

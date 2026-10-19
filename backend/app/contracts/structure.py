@@ -496,3 +496,51 @@ def stored_config(value: Any) -> AnalysisConfigV1:
 
 def stored_report(value: Any) -> ArchitectureReportV1:
     return ArchitectureReportV1.model_validate_json(canonical_bytes(value))
+
+
+ReportSection = Literal[
+    "symbols",
+    "resolutions",
+    "routes",
+    "requests",
+    "links",
+    "diagnostics",
+    "components",
+    "symbol_map",
+    "evidence_map",
+    "excerpts",
+    "omissions",
+]
+
+
+class StructuralSummaryV1(ArchitectureReportV1):
+    report_sha256: Hash
+    normalized_sha256: Hash
+    section_counts: dict[str, int]
+
+
+class StructuralSectionPageV1(Contract):
+    run_ref: RunRef
+    section: ReportSection
+    items: list[dict[str, Any]] = Field(max_length=100)
+    next_cursor: str | None = None
+
+
+class GraphQueryV1(Contract):
+    seeds: tuple[UUID, ...] = Field(min_length=1, max_length=16)
+    edge_kind: Literal["AST_CHILD", "IMPORTS", "CALLS_CANDIDATE"] = "CALLS_CANDIDATE"
+    strategy: Literal["bfs", "dfs"] = "bfs"
+    direction: Literal["forward", "reverse"] = "forward"
+    max_nodes: int = Field(default=100, ge=1, le=500)
+    max_edges: int = Field(default=200, ge=0, le=1000)
+    max_depth: int = Field(default=8, ge=0, le=16)
+    max_scanned_edges: int = Field(default=2000, ge=0, le=10000)
+
+
+class GraphTraversalV1(Contract):
+    run_ref: RunRef
+    nodes: tuple[UUID, ...] = Field(max_length=500)
+    edges: tuple[UUID, ...] = Field(max_length=1000)
+    truncated: bool
+    reason: str | None
+    scanned_edges: int

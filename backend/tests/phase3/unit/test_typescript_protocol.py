@@ -43,3 +43,23 @@ def test_rejects_unknown_fields_and_inconsistent_status():
             },
             request,
         )
+
+
+def test_reassigned_function_is_not_a_unique_static_target():
+    from app.adapters.typescript import TypeScriptAdapter
+
+    result = TypeScriptAdapter().resolve(
+        {
+            "schema_version": 1,
+            "files": [
+                {
+                    "path": "rebind.ts",
+                    "text": (
+                        "export {}; function original() {} original = unknownValue; original();"
+                    ),
+                }
+            ],
+        }
+    )
+    calls = [r for r in result["resolutions"] if r["resolution_kind"] == "call_target"]
+    assert calls and all(r["status"] == "unresolved" for r in calls)

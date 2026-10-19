@@ -31,11 +31,14 @@ def main() -> None:
     if len(output) > 16 * 1024 * 1024:
         raise ValueError("output capacity")
     Path("/output/draft.json").write_bytes(output)
+    peak = Path("/sys/fs/cgroup/memory.peak")
+    memory_peak = int(peak.read_text().strip()) if peak.exists() else None
     print(
         json.dumps(
             {
                 "sha256": hashlib.sha256(output).hexdigest(),
                 "rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+                "cgroup_peak_bytes": memory_peak,
             }
         ),
         flush=True,
