@@ -41,3 +41,12 @@ async def test_replay_compares_stable_request_semantics():
     assert await replay_spec(service, None, existing, repo, snapshot, config) == "persisted-spec"
     with pytest.raises(DuplicateConflict):
         await replay_spec(service, None, existing, repo, uuid4(), config)
+
+
+def test_stored_config_round_trip_preserves_json_semantics():
+    import json
+
+    from app.contracts.structure import stored_config
+
+    config = AnalysisConfigV1(toolchain_hash="b" * 64, include_prefixes=("src",))
+    assert stored_config(json.loads(config.model_dump_json())) == config

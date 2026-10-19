@@ -1,5 +1,6 @@
 """Per-file external native deadline, nested inside the resource-limited analyzer."""
 
+import json
 import os
 import subprocess
 import sys
@@ -34,7 +35,11 @@ def extract_isolated(
         raw = output.read(16 * 1024 * 1024 + 1)
         if len(raw) > 16 * 1024 * 1024:
             raise ValueError("analyzer_output_invalid")
-    observation = FileObservationsV1.model_validate_json(raw)
+    envelope = json.loads(raw)
+    if type(envelope.get("nodes")) is not int or not 0 <= envelope["nodes"] <= 200000:
+        raise ValueError("syntax budget invalid")
+    budget.tick_nodes(envelope["nodes"])
+    observation = FileObservationsV1.model_validate_json(json.dumps(envelope["observation"]))
     if observation.file_id != unit.file_id or observation.sha256 != unit.sha256:
         raise ValueError("source_integrity_error")
     return observation
@@ -47,8 +52,13 @@ def main() -> None:
     if len(raw) > 4 * 1024 * 1024:
         raise ValueError("input capacity")
     unit = SourceUnitV1.model_validate_json(raw)
-    observation = extract_syntax(unit, AnalysisBudget())
-    sys.stdout.write(observation.model_dump_json())
+    budget = AnalysisBudget()
+    observation = extract_syntax(unit, budget)
+    sys.stdout.write(
+        json.dumps(
+            {"nodes": budget.nodes_visited, "observation": observation.model_dump(mode="json")}
+        )
+    )
 
 
 if __name__ == "__main__":

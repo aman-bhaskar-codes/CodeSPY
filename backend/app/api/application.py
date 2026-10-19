@@ -32,6 +32,7 @@ from app.contracts.structure import (
     ArchitectureReportV1,
     StructuralAnalysisRequestV1,
     StructuralLimitsV1,
+    stored_report,
 )
 from app.db.transaction import transaction
 from app.domain.canonical_json import canonical_bytes
@@ -853,7 +854,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             )
             if not row:
                 raise HTTPException(404)
-            return ArchitectureReportV1.model_validate(row["report_json"])
+            return stored_report(row["report_json"])
 
     @app.get("/api/v1/repositories/{repository_id}/analyses/{run_id}/export")
     async def export_analysis_report(
@@ -879,7 +880,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             )
             if not row:
                 raise HTTPException(404)
-            report = ArchitectureReportV1.model_validate(row["report_json"])
+            report = stored_report(row["report_json"])
 
         if format == "markdown":
             content = render_markdown(report)

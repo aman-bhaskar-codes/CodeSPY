@@ -8,7 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.contracts.jobs import EnqueueJobV3, JobRecordV3
-from app.contracts.structure import AnalysisConfigV1, AnalysisSpecV1, ArchitectureReportV1
+from app.contracts.structure import (
+    AnalysisConfigV1,
+    AnalysisSpecV1,
+    ArchitectureReportV1,
+    stored_report,
+)
 from app.db.transaction import transaction
 from app.domain.canonical_json import semantic_digest
 from app.domain.errors import DuplicateConflict, ScopeViolation
@@ -149,4 +154,4 @@ class StructuralAnalysisService:
             row = (await s.execute(stmt)).mappings().one_or_none()
             if not row:
                 return None
-            return ArchitectureReportV1.model_validate(row["report_json"])
+            return stored_report(row["report_json"])

@@ -8,10 +8,10 @@ from typing import Protocol
 
 from app.contracts.jobs import AttemptLeaseV2
 from app.contracts.structure import (
-    AnalysisConfigV1,
     ArchitectureReportV1,
     SourceInputV1,
     StructuralDraftV1,
+    stored_config,
 )
 from app.db.transaction import transaction
 from app.domain.errors import DuplicateConflict
@@ -67,7 +67,7 @@ class StructuralAnalysisOperation:
                 .mappings()
                 .one()
             )
-            config = AnalysisConfigV1.model_validate(spec["config_json"])
+            config = stored_config(spec["config_json"])
             if config.semantic_hash() != job["config_hash"]:
                 raise DuplicateConflict("stored analysis configuration differs")
             located = await locate_source(s, lease.org_id, job["repository_id"], job["snapshot_id"])

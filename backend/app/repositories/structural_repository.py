@@ -6,7 +6,12 @@ from uuid import UUID
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.contracts.structure import AnalysisConfigV1, AnalysisSpecV1, ArchitectureReportV1
+from app.contracts.structure import (
+    AnalysisSpecV1,
+    ArchitectureReportV1,
+    stored_config,
+    stored_report,
+)
 from app.domain.scope import TenantContext
 from app.models.phase3_tables import analysis_specs, structural_reports
 from app.models.tables import analysis_runs
@@ -66,7 +71,7 @@ class StructuralRepository:
             snapshot_id=row["snapshot_id"],
             id=row["id"],
             principal_id=row["principal_id"],
-            config=AnalysisConfigV1.model_validate(row["config_json"]),
+            config=stored_config(row["config_json"]),
             config_hash=row["config_hash"],
             toolchain_hash=row["toolchain_hash"],
         )
@@ -84,4 +89,4 @@ class StructuralRepository:
         if not row:
             return None
         await require_repository(self.session, ctx.org_id, ctx.principal_id, row["repository_id"])
-        return ArchitectureReportV1.model_validate(row["report_json"])
+        return stored_report(row["report_json"])

@@ -9,7 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.analyzers.identities import normalize_report
 from app.contracts.jobs import AttemptLeaseV2
-from app.contracts.structure import AnalysisConfigV1, ArchitectureReportV1, StructuralResultV1
+from app.contracts.structure import (
+    AnalysisConfigV1,
+    ArchitectureReportV1,
+    StructuralResultV1,
+    stored_config,
+    stored_report,
+)
 from app.db.time import database_now
 from app.domain.canonical_json import semantic_digest
 from app.domain.errors import DuplicateConflict, FinalizationOutcomeUnknown, StaleAttempt
@@ -102,7 +108,7 @@ class StructuralFinalizer:
                 )
                 if digest != expected_batch_hash:
                     raise DuplicateConflict("durable structural batch digest differs")
-                return ArchitectureReportV1.model_validate(row["report_json"])
+                return stored_report(row["report_json"])
         except (StaleAttempt, DuplicateConflict):
             raise
         except Exception:
@@ -163,7 +169,7 @@ class StructuralFinalizer:
                         )
                     )
                     if stored_hash == expected_batch_hash:
-                        return ArchitectureReportV1.model_validate(existing["report_json"])
+                        return stored_report(existing["report_json"])
                 raise DuplicateConflict("terminal report mismatch")
 
             if job["operation"] != "analyze_structure":
@@ -190,7 +196,7 @@ class StructuralFinalizer:
             ):
                 raise DuplicateConflict("draft hashes differ from spec")
 
-            config = AnalysisConfigV1.model_validate(spec_row["config_json"])
+            config = stored_config(spec_row["config_json"])
             if (
                 config
                 != AnalysisConfigV1.model_validate(

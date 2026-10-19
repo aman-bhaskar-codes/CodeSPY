@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from hashlib import sha256
 from time import monotonic
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
 from pydantic import Field, model_validator
@@ -487,3 +487,12 @@ class FileObservationsV1(Contract):
 StructuralConfigV1 = AnalysisConfigV1
 StructuralReportV1 = ArchitectureReportV1
 ObservationV1 = SymbolObservationV1
+
+
+def stored_config(value: Any) -> AnalysisConfigV1:
+    """JSONB is decoded using JSON validation semantics, retaining strict DTO guards."""
+    return AnalysisConfigV1.model_validate_json(canonical_bytes(value))
+
+
+def stored_report(value: Any) -> ArchitectureReportV1:
+    return ArchitectureReportV1.model_validate_json(canonical_bytes(value))

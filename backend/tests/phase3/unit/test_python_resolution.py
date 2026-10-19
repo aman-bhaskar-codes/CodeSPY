@@ -85,3 +85,43 @@ def main():
 
     resolutions, _ = resolve_python([obs], {unit.path: unit}, config, budget)
     assert any(r.status == "unresolved" and r.resolution_kind == "import" for r in resolutions)
+
+
+def call_results(source):
+    unit = make_unit("main.py", source)
+    obs = extract(unit, AnalysisBudget())
+    rows, _ = resolve_python(
+        [obs], {unit.path: unit}, AnalysisConfigV1(toolchain_hash="a" * 64), AnalysisBudget()
+    )
+    return [r for r in rows if r.resolution_kind == "call_target"]
+
+
+def test_parameter_and_later_assignment_prevent_false_unique_calls():
+    for source in (
+        "def target(): pass\ndef run(target): target()\n",
+        "def target(): pass\ndef run():\n target()\n target = unknown\n",
+        "def target(): pass\ntarget = unknown\ntarget()\n",
+        "def outer():\n def secret(): pass\nsecret()\n",
+        "class C:\n def target(): pass\n def run(self): target()\n",
+    ):
+        assert all(r.status != "resolved" for r in call_results(source))
+
+
+def test_conditional_definitions_remain_ambiguous():
+    rows = call_results(
+        "if condition:\n def target(): pass\nelse:\n def target(): pass\ntarget()\n"
+    )
+    assert len(rows) == 1 and rows[0].status == "ambiguous"
+
+
+def test_nested_lexical_scope_uses_nearest_definition():
+    source = "def target(): pass\ndef outer():\n def target(): pass\n target()\n"
+    unit = make_unit("main.py", source)
+    obs = extract(unit, AnalysisBudget())
+    rows, _ = resolve_python(
+        [obs], {unit.path: unit}, AnalysisConfigV1(toolchain_hash="a" * 64), AnalysisBudget()
+    )
+    target = next(s for s in obs.symbols if s.name == "target" and ".outer." in s.qualified_name)
+    assert next(r for r in rows if r.resolution_kind == "call_target").candidate_keys == (
+        target.semantic_key,
+    )
