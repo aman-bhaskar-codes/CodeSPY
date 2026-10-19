@@ -1,0 +1,38 @@
+name: Phase 2 foundation
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  phase2-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: uv sync --all-packages --all-groups --frozen
+      - run: npm ci --prefix frontend
+      - run: uv run --frozen --all-packages --all-groups python scripts/build_admission_image.py --image-out work/admission-image.id
+      - run: echo "CODESPY_ADMISSION_IMAGE=$(cat work/admission-image.id)" >> "$GITHUB_ENV"
+      - run: uv run --frozen --all-packages --all-groups python scripts/phase2_db.py prepare --env-out work/phase2-ci.env
+      - run: uv run --frozen --all-packages --all-groups python scripts/phase2_db.py test --env-file work/phase2-ci.env --suite all
+      - run: uv run --frozen --all-packages --all-groups python scripts/phase2_db.py test --env-file work/phase2-ci.env --suite performance
+      - run: uv run --frozen --all-packages --all-groups python scripts/export_openapi.py
+      - run: npm --prefix frontend run codegen:api
+      - run: git diff --exit-code -- backend/openapi.json frontend/src/api/generated
+      - run: npm --prefix frontend run typecheck
+      - run: npm --prefix frontend run lint
+      - run: npm --prefix frontend test
+      - run: npm --prefix frontend run build
+      - if: always() && hashFiles('work/phase2-ci.env') != ''
+        run: uv run --frozen --all-packages --all-groups python scripts/phase2_db.py cleanup --env-file work/phase2-ci.env

@@ -161,7 +161,7 @@ def drop_database(values, name):
             raise RuntimeError("database cleanup failed")
 
 
-def migrate(values, name, target="head", downgrade=False):
+def migrate(values, name, target="0004_guards", downgrade=False):
     from alembic import command
     from alembic.config import Config
 

@@ -1,0 +1,37 @@
+name: codespy-phase2-tests
+services:
+  postgres:
+    image: pgvector/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
+    restart: "no"
+    environment:
+      POSTGRES_USER: p2_admin
+      POSTGRES_PASSWORD: ${CODESPY_TEST_ADMIN_PASSWORD:?generated test password required}
+    ports: ["127.0.0.1:55433:5432"]
+    tmpfs: ["/var/lib/postgresql/data"]
+    labels:
+      codespy.phase2.marker: ${CODESPY_TEST_MARKER:?ownership marker required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U p2_admin -d postgres"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+  localstack:
+    image: localstack/localstack:3.8.1@sha256:b279c01f4cfb8f985a482e4014cabc1e2697b9d7a6c8c8db2e40f4d9f93687c7
+    restart: "no"
+    ports: ["127.0.0.1:4567:4566"]
+    environment:
+      SERVICES: s3,sqs
+      EAGER_SERVICE_LOADING: "1"
+      PERSISTENCE: "0"
+      LOCALSTACK_HOST: 127.0.0.1:4567
+      SQS_ENDPOINT_STRATEGY: path
+    tmpfs: ["/var/lib/localstack"]
+    mem_limit: 768m
+    cpus: 2
+    labels:
+      codespy.phase2.marker: ${CODESPY_TEST_MARKER:?ownership marker required}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health >/dev/null"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

@@ -10,6 +10,7 @@ export default tseslint.config(
       ".tools/**",
       "dist/**",
       "coverage/**",
+      "src/api/generated/**", // Generator-owned SDK; tsc checks its contracts.
     ],
   },
   js.configs.recommended,
