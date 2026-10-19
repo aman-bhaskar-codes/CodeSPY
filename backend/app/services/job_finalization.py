@@ -33,6 +33,7 @@ from app.repositories.job_repository import attempts, job_record, jobs, load_job
 from app.security.authorization import lock_scope
 from app.services.finalization_budget import FinalizationBudget, rollback_or_invalidate
 from app.services.jobs import JobService
+from app.services.publication import PublicationExecutor
 
 objects = PHASE2_TABLES["object_records"]
 submissions = PHASE2_TABLES["source_submissions"]
@@ -298,54 +299,14 @@ class JobFinalizer:
         work: Callable[[AsyncSession, FinalizationBudget], Awaitable[JobRecordV2]],
         resolve: Callable[[], Awaitable[JobRecordV2]],
     ) -> JobRecordV2:
-        session: AsyncSession | None = None
-        terminate: Callable[[], None] | None = None
-        commit_started = False
-        try:
-            async with FinalizationBudget(self.budget_seconds) as budget:
-                session = self.factory()
-                await session.begin()
-                conn = await session.connection()
-                raw = await conn.get_raw_connection()
-                driver = raw.driver_connection
-                assert driver is not None
-                terminate_driver: Callable[[], None] = driver.terminate
-
-                def discard() -> None:
-                    if raw.is_valid and raw.driver_connection is driver:
-                        terminate_driver()
-                        raw.invalidate(soft=True)
-                        raw.detach()  # Return the pool slot without awaiting a dead transport.
-
-                terminate = discard
-                await session.execute(text("SET LOCAL statement_timeout='20s'"))
-                await session.execute(text("SET LOCAL lock_timeout='2s'"))
-                await session.execute(text("SET LOCAL idle_in_transaction_session_timeout='90s'"))
-                result = await work(session, budget)
-                commit_started = True
-                await self._commit(session)
-        except BaseException as error:
-            if session is not None:
-                try:
-                    await rollback_or_invalidate(
-                        session, self.cleanup_seconds, force_terminate=terminate
-                    )
-                except BaseException:
-                    if isinstance(error, asyncio.CancelledError):
-                        raise error from None
-                    if not commit_started:
-                        raise FinalizationOutcomeUnknown(
-                            "connection recovery unconfirmed"
-                        ) from None
-            if isinstance(error, asyncio.CancelledError):
-                raise
-            if commit_started:
-                return await resolve()
-            raise
-        else:
-            assert session is not None
-            await rollback_or_invalidate(session, self.cleanup_seconds, force_terminate=terminate)
-            return result
+        executor = PublicationExecutor(
+            self.factory,
+            budget_seconds=self.budget_seconds,
+            safety_seconds=self.safety_seconds,
+            cleanup_seconds=self.cleanup_seconds,
+            commit_hook=self._commit,
+        )
+        return await executor.execute(work, resolve)
 
     async def _durable(
         self, lease: AttemptLeaseV2, expected: str, *, inventory: bool

@@ -233,3 +233,91 @@ it("reuses a retry command after a lost response", async () => {
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBe(keys[1]);
 });
+
+it("displays structural architecture section and allows triggering analysis", async () => {
+  const userEvent = (await import("@testing-library/user-event")).default;
+  const user = userEvent.setup();
+  const repoId = "10000000-0000-4000-8000-000000000010";
+  const snapId = "10000000-0000-4000-8000-000000000020";
+  window.history.replaceState({}, "", `/?snapshot=${snapId}`);
+
+  let analysisCreated = false;
+  const fetcher = vi
+    .fn()
+    .mockImplementation((url: string, options?: RequestInit) => {
+      if (url.endsWith("session")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              principal_id: "fixture",
+              csrf_token: "fixture-csrf",
+              auth_backend: "local_fixture",
+            }),
+          ),
+        );
+      }
+      if (url.includes("/structural-report")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ code: "not_found" }), { status: 404 }),
+        );
+      }
+      if (url.endsWith("/analyses") && options?.method === "POST") {
+        analysisCreated = true;
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              schema_version: 1,
+              spec_id: "10000000-0000-4000-8000-000000000030",
+              job_id: "10000000-0000-4000-8000-000000000040",
+              snapshot_id: snapId,
+            }),
+            { status: 202 },
+          ),
+        );
+      }
+      if (url.includes("/repositories")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [{ id: repoId, display_name: "repo-1", default_branch: "main" }],
+            }),
+          ),
+        );
+      }
+      if (url.includes("/inventory")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ items: [] })),
+        );
+      }
+      return Promise.resolve(new Response(JSON.stringify({})));
+    });
+
+  vi.stubGlobal("fetch", fetcher);
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <App />
+    </QueryClientProvider>,
+  );
+
+  // Wait for repository option to be loaded and select it
+  await screen.findByRole("option", { name: /repo-1/ });
+  const select = screen.getByRole("combobox", { name: "Repository" });
+  await user.selectOptions(select, repoId);
+
+  // Structural Architecture section should appear
+  expect(
+    await screen.findByRole("heading", { name: "Structural Architecture" }),
+  ).toBeVisible();
+
+  const analyzeBtn = screen.getByRole("button", {
+    name: "Analyze architecture",
+  });
+  expect(analyzeBtn).toBeEnabled();
+  await user.click(analyzeBtn);
+
+  expect(analysisCreated).toBe(true);
+});

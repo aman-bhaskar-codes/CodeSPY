@@ -191,7 +191,7 @@ def drop_database(values, name):
             raise RuntimeError("database cleanup failed")
 
 
-def migrate(values, name, target="head", downgrade=False):
+def migrate(values, name, target="0009_api_commands", downgrade=False):
     from alembic import command
     from alembic.config import Config
 
@@ -234,6 +234,9 @@ def grant_app(values, name):
         c.execute(
             "GRANT DELETE ON job_events,oauth_flows,sessions,webhook_receipts TO p2_broker"
         )
+        if c.execute("SELECT to_regclass('public.analysis_specs')").fetchone()[0]:
+            c.execute("GRANT INSERT ON analysis_specs TO p2_api")
+            c.execute("GRANT INSERT ON structural_reports TO p2_broker")
         c.execute("REVOKE ALL ON public.alembic_version FROM p2_api,p2_broker")
         c.execute("REVOKE CREATE ON SCHEMA public FROM p2_api,p2_broker")
 
@@ -285,19 +288,21 @@ def prepare(path):
     )
 
 
-def test_suite(values, suite):
+def test_suite(values, suite, schema_target="0009_api_commands"):
     verify_marker(values, values["CODESPY_TEST_DATABASE"])
     name = create_database(values, suite)
     try:
-        migrate(values, name)
+        migrate(values, name, schema_target)
         grant_app(values, name)
         env = {
             **{k: v for k, v in os.environ.items() if not k.startswith("AWS_")},
             **values,
             "CODESPY_TEST_DATABASE": name,
+            "CODESPY_TEST_SCHEMA_TARGET": schema_target,
             "PYTHONPATH": str(ROOT / "backend") + os.pathsep + str(ROOT),
         }
         paths = {
+            "phase3": ["backend/tests/phase3"],
             "integration": [
                 "backend/tests/phase2/integration",
                 "backend/tests/phase2/api",
@@ -365,8 +370,14 @@ def main():
         p.add_argument("--env-file", type=Path, required=True)
         if command == "test":
             p.add_argument(
+                "--schema-target",
+                default="0009_api_commands",
+                choices=["0009_api_commands", "0011_structural_authority"],
+            )
+            p.add_argument(
                 "--suite",
                 choices=[
+                    "phase3",
                     "integration",
                     "migrations",
                     "concurrency",
@@ -397,7 +408,7 @@ def main():
         print("Owned disposable cluster removed; developer volumes untouched.")
     elif args.command == "test":
         verify_marker(values, values["CODESPY_TEST_DATABASE"])
-        test_suite(values, args.suite)
+        test_suite(values, args.suite, args.schema_target)
     else:
         verify_marker(values, values["CODESPY_TEST_DATABASE"])
         provision_extensions(values, values["CODESPY_TEST_DATABASE"])

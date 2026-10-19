@@ -36,7 +36,9 @@ def db_values():
 
     database = harness.create_database(values, "case")
     try:
-        harness.migrate(values, database)
+        harness.migrate(
+            values, database, os.environ.get("CODESPY_TEST_SCHEMA_TARGET", "0009_api_commands")
+        )
         harness.grant_app(values, database)
         yield {**values, "CODESPY_TEST_DATABASE": database}
     finally:

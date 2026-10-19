@@ -1,0 +1,21 @@
+{
+  "name": "codespy-typescript-analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Trusted compiler qualification; structural sidecar is not enabled yet",
+  "engines": {
+    "node": ">=22.12 <23"
+  },
+  "scripts": {
+    "test:capabilities": "node --test tests/capabilities.test.cjs",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "npm run build && node --test dist/tests/protocol.test.js dist/tests/host.test.js dist/tests/resolution.test.js"
+  },
+  "dependencies": {
+    "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5"
+  }
+}

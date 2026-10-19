@@ -6,19 +6,30 @@ from uuid import uuid4
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.contracts.jobs import JobEnvelopeV2
+from app.contracts.jobs import JobEnvelopeV2, JobEnvelopeV3
 from app.models.phase2_tables import PHASE2_TABLES
 
 
 async def enqueue_wakeup(s: AsyncSession, job: dict[str, Any]) -> None:
-    envelope = JobEnvelopeV2(
-        org_id=job["org_id"],
-        job_id=job["id"],
-        operation=job["operation"],
-        dispatch_generation=job["dispatch_generation"],
-        config_hash=job["config_hash"],
-        deadline=job["deadline"],
-    )
+    if job["operation"] == "analyze_structure":
+        envelope: JobEnvelopeV2 | JobEnvelopeV3 = JobEnvelopeV3(
+            org_id=job["org_id"],
+            job_id=job["id"],
+            operation="analyze_structure",
+            dispatch_generation=job["dispatch_generation"],
+            config_hash=job["config_hash"],
+            deadline=job["deadline"],
+            analysis_spec_id=job.get("analysis_spec_id"),
+        )
+    else:
+        envelope = JobEnvelopeV2(
+            org_id=job["org_id"],
+            job_id=job["id"],
+            operation=job["operation"],
+            dispatch_generation=job["dispatch_generation"],
+            config_hash=job["config_hash"],
+            deadline=job["deadline"],
+        )
     await s.execute(
         insert(PHASE2_TABLES["outbox"]).values(
             org_id=job["org_id"],

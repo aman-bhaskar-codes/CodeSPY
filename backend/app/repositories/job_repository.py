@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.contracts.jobs import AttemptLeaseV2, JobRecordV2
+from app.contracts.jobs import AttemptLeaseV2, JobRecordV2, JobRecordV3
 from app.domain.errors import ScopeViolation
 from app.models.phase2_tables import PHASE2_TABLES
 
@@ -23,11 +23,25 @@ async def load_job(
     row = (await s.execute(q)).mappings().one_or_none()
     if row is None:
         raise ScopeViolation("job unavailable")
-    return dict(row)
+    res: dict[str, Any] = dict(row)
+    if res.get("operation") == "analyze_structure":
+        from app.models.phase3_tables import structural_jobs
+
+        spec_id = await s.scalar(
+            select(structural_jobs.c.analysis_spec_id).where(
+                structural_jobs.c.org_id == org_id, structural_jobs.c.id == job_id
+            )
+        )
+        res["analysis_spec_id"] = spec_id
+    return res
 
 
 def job_record(row: dict[str, Any]) -> JobRecordV2:
     return JobRecordV2(**{k: row[k] for k in JobRecordV2.model_fields if k in row})
+
+
+def job_record_v3(row: dict[str, Any]) -> JobRecordV3:
+    return JobRecordV3(**{k: row[k] for k in JobRecordV3.model_fields if k in row})
 
 
 async def worker_context(s: AsyncSession, lease: AttemptLeaseV2) -> None:

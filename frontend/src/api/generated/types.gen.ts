@@ -5,6 +5,195 @@ export type ClientOptions = {
 };
 
 /**
+ * AnalysisAcceptedV1
+ */
+export type AnalysisAcceptedV1 = {
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+    /**
+     * Spec Id
+     */
+    spec_id: string;
+};
+
+/**
+ * ArchitectureReportV1
+ */
+export type ArchitectureReportV1 = {
+    /**
+     * Archive Sha256
+     */
+    archive_sha256: string;
+    /**
+     * Components
+     */
+    components?: Array<ComponentSectionV1>;
+    /**
+     * Config Hash
+     */
+    config_hash: string;
+    coverage: StructuralCoverageV1;
+    /**
+     * Diagnostics
+     */
+    diagnostics?: Array<DiagnosticV1>;
+    /**
+     * Evidence Map
+     */
+    evidence_map?: Array<IdentityMapV1>;
+    /**
+     * Excerpts
+     */
+    excerpts?: Array<SourceExcerptV1>;
+    limits?: StructuralLimitsV1;
+    /**
+     * Links
+     */
+    links?: Array<BoundaryLinkV1>;
+    /**
+     * Nonclaims
+     */
+    nonclaims?: Array<string>;
+    /**
+     * Policy Hash
+     */
+    policy_hash: string;
+    /**
+     * Request Nonce
+     */
+    request_nonce: string;
+    /**
+     * Requests
+     */
+    requests?: Array<HttpRequestObservationV1>;
+    /**
+     * Resolutions
+     */
+    resolutions?: Array<ResolutionV1>;
+    /**
+     * Routes
+     */
+    routes?: Array<RouteObservationV1>;
+    run_ref: RunRef;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+    /**
+     * Symbol Map
+     */
+    symbol_map?: Array<IdentityMapV1>;
+    /**
+     * Symbols
+     */
+    symbols?: Array<SymbolObservationV1>;
+    /**
+     * Toolchain Hash
+     */
+    toolchain_hash: string;
+};
+
+/**
+ * BoundaryLinkV1
+ */
+export type BoundaryLinkV1 = {
+    /**
+     * Evidence Keys
+     */
+    evidence_keys?: Array<string>;
+    /**
+     * Limitations
+     */
+    limitations?: Array<string>;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Request Key
+     */
+    request_key: string;
+    /**
+     * Route Keys
+     */
+    route_keys?: Array<string>;
+    /**
+     * State
+     */
+    state: 'candidate' | 'ambiguous' | 'unmatched';
+};
+
+/**
+ * ComponentSectionV1
+ */
+export type ComponentSectionV1 = {
+    /**
+     * Components
+     */
+    components?: Array<Array<string>>;
+    /**
+     * Edges
+     */
+    edges?: Array<[
+        number,
+        number
+    ]>;
+    /**
+     * Reason
+     */
+    reason?: string | null;
+    /**
+     * Relation
+     */
+    relation: 'imports' | 'candidate_calls';
+    /**
+     * Scanned Edges
+     */
+    scanned_edges?: number;
+    /**
+     * State
+     */
+    state: 'complete' | 'partial' | 'unavailable' | 'not_requested';
+};
+
+/**
+ * DiagnosticV1
+ */
+export type DiagnosticV1 = {
+    /**
+     * Affected Count
+     */
+    affected_count?: number;
+    /**
+     * Code
+     */
+    code: string;
+    location?: SourceLocationV1 | null;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Severity
+     */
+    severity?: 'info' | 'warning' | 'error';
+    /**
+     * Stage
+     */
+    stage: string;
+};
+
+/**
  * EventPageV2
  */
 export type EventPageV2 = {
@@ -20,6 +209,24 @@ export type EventPageV2 = {
      * Next Cursor
      */
     next_cursor?: string | null;
+};
+
+/**
+ * FileOmissionV1
+ */
+export type FileOmissionV1 = {
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Reason
+     */
+    reason: string;
 };
 
 /**
@@ -54,6 +261,63 @@ export type HttpValidationError = {
      * Detail
      */
     detail?: Array<ValidationError>;
+};
+
+/**
+ * HttpRequestObservationV1
+ */
+export type HttpRequestObservationV1 = {
+    /**
+     * Base Url
+     */
+    base_url?: string | null;
+    /**
+     * Client
+     */
+    client: 'fetch' | 'axios';
+    /**
+     * Evidence Keys
+     */
+    evidence_keys?: Array<string>;
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Limitations
+     */
+    limitations?: Array<string>;
+    location: SourceLocationV1;
+    /**
+     * Method
+     */
+    method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'ANY' | 'UNKNOWN';
+    /**
+     * Origin State
+     */
+    origin_state?: 'known' | 'relative' | 'unknown';
+    /**
+     * Path
+     */
+    path?: string | null;
+    /**
+     * Template Segments
+     */
+    template_segments?: Array<string>;
+};
+
+/**
+ * IdentityMapV1
+ */
+export type IdentityMapV1 = {
+    /**
+     * Physical Id
+     */
+    physical_id: string;
+    /**
+     * Semantic Key
+     */
+    semantic_key: string;
 };
 
 /**
@@ -211,6 +475,80 @@ export type JobRecordV2 = {
 };
 
 /**
+ * JobRecordV3
+ */
+export type JobRecordV3 = {
+    /**
+     * Analysis Spec Id
+     */
+    analysis_spec_id?: string | null;
+    /**
+     * Attempt Count
+     */
+    attempt_count: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Deadline
+     */
+    deadline: string;
+    /**
+     * Failure Code
+     */
+    failure_code: string | null;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Inventory Job Id
+     */
+    inventory_job_id?: string | null;
+    /**
+     * Max Attempts
+     */
+    max_attempts: number;
+    /**
+     * Operation
+     */
+    operation: 'admit_source' | 'inventory_snapshot' | 'analyze_structure';
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Report Available
+     */
+    report_available?: boolean;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Result Run Id
+     */
+    result_run_id: string | null;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string | null;
+    /**
+     * State
+     */
+    state: 'queued' | 'running' | 'retry_wait' | 'cancelling' | 'succeeded' | 'partial' | 'failed' | 'cancelled';
+    /**
+     * Submission Id
+     */
+    submission_id: string | null;
+};
+
+/**
  * RepositoryCreate
  */
 export type RepositoryCreate = {
@@ -295,6 +633,44 @@ export type RepositoryRecord = {
 };
 
 /**
+ * ResolutionV1
+ */
+export type ResolutionV1 = {
+    /**
+     * Basis
+     */
+    basis?: 'lexical' | 'import_alias' | 'compiler_symbol' | 'static_member' | 'unsupported';
+    /**
+     * Candidate Keys
+     */
+    candidate_keys?: Array<string>;
+    /**
+     * External Reference
+     */
+    external_reference?: string | null;
+    /**
+     * Namespace
+     */
+    namespace?: 'value' | 'type';
+    /**
+     * Reason
+     */
+    reason?: string;
+    /**
+     * Resolution Kind
+     */
+    resolution_kind: 'binding' | 'call_target' | 'import';
+    /**
+     * Site Key
+     */
+    site_key: string;
+    /**
+     * Status
+     */
+    status: 'resolved' | 'ambiguous' | 'unresolved';
+};
+
+/**
  * RetryResponseV1
  */
 export type RetryResponseV1 = {
@@ -321,6 +697,76 @@ export type RetryResponseV1 = {
 };
 
 /**
+ * RouteObservationV1
+ */
+export type RouteObservationV1 = {
+    /**
+     * Evidence Keys
+     */
+    evidence_keys?: Array<string>;
+    /**
+     * Framework
+     */
+    framework: 'fastapi' | 'express';
+    handler?: SourceLocationV1 | null;
+    /**
+     * Handler Key
+     */
+    handler_key?: string | null;
+    /**
+     * Includes
+     */
+    includes?: Array<SourceLocationV1>;
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Limitations
+     */
+    limitations?: Array<string>;
+    /**
+     * Method
+     */
+    method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'ANY' | 'UNKNOWN';
+    /**
+     * Raw Path
+     */
+    raw_path?: string | null;
+    registration: SourceLocationV1;
+    /**
+     * Service Key
+     */
+    service_key?: string | null;
+    /**
+     * State
+     */
+    state?: 'resolved' | 'ambiguous' | 'unresolved';
+    /**
+     * Template Path
+     */
+    template_path?: string | null;
+};
+
+/**
+ * RunRef
+ */
+export type RunRef = {
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Run Id
+     */
+    run_id: string;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+};
+
+/**
  * SessionV1
  */
 export type SessionV1 = {
@@ -340,6 +786,262 @@ export type SessionV1 = {
      * Schema Version
      */
     schema_version?: 1;
+};
+
+/**
+ * SourceExcerptV1
+ */
+export type SourceExcerptV1 = {
+    location: SourceLocationV1;
+    /**
+     * Sha256
+     */
+    sha256: string;
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * SourceLocationV1
+ */
+export type SourceLocationV1 = {
+    /**
+     * File Id
+     */
+    file_id: string;
+    range: SourceRangeV1;
+    /**
+     * Sha256
+     */
+    sha256: string;
+};
+
+/**
+ * SourceRangeV1
+ *
+ * Half-open UTF-8 bytes; one-based lines, zero-based byte columns.
+ */
+export type SourceRangeV1 = {
+    /**
+     * End Byte
+     */
+    end_byte: number;
+    /**
+     * End Col
+     */
+    end_col: number;
+    /**
+     * End Line
+     */
+    end_line: number;
+    /**
+     * Start Byte
+     */
+    start_byte: number;
+    /**
+     * Start Col
+     */
+    start_col: number;
+    /**
+     * Start Line
+     */
+    start_line: number;
+};
+
+/**
+ * StructuralAnalysisRequestV1
+ */
+export type StructuralAnalysisRequestV1 = {
+    /**
+     * Include Prefixes
+     */
+    include_prefixes?: Array<string>;
+    /**
+     * Profile
+     */
+    profile?: 'structural-small-v1';
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+};
+
+/**
+ * StructuralCoverageV1
+ */
+export type StructuralCoverageV1 = {
+    /**
+     * Ambiguous
+     */
+    ambiguous?: number;
+    /**
+     * Distinct Resolution Sites
+     */
+    distinct_resolution_sites?: number;
+    /**
+     * Eligible Files
+     */
+    eligible_files?: number;
+    /**
+     * Excluded Files
+     */
+    excluded_files?: number;
+    /**
+     * Framework
+     */
+    framework?: 'complete' | 'partial' | 'unavailable' | 'not_requested';
+    /**
+     * Graph
+     */
+    graph?: 'complete' | 'partial' | 'unavailable' | 'not_requested';
+    /**
+     * Inventoried Files
+     */
+    inventoried_files?: number;
+    /**
+     * Omissions
+     */
+    omissions?: Array<FileOmissionV1>;
+    /**
+     * Omitted Diagnostics
+     */
+    omitted_diagnostics?: number;
+    /**
+     * Omitted Files
+     */
+    omitted_files?: number;
+    /**
+     * Out Of Scope Files
+     */
+    out_of_scope_files?: number;
+    /**
+     * Processed Files
+     */
+    processed_files?: number;
+    /**
+     * Requested Files
+     */
+    requested_files?: number;
+    /**
+     * Resolution
+     */
+    resolution?: 'complete' | 'partial' | 'unavailable' | 'not_requested';
+    /**
+     * Resolution Records
+     */
+    resolution_records?: number;
+    /**
+     * Resolved
+     */
+    resolved?: number;
+    /**
+     * Syntax
+     */
+    syntax?: 'complete' | 'partial' | 'unavailable' | 'not_requested';
+    /**
+     * Unresolved
+     */
+    unresolved?: number;
+    /**
+     * Unsupported Files
+     */
+    unsupported_files?: number;
+};
+
+/**
+ * StructuralLimitsV1
+ */
+export type StructuralLimitsV1 = {
+    /**
+     * Analysis Seconds
+     */
+    analysis_seconds?: number;
+    /**
+     * Candidates Per Site
+     */
+    candidates_per_site?: number;
+    /**
+     * Config Bytes
+     */
+    config_bytes?: number;
+    /**
+     * Config File Bytes
+     */
+    config_file_bytes?: number;
+    /**
+     * Config Files
+     */
+    config_files?: number;
+    /**
+     * Derivations
+     */
+    derivations?: number;
+    /**
+     * Diagnostics
+     */
+    diagnostics?: number;
+    /**
+     * Edges
+     */
+    edges?: number;
+    /**
+     * Evidence
+     */
+    evidence?: number;
+    /**
+     * File Bytes
+     */
+    file_bytes?: number;
+    /**
+     * Import Depth
+     */
+    import_depth?: number;
+    /**
+     * Module Lookups
+     */
+    module_lookups?: number;
+    /**
+     * Nodes
+     */
+    nodes?: number;
+    /**
+     * Operation Seconds
+     */
+    operation_seconds?: number;
+    /**
+     * Report Bytes
+     */
+    report_bytes?: number;
+    /**
+     * Resolution Sites
+     */
+    resolution_sites?: number;
+    /**
+     * Result Bytes
+     */
+    result_bytes?: number;
+    /**
+     * Source Bytes
+     */
+    source_bytes?: number;
+    /**
+     * Source Files
+     */
+    source_files?: number;
+    /**
+     * Syntax Nodes
+     */
+    syntax_nodes?: number;
+    /**
+     * Syntax Nodes Per File
+     */
+    syntax_nodes_per_file?: number;
 };
 
 /**
@@ -394,6 +1096,57 @@ export type SubmissionRecordV1 = {
      * State
      */
     state: 'reserved' | 'uploading' | 'uploaded' | 'admission_queued' | 'admitting' | 'admitted' | 'rejected' | 'failed' | 'expired' | 'cancelled';
+};
+
+/**
+ * SymbolObservationV1
+ */
+export type SymbolObservationV1 = {
+    /**
+     * Container Key
+     */
+    container_key?: string | null;
+    /**
+     * Exported
+     */
+    exported?: boolean;
+    /**
+     * Is Async
+     */
+    is_async?: boolean;
+    /**
+     * Kind
+     */
+    kind: 'module' | 'class' | 'function' | 'method' | 'call' | 'import';
+    location: SourceLocationV1;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Qualified Name
+     */
+    qualified_name: string;
+    /**
+     * Role
+     */
+    role: 'declaration' | 'call' | 'import';
+    /**
+     * Semantic Key
+     */
+    semantic_key: string;
+    /**
+     * Sha256
+     */
+    sha256: string;
+    /**
+     * Type Only
+     */
+    type_only?: boolean;
 };
 
 /**
@@ -519,9 +1272,11 @@ export type GetJobApiV1JobsJobIdGetError = GetJobApiV1JobsJobIdGetErrors[keyof G
 
 export type GetJobApiV1JobsJobIdGetResponses = {
     /**
+     * Response Get Job Api V1 Jobs  Job Id  Get
+     *
      * Successful Response
      */
-    200: JobRecordV2;
+    200: JobRecordV2 | JobRecordV3;
 };
 
 export type GetJobApiV1JobsJobIdGetResponse = GetJobApiV1JobsJobIdGetResponses[keyof GetJobApiV1JobsJobIdGetResponses];
@@ -549,9 +1304,11 @@ export type CancelJobApiV1JobsJobIdCancelPostError = CancelJobApiV1JobsJobIdCanc
 
 export type CancelJobApiV1JobsJobIdCancelPostResponses = {
     /**
+     * Response Cancel Job Api V1 Jobs  Job Id  Cancel Post
+     *
      * Successful Response
      */
-    200: JobRecordV2;
+    200: JobRecordV2 | JobRecordV3;
 };
 
 export type CancelJobApiV1JobsJobIdCancelPostResponse = CancelJobApiV1JobsJobIdCancelPostResponses[keyof CancelJobApiV1JobsJobIdCancelPostResponses];
@@ -691,6 +1448,107 @@ export type CreateRepositoryApiV1RepositoriesPostResponses = {
 
 export type CreateRepositoryApiV1RepositoriesPostResponse = CreateRepositoryApiV1RepositoriesPostResponses[keyof CreateRepositoryApiV1RepositoriesPostResponses];
 
+export type CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostData = {
+    body: StructuralAnalysisRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/analyses';
+};
+
+export type CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostError = CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostErrors[keyof CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostErrors];
+
+export type CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: AnalysisAcceptedV1;
+};
+
+export type CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostResponse = CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostResponses[keyof CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostResponses];
+
+export type ExportAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdExportGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: {
+        /**
+         * Format
+         */
+        format?: string;
+    };
+    url: '/api/v1/repositories/{repository_id}/analyses/{run_id}/export';
+};
+
+export type ExportAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdExportGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ExportAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdExportGetError = ExportAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdExportGetErrors[keyof ExportAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdExportGetErrors];
+
+export type ExportAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdExportGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/analyses/{run_id}/report';
+};
+
+export type GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetError = GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetErrors[keyof GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetErrors];
+
+export type GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArchitectureReportV1;
+};
+
+export type GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetResponse = GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetResponses[keyof GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetResponses];
+
 export type AcquireGithubApiV1RepositoriesRepositoryIdGithubAcquisitionsPostData = {
     body: GitHubAcquisitionV1;
     path: {
@@ -750,6 +1608,40 @@ export type BindGithubApiV1RepositoriesRepositoryIdGithubBindingPostResponses = 
 };
 
 export type BindGithubApiV1RepositoriesRepositoryIdGithubBindingPostResponse = BindGithubApiV1RepositoriesRepositoryIdGithubBindingPostResponses[keyof BindGithubApiV1RepositoriesRepositoryIdGithubBindingPostResponses];
+
+export type GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/structural-report';
+};
+
+export type GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetError = GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetErrors[keyof GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetErrors];
+
+export type GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArchitectureReportV1;
+};
+
+export type GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetResponse = GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetResponses[keyof GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetResponses];
 
 export type ReserveUploadApiV1RepositoriesRepositoryIdUploadsPostData = {
     body: UploadReservationV1;
