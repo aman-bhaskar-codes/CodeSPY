@@ -23,7 +23,17 @@ async def load_job(
     row = (await s.execute(q)).mappings().one_or_none()
     if row is None:
         raise ScopeViolation("job unavailable")
-    return dict(row)
+    res: dict[str, Any] = dict(row)
+    if res.get("operation") == "analyze_structure":
+        from app.models.phase3_tables import structural_jobs
+
+        spec_id = await s.scalar(
+            select(structural_jobs.c.analysis_spec_id).where(
+                structural_jobs.c.org_id == org_id, structural_jobs.c.id == job_id
+            )
+        )
+        res["analysis_spec_id"] = spec_id
+    return res
 
 
 def job_record(row: dict[str, Any]) -> JobRecordV2:

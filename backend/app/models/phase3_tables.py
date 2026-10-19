@@ -72,26 +72,20 @@ for table, tail in [(analysis_specs, "id"), (structural_reports, "run_id")]:
         "ix_" + table.name + "_history",
         *[table.c[n] for n in ["org_id", "repository_id", "snapshot_id", "created_at", tail]],
     )
-jobs.append_column(col("analysis_spec_id", "uuid", True))
-for constraint in list(jobs.constraints):
-    if constraint.name == "ck_job_operation":
-        jobs.constraints.remove(constraint)
-jobs.append_constraint(
-    ck("ck_job_operation", "operation IN ('admit_source','inventory_snapshot','analyze_structure')")
-)
-jobs.append_constraint(
-    ck(
-        "ck_job_structure",
-        "(operation='analyze_structure' AND analysis_spec_id IS NOT NULL "
-        "AND snapshot_id IS NOT NULL AND submission_id IS NULL) "
-        "OR (operation<>'analyze_structure' AND analysis_spec_id IS NULL)",
-    )
-)
-jobs.append_constraint(
-    fk(
-        "fk_job_spec",
-        ["org_id", "repository_id", "snapshot_id", "analysis_spec_id", "config_hash"],
-        "analysis_specs",
-        ["org_id", "repository_id", "snapshot_id", "id", "config_hash"],
-    )
+structural_metadata = sa.MetaData()
+structural_jobs = sa.Table(
+    "jobs",
+    structural_metadata,
+    *[
+        sa.Column(
+            c.name,
+            c.type,
+            nullable=c.nullable,
+            primary_key=c.primary_key,
+            default=c.default,
+            server_default=c.server_default,
+        )
+        for c in jobs.columns
+    ],
+    col("analysis_spec_id", "uuid", True),
 )

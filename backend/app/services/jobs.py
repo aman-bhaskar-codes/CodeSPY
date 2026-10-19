@@ -60,11 +60,17 @@ class JobService:
         self, s: AsyncSession, ctx: TenantContext, request: EnqueueJobV2 | EnqueueJobV3
     ) -> dict[str, Any]:
         digest = semantic_digest(request.model_dump())
+        target_jobs = jobs
+        if isinstance(request, EnqueueJobV3):
+            from app.models.phase3_tables import structural_jobs
+
+            target_jobs = structural_jobs
         old = (
             (
                 await s.execute(
-                    select(jobs).where(
-                        jobs.c.org_id == ctx.org_id, jobs.c.request_key == request.request_key
+                    select(target_jobs).where(
+                        target_jobs.c.org_id == ctx.org_id,
+                        target_jobs.c.request_key == request.request_key,
                     )
                 )
             )
@@ -88,10 +94,10 @@ class JobService:
         assert pending is not None and cap is not None
         if pending >= cap:
             raise CapacityExceeded("pending job quota reached")
-        row = dict(
+        row: dict[str, Any] = dict(
             (
                 await s.execute(
-                    insert(jobs)
+                    insert(target_jobs)
                     .values(
                         org_id=ctx.org_id,
                         id=uuid4(),
@@ -100,7 +106,7 @@ class JobService:
                         deadline=func.clock_timestamp() + text("interval '15 minutes'"),
                         **request.model_dump(),
                     )
-                    .returning(jobs)
+                    .returning(target_jobs)
                 )
             )
             .mappings()
@@ -251,11 +257,16 @@ class JobService:
                 .mappings()
                 .one()
             )
+            target_jobs = jobs
+            if job.get("operation") == "analyze_structure":
+                from app.models.phase3_tables import structural_jobs
+
+                target_jobs = structural_jobs
             job = dict(
                 (
                     await s.execute(
-                        update(jobs)
-                        .where(jobs.c.org_id == org_id, jobs.c.id == job_id)
+                        update(target_jobs)
+                        .where(target_jobs.c.org_id == org_id, target_jobs.c.id == job_id)
                         .values(
                             state="running",
                             fence=fence,
@@ -263,7 +274,7 @@ class JobService:
                             attempt_count=job["attempt_count"] + 1,
                             failure_code=None,
                         )
-                        .returning(jobs)
+                        .returning(target_jobs)
                     )
                 )
                 .mappings()
@@ -485,11 +496,16 @@ class JobService:
         )
         if retry:
             delay = min(60, 5 * 2 ** max(0, job["attempt_count"] - 1))
+            target_jobs = jobs
+            if job.get("operation") == "analyze_structure":
+                from app.models.phase3_tables import structural_jobs
+
+                target_jobs = structural_jobs
             job = dict(
                 (
                     await s.execute(
-                        update(jobs)
-                        .where(jobs.c.org_id == job["org_id"], jobs.c.id == job["id"])
+                        update(target_jobs)
+                        .where(target_jobs.c.org_id == job["org_id"], target_jobs.c.id == job["id"])
                         .values(
                             state="retry_wait",
                             current_attempt_id=None,
@@ -497,7 +513,7 @@ class JobService:
                             not_before=min(job["deadline"], now + timedelta(seconds=delay)),
                             failure_code=code,
                         )
-                        .returning(jobs)
+                        .returning(target_jobs)
                     )
                 )
                 .mappings()
