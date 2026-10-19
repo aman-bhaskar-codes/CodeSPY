@@ -5,7 +5,7 @@ async def test_additive_catalog_and_roles(engine):
     async with engine.connect() as conn:
         assert (
             await conn.scalar(text("SELECT version_num FROM alembic_version"))
-            == "0008_worker_fencing"
+            == "0009_api_commands"
         )
         names = set(
             (
@@ -14,7 +14,7 @@ async def test_additive_catalog_and_roles(engine):
                 )
             ).all()
         )
-        assert len(names - {"alembic_version"}) == 28
+        assert len(names - {"alembic_version"}) == 29
         assert not await conn.scalar(
             text("SELECT has_table_privilege('p2_api','source_files','INSERT')")
         )

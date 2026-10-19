@@ -180,6 +180,8 @@ def inspect_zip_bytes(
                         digest.update(block)
                         if len(prefix) < 4096:
                             prefix = (prefix + block)[:4096]
+                        if b"\0" in block:
+                            text_valid = False
                         if text_valid:
                             try:
                                 decoder.decode(block)

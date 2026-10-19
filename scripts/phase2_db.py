@@ -77,6 +77,23 @@ def assert_container(values):
     ]:
         raise ValueError("test port binding mismatch")
 
+    # Validate every project attachment before broad compose lifecycle operations.
+    all_ids = compose(values, "ps", "-q", "--all", capture=True).stdout.split()
+    for identity in all_ids:
+        item = json.loads(run(["docker", "inspect", identity], capture=True).stdout)[0]
+        tags = item["Config"]["Labels"]
+        service = tags.get("com.docker.compose.service")
+        if (
+            tags.get("com.docker.compose.project") != PROJECT
+            or tags.get("codespy.phase2.marker") != values["CODESPY_TEST_MARKER"]
+            or service not in {"postgres", "localstack"}
+        ):
+            raise ValueError("test attachment ownership mismatch")
+        if service == "localstack" and item["HostConfig"].get("PortBindings", {}).get(
+            "4566/tcp"
+        ) != [{"HostIp": "127.0.0.1", "HostPort": "4567"}]:
+            raise ValueError("test emulator binding mismatch")
+
 
 def connect(values, database="postgres", user="p2_admin", password=None):
     return psycopg.connect(
@@ -199,12 +216,24 @@ def migrate(values, name, target="head", downgrade=False):
 def grant_app(values, name):
     with connect(values, name) as c:
         c.execute("GRANT SELECT ON ALL TABLES IN SCHEMA public TO p2_api,p2_broker")
+        c.execute(
+            "GRANT EXECUTE ON FUNCTION public.codespy_phase2_authority() TO p2_broker"
+        )
         workflow = "external_identities,oauth_flows,sessions,github_user_grants,repository_grants,github_repository_bindings,org_work_limits,object_records,source_submissions,cleanup_tasks,jobs,job_attempts,outbox,job_events,webhook_receipts"
         c.execute("GRANT INSERT,UPDATE ON " + workflow + " TO p2_api,p2_broker")
+        c.execute(
+            "GRANT INSERT ON organizations,principals,memberships,repositories,api_commands TO p2_api"
+        )
+        # PostgreSQL row locks require UPDATE on at least one column.
+        c.execute("GRANT UPDATE(role) ON memberships TO p2_api,p2_broker")
+        c.execute("GRANT UPDATE(display_name) ON repositories TO p2_api,p2_broker")
         c.execute(
             "GRANT INSERT ON artifacts,source_snapshots,source_files,inventory_entries,analysis_runs,cpg_nodes,cpg_edges,evidence_records,evidence_derivations TO p2_broker"
         )
         c.execute("GRANT UPDATE ON source_snapshots,analysis_runs TO p2_broker")
+        c.execute(
+            "GRANT DELETE ON job_events,oauth_flows,sessions,webhook_receipts TO p2_broker"
+        )
         c.execute("REVOKE ALL ON public.alembic_version FROM p2_api,p2_broker")
         c.execute("REVOKE CREATE ON SCHEMA public FROM p2_api,p2_broker")
 
@@ -232,7 +261,7 @@ def prepare(path):
     existing = compose(values, "ps", "-q", "--all", capture=True).stdout.strip()
     if existing:
         assert_container(values)
-    compose(values, "up", "-d", "--wait", "--wait-timeout", "60")
+    compose(values, "up", "-d", "--wait", "--wait-timeout", "120")
     assert_container(values)
     with connect(values) as c:
         for role, key in [
@@ -263,16 +292,44 @@ def test_suite(values, suite):
         migrate(values, name)
         grant_app(values, name)
         env = {
-            **os.environ,
+            **{k: v for k, v in os.environ.items() if not k.startswith("AWS_")},
             **values,
             "CODESPY_TEST_DATABASE": name,
             "PYTHONPATH": str(ROOT / "backend") + os.pathsep + str(ROOT),
         }
         paths = {
-            "integration": ["backend/tests/phase2/integration"],
+            "integration": [
+                "backend/tests/phase2/integration",
+                "backend/tests/phase2/api",
+            ],
             "migrations": ["backend/tests/phase2/migrations"],
-            "concurrency": ["backend/tests/phase2/concurrency"],
-            "performance": ["backend/tests/phase2/integration"],
+            "concurrency": ["backend/tests/phase2/integration"],
+            "performance": ["backend/tests/phase2/performance"],
+            "emulator": ["backend/tests/phase2/emulator"],
+            "all": [
+                "backend/tests/phase2/integration",
+                "backend/tests/phase2/api",
+                "backend/tests/phase2/migrations",
+                "backend/tests/phase2/emulator",
+                "backend/tests/phase2/unit",
+                "backend/tests/phase2/ports",
+                "backend/tests/phase2/admission",
+            ],
+            "migration": ["backend/tests/phase2/migrations"],
+            "api": ["backend/tests/phase2/api"],
+            "ports": ["backend/tests/phase2/ports"],
+            "admission": ["backend/tests/phase2/admission"],
+            "jobs": ["backend/tests/phase2/integration"],
+            "github": [
+                "backend/tests/phase2/unit/test_github_http.py",
+                "backend/tests/phase2/unit/test_github_security.py",
+                "backend/tests/phase2/unit/test_github_transport.py",
+                "backend/tests/phase2/integration/test_github_acquisition.py",
+                "backend/tests/phase2/integration/test_github_binding.py",
+            ],
+            "storage": ["backend/tests/phase2/ports", "backend/tests/phase2/emulator"],
+            "database": ["backend/tests/phase2/integration"],
+            "cleanup": ["backend/tests/phase2/integration/test_cleanup.py"],
         }
         run(
             [
@@ -282,6 +339,12 @@ def test_suite(values, suite):
                 "-c",
                 "backend/pyproject.toml",
                 *paths[suite],
+                *(
+                    ["-k", os.environ["CODESPY_TEST_SELECT"]]
+                    if os.environ.get("CODESPY_TEST_SELECT")
+                    else []
+                ),
+                *(["-s"] if suite == "performance" else []),
                 "-o",
                 "addopts=-ra --strict-markers",
                 "-q",
@@ -303,7 +366,23 @@ def main():
         if command == "test":
             p.add_argument(
                 "--suite",
-                choices=["integration", "migrations", "concurrency", "performance"],
+                choices=[
+                    "integration",
+                    "migrations",
+                    "concurrency",
+                    "performance",
+                    "emulator",
+                    "all",
+                    "migration",
+                    "api",
+                    "ports",
+                    "admission",
+                    "jobs",
+                    "github",
+                    "storage",
+                    "database",
+                    "cleanup",
+                ],
                 required=True,
             )
     args = parser.parse_args()

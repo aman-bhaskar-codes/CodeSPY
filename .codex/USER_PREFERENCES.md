@@ -27,3 +27,7 @@ The owner explicitly requested implementation of the supplied Phase 1 database p
 ## Phase 2 execution authorization — 18 October 2026
 
 The owner explicitly answered “Revise the plan, then implement Phase 2.” This authorizes the revised Phase 2 application work, additive migrations and owned disposable local tests described in its plan. It does not authorize AWS account access, real service/API-key setup, browser automation, deployment or merging. Stop owned test resources at handoff and preserve developer services, files and volumes.
+
+## Phase 2 delivery authorization — 19 October 2026
+
+The owner explicitly requested completing Phase 2, fixing GitHub pipelines and pushing the verified result to main. This supersedes the earlier prohibition on merging for this delivery. Normal branch protection and all AWS, real-key, browser and deployment restrictions remain.

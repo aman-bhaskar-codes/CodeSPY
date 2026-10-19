@@ -30,7 +30,17 @@ def db_values():
         marker=values["CODESPY_TEST_MARKER"],
         project=values["CODESPY_TEST_PROJECT"],
     )
-    return values
+    # Capacity and recovery are global database invariants. Give each live test
+    # its own migrated, marker-owned database instead of sharing stale fixtures.
+    from scripts import phase2_db as harness
+
+    database = harness.create_database(values, "case")
+    try:
+        harness.migrate(values, database)
+        harness.grant_app(values, database)
+        yield {**values, "CODESPY_TEST_DATABASE": database}
+    finally:
+        harness.drop_database(values, database)
 
 
 @pytest_asyncio.fixture

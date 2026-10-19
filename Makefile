@@ -31,3 +31,15 @@ phase1-demo:
 	$(PHASE1_PYTHON) scripts/phase1_demo.py --env-file .phase1-test.env
 phase1-performance:
 	$(PHASE1_PYTHON) scripts/phase1_db.py test --env-file .phase1-test.env --suite performance
+
+.PHONY: phase2-unit phase2-test phase2-capacity phase2-local-check
+PHASE2_ENV ?= work/phase2-test.env
+PHASE2_IMAGE ?= work/admission-image.id
+phase2-unit:
+	uv run --frozen --all-packages --all-groups pytest -c backend/pyproject.toml backend/tests/unit backend/tests/phase2/unit backend/tests/phase2/ports
+phase2-test:
+	CODESPY_ADMISSION_IMAGE=$$(cat $(PHASE2_IMAGE)) $(PHASE1_PYTHON) scripts/phase2_db.py test --env-file $(PHASE2_ENV) --suite all
+phase2-capacity:
+	CODESPY_ADMISSION_IMAGE=$$(cat $(PHASE2_IMAGE)) $(PHASE1_PYTHON) scripts/phase2_db.py test --env-file $(PHASE2_ENV) --suite performance
+phase2-local-check:
+	$(PHASE1_PYTHON) scripts/phase2_local.py --env-file $(PHASE2_ENV) --image-file $(PHASE2_IMAGE) --check

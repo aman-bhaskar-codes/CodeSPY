@@ -182,3 +182,39 @@ class LocalObjectStore:
                 return
 
         await self._io(delete)
+
+    async def describe_owned(self, key: str, max_bytes: int) -> ObjectDescriptor | None:
+        """Inspect an exact ledger-owned key for recovery, never a prefix scan."""
+        if not 0 < max_bytes <= 104857600:
+            raise ValueError("invalid recovery bound")
+
+        def inspect() -> ObjectDescriptor | None:
+            try:
+                parent, name = self._parent(key)
+            except FileNotFoundError:
+                return None
+            try:
+                try:
+                    fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+                except FileNotFoundError:
+                    return None
+                try:
+                    info = os.fstat(fd)
+                    if not stat.S_ISREG(info.st_mode) or info.st_size > max_bytes:
+                        raise ValueError("orphan exceeds recovery bound")
+                    digest = hashlib.sha256()
+                    size = 0
+                    while block := os.read(fd, 65536):
+                        size += len(block)
+                        if size > max_bytes:
+                            raise ValueError("orphan exceeds recovery bound")
+                        digest.update(block)
+                    if size != info.st_size:
+                        raise DuplicateConflict("orphan changed during recovery")
+                    return ObjectDescriptor(key=key, size_bytes=size, sha256=digest.hexdigest())
+                finally:
+                    os.close(fd)
+            finally:
+                os.close(parent)
+
+        return await self._io(inspect)

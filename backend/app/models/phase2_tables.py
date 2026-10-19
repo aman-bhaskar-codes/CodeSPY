@@ -602,6 +602,29 @@ table(
     [("ix_webhook_received", ["received_at"])],
 )
 
+table(
+    "api_commands",
+    9,
+    [
+        orgid(),
+        col("principal_id", "uuid"),
+        col("request_key"),
+        col("operation"),
+        col("request_hash"),
+        col("response", "json"),
+        created(),
+        pk("org_id", "principal_id", "request_key"),
+        memberfk("fk_command_membership"),
+        ck("ck_command_key", "octet_length(request_key) BETWEEN 1 AND 128"),
+        ck("ck_command_hash", "request_hash ~ '^[0-9a-f]{64}$'"),
+        ck("ck_command_operation", "operation IN ('repository_create','github_bind')"),
+        ck(
+            "ck_command_response",
+            "jsonb_typeof(response)='object' AND octet_length(response::text)<=65536",
+        ),
+    ],
+)
+
 PHASE2_TABLES = {name: t for name, _, t in spec}
 
 # Deferred circular associations are installed after both parents exist.

@@ -15,3 +15,23 @@ services:
       interval: 1s
       timeout: 3s
       retries: 30
+  localstack:
+    image: localstack/localstack:3.8.1@sha256:b279c01f4cfb8f985a482e4014cabc1e2697b9d7a6c8c8db2e40f4d9f93687c7
+    restart: "no"
+    ports: ["127.0.0.1:4567:4566"]
+    environment:
+      SERVICES: s3,sqs
+      EAGER_SERVICE_LOADING: "1"
+      PERSISTENCE: "0"
+      LOCALSTACK_HOST: 127.0.0.1:4567
+      SQS_ENDPOINT_STRATEGY: path
+    tmpfs: ["/var/lib/localstack"]
+    mem_limit: 768m
+    cpus: 2
+    labels:
+      codespy.phase2.marker: ${CODESPY_TEST_MARKER:?ownership marker required}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health >/dev/null"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

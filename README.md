@@ -2,17 +2,37 @@
 
 CodeSPY is a repository analysis project. The planned application will help developers explore unfamiliar code, inspect findings, and trace explanations back to source evidence.
 
-The current implementation is the **local database foundation**. It stores organizations, repository snapshots, analysis runs, graph records, and evidence. It does not yet acquire repositories, analyze source code, serve an API, or provide a user interface.
+The current implementation supports local source ingestion and inventory, backed by PostgreSQL. It accepts bounded ZIP uploads, records immutable source snapshots, runs fenced jobs through an outbox and queue, and exposes a small API and upload/status interface. Structural analysis and AI explanations are later phases.
 
 ## What works
 
-- PostgreSQL schema with tenant, snapshot, and run constraints.
-- Async persistence services with explicit transaction ownership.
-- Immutable source manifests and atomic result publication.
-- Content-based replay checks and stale lifecycle rejection.
-- Four explicit Alembic revisions, a guarded test database, and a synthetic demo.
+- Tenant-scoped persistence, source manifests and replay checks.
+- Streaming uploads, Linux admission isolation and stored file identities.
+- Durable jobs, retries, cancellation, recovery and staging cleanup.
+- Session/CSRF boundaries and fixture-tested GitHub OAuth/App authorization.
+- Typed OpenAPI contracts and a React upload, job and inventory interface.
 
-Evidence records describe their provider, location, basis, coverage, and limitations. Storing a record does not establish that a claim is correct. This local foundation is not a hosted authorization boundary; row-level security and public access controls remain future work.
+The supported archive limit is 100 MiB compressed and 10,000 entries, with additional expansion and resource bounds. See [Phase 2 acceptance](docs/PHASE_2_ACCEPTANCE.md) for test evidence and limitations. No hosted service or real provider credentials are required for local qualification.
+
+## Run Phase 2 locally
+
+Use Python 3.12, uv, Node 22 and Docker with Compose v2. The harness owns separate disposable PostgreSQL and LocalStack resources on loopback; it never reads a developer AWS profile.
+
+```bash
+uv sync --all-packages --all-groups --frozen
+npm ci --prefix frontend
+uv run --all-packages --all-groups python scripts/build_admission_image.py --image-out work/admission-image.id
+uv run --all-packages --all-groups python scripts/phase2_db.py prepare --env-out work/phase2-test.env
+make phase2-test
+make phase2-capacity
+make phase2-local-check
+uv run --all-packages --all-groups python scripts/phase2_local.py --env-file work/phase2-test.env --image-file work/admission-image.id
+# In another terminal: npm --prefix frontend run dev
+# Stop the local API before removing the harness resources:
+uv run --all-packages --all-groups python scripts/phase2_db.py cleanup --env-file work/phase2-test.env
+```
+
+The local command provisions a synthetic identity and repository in its owned database. Live sign-in, provider keys, AWS deployment and browser acceptance remain owner-managed or deferred. Keep the ignored ownership file until cleanup succeeds.
 
 ## Run the database checks
 

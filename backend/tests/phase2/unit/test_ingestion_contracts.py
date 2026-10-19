@@ -58,3 +58,20 @@ async def test_cleanup_invalidation_has_one_total_deadline():
             StuckSession(), seconds=0.05, force_terminate=lambda: calls.append("terminated")
         )
     assert calls == ["invalidating", "terminated"]
+
+
+def test_manifest_rejects_forged_normalized_digest():
+    import io
+    import zipfile
+
+    from app.admission.zip_inventory import inspect_zip_bytes
+    from app.contracts.ingestion import ArtifactManifestV1
+
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as archive:
+        archive.writestr("a.py", b"pass\n")
+    original = inspect_zip_bytes(out.getvalue(), AdmissionPolicyV1())
+    with pytest.raises(ValueError):
+        ArtifactManifestV1.model_validate(
+            {**original.model_dump(), "normalized_files_sha256": "0" * 64}
+        )

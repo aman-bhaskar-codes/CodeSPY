@@ -17,6 +17,14 @@ async def active_admission(factory):
     jobs, attempts = PHASE2_TABLES["jobs"], PHASE2_TABLES["job_attempts"]
     async with factory() as s, s.begin():
         await s.execute(
+            insert(PHASE2_TABLES["repository_grants"]).values(
+                org_id=ctx.org_id,
+                repository_id=snap.repository_id,
+                principal_id=ctx.principal_id,
+                permission="write",
+            )
+        )
+        await s.execute(
             insert(jobs).values(
                 org_id=ctx.org_id,
                 id=job,
@@ -306,6 +314,41 @@ async def test_current_context_cannot_create_prior_attempt_run(factory):
                     worker_job_id=job,
                     worker_attempt_id=old_attempt,
                     worker_fence=1,
+                )
+            )
+    assert getattr(error.value.orig, "sqlstate", None) == "23514"
+
+
+async def test_revoked_repository_grant_rejects_raw_publication(factory):
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    ctx, snap, files, job, attempt = await active_admission(factory)
+    grants = PHASE2_TABLES["repository_grants"]
+    async with factory() as s, s.begin():
+        await s.execute(
+            pg_insert(grants)
+            .values(
+                org_id=ctx.org_id,
+                repository_id=snap.repository_id,
+                principal_id=ctx.principal_id,
+                permission="write",
+                revoked_at=func.clock_timestamp(),
+            )
+            .on_conflict_do_update(
+                index_elements=[grants.c.org_id, grants.c.repository_id, grants.c.principal_id],
+                set_={"revoked_at": func.clock_timestamp()},
+            )
+        )
+    with pytest.raises(DBAPIError) as error:
+        async with factory() as s, s.begin():
+            await worker_context(s, ctx, job, attempt)
+            await s.execute(
+                insert(PHASE2_TABLES["inventory_entries"]).values(
+                    org_id=ctx.org_id,
+                    snapshot_id=snap.id,
+                    file_id=files[0],
+                    eligible=True,
+                    policy_hash="b" * 64,
                 )
             )
     assert getattr(error.value.orig, "sqlstate", None) == "23514"

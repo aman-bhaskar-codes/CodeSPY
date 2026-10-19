@@ -32,7 +32,7 @@ from app.models.tables import (
     source_files,
     source_snapshots,
 )
-from app.repositories.analysis_repository import AnalysisRepository, run_filter
+from app.repositories.analysis_repository import AnalysisRepository, run_columns, run_filter
 from app.repositories.evidence_repository import EvidenceRepository
 from app.repositories.graph_repository import GraphRepository, edge_dto, node_dto, scope_filter
 from app.repositories.identity_repository import authorize
@@ -182,9 +182,17 @@ class PersistenceService:
         return result
 
     async def _create_run_in_session(
-        self, s: AsyncSession, ctx: TenantContext, data: RunCreate
+        self,
+        s: AsyncSession,
+        ctx: TenantContext,
+        data: RunCreate,
+        *,
+        run_id: UUID | None = None,
+        worker_binding: tuple[UUID, UUID, int] | None = None,
     ) -> RunRecord:
-        return await AnalysisRepository(s).create_run(ctx, data)
+        return await AnalysisRepository(s).create_run(
+            ctx, data, run_id=run_id, worker_binding=worker_binding
+        )
 
     async def _resolve_snapshot_files_in_session(
         self,
@@ -263,7 +271,7 @@ class PersistenceService:
                     update(analysis_runs)
                     .where(*run_filter(ref))
                     .values(**values)
-                    .returning(analysis_runs)
+                    .returning(*run_columns())
                 )
             )
             .mappings()
@@ -369,7 +377,7 @@ class PersistenceService:
                         limitations=batch.limitations,
                         finished_at=datetime.now(UTC),
                     )
-                    .returning(analysis_runs)
+                    .returning(*run_columns())
                 )
             )
             .mappings()

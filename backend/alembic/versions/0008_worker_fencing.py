@@ -29,8 +29,22 @@ BEGIN
  IF j.id IS NULL OR a.id IS NULL OR j.state<>'running' OR a.state<>'active' OR j.current_attempt_id IS DISTINCT FROM aid OR j.fence<>f OR a.fence<>f OR j.cancel_requested_at IS NOT NULL OR j.deadline<=clock_timestamp() OR a.lease_expires_at<=clock_timestamp() THEN
   RAISE EXCEPTION 'stale attempt' USING ERRCODE='23514',CONSTRAINT='phase2_fence';
  END IF;
+ IF NOT EXISTS (
+  SELECT 1 FROM public.memberships m JOIN public.repository_grants g
+  ON g.org_id=m.org_id AND g.principal_id=m.principal_id
+  WHERE m.org_id=j.org_id AND m.principal_id=j.principal_id
+    AND m.role IN ('owner','admin','member') AND g.repository_id=j.repository_id
+    AND g.permission='write' AND g.revoked_at IS NULL
+ ) THEN RAISE EXCEPTION 'repository authority revoked' USING ERRCODE='23514',CONSTRAINT='phase2_fence'; END IF;
+ IF EXISTS(SELECT 1 FROM public.repositories r WHERE r.org_id=j.org_id AND r.id=j.repository_id AND r.source_kind='github') AND NOT EXISTS (
+  SELECT 1 FROM public.github_repository_bindings b JOIN public.github_user_grants u
+    ON u.principal_id=j.principal_id WHERE b.org_id=j.org_id AND b.repository_id=j.repository_id
+    AND b.state='active' AND u.revoked_at IS NULL AND u.expires_at>clock_timestamp()
+ ) THEN RAISE EXCEPTION 'provider authority revoked' USING ERRCODE='23514',CONSTRAINT='phase2_fence'; END IF;
  RETURN jid;
 END $$;
+
+REVOKE ALL ON FUNCTION public.codespy_phase2_authority() FROM PUBLIC;
 
 CREATE FUNCTION public.codespy_phase2_source_guard() RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER AS $$
 DECLARE jid uuid; j public.jobs%ROWTYPE; rid uuid;
@@ -76,7 +90,7 @@ BEGIN
 END $$;
 
 CREATE FUNCTION public.codespy_phase2_job_guard() RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER AS $$
-DECLARE jid uuid;
+DECLARE jid uuid; checked_at timestamptz;
 BEGIN
  IF TG_OP='INSERT' THEN
   IF NEW.state<>'queued' OR NEW.fence<>0 OR NEW.attempt_count<>0 OR NEW.current_attempt_id IS NOT NULL OR NEW.finished_at IS NOT NULL OR NEW.publication_checked_at IS NOT NULL THEN RAISE EXCEPTION 'job must start queued' USING ERRCODE='23514'; END IF;
@@ -89,10 +103,35 @@ BEGIN
  ELSIF NEW.state IN ('succeeded','partial') THEN
   jid:=public.codespy_phase2_authority();
   IF NEW.org_id IS DISTINCT FROM nullif(current_setting('codespy.org_id',true),'')::uuid OR jid<>NEW.id THEN RAISE EXCEPTION 'foreign publication' USING ERRCODE='23514'; END IF;
-  NEW.publication_checked_at:=clock_timestamp();
+  checked_at:=clock_timestamp();
+  IF EXISTS(SELECT 1 FROM public.jobs j JOIN public.job_attempts a
+       ON a.org_id=j.org_id AND a.job_id=j.id AND a.id=j.current_attempt_id
+       WHERE j.org_id=NEW.org_id AND j.id=NEW.id
+         AND (j.deadline<=checked_at OR a.lease_expires_at<=checked_at)) THEN
+    RAISE EXCEPTION 'publication deadline expired' USING ERRCODE='23514',CONSTRAINT='phase2_fence';
+  END IF;
+  NEW.publication_checked_at:=checked_at;
  END IF;
  RETURN NEW;
 END $$;
+CREATE FUNCTION public.codespy_submission_history_guard() RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER AS $$
+BEGIN
+ IF OLD.state IN ('admitted','rejected','failed','expired','cancelled') AND NEW IS DISTINCT FROM OLD THEN
+   RAISE EXCEPTION 'terminal submission immutable' USING ERRCODE='23514';
+ END IF;
+ IF ROW(NEW.org_id,NEW.id,NEW.repository_id,NEW.principal_id,NEW.source_kind,NEW.request_key,NEW.request_hash,NEW.retry_of_submission_id,NEW.reserved_bytes,NEW.policy_hash)
+    IS DISTINCT FROM ROW(OLD.org_id,OLD.id,OLD.repository_id,OLD.principal_id,OLD.source_kind,OLD.request_key,OLD.request_hash,OLD.retry_of_submission_id,OLD.reserved_bytes,OLD.policy_hash) THEN
+   RAISE EXCEPTION 'submission identity immutable' USING ERRCODE='23514';
+ END IF;
+ IF OLD.resolved_commit IS NOT NULL AND NEW.resolved_commit IS DISTINCT FROM OLD.resolved_commit THEN
+   RAISE EXCEPTION 'selected commit immutable' USING ERRCODE='23514';
+ END IF;
+ IF OLD.input_object_id IS NOT NULL AND ROW(NEW.input_object_id,NEW.actual_sha,NEW.actual_size) IS DISTINCT FROM ROW(OLD.input_object_id,OLD.actual_sha,OLD.actual_size) THEN
+   RAISE EXCEPTION 'selected acquisition immutable' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER guard_submission_history BEFORE UPDATE ON public.source_submissions FOR EACH ROW EXECUTE FUNCTION public.codespy_submission_history_guard();
 CREATE TRIGGER guard_phase2_job BEFORE INSERT OR UPDATE ON public.jobs FOR EACH ROW EXECUTE FUNCTION public.codespy_phase2_job_guard();
 CREATE TRIGGER guard_phase2_run BEFORE INSERT OR UPDATE ON public.analysis_runs FOR EACH ROW EXECUTE FUNCTION public.codespy_phase2_run_guard();
 """
@@ -115,6 +154,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.execute("DROP TRIGGER guard_submission_history ON public.source_submissions")
+    op.execute("DROP FUNCTION public.codespy_submission_history_guard()")
     op.execute("DROP TRIGGER guard_inventory_immutable ON public.inventory_entries")
     for table in ["artifacts", "source_snapshots", "source_files", "inventory_entries"]:
         op.execute(f"DROP TRIGGER guard_phase2_source ON public.{table}")

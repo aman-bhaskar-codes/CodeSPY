@@ -27,3 +27,7 @@ Normative Appendix C rules moved into their relevant main sections. Appendices A
 The five findings have resolved planning decisions with explicit owners, interfaces and expected durable outcomes. No unresolved lifecycle, timing, replay-ID or archive-identity design decision blocks starting the work packages. This is not a claim that behavior is verified fixed: all new regression scenarios and compatibility/resource/cancellation spikes still need implementation and execution. Failed required qualification blocks that adapter or advertised limit; no fallback may weaken a boundary.
 
 The owner subsequently clarified “Revise the plan, then implement Phase 2.” Implementation is a separately recorded next activity under that authorization, with AWS, real keys, owner-browser access and hosted deployment still prohibited. No Figma/Miro/GitBook project is necessary for this revision.
+
+## Implementation qualification — 19 October 2026
+
+The original report above records planning-time uncertainty, not current test status. [Local acceptance](../PHASE_2_ACCEPTANCE.md) now records implemented regressions and observed outcomes. The 50,000-entry profile failed its original budgets; the supported cap is 10,000. A 17th table, immutable scoped `api_commands`, was necessary to make repository/binding idempotency durable. The aggregate timeout, actual asyncpg transport recovery, PostgreSQL-time fencing, replayed stored file IDs and compression-variant identity now have local regression evidence. Live provider, browser and hosted gates remain unexecuted.

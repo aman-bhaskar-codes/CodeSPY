@@ -1,0 +1,24 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["frontend/src"],
+  "locale": "en-US",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": [
+    "Select/Listbox",
+    "Form",
+    "Scrollbar",
+    "Toast",
+    "CRUD"
+  ],
+  "ownership": { "Select/Listbox": "native" },
+  "requiredCommands": ["unit", "typecheck", "build"],
+  "commands": {
+    "unit": "npm --prefix frontend test",
+    "typecheck": "npm --prefix frontend run typecheck",
+    "build": "npm --prefix frontend run build"
+  },
+  "evidence": {
+    "crudFullFlow": "backend/tests/phase2/emulator/test_pipeline.py",
+    "failurePaths": "frontend/src/App.test.tsx"
+  }
+}
