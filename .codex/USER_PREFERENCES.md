@@ -31,3 +31,7 @@ The owner explicitly answered “Revise the plan, then implement Phase 2.” Thi
 ## Phase 2 delivery authorization — 19 October 2026
 
 The owner explicitly requested completing Phase 2, fixing GitHub pipelines and pushing the verified result to main. This supersedes the earlier prohibition on merging for this delivery. Normal branch protection and all AWS, real-key, browser and deployment restrictions remain.
+
+## Phase 3 toolchain authorization — 19 October 2026
+
+The owner transferred development back to this agent, requested REA-assisted investigation and approved WP-3.00 of the complete structural-analysis execution plan. This authorizes exact trusted parser/compiler pins, fixtures, qualification documents and owned disposable Linux toolchain probes. REA 6.7.0 may be used as an investigation tool; it does not become a production authority or runtime dependency. Later structural packages follow the plan and accepted decisions. Preserve owner-staged duplicate files and the owner research document. AWS account access, real-key work, deployment and browser-session automation remain restricted.

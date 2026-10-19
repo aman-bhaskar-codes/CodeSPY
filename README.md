@@ -60,22 +60,20 @@ See [Phase 1 acceptance](docs/PHASE_1_ACCEPTANCE.md) for executed checks, measur
 | `backend/app/`     | Contracts, database metadata, repositories, and persistence services |
 | `backend/alembic/` | Historical database revisions                                        |
 | `backend/tests/`   | Unit, PostgreSQL integration, migration, and query-plan tests        |
-| `frontend/`        | Reserved React/TypeScript workspace; no application screens yet      |
+| `frontend/`        | React upload, job status and inventory interface                     |
 | `scripts/`         | Local test harness, fixture, demo, and setup checks                  |
 | `docs/`            | Plans, decisions, operations, and acceptance records                 |
 | `infra/`           | Infrastructure configuration and owner-managed cloud notes           |
 
 The root `uv.lock` is the Python workspace lock. `backend/uv.lock` links to it. The existing frontend lockfile is retained. Installed scanner, queue, and model packages are dormant until their phases require them.
 
-## Phase 2 work in progress
+## Development status
 
-The [revised execution plan](docs/phases/PHASE_2_SAFE_INGESTION_IDENTITY_JOBS_EXECUTION_PLAN.md) defines admission, identity and durable-job behavior. The first implementation contains additive schema, persistence helpers, ZIP inventory and local immutable storage. These internal components do not yet form an upload service. See the [implementation status](docs/phases/PHASE_2_IMPLEMENTATION_STATUS.md) for executed checks and remaining work.
+Phase 2 ingestion, identity and durable inventory jobs are implemented locally. See the [acceptance record](docs/PHASE_2_ACCEPTANCE.md) for executed checks and deferred live-provider, browser and hosted gates.
 
-## Next steps
+Phase 3 structural analysis is in toolchain qualification. Its [execution plan](docs/phases/PHASE_3_STRUCTURAL_ANALYSIS_EXECUTION_PLAN.md), [decisions](docs/adr/0003-structural-analysis.md) and [capability record](docs/capabilities/structural-small-v1.md) distinguish qualified parser/compiler fixtures from the analyzer that remains to be built. No structural-analysis endpoint or job is enabled yet.
 
-The [technical blueprint](docs/CodeSPY_Technical_Execution_Blueprint.md) defines the current roadmap. Phase 2 adds safe admission, identity, durable jobs, and artifact lifecycle. Later phases add Python/JavaScript/TypeScript structure, deterministic findings, retrieval, investigations, and a workbench. Runtime verification, binary adapters, and hosted deployment have separate acceptance gates.
-
-Phase 1 incorporates the blueprint's foundation reconciliation step. Each later phase starts from the accepted code and its own execution plan.
+The [technical blueprint](docs/CodeSPY_Technical_Execution_Blueprint.md) governs later structural analysis, deterministic findings, retrieval, investigations and the workbench. Runtime verification, binary adapters and hosted deployment have separate gates.
 
 ## Project boundaries
 
