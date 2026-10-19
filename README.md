@@ -2,7 +2,7 @@
 
 CodeSPY is a repository analysis project. The planned application will help developers explore unfamiliar code, inspect findings, and trace explanations back to source evidence.
 
-The current implementation supports local source ingestion and inventory, backed by PostgreSQL. It accepts bounded ZIP uploads, records immutable source snapshots, runs fenced jobs through an outbox and queue, and exposes a small API and upload/status interface. Structural analysis and AI explanations are later phases.
+The current implementation supports local source ingestion and inventory, backed by PostgreSQL. It accepts bounded ZIP uploads, records immutable source snapshots, runs fenced jobs through an outbox and queue, and exposes a small API and upload/status interface. Phase 3 structural-analysis components are present, but their integrated worker and publication path still require corrections and qualification. AI explanations belong to later phases.
 
 ## What works
 
@@ -71,7 +71,7 @@ The root `uv.lock` is the Python workspace lock. `backend/uv.lock` links to it. 
 
 Phase 2 ingestion, identity and durable inventory jobs are implemented locally. See the [acceptance record](docs/PHASE_2_ACCEPTANCE.md) for executed checks and deferred live-provider, browser and hosted gates.
 
-Phase 3 deterministic structural analysis is implemented locally across Python, JavaScript, and TypeScript with Tree-sitter and TypeScript compiler sidecars, pure graph algorithms, framework boundary observers, isolated pipeline execution, DB-fenced publication, OpenAPI export endpoints, and React UI visualization. See the [Phase 3 acceptance record](docs/PHASE_3_ACCEPTANCE.md) for executed checks, boundaries and nonclaims.
+Phase 3 includes Python, JavaScript and TypeScript analyzers, graph algorithms, boundary observers, report contracts, API routes and a React report view. The readiness review found blocking gaps in worker integration, isolation, result persistence and request replay. **Phase 4 implementation is blocked pending these corrections and end-to-end qualification.** See the [readiness review](docs/engineering/phase3-readiness-review.md) and [acceptance record](docs/PHASE_3_ACCEPTANCE.md).
 
 The [technical blueprint](docs/CodeSPY_Technical_Execution_Blueprint.md) governs later deterministic findings, retrieval, investigations and the workbench. Runtime verification, binary adapters and hosted deployment have separate gates.
 

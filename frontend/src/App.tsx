@@ -136,7 +136,7 @@ export default function App() {
       query.state.data && terminal.has(query.state.data.state) ? false : 1500,
   });
   useEffect(() => {
-    if (analysisJob.data?.state === "succeeded") {
+    if ((analysisJob.data?.state === "succeeded" || analysisJob.data?.state === "partial")) {
       void client.invalidateQueries({
         queryKey: ["structuralReport", repository, snapshot],
       });

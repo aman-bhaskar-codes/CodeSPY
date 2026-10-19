@@ -12,17 +12,19 @@ from uuid import UUID, uuid4
 from app.analyzers.reporting import render_json, render_markdown
 from app.contracts.http import (
     EventPageV2,
+    EventPageV3,
     GitHubAcquisitionV1,
     GitHubBindingV1,
     InventoryEntryV1,
     InventoryPageV1,
     JobEventV2,
+    JobEventV3,
     RepositoryListItemV1,
     RepositoryPageV1,
     SessionV1,
 )
 from app.contracts.ingestion import SubmissionRecordV1, UploadReservationV1
-from app.contracts.jobs import JobRecordV2, JobRecordV3, RetryResponseV1
+from app.contracts.jobs import JobRecordV2, JobRecordV3, RetryResponseV1, RetryResponseV2
 from app.contracts.persistence import RepositoryCreate, RepositoryRecord
 from app.contracts.structure import (
     AnalysisAcceptedV1,
@@ -64,7 +66,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from sqlalchemy import and_, literal, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -78,6 +80,20 @@ class ApiSettings(BaseModel):
     environment: Literal["local", "test", "hosted"] = "local"
     auth_mode: Literal["disabled", "local_fixture", "github_app"] = "disabled"
     origin: str = "http://localhost:5173"
+    structural_enabled: bool = False
+    structural_toolchain_hash: str | None = None
+
+    @model_validator(mode="after")
+    def qualified_structure(self) -> "ApiSettings":
+        value = self.structural_toolchain_hash
+        if self.structural_enabled and (
+            value is None
+            or len(value) != 64
+            or value == "0" * 64
+            or any(c not in "0123456789abcdef" for c in value)
+        ):
+            raise ValueError("qualified structural toolchain required")
+        return self
 
 
 @dataclass(frozen=True)
@@ -652,17 +668,19 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         return result
 
     @app.post("/api/v1/jobs/{job_id}/retry", status_code=202)
-    async def retry_job(request: Request, job_id: UUID) -> RetryResponseV1:
+    async def retry_job(request: Request, job_id: UUID) -> RetryResponseV1 | RetryResponseV2:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id, write=True)
         return await retries.retry(ctx, job_id, key(request))
 
     @app.get("/api/v1/jobs/{job_id}/events")
     async def job_events(
         request: Request, job_id: UUID, after: str | None = None, limit: int = 50
-    ) -> EventPageV2:
+    ) -> EventPageV2 | EventPageV3:
         if not 1 <= limit <= 200:
             raise HTTPException(422)
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id)
+        job = await jobs.get(ctx, job_id)
+        structural_events = job.operation == "analyze_structure"
         events = PHASE2_TABLES["job_events"]
         scope = {"org": str(ctx.org_id), "job": str(job_id), "version": 2}
         try:
@@ -699,21 +717,24 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 .mappings()
                 .all()
             )
-        items: list[JobEventV2] = []
+        items: list[JobEventV2 | JobEventV3] = []
         size = 0
         for row in rows[:limit]:
-            item = JobEventV2(job_id=job_id, **dict(row))
+            item = (JobEventV3 if structural_events else JobEventV2)(job_id=job_id, **dict(row))
             size += len(canonical_bytes(item.model_dump()))
             if size > 240000:
                 break
             items.append(item)
-        return EventPageV2(
-            items=items,
-            next_cursor=(
-                cursors.encode(scope, str(items[-1].sequence))
-                if items and len(rows) > len(items)
-                else None
-            ),
+        page_type = EventPageV3 if structural_events else EventPageV2
+        return page_type.model_validate(
+            {
+                "items": [item.model_dump() for item in items],
+                "next_cursor": (
+                    cursors.encode(scope, str(items[-1].sequence))
+                    if items and len(rows) > len(items)
+                    else None
+                ),
+            }
         )
 
     @app.get("/api/v1/snapshots/{snapshot_id}/inventory")
@@ -790,8 +811,12 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     async def create_analysis(request: Request, repository_id: UUID) -> AnalysisAcceptedV1:
         ctx = await repository_context(request, repository_id, write=True)
         body = await json_body(request, StructuralAnalysisRequestV1)
+        if not settings.structural_enabled or settings.structural_toolchain_hash is None:
+            raise HTTPException(503, detail="analysis_unavailable")
+        if ports.readiness is None or not await ports.readiness():
+            raise HTTPException(503, detail="analysis_unavailable")
         config = AnalysisConfigV1(
-            toolchain_hash="0" * 64,
+            toolchain_hash=settings.structural_toolchain_hash,
             include_prefixes=body.include_prefixes,
             limits=StructuralLimitsV1(),
         )
@@ -811,11 +836,12 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         ctx = await repository_context(request, repository_id, write=False)
         async with transaction(ports.factory) as s:
             from app.models.phase3_tables import structural_reports
+            from app.repositories.structural_repository import published_reports
 
             row = (
                 (
                     await s.execute(
-                        select(structural_reports).where(
+                        published_reports().where(
                             structural_reports.c.org_id == ctx.org_id,
                             structural_reports.c.repository_id == repository_id,
                             structural_reports.c.run_id == run_id,
@@ -836,11 +862,12 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         ctx = await repository_context(request, repository_id, write=False)
         async with transaction(ports.factory) as s:
             from app.models.phase3_tables import structural_reports
+            from app.repositories.structural_repository import published_reports
 
             row = (
                 (
                     await s.execute(
-                        select(structural_reports).where(
+                        published_reports().where(
                             structural_reports.c.org_id == ctx.org_id,
                             structural_reports.c.repository_id == repository_id,
                             structural_reports.c.run_id == run_id,

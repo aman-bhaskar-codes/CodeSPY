@@ -135,6 +135,7 @@ class EnqueueJobV3(Contract):
 
 
 class JobRecordV3(Contract):
+    schema_version: Literal[3] = 3
     org_id: UUID
     id: UUID
     repository_id: UUID
@@ -161,3 +162,12 @@ class JobRecordV3(Contract):
     created_at: AwareDatetime
     finished_at: AwareDatetime | None
     report_available: bool = False
+
+
+class RetryResponseV2(Contract):
+    schema_version: Literal[2] = 2
+    retry_job_id: UUID
+    submission_id: UUID | None = None
+    retry_of_job_id: UUID
+    retry_of_submission_id: UUID | None = None
+    analysis_spec_id: UUID

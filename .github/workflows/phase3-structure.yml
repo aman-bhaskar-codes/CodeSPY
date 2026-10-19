@@ -1,0 +1,30 @@
+name: Phase 3 structural analysis
+on:
+  push:
+    branches: [main, fix/phase3-integration]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  phase3-structure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: uv sync --all-packages --all-groups --frozen
+      - run: npm ci --prefix tools/typescript-analyzer
+      - run: npm --prefix tools/typescript-analyzer test
+      - run: uv run --frozen --all-packages --all-groups python scripts/build_analysis_image.py --image-out work/analysis-image.id
+      - run: echo "CODESPY_ANALYSIS_IMAGE=$(cat work/analysis-image.id)" >> "$GITHUB_ENV"
+      - run: uv run --frozen --all-packages --all-groups python scripts/phase3_db.py prepare --env-out work/phase3-ci.env
+      - run: uv run --frozen --all-packages --all-groups python scripts/phase3_db.py test --env-file work/phase3-ci.env
+      - run: uv run --frozen --all-packages --all-groups python scripts/phase2_db.py test --env-file work/phase3-ci.env --suite integration --schema-target 0011_structural_authority
+      - if: always() && hashFiles('work/phase3-ci.env') != ''
+        run: uv run --frozen --all-packages --all-groups python scripts/phase3_db.py cleanup --env-file work/phase3-ci.env

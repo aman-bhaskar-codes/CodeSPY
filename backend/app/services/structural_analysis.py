@@ -1,5 +1,7 @@
 """Structural analysis service managing specs, jobs, and scoped report reads."""
 
+from collections.abc import Mapping
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -9,15 +11,35 @@ from app.contracts.jobs import EnqueueJobV3, JobRecordV3
 from app.contracts.structure import AnalysisConfigV1, AnalysisSpecV1, ArchitectureReportV1
 from app.db.transaction import transaction
 from app.domain.canonical_json import semantic_digest
-from app.domain.errors import ScopeViolation
+from app.domain.errors import DuplicateConflict, ScopeViolation
 from app.domain.scope import TenantContext
-from app.models.phase3_tables import structural_reports
+from app.models.phase3_tables import structural_jobs, structural_reports
 from app.models.tables import source_snapshots
-from app.repositories.identity_repository import authorize
 from app.repositories.job_repository import job_record_v3
-from app.repositories.structural_repository import StructuralRepository
-from app.security.authorization import lock_scope
+from app.repositories.structural_repository import StructuralRepository, published_reports
+from app.security.authorization import lock_scope, require_repository
 from app.services.jobs import JobService
+
+
+async def replay_spec(
+    repo: StructuralRepository,
+    ctx: TenantContext,
+    existing: Mapping[str, Any],
+    repository_id: UUID,
+    snapshot_id: UUID,
+    config: AnalysisConfigV1,
+) -> AnalysisSpecV1:
+    if (
+        existing["operation"] != "analyze_structure"
+        or existing["repository_id"] != repository_id
+        or existing["snapshot_id"] != snapshot_id
+        or existing["config_hash"] != config.semantic_hash()
+    ):
+        raise DuplicateConflict("request key has different input")
+    spec = await repo.get_spec(ctx, repository_id, existing["analysis_spec_id"])
+    if spec is None:
+        raise DuplicateConflict("analysis specification unavailable")
+    return spec
 
 
 class StructuralAnalysisService:
@@ -48,6 +70,24 @@ class StructuralAnalysisService:
 
         async with transaction(self.factory) as s:
             await lock_scope(s, ctx.org_id, ctx.principal_id, repository_id, snapshot_id)
+            # lock_scope serializes request-key resolution under the org work lock.
+            existing = (
+                (
+                    await s.execute(
+                        select(structural_jobs).where(
+                            structural_jobs.c.org_id == ctx.org_id,
+                            structural_jobs.c.request_key == request_key,
+                        )
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+            if existing is not None:
+                stored = await replay_spec(
+                    StructuralRepository(s), ctx, dict(existing), repository_id, snapshot_id, config
+                )
+                return stored, job_record_v3(dict(existing))
             # Verify snapshot is sealed
             sealed = await s.scalar(
                 select(source_snapshots.c.id).where(
@@ -93,15 +133,17 @@ class StructuralAnalysisService:
         self, ctx: TenantContext, repository_id: UUID, snapshot_id: UUID
     ) -> ArchitectureReportV1 | None:
         async with transaction(self.factory) as s:
-            await authorize(s, ctx, False)
+            await require_repository(s, ctx.org_id, ctx.principal_id, repository_id)
             stmt = (
-                select(structural_reports)
+                published_reports()
                 .where(
                     structural_reports.c.org_id == ctx.org_id,
                     structural_reports.c.repository_id == repository_id,
                     structural_reports.c.snapshot_id == snapshot_id,
                 )
-                .order_by(structural_reports.c.created_at.desc())
+                .order_by(
+                    structural_reports.c.created_at.desc(), structural_reports.c.run_id.desc()
+                )
                 .limit(1)
             )
             row = (await s.execute(stmt)).mappings().one_or_none()

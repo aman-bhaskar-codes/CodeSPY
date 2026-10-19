@@ -1,6 +1,6 @@
 # Phase 3 local acceptance
 
-The local implementation covers deterministic structural analysis, code property graph extraction, symbol resolution, cross-boundary route/client matching, report materialization, and React UI visualization. This document records local qualification; cloud deployment and hosted live gates remain separate.
+**Status: Phase 3 integration is incomplete; Phase 4 is blocked.** Components and previously reported checks are listed below, but they do not establish an operational end-to-end structural workflow. The [19 October readiness review](engineering/phase3-readiness-review.md) records the inspected commit, reproduced failure, source findings and outstanding acceptance gates. Cloud deployment and hosted gates remain separate.
 
 ## Implemented boundaries
 
@@ -10,14 +10,16 @@ The local implementation covers deterministic structural analysis, code property
 - **Language syntax extractors (WP-3.04)**: Deterministic Tree-sitter AST queries extracting definitions, calls, imports, and exports across Python, JS/JSX, and TS/TSX dialects.
 - **Python resolution (WP-3.05)**: Lexical scope tracking, function/class symbol tables, relative/absolute intra-snapshot import resolution without runtime execution.
 - **TypeScript sidecar (WP-3.06)**: Standalone Node CLI communicating over bounded stdin/stdout JSON protocol with virtual compiler host, custom module resolution, and declaration mapping.
-- **Pure graph algorithms (WP-3.07)**: Deterministic Strongly Connected Components (Tarjan/SCC), condensation, cycle detection, depth-bounded traversal, and scope projection.
+- **Pure graph algorithms (WP-3.07)**: Deterministic Strongly Connected Components (SCC), condensation, cycle detection, depth-bounded traversal, and scope projection.
 - **Framework boundaries (WP-3.08)**: Static route observers for FastAPI and Express, HTTP client call observers, and cross-service boundary candidate matching via explicit service bindings.
 - **Integrated pipeline (WP-3.09)**: End-to-end `analyze()` pipeline with coverage reconciliation, excerpt digests, and canonical JSON/Markdown rendering.
-- **Job lifecycle & publication (WP-3.10)**: Fenced worker operation `analyze_structure`, `PublicationExecutor` with transaction timeout and connection termination, and `StructuralFinalizer` atomic publication.
+- **Job lifecycle & publication (WP-3.10), incomplete integration**: Worker operation `analyze_structure`, `PublicationExecutor` with transaction timeout and connection termination, and `StructuralFinalizer` atomic publication.
 - **API endpoints (WP-3.11)**: `POST /repositories/{id}/analyses`, `GET /analyses/{run_id}/report`, `GET /analyses/{run_id}/export`, and `GET /snapshots/{id}/structural-report` with OpenAPI contracts.
 - **Frontend UI (WP-3.12)**: `StructuralReportView` React component, TanStack Query integration, export downloads, accessible tables, and status announcements.
 
-## Executed verification suite on 19 October 2026
+## Implementation-agent verification report — 19 October 2026
+
+The following results were recorded by the implementation agent. They are historical reports, not evidence that the integrated worker, database publication or isolation gates passed. The readiness review separately identifies checks rerun during review.
 
 | Check | Result |
 | :--- | :--- |

@@ -441,6 +441,40 @@
         "title": "EventPageV2",
         "type": "object"
       },
+      "EventPageV3": {
+        "additionalProperties": false,
+        "properties": {
+          "data_version": {
+            "const": 3,
+            "default": 3,
+            "title": "Data Version",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/JobEventV3"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "EventPageV3",
+        "type": "object"
+      },
       "FileOmissionV1": {
         "additionalProperties": false,
         "properties": {
@@ -803,6 +837,70 @@
         "title": "JobEventV2",
         "type": "object"
       },
+      "JobEventV3": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_type": {
+            "enum": [
+              "submitted",
+              "upload_verified",
+              "queued",
+              "commit_pinned",
+              "attempt_started",
+              "progress",
+              "retry_scheduled",
+              "cancel_requested",
+              "cancelled",
+              "admitted",
+              "inventory_completed",
+              "inventory_partial",
+              "failed",
+              "analysis_started",
+              "syntax_completed",
+              "resolution_completed",
+              "report_completed",
+              "report_partial"
+            ],
+            "title": "Event Type",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "public_payload": {
+            "additionalProperties": true,
+            "title": "Public Payload",
+            "type": "object"
+          },
+          "schema_version": {
+            "const": 3,
+            "default": 3,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sequence": {
+            "exclusiveMinimum": 0.0,
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id",
+          "sequence",
+          "public_payload",
+          "created_at",
+          "event_type"
+        ],
+        "title": "JobEventV3",
+        "type": "object"
+      },
       "JobRecordV2": {
         "additionalProperties": false,
         "properties": {
@@ -1060,6 +1158,12 @@
               }
             ],
             "title": "Result Run Id"
+          },
+          "schema_version": {
+            "const": 3,
+            "default": 3,
+            "title": "Schema Version",
+            "type": "integer"
           },
           "snapshot_id": {
             "anyOf": [
@@ -1394,6 +1498,63 @@
           "retry_of_job_id"
         ],
         "title": "RetryResponseV1",
+        "type": "object"
+      },
+      "RetryResponseV2": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis_spec_id": {
+            "format": "uuid",
+            "title": "Analysis Spec Id",
+            "type": "string"
+          },
+          "retry_job_id": {
+            "format": "uuid",
+            "title": "Retry Job Id",
+            "type": "string"
+          },
+          "retry_of_job_id": {
+            "format": "uuid",
+            "title": "Retry Of Job Id",
+            "type": "string"
+          },
+          "retry_of_submission_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Of Submission Id"
+          },
+          "schema_version": {
+            "const": 2,
+            "default": 2,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "submission_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submission Id"
+          }
+        },
+        "required": [
+          "retry_job_id",
+          "retry_of_job_id",
+          "analysis_spec_id"
+        ],
+        "title": "RetryResponseV2",
         "type": "object"
       },
       "RouteObservationV1": {
@@ -2553,7 +2714,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EventPageV2"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/EventPageV2"
+                    },
+                    {
+                      "$ref": "#/components/schemas/EventPageV3"
+                    }
+                  ],
+                  "title": "Response Job Events Api V1 Jobs  Job Id  Events Get"
                 }
               }
             },
@@ -2593,7 +2762,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RetryResponseV1"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/RetryResponseV1"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RetryResponseV2"
+                    }
+                  ],
+                  "title": "Response Retry Job Api V1 Jobs  Job Id  Retry Post"
                 }
               }
             },

@@ -1,14 +1,15 @@
 """Fenced atomic publication of structural analysis reports with durable COMMIT recovery."""
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from sqlalchemy import func, insert, select, update
+from sqlalchemy import func, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.analyzers.identities import normalize_report
 from app.contracts.jobs import AttemptLeaseV2
-from app.contracts.structure import ArchitectureReportV1, StructuralDraftV1
+from app.contracts.structure import AnalysisConfigV1, ArchitectureReportV1, StructuralResultV1
 from app.db.time import database_now
 from app.domain.canonical_json import semantic_digest
 from app.domain.errors import DuplicateConflict, FinalizationOutcomeUnknown, StaleAttempt
@@ -69,11 +70,13 @@ class StructuralFinalizer:
         return attempt
 
     async def _durable(
-        self, lease: AttemptLeaseV2, expected_report_sha256: str
+        self, lease: AttemptLeaseV2, expected_report_sha256: str, expected_batch_hash: str
     ) -> ArchitectureReportV1:
         s = self.factory()
         try:
-            async with s.begin():
+            async with asyncio.timeout(5), s.begin():
+                await s.execute(text("SET LOCAL statement_timeout='2s'"))
+                await s.execute(text("SET LOCAL lock_timeout='1s'"))
                 job = await load_job(s, lease.org_id, lease.job_id)
                 if (
                     job["state"] not in {"succeeded", "partial"}
@@ -89,6 +92,16 @@ class StructuralFinalizer:
                 row = (await s.execute(stmt)).mappings().one_or_none()
                 if row is None or row["report_sha256"] != expected_report_sha256:
                     raise DuplicateConflict("durable structural publication digest differs")
+                digest = await s.scalar(
+                    select(analysis_runs.c.result_hash).where(
+                        analysis_runs.c.org_id == lease.org_id,
+                        analysis_runs.c.snapshot_id == job["snapshot_id"],
+                        analysis_runs.c.id == job["result_run_id"],
+                        analysis_runs.c.status.in_(["completed", "partial"]),
+                    )
+                )
+                if digest != expected_batch_hash:
+                    raise DuplicateConflict("durable structural batch digest differs")
                 return ArchitectureReportV1.model_validate(row["report_json"])
         except (StaleAttempt, DuplicateConflict):
             raise
@@ -100,33 +113,22 @@ class StructuralFinalizer:
     async def finish_analysis(
         self,
         lease: AttemptLeaseV2,
-        draft: StructuralDraftV1,
+        result: StructuralResultV1,
         *,
         before_lock: Callable[[], Awaitable[None]] | None = None,
     ) -> ArchitectureReportV1:
         if lease.run_ref is None:
             raise ValueError("analysis finalization requires run_ref")
 
-        report = ArchitectureReportV1(
-            run_ref=lease.run_ref,
-            request_nonce=draft.request_nonce,
-            config_hash=draft.config_hash,
-            toolchain_hash=draft.toolchain_hash,
-            archive_sha256=draft.archive_sha256,
-            policy_hash=draft.policy_hash,
-            symbols=draft.symbols,
-            resolutions=draft.resolutions,
-            routes=draft.routes,
-            requests=draft.requests,
-            links=draft.links,
-            diagnostics=draft.diagnostics,
-            coverage=draft.coverage,
-            components=draft.components,
-            excerpts=draft.excerpts,
-        )
-        report_sha256 = semantic_digest(report.model_dump())
-        normalized_data = normalize_report(report)
-        normalized_sha256 = semantic_digest(normalized_data)
+        result = StructuralResultV1.model_validate(result.model_dump())
+        if result.run_ref != lease.run_ref:
+            raise DuplicateConflict("result run differs")
+        report = result.report
+        report_sha256 = result.report_sha256
+        normalized_sha256 = result.normalized_sha256
+        expected_batch_hash = result.batch.semantic_hash()
+        if normalized_sha256 != semantic_digest(normalize_report(report)):
+            raise DuplicateConflict("normalized report differs")
 
         async def work(s: AsyncSession, budget: FinalizationBudget) -> ArchitectureReportV1:
             assert lease.run_ref is not None
@@ -152,7 +154,16 @@ class StructuralFinalizer:
                     .one_or_none()
                 )
                 if existing and existing["report_sha256"] == report_sha256:
-                    return ArchitectureReportV1.model_validate(existing["report_json"])
+                    stored_hash = await s.scalar(
+                        select(analysis_runs.c.result_hash).where(
+                            analysis_runs.c.org_id == lease.org_id,
+                            analysis_runs.c.snapshot_id == run_ref.snapshot_id,
+                            analysis_runs.c.id == run_ref.run_id,
+                            analysis_runs.c.status.in_(["completed", "partial"]),
+                        )
+                    )
+                    if stored_hash == expected_batch_hash:
+                        return ArchitectureReportV1.model_validate(existing["report_json"])
                 raise DuplicateConflict("terminal report mismatch")
 
             if job["operation"] != "analyze_structure":
@@ -174,11 +185,34 @@ class StructuralFinalizer:
             )
 
             if (
-                spec_row["config_hash"] != draft.config_hash
-                or spec_row["toolchain_hash"] != draft.toolchain_hash
+                spec_row["config_hash"] != report.config_hash
+                or spec_row["toolchain_hash"] != report.toolchain_hash
             ):
                 raise DuplicateConflict("draft hashes differ from spec")
 
+            config = AnalysisConfigV1.model_validate(spec_row["config_json"])
+            if (
+                config
+                != AnalysisConfigV1.model_validate(
+                    {
+                        **config.model_dump(),
+                        "toolchain_hash": report.toolchain_hash,
+                    }
+                )
+                or report.limits != config.limits
+            ):
+                raise DuplicateConflict("report configuration differs")
+            version = await s.scalar(
+                select(analysis_runs.c.write_version)
+                .where(
+                    analysis_runs.c.org_id == lease.org_id,
+                    analysis_runs.c.snapshot_id == run_ref.snapshot_id,
+                    analysis_runs.c.id == run_ref.run_id,
+                )
+                .with_for_update()
+            )
+            if version is None:
+                raise StaleAttempt("run unavailable")
             # Insert structural_reports row.
             # Trigger codespy_structural_report_guard verifies DB authority.
             await s.execute(
@@ -195,26 +229,10 @@ class StructuralFinalizer:
                 )
             )
 
-            # Update analysis_runs
-            is_partial = report.coverage.omitted_files > 0 or report.coverage.unresolved > 0
-            run_status = "partial" if is_partial else "completed"
-
-            await s.execute(
-                update(analysis_runs)
-                .where(
-                    analysis_runs.c.org_id == lease.org_id,
-                    analysis_runs.c.snapshot_id == job["snapshot_id"],
-                    analysis_runs.c.id == run_ref.run_id,
-                )
-                .values(
-                    status=run_status,
-                    finished_at=func.clock_timestamp(),
-                    result_hash=report_sha256,
-                    write_version=analysis_runs.c.write_version + 1,
-                )
+            persisted = await self.jobs.persistence._persist_result_in_session(
+                s, ctx, run_ref, result.batch, version
             )
-
-            job_state = "partial" if is_partial else "succeeded"
+            job_state = "partial" if persisted.status == "partial" else "succeeded"
 
             updated_job = dict(
                 (
@@ -246,16 +264,14 @@ class StructuralFinalizer:
             await append_event(
                 s,
                 updated_job,
-                job_state,
-                {
-                    "symbols": len(report.symbols),
-                    "routes": len(report.routes),
-                    "links": len(report.links),
-                },
+                "report_partial" if job_state == "partial" else "report_completed",
+                {"file_count": report.coverage.processed_files, "stage": "publication"},
             )
             return report
 
         if before_lock is not None:
             await before_lock()
 
-        return await self.executor.execute(work, lambda: self._durable(lease, report_sha256))
+        return await self.executor.execute(
+            work, lambda: self._durable(lease, report_sha256, expected_batch_hash)
+        )

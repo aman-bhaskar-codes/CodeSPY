@@ -212,6 +212,24 @@ export type EventPageV2 = {
 };
 
 /**
+ * EventPageV3
+ */
+export type EventPageV3 = {
+    /**
+     * Data Version
+     */
+    data_version?: 3;
+    /**
+     * Items
+     */
+    items: Array<JobEventV3>;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: string | null;
+};
+
+/**
  * FileOmissionV1
  */
 export type FileOmissionV1 = {
@@ -409,6 +427,38 @@ export type JobEventV2 = {
 };
 
 /**
+ * JobEventV3
+ */
+export type JobEventV3 = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Event Type
+     */
+    event_type: 'submitted' | 'upload_verified' | 'queued' | 'commit_pinned' | 'attempt_started' | 'progress' | 'retry_scheduled' | 'cancel_requested' | 'cancelled' | 'admitted' | 'inventory_completed' | 'inventory_partial' | 'failed' | 'analysis_started' | 'syntax_completed' | 'resolution_completed' | 'report_completed' | 'report_partial';
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Public Payload
+     */
+    public_payload: {
+        [key: string]: unknown;
+    };
+    /**
+     * Schema Version
+     */
+    schema_version?: 3;
+    /**
+     * Sequence
+     */
+    sequence: number;
+};
+
+/**
  * JobRecordV2
  */
 export type JobRecordV2 = {
@@ -534,6 +584,10 @@ export type JobRecordV3 = {
      * Result Run Id
      */
     result_run_id: string | null;
+    /**
+     * Schema Version
+     */
+    schema_version?: 3;
     /**
      * Snapshot Id
      */
@@ -694,6 +748,36 @@ export type RetryResponseV1 = {
      * Submission Id
      */
     submission_id: string;
+};
+
+/**
+ * RetryResponseV2
+ */
+export type RetryResponseV2 = {
+    /**
+     * Analysis Spec Id
+     */
+    analysis_spec_id: string;
+    /**
+     * Retry Job Id
+     */
+    retry_job_id: string;
+    /**
+     * Retry Of Job Id
+     */
+    retry_of_job_id: string;
+    /**
+     * Retry Of Submission Id
+     */
+    retry_of_submission_id?: string | null;
+    /**
+     * Schema Version
+     */
+    schema_version?: 2;
+    /**
+     * Submission Id
+     */
+    submission_id?: string | null;
 };
 
 /**
@@ -1345,9 +1429,11 @@ export type JobEventsApiV1JobsJobIdEventsGetError = JobEventsApiV1JobsJobIdEvent
 
 export type JobEventsApiV1JobsJobIdEventsGetResponses = {
     /**
+     * Response Job Events Api V1 Jobs  Job Id  Events Get
+     *
      * Successful Response
      */
-    200: EventPageV2;
+    200: EventPageV2 | EventPageV3;
 };
 
 export type JobEventsApiV1JobsJobIdEventsGetResponse = JobEventsApiV1JobsJobIdEventsGetResponses[keyof JobEventsApiV1JobsJobIdEventsGetResponses];
@@ -1375,9 +1461,11 @@ export type RetryJobApiV1JobsJobIdRetryPostError = RetryJobApiV1JobsJobIdRetryPo
 
 export type RetryJobApiV1JobsJobIdRetryPostResponses = {
     /**
+     * Response Retry Job Api V1 Jobs  Job Id  Retry Post
+     *
      * Successful Response
      */
-    202: RetryResponseV1;
+    202: RetryResponseV1 | RetryResponseV2;
 };
 
 export type RetryJobApiV1JobsJobIdRetryPostResponse = RetryJobApiV1JobsJobIdRetryPostResponses[keyof RetryJobApiV1JobsJobIdRetryPostResponses];

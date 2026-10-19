@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from app.adapters.typescript import TypeScriptProtocolError
 from app.analyzers.frameworks.express import observe_express
 from app.analyzers.frameworks.fastapi import observe_fastapi
 from app.analyzers.frameworks.http_client import observe_http
@@ -9,6 +10,7 @@ from app.analyzers.frameworks.matching import match_boundaries
 from app.analyzers.languages import extract_syntax
 from app.analyzers.source import DIALECTS, AdmittedSourceReader
 from app.analyzers.symbols.python import resolve_python
+from app.analyzers.symbols.typescript import resolve_typescript
 from app.contracts.structure import (
     AnalysisBudget,
     ComponentSectionV1,
@@ -28,7 +30,11 @@ from app.core.dsa.puretypes import GraphEdge
 
 
 def analyze(
-    source_input: SourceInputV1, root: Path, budget: AnalysisBudget | None = None
+    source_input: SourceInputV1,
+    root: Path,
+    budget: AnalysisBudget | None = None,
+    *,
+    isolated_operations: bool = False,
 ) -> StructuralDraftV1:
     actual_budget = budget or AnalysisBudget(
         wall_seconds=float(source_input.config.limits.analysis_seconds),
@@ -48,17 +54,46 @@ def analyze(
 
     for unit in units:
         actual_budget.tick_nodes(0)
-        file_obs = extract_syntax(unit, actual_budget)
+        if isolated_operations:
+            from app.analyzers.syntax_process import extract_isolated
+
+            file_obs = extract_isolated(
+                unit, actual_budget, source_input.config.limits.operation_seconds
+            )
+        else:
+            file_obs = extract_syntax(unit, actual_budget)
+        limit = source_input.config.limits
+        # Reserve one evidence identity for each observation and framework/diagnostic locations.
+        if len(all_symbols) + len(file_obs.symbols) > min(
+            limit.nodes, limit.evidence // 2, limit.edges // 2
+        ):
+            reader.omitted.append((unit.path, "output_capacity"))
+            continue
         files_obs.append(file_obs)
         all_symbols.extend(file_obs.symbols)
         all_diagnostics.extend(file_obs.diagnostics)
 
+    included = {f.file_id for f in files_obs}
+    units = tuple(u for u in units if u.file_id in included)
+    sources_map = {u.path: u for u in units}
     # 3. Python resolution
     py_resolutions, py_diags = resolve_python(
         files_obs, sources_map, source_input.config, actual_budget
     )
     all_diagnostics.extend(py_diags)
     resolutions: list[ResolutionV1] = list(py_resolutions)
+
+    ts_incomplete = False
+    if "js_ts" in source_input.config.adapters:
+        try:
+            ts_resolutions, ts_diags, ts_incomplete = resolve_typescript(
+                units, all_symbols, reader.configs, source_input.config, actual_budget
+            )
+            resolutions.extend(ts_resolutions)
+            all_diagnostics.extend(ts_diags)
+        except TypeScriptProtocolError:
+            # Standard profile must not silently qualify without its compiler.
+            raise
 
     # 4. Framework observations
     symbols_tuple = tuple(all_symbols)
@@ -80,6 +115,35 @@ def analyze(
         all_diagnostics.extend(http_diags)
 
     links = match_boundaries(routes, http_requests, source_input.config.service_bindings)
+
+    limits = source_input.config.limits
+    resolution_truncated = len(resolutions) > limits.resolution_sites
+    resolutions = resolutions[: limits.resolution_sites]
+    kept = []
+    edge_count = sum(s.container_key is not None for s in all_symbols)
+    for resolution in resolutions:
+        cost = (
+            len(resolution.candidate_keys)
+            if resolution.resolution_kind in {"import", "call_target"}
+            else 0
+        )
+        if edge_count + cost > limits.edges:
+            resolution = resolution.model_copy(
+                update={"candidate_keys": (), "status": "unresolved", "reason": "output_capacity"}
+            )
+            resolution_truncated = True
+        else:
+            edge_count += cost
+        kept.append(resolution)
+    resolutions = kept
+    framework_truncated = len(routes) > 256 or len(http_requests) > 256 or len(links) > 512
+    routes, http_requests = routes[:256], http_requests[:256]
+    route_keys, request_keys = {r.key for r in routes}, {r.key for r in http_requests}
+    links = tuple(
+        link
+        for link in links
+        if link.request_key in request_keys and set(link.route_keys) <= route_keys
+    )[:512]
 
     # 5. SCC graph projections (Imports)
     module_nodes = [s.semantic_key for s in all_symbols if s.kind == "module"]
@@ -178,11 +242,13 @@ def analyze(
         ambiguous=ambiguous_count,
         unresolved=unresolved_count,
         distinct_resolution_sites=len({r.site_key for r in resolutions}),
-        omitted_diagnostics=0,
-        syntax="complete",
-        resolution="complete",
-        framework="complete",
-        graph="complete",
+        omitted_diagnostics=max(0, len(all_diagnostics) - limits.diagnostics),
+        syntax="partial"
+        if reader.omitted or any(f.has_syntax_errors for f in files_obs)
+        else "complete",
+        resolution="partial" if ts_incomplete or resolution_truncated else "complete",
+        framework="partial" if framework_truncated else "complete",
+        graph="partial" if reader.omitted or resolution_truncated else "complete",
         omissions=omissions,
     )
 
