@@ -1,0 +1,2599 @@
+{
+  "schema_version": 1,
+  "profile": "structural-small-v1",
+  "labels": "agent-authored synthetic static candidate labels; no independent human or runtime validation",
+  "split_policy": "Variants with the same lineage stay in one split. development-v1 was promoted after an observed overload-mapping failure and is not held out. heldout-v2 uses separate contexts and must move to development if used to tune future fixes.",
+  "binding_thresholds": {
+    "precision": 0.95,
+    "recall": 0.8,
+    "ambiguous_accuracy": 0.9,
+    "false_unique_negative": 0
+  },
+  "datasets": [
+    {
+      "file": "backend/tests/phase3/evaluation/fixtures/development-v1.json",
+      "sha256": "6a570ab81a8e53d004ab540bc974b2ebe2a35fd0835d517de30438a5fe54d67a",
+      "split": "development",
+      "cases": [
+        {
+          "fixture_id": "python:python/heldout_0.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "4bc4fb29a298c0e84c62c2556e120cc54cf015838613561b309e5a734236c636",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_1.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "c179012bcc6565d3da4824e9e8d374f15db62968b6b99913c7b92f5f5e7edffb",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_2.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "2a5d7ff49f59d28b9bd0775d59a71212f8b2ff6c57aa575f180e97cdfdcf6b40",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_3.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "a8d9b6aca5ad69abf1b47a9e5e3a788a414616ef1a0627b525228152b7fb78bb",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_4.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "3fb6c0f91159ebeccacb6348009b3f64b981638a32394dc470f5be0c7d74a748",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_5.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "f24561922862c4445a50cad39743d52bfffff4a35285c7a267d98403b0a39a86",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_6.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "a9191c1c0f16a2c5c04133616f299bdd09d29d817d7a96df1117fc5476d97252",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_7.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "0ee2323f88e568719f8ec8b3061fbbb8ffb3317378a25a0a9f76567f3500b9ae",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_8.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "ac4aac882212a6a9a3832af1856773999096a81c08f72c8831a87d5f915678a5",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_9.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "f2dde3ceae47d29365d1dd780cda4b8c8c26664a83e1ff7d5380c35069a57b41",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_10.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "e8d3b30bef4c40364935c5c38011f8554338ca8ed8f72b85b6d9ffae285c2d1b",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_11.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "cb26fcee64da3e9b85e91a6326f92c9ca5d6bc6ea0ced271c73bb753ea50cc39",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_12.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "6c9cc09f04747b6d0e71c3f217661872d14463f0ec9afa3e888d94dc8e28e90e",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_13.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "1dd44f8feba7624713bcf454b403f3d75a01cce0b02d7756e9b9b1a7ebe3b2d8",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_14.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "45fb80dba6edcf68295c1c974c757b44ec972c3cdceb03fdfbe4d30e0cad39a9",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_15.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "9a56263986d2f09e7c546ddbcad8fae65b25916bf80fc7ff92a25833d82be539",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_16.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "8808ac623a5602ff1f050f8ef0d2f5de8f8237d424401a72aa02b1d402c22da4",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_17.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "ceef2b3b4c00189be277e8de72d75aba202269f03147cbb5918a70a485070533",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_18.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "22da1f84d2ecc724c5c74ceffd04bbcc9ec909f91832e840944af96374c4989f",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_19.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "b506a85dc5e1e1138616cbad703168cb93d7ce4263e6af754342459882a13fb3",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_20.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "2f0b7b49a75fba296cf924509dc262a613ea39fac2e7cf482850fe636412fa4e",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_21.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "121ae1ae858a60c07a092726a7fa2b3063672d7629b6bd490512ae915cc26167",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_22.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "23af71675f46f0dff3fb012224accd7dbe9a30c98cd637fbfdcd048acf201e5b",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_23.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "a3b063da63e4808dc9b6100fb8fe23987e02b777a60a53189e14116f0387bd42",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_24.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "174b08d9b031344753697cdce6169164f3d6ba41e56c57c1e64272071e3a5191",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_25.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "dbfdead20d663c05f76759af1dbf6f53017d5048b70ace3273ebfdc9a39c3779",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_26.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "2b5dac376d771c50d171f0166f00f1571cf259fbc9fde85c21fdb6b8c79fbf08",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_27.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "e42fa0e09797db4b4690ba550925803ba467c143c531628d67673aa86f31b7b3",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_28.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "01821c76864b6ff1322749781a98ba1da9bc92431a2d5d61d71bbab14b9c02ae",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_29.py",
+          "lineage": "heldout-python-supported",
+          "source_sha256": "eb0ac0fe0ca90affb42e2b7550631064621751b33f6db5bcda92da0ffde7242e",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/heldout_30.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "3fa302aa43e2e118bb5b72d606aed2ca9f96e3231f77d87c8cebdf9a754ef76b",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_31.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "6a3d1201c874162706216b9831ac8c7ed4ef9a5282cfe6d279cc55f357462a2c",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_32.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "2db95b8b433a85459810871c44db1958b56f276d076a016c95b52cc2d3abdfa1",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_33.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "b4fcb9e59c7e55899af19086dac2105b956a701ef5f35a08a18adb70ac061562",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_34.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "fdcef611f614a5abdaea1e8561a69cc93f003f2bd5cb871c8db04c00859c8e0c",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_35.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "592de093b88082d45923507cfc68e2302695962ad337fca14121b716b85f4b9c",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_36.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "34777c62dcda9e781ec18d83b037f3d3bc1185859e7586570f2e09ead447635c",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_37.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "28b1f4ce48b400ad2f4176aabe6d3febfff23d2aa4ed94a0b22f5e0456a1e81a",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_38.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "07414dbe15932d0c9acd60f7a462965905564dd58afbbe8a00cf938a9d3f4558",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_39.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "729a861235090727ba438b7d1d56f9fc36d4f6108b5030915e238a2d937a6f8d",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_40.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "cf038016bbcbde8d181644c5c7939e4b5eac2e17f917175eedcdc68f92e6437c",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_41.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "c03eeeef92ba7b7fe7bc88416d47170b0037c77dc26165ae8edbc728f0ada71f",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_42.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "a8004fa8dd492539c9d73869b52a9a8a357a4fe132666cfcd0d09169f7404761",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_43.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "547df75bec1414b2f041d0c4efc46bd3f4d2c6725899207d8acf8b305fe343a4",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_44.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "a8b79c09fe0d86a299f594d2f3b0bf399335ce82e5ddc07a1660ddb0ce515a68",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_45.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "137143815ccf28caa9808f85431b8f81a295229cb7a2720b4fb64cdfddf3c93c",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_46.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "2610f3df4818a1d14c4c2f7a401b700456a5e715157ec66e6e870b6f0a196f92",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_47.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "d326ae3c91a8af3827bb927acf7091f24cccc9e4827c56559c0179039eb2f762",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_48.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "cc4a862acc4b96de1a241dbec0f209eb98476b00357f8cf84436e74ea0ebb4bf",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_49.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "2a8620b47d6f00e60eb7e13ee6e705318a94b375586c9a5125d03af307ec20c0",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_50.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "f3f7c66d38d4e2ffb1b75c5e13319463b20cac59ebed6cb02768073ba76b5e20",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_51.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "f0833868d6ebac5e84c52b644b579c6dc7cb022317fe03a601e93d50b4b95032",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_52.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "dde4c89608129a66efaa8325ab617dcaf1731b3600e3d2f61492a79a405c33b2",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_53.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "aba04eefe3e225313bcf5548a65a812cb00d1b1db1c57d3bd504a5e78c742085",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_54.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "382d7371265b8192437624b4137777a2b7d447070e3841f19a8eea9c582b8ec3",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_55.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "abf4b11848d06a7e6b914a6d41dca945a6b1d4f17006f4db76c901450c9153b6",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_56.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "15b8128646f126e3de8de3bea5a87876cb8a27229d26c98af6ce5373a063aa8b",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_57.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "af236655089c06acfcd25b152aa556859340cab4cbc1464aabaa30982244380f",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_58.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "59cec152796205252342724060cedb972f0fd612261e5c0313cdc3a9b58b7261",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_59.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "cfc67ee46049c64add853a153da7076a483e65039dbcc5896c8ea67dace6d95c",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_60.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "4118f41b9bbf7e2f03f13029c3dd2121224cc8e4caeacd4f4b605aa2f5b8b66a",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_61.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "f1dc6ffc74fa12e950cc8de3eb4f168745780284757f0c8c7546d634c9a70843",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_62.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "f246aac4e0255d4c1eeeed006b11f8b693f9f32b3f9e38a2effa443ee47a04df",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_63.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "e3661e0c5256f272b36d1e24532a8833f05545c057493b18fee70c89964229df",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_64.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "7ad2662c46426795a7583d3a125239c80fcc0d6ddc2d82440c0c6335165cde48",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_65.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "67e160cde1d7fcdc88863b160e7b707748c1028008e5c8a0d9fe2201f808d88a",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_66.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "c749b7f1fa1ff7b53c0c44719de67cd9a79d0333d57779297970fae6c9bdbb4b",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_67.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "add430f53625407a222f16afec996d4d1839a28970a4b300075360e00bab0c9f",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_68.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "458dc78fac47d8c4d025ae9802bd97b0d6d338bb2f6309f7e083b734d87d8b4c",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_69.py",
+          "lineage": "heldout-python-negative",
+          "source_sha256": "b18514bd8af4a50e50cb570b42f72e7cf85c3620a7915241dbe336a988d7b022",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/heldout_70.py",
+          "lineage": "heldout-python-ambiguous",
+          "source_sha256": "1ce8130ebd4d78443cea1c6ff36ecec89c65f3b498cf370df5867a3f11e0698d",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/heldout_71.py",
+          "lineage": "heldout-python-ambiguous",
+          "source_sha256": "60a60231f0afa54f28f3fc33aea350c5dc47111f2df9417ef7fbbddb767efb22",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/heldout_72.py",
+          "lineage": "heldout-python-ambiguous",
+          "source_sha256": "bba6e2439305416a25be9d43453ad1ae1fc76b97b7ceaf37faf11a47e59d3842",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/heldout_73.py",
+          "lineage": "heldout-python-ambiguous",
+          "source_sha256": "9ada8170c238dfb890d0d84827e06c9ad04b00b5d06483710fdfd38a543cca3e",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/heldout_74.py",
+          "lineage": "heldout-python-ambiguous",
+          "source_sha256": "2501811ec13c4c504aa41b89da5b8d4084b57ec254079df18e66a7b04b3f4066",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/heldout_75.py",
+          "lineage": "heldout-python-ambiguous",
+          "source_sha256": "f2d1a8efa3189e9a4c2709a8e2caf34acf585af2e6c61621d1d7376ae8946253",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/heldout_76.py",
+          "lineage": "heldout-python-ambiguous",
+          "source_sha256": "19c48eb6a614b8e0f1a1892a88df561b17e9bd7c16ca9964db61477f4567328e",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/heldout_77.py",
+          "lineage": "heldout-python-ambiguous",
+          "source_sha256": "c5a7334371be59c373e97105d738c6da53fa64624aff0860366d1fba554b796f",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/heldout_78.py",
+          "lineage": "heldout-python-ambiguous",
+          "source_sha256": "7ae5ef35d7c0cddce9d465c9b7a6473fb254a2227ec3361271fe8d443a39eb57",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/heldout_79.py",
+          "lineage": "heldout-python-ambiguous",
+          "source_sha256": "4af643cb742a3f83de04e28cb5b15453b4080c1bbd4f339110db67075ed9645e",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_0.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "7f0f78663bf93d24767ceead5c8229ae0393a6533a376617619a2263c78bd222",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_1.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "4956aff66d38a2fa00e38e8f102db82e974efade73603554b5efde5133bc353a",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_2.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "098b20293d6e1dcfd6e99a421fbcb3b2063a88a4bf13da3bfc20ca21cef9d6bb",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_3.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "529627b17b83cb9deb77de4976cce5a74e93e2c3632ef9c8384a510dc8fe552c",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_4.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "4c088465b4b9562f4b733732a5ce7a901f31d4447537bf7eac6cba56076e80f1",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_5.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "07bd7c6519839ceabb96cd5d8e5c3c865614b3e52b9d48532fb40bfa588d2cb8",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_6.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "cbc64efaeea98c5722cd4d7297af595f3810e176e5056ff2a018934ca0b4881b",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_7.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "ee393954f242b1ba08dc8bdaa037d053c1cda47cbbdf4031c93adad33788a521",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_8.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "2db6c8f9e3f6a82e88aca57a1ffbeed783525e6e62fd4d4f8ecf1511c6564a7b",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_9.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "295bccad585cced13380970c08dd548d3e60538f76a990b24dd550db944f2a7b",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_10.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "317c15fd0e5a493277955059ee942d69fdc40680150f87a6bdcff51de73b5399",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_11.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "616d6b0d52be9ae6559585e775d6a93df42cc29cd2fe98b783db111fe9dc3824",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_12.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "318bdb39a2be6841f1bf9b1f266f08a3f1d16d4645893325a72823789060c8f4",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_13.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "071ba1d7ee0b8a8ff8f5d5d5ed500e2570c9809082167d9c94cb46cd2309ab45",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_14.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "251d7c8314973d5572cf8cf854a2b7fe26c14319f2900f3df457530fa9938948",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_15.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "3c9e24514c4c11dc7ac8b1d5941bc42239b58cdea923935f5e1e6db3d6dbdb24",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_16.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "8dcddad9f01fd4918b0b841ab795796787975179ba19ccfed958265c959e965e",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_17.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "a6643e07c70270635ed58a0ee9e76d859c78e77ef3c7e3283ce9e34a5f497b41",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_18.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "4e277771ab9464c6415ca04ccfd9a38326fefc130c3dc3da970c271784beffde",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_19.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "a27791747a83a1dd2b5157bd74dc35793616373f39e3b6c59714598f870e9ac3",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_20.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "925aef35583bed3f1b3a2bda1ec9b3b45f15b0ab70dbbbf394ecc8d62edee866",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_21.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "8568ea29096ef7d88a54b598f76c865791c908191bf9c593ea5c84ed5d252e29",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_22.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "812a75cb3146b749889cce070673e730f843867f320d4c66a38213f3c112e4fd",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_23.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "8a0ea4132b8e1de46b6e2725337317339a6b4653a2216684495bfa7eed40fe93",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_24.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "a3b202499b1191e581f859fb7828b3f5cae0ccc41df0d3da80ff61b9c3083667",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_25.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "2c4c7e09f2b3fdb2e472d7f312e89180c9138e88187fcea85b8be561ffaf64bb",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_26.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "1729046b76624621833e5278d90e07d7c8542ebf739cfe04adf25f8093a36290",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_27.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "4d37e563619c64f3ca874843ccc2813e689b69b4456a9f0fe0cc2293d6807421",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_28.ts",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "56396abe4789cde66ee392c9c5861452f3a28ae14e923069b74a80df40aaa936",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_29.js",
+          "lineage": "heldout-js_ts-supported",
+          "source_sha256": "425328680e2f4dd7a62e1bba9c82614135273b65e6ad67f5baca683386e31de9",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_30.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "5bdad1a116766811d676701b29c557cd1703bd59018248604adf6f307f0e0128",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_31.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "c799b6d14bf75538f3e78f5d7dc31ba8fba94f7fba7b3572c91013ab763c1f13",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_32.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "c8975dc837bb9b49121f461ed841be4814be229eefa42a72fc6f9574d8dd0d00",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_33.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "44fc574c3ee6e5ef2a1bc243b48a9d7e3de5eb7bf310c074b7757ba6576201e7",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_34.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "87664cdcffaffabd1b8184e1d94dcffef4a48eab7f35e88b89f26d224faa1dab",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_35.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "f4f1d31798c07a74a1fdf0e4367586d82b750854b0d561ebddb03058d5a2f443",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_36.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "4f56a41f5d738c31b83ad5a52fff839e846373877f401d2142baa137a5df301a",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_37.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "16a69736c418f080a1585ce474fedf08d8319bf0f109fb300e9dcff72c0dc877",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_38.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "ff05d7a4c8df722c4ab921c53f5523887bf035fe0fd6577f7e8ddcdb6677856a",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_39.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "dfb6640445bab693b2a1b58d8b595b1af7dc4ba9805645a5c09bb73fab5a0954",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_40.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "f1a61ebcb8a5bc646bfe8a34a86721eee4115144993273fbc9d0a832b8f14781",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_41.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "b02c09daba2ce5cd7f8b51a73daf85c2a337bb827707993b26a684aa7c12cc88",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_42.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "0d8d067526373e22603e94c04e9816939c2be01330444192966d103f509b836e",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_43.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "030637261e268e636ab6becaa682db9789694126ab77e00a01f5b6e43a49498c",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_44.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "c9cf1e222e9ca59d9f941bd6eaf4b2ba9e22334cb20db1eec40464bb960ee7e5",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_45.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "a820ca96c74bf0169cf43283c03015f6861453d1266fa5f7d12c52905c329aab",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_46.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "8049948afaf2931903bd11a9177badf93d823ea05ed8d2d96b7e55b0a09ff03c",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_47.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "42fb082dd19b7942df816da27a920cf0485b16b7a6f1f37c247973506433324c",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_48.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "3648e7cfca357d3cc15318e09270a53506d21321b34f454e1507a228c2c370e0",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_49.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "cf6d9ad6af1364bbcb31a6e5c5ebf93daa4b080f5c37e0ac783f88faf33c5344",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_50.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "5c471959f2846cb65e8924e71bfd5b123e3b860417f70d7375210f481f0d883d",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_51.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "73e29030862f94a69fdf1b780a5970f007bd491934aa9c3afec734d0fed7b7e6",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_52.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "63d07b6bc22ac1eeb60923a7a76b2063452ee61759f92209de13129523be3a86",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_53.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "bf47f730296ceb715f030cf05a492ec4ff1c0882afa0109595280850f9f82617",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_54.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "97fe0b5d23672737963f8b946e83ee551afec0d939ac4a1c204f47fb642a473f",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_55.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "7cf60f39f557ba95e0f41f420e9e1740d45d13ca0c7fb1e2ef99286be6cfa808",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_56.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "08d9d06039d28f16f4b732b94b53f451173bff1fec95e862b8cfb686e1c4037d",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_57.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "234d3b02b711a4f0f2d553abe93e83b66fbb485847fc840a638b712f50cbbda0",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_58.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "3fd83731f98341fce599c82741be96f1608feaf3612d2cc1ab8323142e5d0aa5",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_59.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "d3d8d0893ac4b7368978b9d99534e6824e9daed13ac9a1a43aa968ab799c7f99",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_60.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "c83109dbb4fcde0dc7a35bf7bdd28aeb26d723fe1c4e3bd374e58e1c61920366",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_61.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "e439e6e75024fe582db87a59dc1ec700c9b352e88b8226a0968b2f64ce2e4a6a",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_62.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "9de4cbdc065db44da473d120695614573366e2c051590e0f3c441994975c99ac",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_63.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "64930eb9cc62c78f03b009ef2afc05fde40f7ae77585019201e35d62b8bc472b",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_64.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "9a196b8fc370c6fcbb45789ed4048b92a42e9a0b1cf8df1ae41becd9f49733f6",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_65.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "b6e3b0f1ed9b3ddf6d9ffc8cccd5b8ae9a042ba177bac217f347eca100643380",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_66.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "9145bd254d55c268f7a9950c28746c173ade644df3705b14b558469d54147695",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_67.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "abb3abe288ab1ec1dcb35cdcb4ce5a19b2f2caefd7ec512170bda88e50456a08",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_68.ts",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "d536659de19c24e5a90237f621ba244c0baed052cecbc572cbd5c069f2c7803e",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_69.js",
+          "lineage": "heldout-js_ts-negative",
+          "source_sha256": "994d6a15df95c7bc4fc299e7f846e82d046d171ed9f09c6c4436eb5c42044f07",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_70.ts",
+          "lineage": "heldout-js_ts-ambiguous",
+          "source_sha256": "597fc31088a01a6d9adcc9461781b00ec359a25addfbda5b0255cbf3073d3ae1",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 3
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_71.ts",
+          "lineage": "heldout-js_ts-ambiguous",
+          "source_sha256": "9c406ca1da0435b678f7112e90910333f6693257968966feed5b7ccd4dadfbef",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 3
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_72.ts",
+          "lineage": "heldout-js_ts-ambiguous",
+          "source_sha256": "ba2d3d91c720ec2df7ee77b2f081a2658e8cd3c225b278dacf08273cd45f09a5",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 3
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_73.ts",
+          "lineage": "heldout-js_ts-ambiguous",
+          "source_sha256": "4886179a07d304e34eb0961a68c45d92289cc95f28f2f8e77a1fc86b1b7d0ae8",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 3
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_74.ts",
+          "lineage": "heldout-js_ts-ambiguous",
+          "source_sha256": "993f85a09daf4666a3036dae6de6039084c622d8d485719f9e86189c2e538926",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 3
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_75.ts",
+          "lineage": "heldout-js_ts-ambiguous",
+          "source_sha256": "2c31f1d09c070a5cc0a4a32bf6373911a33e5595294dd5a747bb2408a58bd186",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 3
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_76.ts",
+          "lineage": "heldout-js_ts-ambiguous",
+          "source_sha256": "1a43131632f336024910779f85ab21eb0a03c7953431bd82c1657a509b7a8475",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 3
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_77.ts",
+          "lineage": "heldout-js_ts-ambiguous",
+          "source_sha256": "7bd5677c19a14dda1205836eba723d64e7e403dc5489e6f186823c7e10363d90",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 3
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_78.ts",
+          "lineage": "heldout-js_ts-ambiguous",
+          "source_sha256": "088c688cb13cbfe7f6d6e734ccd18dfe8f39d1a9a1b2cf9db9bbba1fab4aa288",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 3
+        },
+        {
+          "fixture_id": "js_ts:js_ts/heldout_79.ts",
+          "lineage": "heldout-js_ts-ambiguous",
+          "source_sha256": "908fec617011303d67f5cdfeeefb69b9a6a17eea2b9c5fa6c7dd65e50830cf68",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 3
+        }
+      ]
+    },
+    {
+      "file": "backend/tests/phase3/evaluation/fixtures/heldout-v2.json",
+      "sha256": "19a54427c63cfe5ae09f44a0f3da33cfb15e555539c622b86c18d9f1a276c165",
+      "split": "heldout",
+      "cases": [
+        {
+          "fixture_id": "python:python/locked_v2_0.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "aa667cc29eee821822115700462c4948aec8836088c0d9e30689f36b97ba74fa",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_1.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "075d6c4a4670c7b09f79cdbb33e3a29901a069d783d0955ad8727cad3a12f6a4",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_2.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "86ee24ddeffc884cc113202bc44a8854b6f1c0d6e00d1f32c126b9bc589eb7b5",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_3.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "d7f4b1adf236db2d18ff3caf5f189fa053a4ee2239067d3dc7f294680c97b7da",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_4.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "6b5c63cd02ab1ad8d275388a5ab58f08bba84f267215005b721acd9837faccab",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_5.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "c9622f35cab62751795682893005ea97aaf096cfceb016ad6c31618949386688",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_6.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "807db3b8fcdddec9976cc3d5bb4c3c83647db4ab31e32a22152d36def815e7e2",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_7.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "a7cc251bcfe0327d46f3868eca05fe5f954e015fd9876aa097800ee861d7cb5f",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_8.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "63afff7e3bf47870e66faea1ae3b4e1f40d66a701f8f1da46ccc23a934a83ce9",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_9.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "387218242b6f1b0396fd2d71b7554bb56ac839bfea7d83c842e90666b7c0bc56",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_10.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "a2245d250febc402f685e8cc34cdfc5002ba7c29781ff10c64b3a94f478e1e43",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_11.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "2991d087bea3c986a0fda7a025e2c33827950644150b9d9522ebec279894b456",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_12.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "9847f7cf96cd13dfa02eec6eece044a8446320bf4913dbbb9cf1264297a2a5fe",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_13.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "c4270b08e7c9fce07663283f40ef20d88d55df1f9d8856d9206b97a87825c724",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_14.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "c35c2c645bbe89e5280166860da8147012991e41ba6c191ce40b8171dac3c02c",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_15.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "8a21ce4df32227dc4c11c000ea9794726384f9c77f9b993e7d080aac4b902098",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_16.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "10772b8f70126f0dbdd94683fcaadbb094131d5df32473a1559a83bd306725fd",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_17.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "3a406ce6ea5d19455130b5ab41ecde9dfd8be18d710ca4af42b87bf886ffb677",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_18.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "5752659f36b421fae9201298ca19e910c6e047e91d616187a353f97b35f74b53",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_19.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "f2f766f1f5528ca33b1f88a6b1d9d04849702ad9ac828eb1b98e034a1ca671ed",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_20.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "a55d72d4d7636462ef121746de1072c75846d4eaabf2bcc12be10d69426b71de",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_21.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "c96a320da0cfbe8f596d0259e271423f0a5668a3b0f55c7d94c18d23158f1eab",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_22.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "101fccdd857b0f6acdfdc92e8da39cebaf0cb626af4b0c9a0fc93d5af192585f",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_23.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "a8919352f3bfa954cd4c64991db1c17604cccf37fc20ac8f5117c8489ab1b178",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_24.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "07539517f57341ca379ceb9086e2d83b5a918f126cbecdac9abfebdb6ecf28b5",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_25.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "4cd3e4e533ca5d6677160ff8049527d720de91188fbd99cacf86d1c1e8fd750b",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_26.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "a3ebf2a892db1ca60bc5bb8827a71494fd932940f840bbba1fd5ea19ff4f421c",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_27.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "721acd11d79a78963861c24daf6756cac4b6e3914c889ab3ca392e5647482b24",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_28.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "477e0f2d154d9a10768c22cf32ed1cb4f5e0431aa958517576027fd88f00b7b4",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_29.py",
+          "lineage": "v2-python-supported",
+          "source_sha256": "79c89df1c3e4bd3f05aa59b8c88b5554240e056d336094321255a11b460f57df",
+          "language": "python",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "python:python/locked_v2_30.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "dae48a0cf4be41b5c078accd58a3fde07add6d650ac6c37dd09a3df93a4539e8",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_31.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "af7e82bb2761a79755a2b6646b38f6b2f4fcaa5ab63340e1b24d3e261ad10f82",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_32.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "0171e307b8f06a9dd9844a30e31b9e6dc1a8ee940aa7a3617cb19c8946577d2f",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_33.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "2a800a8769b44e793cbcff341780f64ad3b0240eec047d77379a71bdfd5fcaf0",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_34.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "2e35f900dcb3f1249319a9c236a94e18c43d56711042d31f7ea1b8d6610a6a04",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_35.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "fd57a070ad759602478164507cac2b83bca857a25eb9a33475ab252cb39c4c52",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_36.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "edb5b8da32f34525c2328370845304fc8926722c7dcf6a42e494a982aa6f00d2",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_37.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "472d26145b66d3994f6e97b5fa765b124a25d120053023216915e20b6b06a4ba",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_38.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "d6f5bdf85c507c5a3ae335d55441c8d1ac60db83135b1eb3dd0eb67b8cecfd92",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_39.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "792a2eedff356cb10691d20b8c52ff77c8c003e8d0e4085196f2721add62357b",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_40.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "cf0114dbe8a0fada73e5bb0151379479f34685c1336dfae617829ea8fdef270c",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_41.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "2561683176e5e7117418a0bb986f6f5ff6e3240141be444cd57f851e48abda14",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_42.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "03a13ca53fbc8a3d28bfbce85b62c0ac150e8be277dbdeb1f13457b62fe9b5b1",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_43.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "91dda992df014dfba482a5c2711c717f97954ac14619b2c54bf78a2d2ea1b7ff",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_44.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "cf37f724ecefa9a57f16e2e33c750f277eaef8d29ebe9490d827d959828eb160",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_45.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "ddf2200f4d191646c740ce5b57c55c745bc95bf7363749da9ac185582c367052",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_46.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "2b217a7ad198437983158503a620f103ee58afe8b0a4d6940b01c4e259cde3c1",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_47.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "c950aca35c12722a841a22522784f9b368c4cbdfb7b8d575e49ef8e79c87e2b4",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_48.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "1b918fba9305be9250bae5c9497b4a75275bffb7d023374f7983c1d229a5a421",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_49.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "b7e00e375eec93bd090413006017fe2875b6440501ddc6da575357c85bd0f7a9",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_50.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "4e570f7ebd37aa57bb9fd6323f1a98a276b7bd568fb2a91455c1c35b4ee526ac",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_51.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "2d18fee536433aa8716c1c1e73e3591b8f43bbd11a24fc20c0cfcf2ea6c83013",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_52.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "d267f6cae7cb97392dd685542f3bf1e11b0bba47cfe55d8dd88e628a8709c58e",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_53.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "81d31a9153473c9a0c97dff4a65cee8ffefc99071e0576a600706ae15c6867ed",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_54.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "74d87d6ba7f9c0ec396295080a331b1456d688e1a16a8f4b680e87a5f23a3b32",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_55.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "029f91095fa74ad120fdc89993d3fa1f61a0a092a4c79c323c242f2204056dc7",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_56.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "4d84158afe03e86ba9beb1da0320f905eb5dbfb0a4f4ade7b64679fec0c3ef25",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_57.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "1d26ca5a7f1e07aa0f0cf44b72ec0222dffe1e0af01cb52c27c26ee2dd777f18",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_58.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "4c76d67981b8d13d06504bc248a748f803b5c15d73304fe412935e581117cbc9",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_59.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "a237b8d97ed8d4de41b2a5596859a676ebb72806a5c3f1231ca406ef8debf110",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_60.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "034a0e07c9d3e65b2c2ce5d676d06ad165cd72bfa6b410557301a7303643873a",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_61.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "f0c538b5fc98f9be6a4499b027f954637e55a0d4b2088102a993a4847a7b1b16",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_62.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "acd31792e6b4bea5b66eea321752412b8c8bfbbd688b872e8943e0eb97858fb5",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_63.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "63099e6555437d282b5db16d005bef45a2e7bf898a2f4ba692fdb01c7caeb268",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_64.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "d6cd506ae0eca9b9ea17b0cae5a5667b13dc6e5ff16baf88682b670d72142773",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_65.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "75bd4dc527fd974acff5fadc18dec7bb0730de80017c9bffad95d4ca669db1c7",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_66.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "12f7d93443f1a1c15d5734d71b091419f5267eabd3926f9992d0c59e776abd0b",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_67.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "42e095fabc73c8b3a61980e85149bfa3b2bbe130b751cafa5ad09c4e699be4c9",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_68.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "8b0b2a5cd605632fa04aefd6cc0bfaf20f55f1169bfffec09f6553d4a472ed9b",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_69.py",
+          "lineage": "v2-python-negative",
+          "source_sha256": "98bb74317286d4c7540be3c60d4ff72842bc8818d6209760e6d45114e75b3edb",
+          "language": "python",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "python:python/locked_v2_70.py",
+          "lineage": "v2-python-ambiguous",
+          "source_sha256": "51a42bfb66d089b042671ebd51356a0ef14cf026e54e517a0a10c76bb9f69867",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/locked_v2_71.py",
+          "lineage": "v2-python-ambiguous",
+          "source_sha256": "5d08cf1b17e1cc7cf40fc6577521eb72ef85c4b5377225ed5d0332363323000b",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/locked_v2_72.py",
+          "lineage": "v2-python-ambiguous",
+          "source_sha256": "6a75f661410601f4c35f4d5cda45acd717194603b55df33966ac960aab60527b",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/locked_v2_73.py",
+          "lineage": "v2-python-ambiguous",
+          "source_sha256": "929220b4c4b74a2021fd16fd48d8a9c7e8282cac5aa071b4c9c65f1996364582",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/locked_v2_74.py",
+          "lineage": "v2-python-ambiguous",
+          "source_sha256": "fd186bdfb304c69dd71bc1bfe203da88fcb9491706935c7204895b37e24174f7",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/locked_v2_75.py",
+          "lineage": "v2-python-ambiguous",
+          "source_sha256": "1ccf9b6bd08031e3a6b324f310447fc93010500b19c7ca31dd84f8ab92c75e4d",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/locked_v2_76.py",
+          "lineage": "v2-python-ambiguous",
+          "source_sha256": "0450366fece71e2facd4a029fe8544542e68dfdfeb8da0b60b0d3d8cacea0c11",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/locked_v2_77.py",
+          "lineage": "v2-python-ambiguous",
+          "source_sha256": "8f8c498f62b55d3c64783b7773802179bc942a778c5fba7e40d49c575be05e1f",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/locked_v2_78.py",
+          "lineage": "v2-python-ambiguous",
+          "source_sha256": "b54a51675f6914de528a43f4d319517542662b018eb9b7f48a8c31f77dd7cabd",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "python:python/locked_v2_79.py",
+          "lineage": "v2-python-ambiguous",
+          "source_sha256": "ff9f663d465f5d32c9be6046637e8f5031af451331ab39fe0034a252b4f3d472",
+          "language": "python",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_0.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "9fc0892cb70903dcfdfdf8eec0e573bd9b762d8e1282a94368d9fe0fa84225f2",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_1.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "b4e59f9b14c0cf03e9ee11ee1c63aa67169abc952d994dfd99363debed12e2d8",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_2.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "dbfb4768526481815e63761d90dc5d23c480aebf04bad85ee82e0fb209843c1c",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_3.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "cbbbe6f0c0432dfa65d99df432ef91ea1e26a6108c71811ab8468bc79a432154",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_4.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "cecb6e0a3401da9aecc1c0c3fdb4241263e99302f2fe50fe942bde7fc0ab0573",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_5.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "21c096fed8c9c7b42365a84de4459f8694b92567adc3430803c35b9da1e2895b",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_6.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "968b3c088b1dbcd711a1d04d84539dc98a3ab56213f74beb5c036d448cf6b351",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_7.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "fc596787461095ae3f9fc9d6439101e00a882ff70c96c844ecc77cebb3a36aba",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_8.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "7f8478bb2a8e882c19490a7b77310db815d855f7ca913a78c22e248fe17eb227",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_9.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "f6b367f8942edd0f013cca3364a12b0182827d4cb3f7f2cf5cdaebbb636a3736",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_10.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "07b7e1a833f077c62400c33d453d50c3fb0f830169af7a7b7d3f1c1625a1add0",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_11.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "8acbff3b292901c75593e60539d49dae077cdec1c47a1eab0fdba30a9f470a3d",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_12.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "58b6ef3d46add54f00df017319df4ab16de02cf5b1d5cd8d561dc0d64ce1e166",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_13.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "1e4ea2743537350c55e109a9b344405716705d687230fc054c28d093ff580875",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_14.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "acffdf00a635b87c800929e53dc7ad24306843b0403436bda7a12bb238718397",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_15.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "33d4188de06651796d6fdd6b1eaa8a47463b136b73e1cb8564a3603b50bd6a57",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_16.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "b2d85b58947fec64de1c9ac9f6a778f0bb5f88031a95bc00b450553dd402bb98",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_17.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "b918c5055d9f42e537264f9bb9b49a18a4e407d83279ca1bf445b6fe398de13c",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_18.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "06d6dc9100541475f1db9cfdba9fb47b8468f14a351fabb1d5b72c3bfd4a5b9b",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_19.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "8d97523a6337799fa4ee8011d5dc56596ed586e615c2d5c80e3aaa13df8d2d30",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_20.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "f0eb16eb6cf9b1be64c93459ae744cc77c17b13d396503c046a88b98a7b57cb8",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_21.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "682a2c44451d3230e82afe6873c71273d6c00595fa4edac23866649e86ddc4d8",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_22.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "4b755abc7a601745b5ee5447eb4eacf27e27fc6bd7c73af36d36d608686de7de",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_23.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "f164d77cb4f14298d7045aaf10391e4d6bc427dc619c5210339f46d05d3d73d6",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_24.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "57cbf3d092a0ce6cdb7bf72614a2238bd062808fe706a3c6bcf64d4c68ede762",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_25.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "b5f55b471488a596f8367f64b360c885ca11379ac74e3834906ec72553bdadbf",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_26.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "23af3fe6e78cacfbb51b951db668d0fc3ba8d134f596e7aaf6e6d27b856fb487",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_27.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "f02595f5a44d8596a6a6981830fbf8924abd3964117ec707ebcd7947154c084a",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_28.ts",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "a517109bb691e5569117c4b023c33409c7cbacc9fd501fd05b85ff6e7ba9886f",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_29.js",
+          "lineage": "v2-js_ts-supported",
+          "source_sha256": "a6ca43e305e3c214ba7b911691f15a661b08f47049c5ee5f6338e62f34ee6c11",
+          "language": "js_ts",
+          "expected_status": "resolved",
+          "expected_candidate_count": 1
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_30.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "33a49dcdebdadc80ee20b2aa4d478d57694685eb25ee67ae20f33350bbd1e33e",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_31.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "62776b4148f70c91cebf0d882254ea0e7cc3c66d334902dcb982c44805d5d169",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_32.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "95f461bd35dbd7fcb48947432fdf5f4851fddf365f2f2d02ec1a2933eb7b5ccc",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_33.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "21715562555028fbb33f40d0552248de80d4520612d29858ef157d6cba1b0a34",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_34.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "b8f2fca46cdf3de8110192a456b3453744b5d84c36fc84a185ea4500b21a0f74",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_35.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "2237da67333b1e5efe11bc333c6b6340216188203dd72a4d0aff2ad56fd332f1",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_36.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "48a7dc80ea2281ff93b1049ddde39828ba15d9802cf847ef733733ba72f56669",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_37.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "445581aff64f252e28051478eedb3461e6dc1cdda7b107bf80a7ffac686a91dc",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_38.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "a1751022231bc89b0f65fee3e38cf2f3f035ce60f38876c93ca3656b1ab65990",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_39.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "bd89634a796ff1cb8e84f5378f8ea5b9448b7632be24c0ff1199b68245246715",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_40.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "16b9aaa98471697465e8c42716bc9ec5ee5e63b96340d006c3b188fb1fa3c88e",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_41.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "044fcc4bf7a8d56c18ca46cfabd11567f5b862918bb0f12562af9a609ad34775",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_42.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "a4f2e0f2e453eed94f789eea1371137e180144d17c641e95367169fe3ceda841",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_43.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "576fca3870b264782a0e4cc1caef11bf9a36ec4ad715e1179ab80e2be5b16b57",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_44.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "e655843575d05722ef7d7e59c2c2509e6fadca5832c0334251d4305660c305da",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_45.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "b2a98c0965bca1d032d0ef46cbbed0064c3fab6d6c634fbd7ed62be5393614e7",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_46.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "148f16299d7cddf572f08435c11139f34ba55d4d858c452f9dbff3f9d70283a1",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_47.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "88d61b87e8fa5ea921beaccece6154986642f536ab60982acadd1cf90eed5975",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_48.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "75a115116a53867ada85498dc9a24e810a5d358e4b2f86f3fb01b9516ae01a58",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_49.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "91179adbd55bb3fde3729785f703a89071fa48b69201002f784d5a90fee8a890",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_50.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "70a944082f26434d59053fc39a93e674dfb3d6ef8327083039578a69174a3a72",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_51.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "e35fb2e3f47f4c5e0bd076a2e416a271fb35eedb0fa80b5586ce117f84cad06a",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_52.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "0ad54e0f5c7fcdd30f8efecc5770a0127bda0d0b105cdd6b02ecf60569cfa770",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_53.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "f6491ace190e44da6444a0d3ac7cf85d14ea1277c0cb0aeae3595904715e8ae0",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_54.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "678cae0143e6838186d1c6f9ab4e9d40a3bf48b1922de2a51621494c4018799b",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_55.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "0374c97c237c191e11a1a9e01e2c647599c8351a7ea19116dda898c5b5d7e665",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_56.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "959dfb7dc1698bffad6e659df992c0314f605cba8eac32d58560992270dffa41",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_57.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "9eca33ae36082f8b2c3f5420c3f675f97aef20b4a85556778243f36afb1a5a7e",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_58.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "2afd099446e6715a2d2889af7fb7fa0b19a589d1e25e3d9065eea46dbd7df5ec",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_59.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "00ebf59ceeda9254d85ce30454abfd324e351ecd87eab7395a15064de6ca6140",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_60.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "0d52e3bd4c3103ad34f8b90ea422e90ca20c3c7b18ee039e639265c4f1ec8bee",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_61.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "78ada97033ba1b66e4df8766cc94d5a1edccdacb43bb09e7cb318db3289b0c5c",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_62.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "ca0b85cfa75e9f53c5584c64994337b2a367f1012b85c031dc420783123bb1ca",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_63.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "1f50e23100a7925256df2956af86dacb213597a176dab49dc1839479fcca138a",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_64.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "518fb953b26590993296921cff65ac92f3293bb43bf2bd26634ae6d7018d74dd",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_65.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "701bd7d064bb48049d0eddc65420b08320efd09a23948a023c14fa184d7ad8bf",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_66.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "78153470a77ba2c6c2fca28bdf98d8e0806061acddb095f2459804ad968b56c2",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_67.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "7503630c17241c260a4abf680c0fc663dae1bd5fdd3dad5046de35117add1357",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_68.ts",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "1e25ed9abce3be5600dbbedf414f68e467028b88b077b3f282cc7dc8f373b167",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_69.js",
+          "lineage": "v2-js_ts-negative",
+          "source_sha256": "be467c85ecd8290426621e303dc660a1ba5bc6df74e041afdac54ef4eda865c1",
+          "language": "js_ts",
+          "expected_status": "unresolved",
+          "expected_candidate_count": 0
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_70.ts",
+          "lineage": "v2-js_ts-ambiguous",
+          "source_sha256": "84974d656129e17fd81c0b7ab44179340987e3737638cfbdc7f5f1792b3c7b3f",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_71.ts",
+          "lineage": "v2-js_ts-ambiguous",
+          "source_sha256": "5f6c13f73c6c02e41d4c9a48d6d3cf3e585f71a31f3049f7d17bc6e4b8e9809c",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_72.ts",
+          "lineage": "v2-js_ts-ambiguous",
+          "source_sha256": "1db261c78122b52773678376893eb461072563b890c9bd617918a4fd544039cd",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_73.ts",
+          "lineage": "v2-js_ts-ambiguous",
+          "source_sha256": "8468d4cccc6b03c88e1a398a293e10ac49f17fa09d7a21cc22a73d1ca090b3cf",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_74.ts",
+          "lineage": "v2-js_ts-ambiguous",
+          "source_sha256": "f485bb57c34af1f4eef602666af23b750b4924ae5629b7dd6e7610e31e760410",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_75.ts",
+          "lineage": "v2-js_ts-ambiguous",
+          "source_sha256": "bfe5550fb94793d556fb61b961164faa7512ad24ef1682089fd9925e343f60bf",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_76.ts",
+          "lineage": "v2-js_ts-ambiguous",
+          "source_sha256": "17c22be5fe98209f325415190f52b21663f0937cadfd88ad99448b6619de98fb",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_77.ts",
+          "lineage": "v2-js_ts-ambiguous",
+          "source_sha256": "a0a19a68510781f71f5af67ffa08472a293376de8b9443d85cb8a3bae040e11c",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_78.ts",
+          "lineage": "v2-js_ts-ambiguous",
+          "source_sha256": "da9efe74e40bff3ce6705c5f054246504d9490e07514dd7d58e98e1133754fff",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        },
+        {
+          "fixture_id": "js_ts:js_ts/locked_v2_79.ts",
+          "lineage": "v2-js_ts-ambiguous",
+          "source_sha256": "f605301461cbdbbe9a061e9269fdb98dd7d840dff79fb9591ea4a2b845e2e656",
+          "language": "js_ts",
+          "expected_status": "ambiguous",
+          "expected_candidate_count": 2
+        }
+      ]
+    }
+  ],
+  "framework_task": {
+    "file": "backend/tests/phase3/evaluation/test_framework_labels.py",
+    "sha256": "d88072ccdc61f92baaf471e4253c717c05a0ca5a5ca6a7500912ad672fa1ef37",
+    "split": "development qualification; generated in test",
+    "adapters": ["fastapi", "express", "http_client"],
+    "per_adapter": {
+      "positive": 20,
+      "negative": 20
+    },
+    "limitations": "Repeated synthetic template variants, not independent real-repository examples or a runtime-flow oracle."
+  }
+}
