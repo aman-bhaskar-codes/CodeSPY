@@ -167,3 +167,12 @@ def test_services_default_to_v1_and_reject_unregistered_policies():
         SubmissionService(None, None, policy=v2(github_strip_root=True))
     with pytest.raises(ValueError):
         SubmissionService(None, None, policy=v2(metadata_file_bytes=1))
+
+
+def test_legacy_policy_payload_without_version_keeps_v1_defaults():
+    policy = ingestion.AdmissionPolicyV1()
+    assert ingestion.parse_admission_policy({}) == policy
+    source = SourcePolicyV1(policy_hash=policy.digest(), admission={})
+    assert source.admission == policy
+    with pytest.raises(ValidationError):
+        ingestion.parse_admission_policy({"metadata_file_bytes": 1})

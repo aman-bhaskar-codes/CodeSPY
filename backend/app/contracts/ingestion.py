@@ -43,6 +43,10 @@ _POLICY_ADAPTER: TypeAdapter[AdmissionPolicy] = TypeAdapter(AdmissionPolicy)
 
 
 def parse_admission_policy(value: Any) -> AdmissionPolicy:
+    # V1 historically allowed its version field to be omitted. Never infer V2
+    # from fields: absent version retains the strict original V1 contract.
+    if isinstance(value, dict) and "version" not in value:
+        return AdmissionPolicyV1.model_validate(value)
     return _POLICY_ADAPTER.validate_python(value)
 
 
