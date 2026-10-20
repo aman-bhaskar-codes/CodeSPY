@@ -29,6 +29,8 @@ function problem(error: unknown): string {
     return "Your session expired. Sign in again; your selected file is kept here.";
   if (error instanceof ApiError && error.status === 403)
     return "Access changed. Reload your session and repository list.";
+  if (error instanceof ApiError && error.code === "analysis_unavailable")
+    return "Structural analysis is unavailable. Start the qualified local runtime before retrying.";
   if (error instanceof ApiError && error.status === 409)
     return "This request conflicts with existing work. Reload its status before retrying.";
   if (error instanceof ApiError && error.status === 429)

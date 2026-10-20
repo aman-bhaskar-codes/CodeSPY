@@ -244,7 +244,7 @@ export function StructuralReportView({ report, repositoryId }: Props) {
         {selectedExcerpt && (
           <div role="region" aria-label="Source excerpt">
             <p>
-              File {selectedExcerpt.location.file_id} · bytes{" "}
+              File {report.symbols?.find(s => s.location.file_id === selectedExcerpt.location.file_id)?.path ?? selectedExcerpt.location.file_id} · bytes{" "}
               {selectedExcerpt.location.range.start_byte}–
               {selectedExcerpt.location.range.end_byte} · SHA256{" "}
               {selectedExcerpt.location.sha256}

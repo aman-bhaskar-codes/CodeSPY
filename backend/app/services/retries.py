@@ -284,6 +284,10 @@ class RetryService:
         # Use the standard lock hierarchy, including org capacity, before replay lookup.
         await lock_scope(s, ctx.org_id, ctx.principal_id, old["repository_id"], old["snapshot_id"])
         old = await load_job(s, ctx.org_id, old["id"], lock=True)
+        # The immutable spec and publication guard bind the requesting principal.
+        # Other writers can start a new analysis; they cannot inherit that identity.
+        if old["principal_id"] != ctx.principal_id:
+            raise RetryRejected("retry_principal_mismatch")
         existing = (
             (
                 await s.execute(

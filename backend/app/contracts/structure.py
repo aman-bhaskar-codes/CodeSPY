@@ -329,6 +329,7 @@ class StructuralCoverageV1(Contract):
     unresolved: int = Field(default=0, ge=0)
     distinct_resolution_sites: int = Field(default=0, ge=0)
     omitted_diagnostics: int = Field(default=0, ge=0)
+    omitted_details_count: int = Field(default=0, ge=0)
     syntax: SectionState = "complete"
     resolution: SectionState = "complete"
     framework: SectionState = "complete"
@@ -444,6 +445,7 @@ class StructuralResultV1(Contract):
 
 class AnalysisAcceptedV1(Contract):
     schema_version: Literal[1] = 1
+    status_url: str = Field(pattern=r"^/api/v1/jobs/[0-9a-f-]{36}$")
     spec_id: UUID
     job_id: UUID
     snapshot_id: UUID

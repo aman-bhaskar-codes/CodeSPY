@@ -63,3 +63,26 @@ def test_reassigned_function_is_not_a_unique_static_target():
     )
     calls = [r for r in result["resolutions"] if r["resolution_kind"] == "call_target"]
     assert calls and all(r["status"] == "unresolved" for r in calls)
+
+
+def test_sources_and_configs_have_independent_profile_budgets():
+    from app.adapters.typescript import validate_input
+
+    request = {
+        "schema_version": 1,
+        "files": [{"path": f"source_{i}.ts", "text": "export {};"} for i in range(128)],
+        "configs": [{"path": f"tsconfig{i}.json", "text": "{}"} for i in range(32)],
+    }
+    assert validate_input(request) == request
+
+
+def test_encoded_input_capacity_is_bounded_before_launch():
+    import pytest
+    from app.adapters.typescript import TypeScriptCapacityError, serialize_input
+
+    request = {
+        "schema_version": 1,
+        "files": [{"path": f"file_{i}.ts", "text": "\\" * (1024 * 1024)} for i in range(11)],
+    }
+    with pytest.raises(TypeScriptCapacityError):
+        serialize_input(request)

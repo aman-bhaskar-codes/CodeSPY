@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from app.adapters.typescript import TypeScriptProtocolError
+from app.analyzers.capacity import bound_draft
 from app.analyzers.frameworks.express import observe_express
 from app.analyzers.frameworks.fastapi import observe_fastapi
 from app.analyzers.frameworks.http_client import observe_http
@@ -198,6 +199,42 @@ def analyze(
             )
         )
 
+    callable_symbols = {s.semantic_key: s for s in all_symbols if s.kind in {"function", "method"}}
+    by_key = {s.semantic_key: s for s in all_symbols}
+    call_edges = []
+    for record in resolutions:
+        if record.resolution_kind != "call_target":
+            continue
+        site = by_key[record.site_key]
+        if site.container_key not in callable_symbols:
+            continue  # Module/class-body calls do not establish callable recursion.
+        for candidate in record.candidate_keys:
+            if candidate in callable_symbols:
+                call_edges.append(
+                    GraphEdge(
+                        id=record.site_key + ":" + candidate,
+                        source=site.container_key,
+                        target=candidate,
+                        relation="candidate_calls",
+                        support=(record.site_key,),
+                    )
+                )
+    if callable_symbols:
+        projection = build_projection(
+            callable_symbols, call_edges, relation_family="candidate_calls"
+        )
+        condensed = condense(projection)
+        components_sections.append(
+            ComponentSectionV1(
+                relation="candidate_calls",
+                state="complete" if condensed.disposition == "complete" else "partial",
+                components=condensed.components or (),
+                edges=condensed.edges or (),
+                scanned_edges=condensed.scanned_edges,
+                reason=condensed.reason,
+            )
+        )
+
     # 6. Reconcile coverage
     eligible_count = sum(1 for f in source_input.files if f.eligible)
     excluded_count = sum(1 for f in source_input.files if not f.eligible)
@@ -256,7 +293,7 @@ def analyze(
         omissions=omissions,
     )
 
-    return StructuralDraftV1(
+    draft = StructuralDraftV1(
         schema_version=1,
         request_nonce=source_input.request_nonce,
         config_hash=source_input.config_hash,
@@ -273,3 +310,5 @@ def analyze(
         components=tuple(components_sections[:2]),
         coverage=coverage,
     )
+
+    return bound_draft(draft, source_input, units)

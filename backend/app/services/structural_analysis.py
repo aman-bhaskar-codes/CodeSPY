@@ -36,6 +36,7 @@ async def replay_spec(
 ) -> AnalysisSpecV1:
     if (
         existing["operation"] != "analyze_structure"
+        or existing["principal_id"] != ctx.principal_id
         or existing["repository_id"] != repository_id
         or existing["snapshot_id"] != snapshot_id
         or existing["config_hash"] != config.semantic_hash()

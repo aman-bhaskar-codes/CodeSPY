@@ -87,6 +87,19 @@ class Scopes(ast.NodeVisitor):
             *(d for d in node.args.kw_defaults if d is not None),
         ]:
             self.visit(expression)
+        for argument in [
+            *node.args.posonlyargs,
+            *node.args.args,
+            *node.args.kwonlyargs,
+            *([node.args.vararg] if node.args.vararg else []),
+            *([node.args.kwarg] if node.args.kwarg else []),
+        ]:
+            if argument.annotation:
+                self.visit(argument.annotation)
+        if node.returns:
+            self.visit(node.returns)
+        for parameter in node.type_params:
+            self.visit(parameter)
         self.nested(node, "function", node.args)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
@@ -94,7 +107,7 @@ class Scopes(ast.NodeVisitor):
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         self.scope.bindings[node.name].append(node)
-        for expression in [*node.decorator_list, *node.bases]:
+        for expression in [*node.decorator_list, *node.bases, *(k.value for k in node.keywords)]:
             self.visit(expression)
         self.nested(node, "class")
 
@@ -238,7 +251,9 @@ def resolve_python(
                         continue
                     paths = _module_paths(
                         path,
-                        alias.name if isinstance(node, ast.Import) else node.module,
+                        (alias.name if alias.asname else alias.name.split(".")[0])
+                        if isinstance(node, ast.Import)
+                        else node.module,
                         0 if isinstance(node, ast.Import) else node.level,
                         sources,
                     )
@@ -278,7 +293,7 @@ def resolve_python(
                 node = calls.get(
                     (symbol.location.range.start_line, symbol.location.range.start_col)
                 )
-                if node is not None:
+                if node is not None and node in scopes.owners:
                     scope = scopes.owners[node]
                     if isinstance(node.func, ast.Name):
                         targets, basis = lookup(path, scope, node.func.id)

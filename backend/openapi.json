@@ -24,9 +24,15 @@
             "format": "uuid",
             "title": "Spec Id",
             "type": "string"
+          },
+          "status_url": {
+            "pattern": "^/api/v1/jobs/[0-9a-f-]{36}$",
+            "title": "Status Url",
+            "type": "string"
           }
         },
         "required": [
+          "status_url",
           "spec_id",
           "job_id",
           "snapshot_id"
@@ -801,6 +807,12 @@
                 "maxItems": 10000,
                 "title": "Omissions",
                 "type": "array"
+              },
+              "omitted_details_count": {
+                "default": 0,
+                "minimum": 0,
+                "title": "Omitted Details Count",
+                "type": "integer"
               },
               "omitted_diagnostics": {
                 "default": 0,
@@ -3359,6 +3371,12 @@
             "title": "Omissions",
             "type": "array"
           },
+          "omitted_details_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Omitted Details Count",
+            "type": "integer"
+          },
           "omitted_diagnostics": {
             "default": 0,
             "minimum": 0.0,
@@ -4442,6 +4460,12 @@
                 "maxItems": 10000,
                 "title": "Omissions",
                 "type": "array"
+              },
+              "omitted_details_count": {
+                "default": 0,
+                "minimum": 0,
+                "title": "Omitted Details Count",
+                "type": "integer"
               },
               "omitted_diagnostics": {
                 "default": 0,

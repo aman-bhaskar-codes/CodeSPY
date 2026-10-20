@@ -67,6 +67,7 @@ async def run(args: argparse.Namespace) -> None:
     engines, queue_urls = [], []
     s3 = sqs = None
     bucket_created = False
+    analysis_runner = None
     try:
         harness.migrate(
             values,
@@ -155,7 +156,7 @@ async def run(args: argparse.Namespace) -> None:
         runner = DockerAdmissionRunner(
             args.image_file.read_text().strip(), root / "admission"
         )
-        await runner.qualify()
+        await runner.qualify_analysis()
 
         analysis_runner = None
         toolchain = None
@@ -163,7 +164,7 @@ async def run(args: argparse.Namespace) -> None:
             analysis_runner = DockerAnalysisRunner(
                 args.analysis_image_file.read_text().strip(), root / "analysis"
             )
-            toolchain = await analysis_runner.readiness()
+            toolchain = await analysis_runner.qualify_analysis()
 
         async def ready():
             if (
@@ -257,8 +258,12 @@ async def run(args: argparse.Namespace) -> None:
                 s3.delete_bucket(Bucket=bucket)
             s3.close()
         harness.drop_database(values, database)
+        if analysis_runner is not None:
+            await analysis_runner.cleanup_pending()
         # Preserve ownership/workspace on incomplete sandbox removal.
-        if not list((root / "admission").glob("*/container.json")):
+        if not list((root / "admission").glob("*/container.json")) and not list(
+            (root / "analysis").glob("*.container.json")
+        ):
             shutil.rmtree(root)
 
 

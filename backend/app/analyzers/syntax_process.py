@@ -48,8 +48,8 @@ def extract_isolated(
 def main() -> None:
     from app.analyzers.languages import extract_syntax
 
-    raw = sys.stdin.buffer.read(4 * 1024 * 1024 + 1)
-    if len(raw) > 4 * 1024 * 1024:
+    raw = sys.stdin.buffer.read(16 * 1024 * 1024 + 1)
+    if len(raw) > 16 * 1024 * 1024:
         raise ValueError("input capacity")
     unit = SourceUnitV1.model_validate_json(raw)
     budget = AnalysisBudget()

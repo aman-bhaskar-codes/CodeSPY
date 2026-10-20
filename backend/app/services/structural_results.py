@@ -9,6 +9,7 @@ from uuid import uuid5
 
 from app.analyzers.identities import normalize_report, observation_key
 from app.analyzers.positions import SourceIndex
+from app.analyzers.result_shape import draft_locations, location_key
 from app.analyzers.source import DIALECTS
 from app.contracts.evidence import EvidenceEnvelopeV1
 from app.contracts.persistence import CoverageV1, EdgeCreateV1, NodeCreateV1, ResultBatchV1
@@ -23,22 +24,6 @@ from app.contracts.structure import (
 )
 from app.domain.canonical_json import canonical_bytes, semantic_digest
 from app.domain.scope import RunRef
-
-
-def location_key(location: SourceLocationV1) -> str:
-    return semantic_digest(location.model_dump())
-
-
-def draft_locations(draft: StructuralDraftV1) -> tuple[SourceLocationV1, ...]:
-    locations = [s.location for s in draft.symbols]
-    for route in draft.routes:
-        locations.extend([route.registration, *route.includes])
-        if route.handler:
-            locations.append(route.handler)
-    locations.extend(r.location for r in draft.requests)
-    locations.extend(d.location for d in draft.diagnostics if d.location is not None)
-    unique = {location_key(loc): loc for loc in locations}
-    return tuple(unique[key] for key in sorted(unique))
 
 
 def materialize_result(
@@ -81,10 +66,11 @@ def materialize_result(
         or draft.coverage.excluded_files != sum(not f.eligible for f in source.files)
         or draft.coverage.requested_files != len(requested)
         or draft.coverage.processed_files != len(processed)
-        or draft.coverage.omitted_files != len(omitted)
+        or draft.coverage.omitted_files != len(requested - processed)
+        or draft.coverage.omitted_files != len(omitted) + draft.coverage.omitted_details_count
         or len(omitted) != len(draft.coverage.omissions)
-        or processed & omitted
-        or processed | omitted != requested
+        or not processed <= requested
+        or not omitted <= requested - processed
         or any(
             o.file_id not in files or o.path != files[o.file_id].path
             for o in draft.coverage.omissions

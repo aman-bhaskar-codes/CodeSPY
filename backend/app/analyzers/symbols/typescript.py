@@ -1,6 +1,8 @@
 """Map compiler byte positions to admitted syntax identities without guessing targets."""
 
-from app.adapters.typescript import TypeScriptAdapter
+from typing import Literal
+
+from app.adapters.typescript import TypeScriptAdapter, TypeScriptCapacityError
 from app.analyzers.positions import SourceIndex
 from app.contracts.structure import (
     AnalysisBudget,
@@ -34,15 +36,46 @@ def resolve_typescript(
             ],
             True,
         )
-    result = TypeScriptAdapter().resolve(
-        {
-            "schema_version": 1,
-            "files": [{"path": p, "text": u.data.decode()} for p, u in sorted(selected.items())],
-            "configs": configs,
-            "max_sites": config.limits.resolution_sites,
-        },
-        budget,
-    )
+    try:
+        result = TypeScriptAdapter().resolve(
+            {
+                "schema_version": 1,
+                "files": [
+                    {"path": p, "text": u.data.decode()} for p, u in sorted(selected.items())
+                ],
+                "configs": configs,
+                "max_sites": config.limits.resolution_sites,
+            },
+            budget,
+        )
+    except TypeScriptCapacityError:
+        unavailable_records = []
+        for symbol in symbols:
+            if symbol.path not in selected or symbol.role not in {"call", "import"}:
+                continue
+            kind: Literal["call_target", "import"] = (
+                "call_target" if symbol.role == "call" else "import"
+            )
+            unavailable_records.append(
+                ResolutionV1(
+                    site_key=symbol.semantic_key,
+                    resolution_kind=kind,
+                    status="unresolved",
+                    reason="compiler_input_capacity",
+                )
+            )
+        return (
+            unavailable_records[: config.limits.resolution_sites],
+            [
+                DiagnosticV1(
+                    code="resolution_unavailable",
+                    stage="resolution",
+                    message="Compiler transport capacity reached; "
+                    "syntax observations are retained.",
+                )
+            ],
+            True,
+        )
     indexes = {p: SourceIndex(u.data) for p, u in selected.items()}
     records: dict[tuple[str, str, str], ResolutionV1] = {}
     for row in result["resolutions"]:

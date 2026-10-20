@@ -7,3 +7,8 @@ test('compiler host cannot read host filesystem or node_modules',()=>{
  fs.readFileSync=((p:unknown,...args:unknown[])=>{reads.push(String(p));assert.match(String(p),/typescript\/lib\/lib\.[a-z0-9.]+\.d\.ts$/);return (original as Function)(p,...args);}) as typeof fs.readFileSync;
  try {const r=analyze({schema_version:1,files:[{path:'a.ts',text:'import x from "/etc/passwd"; import y from "host-only-package"; x(); y();'}]});assert.ok(r.resolutions.filter(x=>x.resolution_kind==='call_target').every(x=>x.status==='unresolved'));assert.ok(reads.length>0);}finally{fs.readFileSync=original;}
 });
+
+test('package metadata does not create a second project context',()=>{
+ const r=analyze({schema_version:1,files:[{path:'main.ts',text:'function f(){}; f();'}],configs:[{path:'tsconfig.json',text:'{"files":["main.ts"]}'},{path:'package.json',text:'{"scripts":{"install":"never run"},"extends":"not-a-config"}'}]});
+ assert.equal(r.diagnostics.length,0);assert.ok(r.resolutions.some(x=>x.resolution_kind==='call_target'&&x.status==='resolved'));
+});

@@ -1,6 +1,7 @@
 import hashlib
 from uuid import uuid4
 
+import pytest
 from app.analyzers.languages.python import extract
 from app.analyzers.symbols.python import resolve_python
 from app.contracts.structure import AnalysisBudget, AnalysisConfigV1, SourceUnitV1
@@ -125,3 +126,37 @@ def test_nested_lexical_scope_uses_nearest_definition():
     assert next(r for r in rows if r.resolution_kind == "call_target").candidate_keys == (
         target.semantic_key,
     )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def f(x: factory()): pass\n",
+        "def f() -> factory(): pass\n",
+        "class C(metaclass=factory()): pass\n",
+        "def f(x: Annotated[str, Field()]): pass\n",
+    ],
+)
+def test_annotation_and_class_keyword_calls_have_safe_scope(source):
+    assert call_results(source)
+
+
+def test_unaliased_dotted_import_keeps_package_identity():
+    files = {
+        "main.py": "import pkg.mod\npkg.f()\n",
+        "pkg/__init__.py": "def f(): pass\n",
+        "pkg/mod.py": "def f(): pass\n",
+    }
+    units = {path: make_unit(path, text) for path, text in files.items()}
+    obs = [extract(unit, AnalysisBudget()) for unit in units.values()]
+    rows, _ = resolve_python(
+        obs, units, AnalysisConfigV1(toolchain_hash="a" * 64), AnalysisBudget()
+    )
+    key = next(
+        s.semantic_key
+        for o in obs
+        if o.path == "pkg/__init__.py"
+        for s in o.symbols
+        if s.name == "f"
+    )
+    assert next(r for r in rows if r.resolution_kind == "call_target").candidate_keys == (key,)

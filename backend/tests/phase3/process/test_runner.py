@@ -22,7 +22,7 @@ async def test_owned_linux_analyzer_round_trip(tmp_path):
         pytest.skip("owned Linux analyzer image required")
     runner = DockerAnalysisRunner(image, tmp_path / "owner")
     source = fixture_input(tmp_path)
-    toolchain = await runner.readiness()
+    toolchain = await runner.qualify_analysis()
     config = source.config.model_copy(update={"toolchain_hash": toolchain})
     source = source.model_copy(
         update={

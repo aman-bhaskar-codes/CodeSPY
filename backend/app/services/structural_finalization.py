@@ -24,7 +24,7 @@ from app.models.tables import analysis_runs
 from app.ports.object_store import ObjectStore
 from app.repositories.event_repository import append_event
 from app.repositories.job_repository import attempts, jobs, load_job, worker_context
-from app.services.finalization_budget import FinalizationBudget
+from app.services.finalization_budget import FinalizationBudget, rollback_or_invalidate
 from app.services.jobs import JobService
 from app.services.publication import PublicationExecutor
 
@@ -114,7 +114,7 @@ class StructuralFinalizer:
         except Exception:
             raise FinalizationOutcomeUnknown("publication outcome requires recovery") from None
         finally:
-            await s.close()
+            await rollback_or_invalidate(s, self.cleanup_seconds)
 
     async def finish_analysis(
         self,

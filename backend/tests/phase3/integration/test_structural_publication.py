@@ -237,3 +237,97 @@ async def test_scoped_api_summary_sections_graph_evidence_and_export(factory, tm
             )
         assert (await client.get(base + "/report")).status_code == 404
         assert (await client.get(base + "/graph")).status_code == 404
+
+
+async def test_database_authority_rejects_expiry_after_entry(factory, tmp_path, monkeypatch):
+    from sqlalchemy.exc import DBAPIError
+
+    _, _, _, lease, store = await structural(factory, tmp_path)
+    finalizer = StructuralFinalizer(factory, store)
+    original = finalizer._entry
+
+    async def expire_after_entry(s, bound, job, budget):
+        result = await original(s, bound, job, budget)
+        await s.execute(
+            text(
+                "UPDATE job_attempts SET lease_expires_at=clock_timestamp()-interval '1 second' "
+                "WHERE id=:id"
+            ),
+            {"id": lease.attempt_id},
+        )
+        return result
+
+    monkeypatch.setattr(finalizer, "_entry", expire_after_entry)
+    with pytest.raises(DBAPIError, match="stale attempt"):
+        await StructuralAnalysisOperation(factory, store, finalizer, FixtureRunner()).execute(lease)
+    async with factory() as s:
+        assert await s.scalar(select(func.count()).select_from(structural_reports)) == 0
+        assert await s.scalar(select(func.count()).select_from(cpg_nodes)) == 0
+
+
+async def test_overdue_queued_structural_job_is_recovered_without_queue(factory, tmp_path):
+    ctx, snapshot, repo, _store = await admitted(factory, tmp_path)
+    _, job = await StructuralAnalysisService(factory).create_analysis_spec(
+        ctx, repo, snapshot, AnalysisConfigV1(toolchain_hash="a" * 64), "overdue"
+    )
+    async with factory() as s, s.begin():
+        await s.execute(
+            text("UPDATE jobs SET deadline=clock_timestamp()-interval '1 second' WHERE id=:id"),
+            {"id": job.id},
+        )
+    assert await JobService(factory).recover_due() >= 1
+    result = await JobService(factory).get(ctx, job.id)
+    assert result.state == "failed" and result.failure_code == "deadline_exceeded"
+    assert not result.report_available and result.result_run_id is None
+
+
+async def test_other_writer_must_start_new_spec_instead_of_retry_or_replay(factory, tmp_path):
+    from app.domain.errors import RetryRejected, ScopeViolation
+    from app.models.phase2_tables import PHASE2_TABLES
+    from app.models.tables import memberships, principals
+    from sqlalchemy import insert, update
+
+    ctx, spec, job, _, store = await structural(factory, tmp_path)
+    await JobService(factory).cancel(ctx, job.id)
+    other_id = uuid4()
+    other = ctx.model_copy(update={"principal_id": other_id})
+    grants = PHASE2_TABLES["repository_grants"]
+    async with factory() as s, s.begin():
+        await s.execute(
+            insert(principals).values(
+                id=other_id, subject_key=str(other_id), display_name="Other writer"
+            )
+        )
+        await s.execute(
+            insert(memberships).values(
+                org_id=ctx.org_id, principal_id=other_id, role=ctx.role.value
+            )
+        )
+        await s.execute(
+            insert(grants).values(
+                org_id=ctx.org_id,
+                principal_id=other_id,
+                repository_id=spec.repository_id,
+                permission="write",
+            )
+        )
+    service = StructuralAnalysisService(factory)
+    with pytest.raises(DuplicateConflict):
+        await service.create_analysis_spec(
+            other, spec.repository_id, spec.snapshot_id, spec.config, "analysis"
+        )
+    with pytest.raises(RetryRejected, match="retry_principal_mismatch"):
+        await RetryService(factory, store).retry(other, job.id, "other-retry")
+    fresh, fresh_job = await service.create_analysis_spec(
+        other, spec.repository_id, spec.snapshot_id, spec.config, "other-analysis"
+    )
+    assert fresh.id != spec.id and fresh.principal_id == other_id
+    assert fresh_job.id != job.id
+    async with factory() as s, s.begin():
+        await s.execute(
+            update(grants)
+            .where(grants.c.org_id == ctx.org_id, grants.c.principal_id == ctx.principal_id)
+            .values(revoked_at=func.clock_timestamp())
+        )
+    with pytest.raises(ScopeViolation):
+        await RetryService(factory, store).retry(ctx, job.id, "revoked-retry")

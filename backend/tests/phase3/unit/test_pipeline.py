@@ -150,3 +150,47 @@ def test_full_pipeline_and_reporting(tmp_path: Path):
     assert "# CodeSPY Architecture Report" in rendered_md
     assert "/items" in rendered_md
     assert "Nonclaims" in rendered_md
+
+
+def test_candidate_call_components_use_enclosing_functions(tmp_path):
+    import io
+    import zipfile
+
+    from app.contracts.structure import SourceFileV1
+    from tests.phase3.unit.test_materialization import fixture_input
+
+    source = fixture_input(tmp_path)
+    code = b"def alpha():\n beta()\ndef beta():\n alpha()\nalpha()\n"
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("main.py", code)
+    raw = buffer.getvalue()
+    manifest = inspect_zip_bytes(raw, AdmissionPolicyV1()).model_dump_json().encode()
+    (tmp_path / "archive.zip").write_bytes(raw)
+    (tmp_path / "manifest.json").write_bytes(manifest)
+    source = source.model_copy(
+        update={
+            "archive": SourceDescriptorV1(
+                path="archive.zip", sha256=hashlib.sha256(raw).hexdigest(), size_bytes=len(raw)
+            ),
+            "manifest": SourceDescriptorV1(
+                path="manifest.json",
+                sha256=hashlib.sha256(manifest).hexdigest(),
+                size_bytes=len(manifest),
+            ),
+            "files": (
+                SourceFileV1(
+                    file_id=uuid4(),
+                    path="main.py",
+                    sha256=hashlib.sha256(code).hexdigest(),
+                    size_bytes=len(code),
+                    language="python",
+                    eligible=True,
+                ),
+            ),
+        }
+    )
+    draft = analyze(source, tmp_path)
+    calls = next(c for c in draft.components if c.relation == "candidate_calls")
+    expected = {s.semantic_key for s in draft.symbols if s.kind == "function"}
+    assert calls.state == "complete" and any(set(group) == expected for group in calls.components)

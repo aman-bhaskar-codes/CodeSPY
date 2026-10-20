@@ -12,6 +12,20 @@ class TypeScriptProtocolError(ValueError):
     pass
 
 
+class TypeScriptCapacityError(TypeScriptProtocolError):
+    pass
+
+
+def serialize_input(value: dict[str, Any]) -> bytes:
+    payload = bytearray()
+    for chunk in json.JSONEncoder(ensure_ascii=False, separators=(",", ":")).iterencode(value):
+        encoded = chunk.encode()
+        if len(payload) + len(encoded) > 20 * 1024 * 1024:
+            raise TypeScriptCapacityError("serialized input limit")
+        payload.extend(encoded)
+    return bytes(payload)
+
+
 def _path(value: Any) -> bool:
     return (
         isinstance(value, str)
@@ -36,11 +50,13 @@ def validate_input(value: Any) -> dict[str, Any]:
     if (
         not isinstance(files, list)
         or not isinstance(configs, list)
-        or len(files) + len(configs) > 128
+        or len(files) > 128
+        or len(configs) > 32
     ):
         raise TypeScriptProtocolError("invalid files")
-    names, size = set(), 0
-    for item in files + configs:
+    names = set()
+    source_size = config_size = 0
+    for position, item in enumerate(files + configs):
         if (
             not isinstance(item, dict)
             or set(item) != {"path", "text"}
@@ -51,11 +67,19 @@ def validate_input(value: Any) -> dict[str, Any]:
             raise TypeScriptProtocolError("invalid file")
         names.add(item["path"])
         length = len(item["text"].encode("utf-8"))
-        size += length
-        if length > 2 * 1024 * 1024:
+        if position < len(files):
+            source_size += length
+        else:
+            config_size += length
+        if length > (2 * 1024 * 1024 if position < len(files) else 256 * 1024):
             raise TypeScriptProtocolError("file limit")
     maximum = value.get("max_sites", 2000)
-    if type(maximum) is not int or not 1 <= maximum <= 2000 or size > 16 * 1024 * 1024:
+    if (
+        type(maximum) is not int
+        or not 1 <= maximum <= 2000
+        or source_size > 16 * 1024 * 1024
+        or config_size > 1024 * 1024
+    ):
         raise TypeScriptProtocolError("input limit")
     return value
 
@@ -144,9 +168,7 @@ class TypeScriptAdapter:
         request = validate_input(input)
         entry = Path(__file__).resolve().parents[3] / "tools/typescript-analyzer/dist/src/cli.js"
         timeout = min(float(getattr(budget, "wall_seconds", 15)), 15)
-        payload = json.dumps(request, ensure_ascii=False).encode()
-        if len(payload) > 20 * 1024 * 1024:
-            raise TypeScriptProtocolError("serialized input limit")
+        payload = serialize_input(request)
         # Temporary files bound retained process output; outer container supplies native limits.
         import tempfile
 

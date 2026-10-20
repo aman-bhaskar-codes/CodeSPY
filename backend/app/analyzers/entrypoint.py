@@ -31,6 +31,9 @@ def main() -> None:
     if len(output) > 16 * 1024 * 1024:
         raise ValueError("output capacity")
     Path("/output/draft.json").write_bytes(output)
+    from app.admission.entrypoint import probe
+
+    capabilities = probe()
     peak = Path("/sys/fs/cgroup/memory.peak")
     memory_peak = int(peak.read_text().strip()) if peak.exists() else None
     print(
@@ -39,6 +42,7 @@ def main() -> None:
                 "sha256": hashlib.sha256(output).hexdigest(),
                 "rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
                 "cgroup_peak_bytes": memory_peak,
+                "capabilities": capabilities,
             }
         ),
         flush=True,

@@ -26,7 +26,8 @@ from app.domain.canonical_json import semantic_digest
 from app.domain.scope import RunRef
 
 
-async def test_maximum_source_profile_is_bounded_and_repeatable(tmp_path):
+@pytest.mark.parametrize("language", ["python", "typescript"])
+async def test_maximum_source_profile_is_bounded_and_repeatable(tmp_path, language):
     image = os.environ.get("CODESPY_ANALYSIS_IMAGE")
     if not image:
         pytest.skip("owned Linux image required for capacity qualification")
@@ -34,11 +35,31 @@ async def test_maximum_source_profile_is_bounded_and_repeatable(tmp_path):
     stream = io.BytesIO()
     with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for i in range(128):
-            prefix = f"def helper_{i}():\n return 1\nhelper_{i}()\n#".encode()
+            prefix = (
+                f"def helper_{i}():\n return 1\nhelper_{i}()\n#"
+                if language == "python"
+                else f"export function helper_{i}(){{return 1;}}\nhelper_{i}();\n//"
+            ).encode()
             padding = base64.b64encode(rng.randbytes(100000))
             data = prefix + padding[: 131072 - len(prefix)]
             assert len(data) == 131072
-            archive.writestr(f"source_{i:03}.py", data)
+            folder = f"project_{i // 4}/" if language == "typescript" else ""
+            suffix = "ts" if language == "typescript" else "py"
+            archive.writestr(f"{folder}source_{i:03}.{suffix}", data)
+        if language == "typescript":
+            import json
+
+            for project in range(32):
+                archive.writestr(
+                    f"project_{project}/tsconfig.json",
+                    json.dumps(
+                        {
+                            "files": [
+                                f"source_{i:03}.ts" for i in range(project * 4, project * 4 + 4)
+                            ]
+                        }
+                    ),
+                )
     raw = stream.getvalue()
     policy = AdmissionPolicyV1()
     manifest = inspect_zip_bytes(raw, policy)
@@ -93,6 +114,7 @@ async def test_maximum_source_profile_is_bounded_and_repeatable(tmp_path):
     assert digest(first) == digest(second)
     print(
         {
+            "language": language,
             "source_files": 128,
             "source_bytes": 16777216,
             "symbols": len(first.symbols),

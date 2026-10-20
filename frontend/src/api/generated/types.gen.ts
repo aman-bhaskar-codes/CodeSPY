@@ -24,6 +24,10 @@ export type AnalysisAcceptedV1 = {
      * Spec Id
      */
     spec_id: string;
+    /**
+     * Status Url
+     */
+    status_url: string;
 };
 
 /**
@@ -1145,6 +1149,10 @@ export type StructuralCoverageV1 = {
      * Omissions
      */
     omissions?: Array<FileOmissionV1>;
+    /**
+     * Omitted Details Count
+     */
+    omitted_details_count?: number;
     /**
      * Omitted Diagnostics
      */

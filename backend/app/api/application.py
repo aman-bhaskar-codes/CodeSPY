@@ -681,6 +681,18 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     @app.post("/api/v1/jobs/{job_id}/retry", status_code=202)
     async def retry_job(request: Request, job_id: UUID) -> RetryResponseV1 | RetryResponseV2:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id, write=True)
+        job = await jobs.get(ctx, job_id)
+        if isinstance(job, JobRecordV3) and job.operation == "analyze_structure":
+            if (
+                not settings.structural_enabled
+                or ports.readiness is None
+                or not await ports.readiness()
+                or job.analysis_spec_id is None
+            ):
+                raise HTTPException(503, detail="analysis_unavailable")
+            spec = await structural.get_spec(ctx, job.repository_id, job.analysis_spec_id)
+            if spec is None or spec.toolchain_hash != settings.structural_toolchain_hash:
+                raise RetryRejected("retry_not_supported")
         return await retries.retry(ctx, job_id, key(request))
 
     @app.get("/api/v1/jobs/{job_id}/events")
@@ -838,6 +850,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             spec_id=spec.id,
             job_id=job.id,
             snapshot_id=body.snapshot_id,
+            status_url=f"/api/v1/jobs/{job.id}",
         )
 
     @app.get("/api/v1/repositories/{repository_id}/analyses/{run_id}/report")
