@@ -3,6 +3,9 @@ import type {
   RepositoryPageV1,
   SubmissionRecordV1,
   JobRecordV2,
+  JobRecordV3,
+  StructuralSummaryV1,
+  StructuralSectionPageV1,
   InventoryPageV1,
   AnalysisAcceptedV1,
   ArchitectureReportV1,
@@ -41,7 +44,7 @@ export const api = {
       { signal },
     ),
   job: (id: string, signal?: AbortSignal) =>
-    request<JobRecordV2>(`/jobs/${id}`, { signal }),
+    request<JobRecordV2 | JobRecordV3>(`/jobs/${id}`, { signal }),
   submission: (id: string, signal?: AbortSignal) =>
     request<SubmissionRecordV1>(`/submissions/${id}`, { signal }),
   inventory: (id: string, cursor: string | null, signal?: AbortSignal) =>
@@ -66,19 +69,19 @@ export const api = {
       }),
     }),
   analysisReport: (repoId: string, runId: string, signal?: AbortSignal) =>
-    request<ArchitectureReportV1>(
+    request<StructuralSummaryV1>(
       `/repositories/${repoId}/analyses/${runId}/report`,
       { signal },
-    ),
+    ).then((value) => hydrateReport(repoId, value, signal)),
   snapshotStructuralReport: (
     repoId: string,
     snapshotId: string,
     signal?: AbortSignal,
   ) =>
-    request<ArchitectureReportV1>(
+    request<StructuralSummaryV1>(
       `/repositories/${repoId}/snapshots/${snapshotId}/structural-report`,
       { signal },
-    ),
+    ).then((value) => hydrateReport(repoId, value, signal)),
 };
 export function mutationHeaders(
   csrf: string,
@@ -89,4 +92,39 @@ export function mutationHeaders(
     "Idempotency-Key": key,
     "Content-Type": "application/json",
   };
+}
+
+async function hydrateReport(
+  repoId: string,
+  value: StructuralSummaryV1,
+  signal?: AbortSignal,
+): Promise<ArchitectureReportV1> {
+  const report = { ...value } as ArchitectureReportV1;
+  // Every response and collection has a server-enforced cap. Fetch only a user-selected report.
+  for (const section of [
+    "symbols",
+    "resolutions",
+    "routes",
+    "requests",
+    "links",
+    "diagnostics",
+    "components",
+    "symbol_map",
+    "evidence_map",
+    "excerpts",
+  ] as const) {
+    const items: unknown[] = [];
+    let after: string | null = null;
+    do {
+      const page: StructuralSectionPageV1 = await request(
+        `/repositories/${repoId}/analyses/${value.run_ref.run_id}/report/${section}?limit=100${after ? `&after=${encodeURIComponent(after)}` : ""}`,
+        { signal },
+      );
+      items.push(...page.items);
+      after = page.next_cursor ?? null;
+      if (items.length > 10000) throw new Error("Report capacity exceeded");
+    } while (after);
+    Object.assign(report, { [section]: items });
+  }
+  return report;
 }

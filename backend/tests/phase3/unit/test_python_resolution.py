@@ -1,6 +1,7 @@
 import hashlib
 from uuid import uuid4
 
+import pytest
 from app.analyzers.languages.python import extract
 from app.analyzers.symbols.python import resolve_python
 from app.contracts.structure import AnalysisBudget, AnalysisConfigV1, SourceUnitV1
@@ -85,3 +86,77 @@ def main():
 
     resolutions, _ = resolve_python([obs], {unit.path: unit}, config, budget)
     assert any(r.status == "unresolved" and r.resolution_kind == "import" for r in resolutions)
+
+
+def call_results(source):
+    unit = make_unit("main.py", source)
+    obs = extract(unit, AnalysisBudget())
+    rows, _ = resolve_python(
+        [obs], {unit.path: unit}, AnalysisConfigV1(toolchain_hash="a" * 64), AnalysisBudget()
+    )
+    return [r for r in rows if r.resolution_kind == "call_target"]
+
+
+def test_parameter_and_later_assignment_prevent_false_unique_calls():
+    for source in (
+        "def target(): pass\ndef run(target): target()\n",
+        "def target(): pass\ndef run():\n target()\n target = unknown\n",
+        "def target(): pass\ntarget = unknown\ntarget()\n",
+        "def outer():\n def secret(): pass\nsecret()\n",
+        "class C:\n def target(): pass\n def run(self): target()\n",
+    ):
+        assert all(r.status != "resolved" for r in call_results(source))
+
+
+def test_conditional_definitions_remain_ambiguous():
+    rows = call_results(
+        "if condition:\n def target(): pass\nelse:\n def target(): pass\ntarget()\n"
+    )
+    assert len(rows) == 1 and rows[0].status == "ambiguous"
+
+
+def test_nested_lexical_scope_uses_nearest_definition():
+    source = "def target(): pass\ndef outer():\n def target(): pass\n target()\n"
+    unit = make_unit("main.py", source)
+    obs = extract(unit, AnalysisBudget())
+    rows, _ = resolve_python(
+        [obs], {unit.path: unit}, AnalysisConfigV1(toolchain_hash="a" * 64), AnalysisBudget()
+    )
+    target = next(s for s in obs.symbols if s.name == "target" and ".outer." in s.qualified_name)
+    assert next(r for r in rows if r.resolution_kind == "call_target").candidate_keys == (
+        target.semantic_key,
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def f(x: factory()): pass\n",
+        "def f() -> factory(): pass\n",
+        "class C(metaclass=factory()): pass\n",
+        "def f(x: Annotated[str, Field()]): pass\n",
+    ],
+)
+def test_annotation_and_class_keyword_calls_have_safe_scope(source):
+    assert call_results(source)
+
+
+def test_unaliased_dotted_import_keeps_package_identity():
+    files = {
+        "main.py": "import pkg.mod\npkg.f()\n",
+        "pkg/__init__.py": "def f(): pass\n",
+        "pkg/mod.py": "def f(): pass\n",
+    }
+    units = {path: make_unit(path, text) for path, text in files.items()}
+    obs = [extract(unit, AnalysisBudget()) for unit in units.values()]
+    rows, _ = resolve_python(
+        obs, units, AnalysisConfigV1(toolchain_hash="a" * 64), AnalysisBudget()
+    )
+    key = next(
+        s.semantic_key
+        for o in obs
+        if o.path == "pkg/__init__.py"
+        for s in o.symbols
+        if s.name == "f"
+    )
+    assert next(r for r in rows if r.resolution_kind == "call_target").candidate_keys == (key,)

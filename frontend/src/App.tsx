@@ -9,6 +9,7 @@ import { api, ApiError, mutationHeaders, request } from "./api/client";
 import type {
   SubmissionRecordV1,
   RetryResponseV1,
+  RetryResponseV2,
 } from "./api/generated/types.gen";
 import { StructuralReportView } from "./features/structure/StructuralReportView";
 
@@ -28,6 +29,8 @@ function problem(error: unknown): string {
     return "Your session expired. Sign in again; your selected file is kept here.";
   if (error instanceof ApiError && error.status === 403)
     return "Access changed. Reload your session and repository list.";
+  if (error instanceof ApiError && error.code === "analysis_unavailable")
+    return "Structural analysis is unavailable. Start the qualified local runtime before retrying.";
   if (error instanceof ApiError && error.status === 409)
     return "This request conflicts with existing work. Reload its status before retrying.";
   if (error instanceof ApiError && error.status === 429)
@@ -136,7 +139,10 @@ export default function App() {
       query.state.data && terminal.has(query.state.data.state) ? false : 1500,
   });
   useEffect(() => {
-    if (analysisJob.data?.state === "succeeded") {
+    if (
+      analysisJob.data?.state === "succeeded" ||
+      analysisJob.data?.state === "partial"
+    ) {
       void client.invalidateQueries({
         queryKey: ["structuralReport", repository, snapshot],
       });
@@ -152,6 +158,34 @@ export default function App() {
         session.data.csrf_token,
       );
       setAnalysisJobId(res.job_id);
+    },
+  });
+  const cancelAnalysis = useMutation({
+    mutationFn: async () => {
+      if (!analysisJobId || !session.data) throw new Error("missing analysis");
+      await request(`/jobs/${analysisJobId}/cancel`, {
+        method: "POST",
+        headers: mutationHeaders(session.data.csrf_token),
+      });
+      await client.invalidateQueries({ queryKey: ["job", analysisJobId] });
+    },
+  });
+  const retryAnalysis = useMutation({
+    mutationFn: async () => {
+      if (!analysisJobId || !session.data) throw new Error("missing analysis");
+      let key = retryKeys.current.get(analysisJobId);
+      if (!key) {
+        key = crypto.randomUUID();
+        retryKeys.current.set(analysisJobId, key);
+      }
+      const result = await request<RetryResponseV2>(
+        `/jobs/${analysisJobId}/retry`,
+        {
+          method: "POST",
+          headers: mutationHeaders(session.data.csrf_token, key),
+        },
+      );
+      setAnalysisJobId(result.retry_job_id);
     },
   });
   const upload = useMutation({
@@ -557,6 +591,30 @@ export default function App() {
                     Deterministic syntax & graph analysis · Phase 3
                   </span>
                 </div>
+                {analysisJob.data && !terminal.has(analysisJob.data.state) && (
+                  <button
+                    type="button"
+                    disabled={cancelAnalysis.isPending}
+                    onClick={() => cancelAnalysis.mutate()}
+                  >
+                    Cancel structural analysis
+                  </button>
+                )}
+                {analysisJob.data &&
+                  ["failed", "cancelled"].includes(analysisJob.data.state) && (
+                    <button
+                      type="button"
+                      disabled={retryAnalysis.isPending}
+                      onClick={() => retryAnalysis.mutate()}
+                    >
+                      Retry structural analysis
+                    </button>
+                  )}
+                {(cancelAnalysis.isError || retryAnalysis.isError) && (
+                  <p role="alert">
+                    {problem(cancelAnalysis.error ?? retryAnalysis.error)}
+                  </p>
+                )}
                 {structuralReport.data ? (
                   <StructuralReportView
                     report={structuralReport.data}

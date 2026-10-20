@@ -8,9 +8,9 @@ export function safePath(p:unknown): p is string {return typeof p==='string' && 
 export function validate(value:unknown):Input {
  const x=value as Input;if(!x||x.schema_version!==1||!Array.isArray(x.files)||Object.keys(x).some(k=>!['schema_version','files','configs','max_sites'].includes(k)))throw Error('invalid input');
  if(x.configs!==undefined&&!Array.isArray(x.configs))throw Error('invalid configs');
- const entries=[...x.files,...(x.configs??[])];if(entries.length>128)throw Error('file count');let bytes=0;const names=new Set<string>();
- for(const f of entries){if(!f||!safePath(f.path)||typeof f.text!=='string'||Object.keys(f).sort().join(',')!=='path,text'||names.has(f.path))throw Error('invalid file');names.add(f.path);const n=Buffer.byteLength(f.text);bytes+=n;if(n>2*1024*1024)throw Error('file bytes');}
- if(bytes>16*1024*1024||x.max_sites!==undefined&&(!Number.isInteger(x.max_sites)||x.max_sites<1||x.max_sites>2000))throw Error('budget');return x;
+ const entries=[...x.files,...(x.configs??[])];if(x.files.length>128||(x.configs??[]).length>32)throw Error('file count');let sourceBytes=0,configBytes=0;const names=new Set<string>();
+ for(const [position,f] of entries.entries()){if(!f||!safePath(f.path)||typeof f.text!=='string'||Object.keys(f).sort().join(',')!=='path,text'||names.has(f.path))throw Error('invalid file');names.add(f.path);const n=Buffer.byteLength(f.text);if(position<x.files.length)sourceBytes+=n;else configBytes+=n;if(n>(position<x.files.length?2*1024*1024:256*1024))throw Error('file bytes');}
+ if(sourceBytes>16*1024*1024||configBytes>1024*1024||x.max_sites!==undefined&&(!Number.isInteger(x.max_sites)||x.max_sites<1||x.max_sites>2000))throw Error('budget');return x;
 }
 export function analyze(value:unknown) {
  const input=validate(value);const files=new Map(input.files.map(f=>['/'+f.path,f.text]));const configs=new Map((input.configs??[]).map(f=>['/'+f.path,f.text]));
@@ -49,8 +49,8 @@ export function analyze(value:unknown) {
   if(c.references!==undefined){if(!Array.isArray(c.references)){diag('invalid_references',p);valid=false;}else for(const r of c.references){if(++refs>16){diag('reference_limit',p);valid=false;break;}const q=local(p,r?.path);if(q)config(q,[...stack,p]);else{diag('unavailable_reference',p);valid=false;}}}
   const project={options,roots:roots.sort(),valid};projects.set(p,project);return project;
  }
- for(const p of [...configs.keys()].sort())config(p);
- const contexts=configs.size?[...projects.entries()].filter(([p,v])=>!bases.has(p)&&v.valid).map(([,v])=>v):[{options:defaults,roots:[...files.keys()].sort(),valid:true}];
+ for(const p of [...configs.keys()].sort())if(path.posix.basename(p)!=='package.json')config(p);
+ const contexts=projects.size?[...projects.entries()].filter(([p,v])=>!bases.has(p)&&v.valid).map(([,v])=>v):[{options:defaults,roots:[...files.keys()].sort(),valid:true}];
  const resolutions:Resolution[]=[];let truncated=false;const limit=input.max_sites??2000;
  let checker:ts.TypeChecker;
  function record(n:ts.Node,symbol:ts.Symbol|undefined,kind:Resolution['resolution_kind'],namespace:'value'|'type',reason?:string){if(resolutions.length>=limit){truncated=true;return;}const sf=n.getSourceFile();let candidates:Candidate[]=[];
@@ -60,9 +60,12 @@ export function analyze(value:unknown) {
   resolutions.push({path:sf.fileName.slice(1),start:n.getStart(sf),end:n.end,namespace,resolution_kind:kind,status:candidates.length>1?'ambiguous':candidates.length?'resolved':'unresolved',candidates,reason:reason??(candidates.length?'static_symbol':'declaration_unavailable'),basis:'compiler_symbol'});
  }
  for(const context of contexts){const program=ts.createProgram(context.roots,context.options,host);checker=program.getTypeChecker();
+ const rebound = new Set<ts.Symbol>();
+ for(const path of files.keys()){const sourceFile=program.getSourceFile(path); if(!sourceFile)continue;
+  function writes(node:ts.Node){if(ts.isBinaryExpression(node)&&node.operatorToken.kind>=ts.SyntaxKind.FirstAssignment&&node.operatorToken.kind<=ts.SyntaxKind.LastAssignment){const symbol=checker.getSymbolAtLocation(node.left);if(symbol)rebound.add(symbol);}ts.forEachChild(node,writes);} writes(sourceFile);}
  for(const p of [...files.keys()].sort()){const sf=program.getSourceFile(p);if(!sf)continue;function visit(n:ts.Node){if(truncated)return;
   if(ts.isIdentifier(n)){let parent:ts.Node|undefined=n.parent;let type=false;while(parent&&!ts.isStatement(parent)){if(ts.isTypeNode(parent)){type=true;break;}parent=parent.parent;}record(n,checker.getSymbolAtLocation(n),'binding',type?'type':'value');}
-  if(ts.isCallExpression(n)){const expr=n.expression;let sym=checker.getSymbolAtLocation(expr);const typeOnly=(sym?.declarations??[]).some(d=>{let x:ts.Node|undefined=d;while(x&&!ts.isSourceFile(x)){if((ts.isImportSpecifier(x)||ts.isImportClause(x)||ts.isExportSpecifier(x))&&x.isTypeOnly)return true;x=x.parent;}return false;});if(sym&&(sym.flags&ts.SymbolFlags.Alias))sym=checker.getAliasedSymbol(sym);const declarations=sym?.declarations??[];const direct=!typeOnly&&declarations.length>0&&declarations.every(d=>ts.isFunctionDeclaration(d));record(expr,direct?sym:undefined,'call_target','value',direct?undefined:'dynamic_call_target');}
+  if(ts.isCallExpression(n)){const expr=n.expression;let sym=checker.getSymbolAtLocation(expr);const typeOnly=(sym?.declarations??[]).some(d=>{let x:ts.Node|undefined=d;while(x&&!ts.isSourceFile(x)){if((ts.isImportSpecifier(x)||ts.isImportClause(x)||ts.isExportSpecifier(x))&&x.isTypeOnly)return true;x=x.parent;}return false;});if(sym&&(sym.flags&ts.SymbolFlags.Alias))sym=checker.getAliasedSymbol(sym);const declarations=sym?.declarations??[];const direct=!typeOnly&&!(sym&&rebound.has(sym))&&declarations.length>0&&declarations.every(d=>ts.isFunctionDeclaration(d));record(expr,direct?sym:undefined,'call_target','value',direct?undefined:'dynamic_call_target');}
   if(ts.isStringLiteral(n)&&(ts.isImportDeclaration(n.parent)||ts.isExportDeclaration(n.parent)))record(n,checker.getSymbolAtLocation(n),'import',ts.isImportDeclaration(n.parent)&&n.parent.importClause?.isTypeOnly?'type':'value');
   ts.forEachChild(n,visit);
  }visit(sf);}}

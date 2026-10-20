@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "request_nonce": "fixture",
+  "config_hash": "c1d092ec1265e5185b2bfed01b8a0fe8c05c97f73d8ab1653322bc2a7868973b",
+  "toolchain_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "archive_sha256": "6c023e037c12663c407ac4c0ab60d867d799c487bf58f934c55872f1b61d7b8b",
+  "policy_hash": "b7fbabbf51c5a9541517f08c6133b94818d46e67fb211d14e5452bf97f234f8d",
+  "excerpts": [
+    {
+      "location": {
+        "file_id": "9b51332c-89f9-495d-a197-8989101a7dfd",
+        "sha256": "f13e70099615a087c0a59a6b3555a5ffc119a36a99c2e59a3a0da36ed00e889d",
+        "range": {
+          "start_byte": 0,
+          "end_byte": 31,
+          "start_line": 1,
+          "end_line": 2,
+          "start_col": 0,
+          "end_col": 18
+        }
+      },
+      "text": "def hello():\n    return 'world'",
+      "sha256": "6a2471cee9a7789a9baec54c6a1281d0deb95d7f0b4094297445857c364a547b"
+    },
+    {
+      "location": {
+        "file_id": "9b51332c-89f9-495d-a197-8989101a7dfd",
+        "sha256": "f13e70099615a087c0a59a6b3555a5ffc119a36a99c2e59a3a0da36ed00e889d",
+        "range": {
+          "start_byte": 0,
+          "end_byte": 32,
+          "start_line": 1,
+          "end_line": 3,
+          "start_col": 0,
+          "end_col": 0
+        }
+      },
+      "text": "def hello():\n    return 'world'\n",
+      "sha256": "f13e70099615a087c0a59a6b3555a5ffc119a36a99c2e59a3a0da36ed00e889d"
+    }
+  ],
+  "symbols": [],
+  "resolutions": [],
+  "routes": [],
+  "requests": [],
+  "links": [],
+  "diagnostics": [],
+  "components": [],
+  "coverage": {
+    "requested_files": 1,
+    "processed_files": 1,
+    "omitted_files": 0,
+    "inventoried_files": 2,
+    "eligible_files": 2,
+    "excluded_files": 0,
+    "unsupported_files": 0,
+    "out_of_scope_files": 0,
+    "resolution_records": 0,
+    "resolved": 0,
+    "ambiguous": 0,
+    "unresolved": 0,
+    "distinct_resolution_sites": 0,
+    "omitted_diagnostics": 0,
+    "syntax": "complete",
+    "resolution": "complete",
+    "framework": "complete",
+    "graph": "complete",
+    "omissions": []
+  },
+  "run_ref": {
+    "org_id": "5732fcea-d4b8-410b-ba7e-878c8ad1d412",
+    "snapshot_id": "a35740b4-3ec2-4da7-8263-a17fa74c1ea1",
+    "run_id": "8e614230-7c87-4eab-a1f7-b63797b9b983"
+  },
+  "symbol_map": [],
+  "evidence_map": [],
+  "limits": {
+    "source_files": 128,
+    "source_bytes": 16777216,
+    "file_bytes": 2097152,
+    "config_files": 32,
+    "config_file_bytes": 262144,
+    "config_bytes": 1048576,
+    "syntax_nodes_per_file": 200000,
+    "syntax_nodes": 1000000,
+    "resolution_sites": 2000,
+    "candidates_per_site": 16,
+    "import_depth": 16,
+    "module_lookups": 4096,
+    "nodes": 1000,
+    "edges": 2000,
+    "evidence": 1000,
+    "derivations": 2000,
+    "diagnostics": 500,
+    "report_bytes": 2097152,
+    "result_bytes": 8388608,
+    "analysis_seconds": 180,
+    "operation_seconds": 20
+  },
+  "nonclaims": [
+    "Static bindings and candidate edges do not establish runtime reachability or safety."
+  ]
+}

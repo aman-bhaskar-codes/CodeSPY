@@ -1,6 +1,9 @@
 """Owned Phase 2 cluster lifecycle with the explicitly selected structural head."""
 
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import phase2_db
 

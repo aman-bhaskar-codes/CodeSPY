@@ -24,16 +24,19 @@ from app.adapters.queue.sqs import SQSQueue
 from app.adapters.storage.local import LocalObjectStore
 from app.adapters.storage.s3 import S3ObjectStore
 from app.admission.process import DockerAdmissionRunner
+from app.analyzers.runner import DockerAnalysisRunner
 from app.api.application import ApiSettings, ApplicationPorts, create_app
 from app.contracts.persistence import RepositoryCreate
 from app.models.phase2_tables import PHASE2_TABLES
 from app.repositories.identity_repository import IdentityRepository
 from app.repositories.repository_repository import RepositoryRepository
 from app.services.job_finalization import JobFinalizer
+from app.services.structural_finalization import StructuralFinalizer
 from app.workers.cleanup import CleanupWorker
 from app.workers.consumer import JobConsumer
 from app.workers.dispatcher import OutboxDispatcher
 from app.workers.operations.admit_source import StoredAdmissionProcessor
+from app.workers.operations.analyze_structure import StructuralAnalysisOperation
 from app.workers.recovery import RecoveryWorker
 from app.workers.runtime import WorkerRuntime
 from sqlalchemy import insert, text
@@ -64,8 +67,15 @@ async def run(args: argparse.Namespace) -> None:
     engines, queue_urls = [], []
     s3 = sqs = None
     bucket_created = False
+    analysis_runner = None
     try:
-        harness.migrate(values, database)
+        harness.migrate(
+            values,
+            database,
+            "0011_structural_authority"
+            if args.analysis_image_file
+            else "0009_api_commands",
+        )
         harness.grant_app(values, database)
 
         def factory(role, field):
@@ -146,9 +156,22 @@ async def run(args: argparse.Namespace) -> None:
         runner = DockerAdmissionRunner(
             args.image_file.read_text().strip(), root / "admission"
         )
-        await runner.qualify()
+        await runner.qualify_analysis()
+
+        analysis_runner = None
+        toolchain = None
+        if args.analysis_image_file is not None:
+            analysis_runner = DockerAnalysisRunner(
+                args.analysis_image_file.read_text().strip(), root / "analysis"
+            )
+            toolchain = await analysis_runner.qualify_analysis()
 
         async def ready():
+            if (
+                analysis_runner is not None
+                and await analysis_runner.readiness() != toolchain
+            ):
+                return False
             async with api_factory() as session:
                 await session.execute(text("SELECT 1"))
             await blocking_call(lambda: s3.head_bucket(Bucket=bucket))
@@ -160,7 +183,12 @@ async def run(args: argparse.Namespace) -> None:
             return True
 
         app = create_app(
-            ApiSettings(origin="http://127.0.0.1:5173", auth_mode="local_fixture"),
+            ApiSettings(
+                origin="http://127.0.0.1:5173",
+                auth_mode="local_fixture",
+                structural_enabled=analysis_runner is not None,
+                structural_toolchain_hash=toolchain,
+            ),
             ApplicationPorts(api_factory, store, ctx, readiness=ready),
         )
         if args.check:
@@ -174,6 +202,14 @@ async def run(args: argparse.Namespace) -> None:
             queue,
             JobFinalizer(broker, store),
             StoredAdmissionProcessor(broker, store, runner),
+            structural_operation=StructuralAnalysisOperation(
+                broker,
+                store,
+                StructuralFinalizer(broker, store),
+                analysis_runner,
+            )
+            if analysis_runner is not None
+            else None,
         )
         runtime = WorkerRuntime(
             OutboxDispatcher(broker, queue, dead_letters=SQSQueue(sqs, dead)), consumer
@@ -222,8 +258,12 @@ async def run(args: argparse.Namespace) -> None:
                 s3.delete_bucket(Bucket=bucket)
             s3.close()
         harness.drop_database(values, database)
+        if analysis_runner is not None:
+            await analysis_runner.cleanup_pending()
         # Preserve ownership/workspace on incomplete sandbox removal.
-        if not list((root / "admission").glob("*/container.json")):
+        if not list((root / "admission").glob("*/container.json")) and not list(
+            (root / "analysis").glob("*.container.json")
+        ):
             shutil.rmtree(root)
 
 
@@ -232,6 +272,7 @@ def main() -> None:
     parser.add_argument("--env-file", type=Path, required=True)
     parser.add_argument("--image-file", type=Path, required=True)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--analysis-image-file", type=Path)
     args = parser.parse_args()
     asyncio.run(run(args))
 

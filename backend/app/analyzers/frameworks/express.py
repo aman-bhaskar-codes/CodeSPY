@@ -1,4 +1,4 @@
-"""Express local literal registrations; dynamic routes abstain explicitly."""
+"""Literal Express application/router composition; middleware is not an endpoint."""
 
 from app.analyzers.frameworks import (
     binding_for,
@@ -12,6 +12,8 @@ from app.analyzers.frameworks import (
     location,
     member,
     method,
+    module_level,
+    stable_js_name,
     walk,
 )
 from app.analyzers.positions import SourceIndex
@@ -22,13 +24,7 @@ from app.contracts.structure import (
     SourceUnitV1,
     SymbolObservationV1,
 )
-
-SUPPORTED_LANGUAGES = {"javascript", "jsx", "typescript", "tsx"}
-UNSUPPORTED_PATH_CHARS = {"*", "?", "(", ")", "+"}
-
-
-def _is_unsupported_path_string(val: str) -> bool:
-    return any(c in val for c in UNSUPPORTED_PATH_CHARS)
+from tree_sitter import Node
 
 
 def observe_express(
@@ -36,67 +32,52 @@ def observe_express(
     symbols: tuple[SymbolObservationV1, ...],
     config: AnalysisConfigV1,
 ) -> tuple[tuple[RouteObservationV1, ...], tuple[DiagnosticV1, ...]]:
-    routes: list[RouteObservationV1] = []
-    diagnostics: list[DiagnosticV1] = []
-
+    routes, diagnostics = [], []
     for unit in sorted(units, key=lambda u: u.path):
-        if unit.language not in SUPPORTED_LANGUAGES:
+        if unit.language == "python":
             continue
-        root, has_error = js_tree(unit, config)
-        if root is None:
-            diagnostics.append(diagnostic("framework_syntax_budget"))
-            continue
-        if has_error:
+        root, error = js_tree(unit, config)
+        if root is None or error:
             diagnostics.append(diagnostic("express_parse_unavailable"))
             continue
-
         index = SourceIndex(unit.data)
-        factories = js_imports(root, unit, "express")
-        if not factories:
-            continue
-
-        # Track app instances created from express()
-        apps: set[str] = set()
+        factories = {
+            name
+            for name in js_imports(root, unit, "express")
+            if stable_js_name(root, root, name, unit)
+        }
+        objects: dict[str, bool] = {}
         for node in walk(root):
-            if node.type == "variable_declarator":
-                name_node = node.child_by_field_name("name")
-                val_node = node.child_by_field_name("value")
-                if (
-                    name_node
-                    and name_node.type == "identifier"
-                    and val_node
-                    and val_node.type == "call_expression"
-                ):
-                    fn_node = val_node.child_by_field_name("function")
-                    if fn_node and js_text(fn_node, unit) in factories:
-                        apps.add(js_text(name_node, unit))
-            elif node.type == "assignment_expression":
-                left = node.child_by_field_name("left")
-                right = node.child_by_field_name("right")
-                if left and left.type == "identifier" and right and right.type == "call_expression":
-                    fn_node = right.child_by_field_name("function")
-                    if fn_node and js_text(fn_node, unit) in factories:
-                        apps.add(js_text(left, unit))
-
-        if not apps:
-            continue
-
-        binding = binding_for(unit.path, config)
-        service_key = binding.service_key if binding else None
-
+            if node.type != "variable_declarator" or not module_level(node):
+                continue
+            name, value = node.child_by_field_name("name"), node.child_by_field_name("value")
+            if (
+                not name
+                or name.type != "identifier"
+                or not value
+                or value.type != "call_expression"
+            ):
+                continue
+            fn = value.child_by_field_name("function")
+            if js_text(fn, unit) in factories:
+                objects[js_text(name, unit)] = True
+            elif member(fn, unit) in {(factory, "Router") for factory in factories}:
+                objects[js_text(name, unit)] = False
+        mounts: dict[str, list[tuple[str, str | None, Node]]] = {}
+        registrations: list[tuple[str, str, str | None, Node]] = []
         for node in walk(root):
             if node.type != "call_expression":
                 continue
-            fn = node.child_by_field_name("function")
-            mem = member(fn, unit)
-            if not mem:
+            expression = member(node.child_by_field_name("function"), unit)
+            if (
+                not expression
+                or expression[0] not in objects
+                or not stable_js_name(root, node, expression[0], unit)
+            ):
                 continue
-            obj_name, prop_name = mem
-            if obj_name not in apps:
-                continue
-
-            verb = prop_name.lower()
-            if verb not in {
+            owner, verb = expression
+            args = js_args(node)
+            if not args or verb.lower() not in {
                 "get",
                 "post",
                 "put",
@@ -104,64 +85,83 @@ def observe_express(
                 "delete",
                 "head",
                 "options",
-                "use",
                 "all",
+                "use",
             }:
                 continue
-
-            args = js_args(node)
-            if not args:
+            path = js_literal(args[0], unit)
+            if path is not None and any(c in path for c in "*?()+"):
+                path = None
+            if verb == "use":
+                child = js_text(args[1], unit) if len(args) == 2 else ""
+                if child in objects and not objects[child]:
+                    mounts.setdefault(child, []).append((owner, path, node))
+                    continue
+                # Retain uncertainty for unsupported middleware, never invent an endpoint.
+                diagnostics.append(
+                    diagnostic("express_middleware_unresolved", location(unit, index, node))
+                )
+                if path is None:
+                    registrations.append((owner, verb, None, node))
                 continue
+            registrations.append((owner, verb, path, node))
 
-            path_node = args[0]
-            loc = location(unit, index, node)
-            route_key = key(unit, "route", node.start_byte, verb)
-
-            if path_node.type == "string":
-                path_str = js_literal(path_node, unit)
-                if path_str is None or _is_unsupported_path_string(path_str):
-                    diagnostics.append(diagnostic("unsupported_express_path", loc))
-                    routes.append(
-                        RouteObservationV1(
-                            key=route_key,
-                            framework="express",
-                            service_key=service_key,
-                            method=method(verb) if verb != "use" else "ANY",
-                            raw_path=js_text(path_node, unit),
-                            template_path=None,
-                            registration=loc,
-                            state="unresolved",
-                            limitations=("unsupported_path_syntax",),
+        def prefixes(
+            owner: str,
+            active: frozenset[str] = frozenset(),
+            known: dict[str, bool] = objects,
+            parents: dict[str, list[tuple[str, str | None, Node]]] = mounts,
+        ) -> list[tuple[str | None, tuple[Node, ...]]]:
+            if owner in active or len(active) >= 16:
+                return [(None, ())]
+            if known[owner]:
+                return [("", ())]
+            result: list[tuple[str | None, tuple[Node, ...]]] = []
+            for parent, prefix, mount in parents.get(owner, []):
+                for base, includes in prefixes(parent, active | {owner}):
+                    if len(result) >= 16:
+                        return [(None, ())]
+                    result.append(
+                        (
+                            base.rstrip("/") + "/" + prefix.lstrip("/")
+                            if base is not None and prefix is not None
+                            else None,
+                            (*includes, mount),
                         )
                     )
-                else:
-                    routes.append(
-                        RouteObservationV1(
-                            key=route_key,
-                            framework="express",
-                            service_key=service_key,
-                            method=method(verb) if verb != "use" else "ANY",
-                            raw_path=path_str,
-                            template_path=path_str,
-                            registration=loc,
-                            state="resolved",
-                            limitations=("middleware_order_unverified",),
-                        )
+            return result or [(None, ())]
+
+        binding = binding_for(unit.path, config)
+        for owner, verb, path, node in registrations:
+            for prefix, includes in prefixes(owner)[:16]:
+                combined = (
+                    prefix.rstrip("/") + "/" + path.lstrip("/")
+                    if prefix is not None and path is not None
+                    else None
+                )
+                if combined is None:
+                    diagnostics.append(
+                        diagnostic("dynamic_express_path", location(unit, index, node))
                     )
-            else:
-                diagnostics.append(diagnostic("dynamic_express_path", loc))
                 routes.append(
                     RouteObservationV1(
-                        key=route_key,
+                        key=key(
+                            unit,
+                            "route",
+                            node.start_byte,
+                            verb,
+                            combined,
+                            tuple(n.start_byte for n in includes),
+                        ),
                         framework="express",
-                        service_key=service_key,
-                        method=method(verb) if verb != "use" else "ANY",
-                        raw_path=js_text(path_node, unit),
-                        template_path=None,
-                        registration=loc,
-                        state="unresolved",
-                        limitations=("dynamic_path_expression",),
+                        service_key=binding.service_key if binding else None,
+                        method="ANY" if verb == "all" else method(verb),
+                        raw_path=path,
+                        template_path=combined,
+                        registration=location(unit, index, node),
+                        includes=tuple(location(unit, index, n) for n in includes),
+                        state="resolved" if combined is not None else "unresolved",
+                        limitations=("middleware_order_unverified",),
                     )
                 )
-
     return tuple(routes), tuple(diagnostics)

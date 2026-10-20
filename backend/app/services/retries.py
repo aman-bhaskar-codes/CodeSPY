@@ -8,7 +8,7 @@ from sqlalchemy import func, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.contracts.ingestion import AdmissionPolicyV1, ObjectDescriptor
-from app.contracts.jobs import EnqueueJobV2, RetryResponseV1
+from app.contracts.jobs import EnqueueJobV2, EnqueueJobV3, RetryResponseV1, RetryResponseV2
 from app.db.time import database_now
 from app.db.transaction import transaction
 from app.domain.canonical_json import semantic_digest
@@ -26,6 +26,8 @@ RECOVERABLE = {
     "queue_unavailable",
     "provider_unavailable",
     "admission_process_failed",
+    "analysis_process_failed",
+    "analysis_unavailable",
     "finalization_timeout",
     "deadline_exceeded",
     "lease_expired",
@@ -71,7 +73,9 @@ class RetryService:
             else None,
         )
 
-    async def retry(self, ctx: TenantContext, job_id: UUID, key: str) -> RetryResponseV1:
+    async def retry(
+        self, ctx: TenantContext, job_id: UUID, key: str
+    ) -> RetryResponseV1 | RetryResponseV2:
         if not 1 <= len(key.encode()) <= 128 or key.startswith(("job:", "child:")):
             raise ValueError("invalid retry key")
         subs = PHASE2_TABLES["source_submissions"]
@@ -82,6 +86,8 @@ class RetryService:
             await require_repository(
                 s, ctx.org_id, ctx.principal_id, old["repository_id"], write=True
             )
+            if old["operation"] == "analyze_structure":
+                return await self._retry_structure(s, ctx, old, key)
             existing = await self._existing(s, ctx, old, key)
             if existing:
                 return existing
@@ -268,3 +274,61 @@ class RetryService:
                 retry_of_job_id=job_id,
                 retry_of_submission_id=retry_sub,
             )
+
+    async def _retry_structure(
+        self, s: AsyncSession, ctx: TenantContext, old: dict[str, Any], key: str
+    ) -> RetryResponseV2:
+        from app.models.phase3_tables import structural_jobs
+        from app.services.analysis_sources import locate_source
+
+        # Use the standard lock hierarchy, including org capacity, before replay lookup.
+        await lock_scope(s, ctx.org_id, ctx.principal_id, old["repository_id"], old["snapshot_id"])
+        old = await load_job(s, ctx.org_id, old["id"], lock=True)
+        # The immutable spec and publication guard bind the requesting principal.
+        # Other writers can start a new analysis; they cannot inherit that identity.
+        if old["principal_id"] != ctx.principal_id:
+            raise RetryRejected("retry_principal_mismatch")
+        existing = (
+            (
+                await s.execute(
+                    select(structural_jobs).where(
+                        structural_jobs.c.org_id == ctx.org_id,
+                        structural_jobs.c.request_key == key,
+                    )
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if existing:
+            if (
+                existing["retry_of_job_id"] != old["id"]
+                or existing["analysis_spec_id"] != old["analysis_spec_id"]
+                or existing["config_hash"] != old["config_hash"]
+            ):
+                raise DuplicateConflict("retry key has different input")
+            new = dict(existing)
+        else:
+            if old["state"] not in {"failed", "cancelled"}:
+                raise RetryRejected("retry_not_supported")
+            if old["state"] == "failed" and old["failure_code"] not in RECOVERABLE:
+                raise RetryRejected("retry_not_supported")
+            await locate_source(s, ctx.org_id, old["repository_id"], old["snapshot_id"])
+            new = await self.jobs._enqueue(
+                s,
+                ctx,
+                EnqueueJobV3(
+                    repository_id=old["repository_id"],
+                    snapshot_id=old["snapshot_id"],
+                    operation="analyze_structure",
+                    analysis_spec_id=old["analysis_spec_id"],
+                    config_hash=old["config_hash"],
+                    request_key=key,
+                    retry_of_job_id=old["id"],
+                ),
+            )
+        return RetryResponseV2(
+            retry_job_id=new["id"],
+            retry_of_job_id=old["id"],
+            analysis_spec_id=old["analysis_spec_id"],
+        )

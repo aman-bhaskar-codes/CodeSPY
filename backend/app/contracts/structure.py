@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from hashlib import sha256
 from time import monotonic
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
 from pydantic import Field, model_validator
@@ -329,6 +329,7 @@ class StructuralCoverageV1(Contract):
     unresolved: int = Field(default=0, ge=0)
     distinct_resolution_sites: int = Field(default=0, ge=0)
     omitted_diagnostics: int = Field(default=0, ge=0)
+    omitted_details_count: int = Field(default=0, ge=0)
     syntax: SectionState = "complete"
     resolution: SectionState = "complete"
     framework: SectionState = "complete"
@@ -444,6 +445,7 @@ class StructuralResultV1(Contract):
 
 class AnalysisAcceptedV1(Contract):
     schema_version: Literal[1] = 1
+    status_url: str = Field(pattern=r"^/api/v1/jobs/[0-9a-f-]{36}$")
     spec_id: UUID
     job_id: UUID
     snapshot_id: UUID
@@ -487,3 +489,60 @@ class FileObservationsV1(Contract):
 StructuralConfigV1 = AnalysisConfigV1
 StructuralReportV1 = ArchitectureReportV1
 ObservationV1 = SymbolObservationV1
+
+
+def stored_config(value: Any) -> AnalysisConfigV1:
+    """JSONB is decoded using JSON validation semantics, retaining strict DTO guards."""
+    return AnalysisConfigV1.model_validate_json(canonical_bytes(value))
+
+
+def stored_report(value: Any) -> ArchitectureReportV1:
+    return ArchitectureReportV1.model_validate_json(canonical_bytes(value))
+
+
+ReportSection = Literal[
+    "symbols",
+    "resolutions",
+    "routes",
+    "requests",
+    "links",
+    "diagnostics",
+    "components",
+    "symbol_map",
+    "evidence_map",
+    "excerpts",
+    "omissions",
+]
+
+
+class StructuralSummaryV1(ArchitectureReportV1):
+    report_sha256: Hash
+    normalized_sha256: Hash
+    section_counts: dict[str, int]
+
+
+class StructuralSectionPageV1(Contract):
+    run_ref: RunRef
+    section: ReportSection
+    items: list[dict[str, Any]] = Field(max_length=100)
+    next_cursor: str | None = None
+
+
+class GraphQueryV1(Contract):
+    seeds: tuple[UUID, ...] = Field(min_length=1, max_length=16)
+    edge_kind: Literal["AST_CHILD", "IMPORTS", "CALLS_CANDIDATE"] = "CALLS_CANDIDATE"
+    strategy: Literal["bfs", "dfs"] = "bfs"
+    direction: Literal["forward", "reverse"] = "forward"
+    max_nodes: int = Field(default=100, ge=1, le=500)
+    max_edges: int = Field(default=200, ge=0, le=1000)
+    max_depth: int = Field(default=8, ge=0, le=16)
+    max_scanned_edges: int = Field(default=2000, ge=0, le=10000)
+
+
+class GraphTraversalV1(Contract):
+    run_ref: RunRef
+    nodes: tuple[UUID, ...] = Field(max_length=500)
+    edges: tuple[UUID, ...] = Field(max_length=1000)
+    truncated: bool
+    reason: str | None
+    scanned_edges: int

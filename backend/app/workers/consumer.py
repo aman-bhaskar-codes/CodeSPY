@@ -7,6 +7,8 @@ from uuid import uuid4
 
 from app.adapters.github.http import ProviderFailure
 from app.admission.zip_inventory import AdmissionRejected
+from app.analyzers.runner import AnalysisProcessError
+from app.analyzers.source import SourceIntegrityError
 from app.contracts.ingestion import AdmissionPolicyV1, ArtifactManifestV1
 from app.contracts.jobs import AttemptLeaseV2, JobEnvelopeV2, JobEnvelopeV3
 from app.db.transaction import transaction
@@ -184,6 +186,17 @@ class JobConsumer:
         except ScopeViolation:
             # Local authority revocation is terminalized by independent recovery.
             logger.warning("worker_authority_unavailable")
+        except (AnalysisProcessError, SourceIntegrityError) as error:
+            code = str(error)
+            if code not in {
+                "analysis_timeout",
+                "analyzer_output_invalid",
+                "source_integrity_error",
+                "analysis_unavailable",
+            }:
+                code = "analyzer_output_invalid"
+            await self.jobs.fail_attempt(lease, code, transient=False)
+            await self._ack(delivery.receipt)
         except DuplicateConflict:
             await self.jobs.fail_attempt(lease, "integrity_failure")
             await self._ack(delivery.receipt)
@@ -199,7 +212,13 @@ class JobConsumer:
             await self.jobs.fail_attempt(lease, code)
             await self._ack(delivery.receipt)
         except Exception:
-            await self.jobs.fail_attempt(lease, "admission_process_failed", transient=True)
+            await self.jobs.fail_attempt(
+                lease,
+                "analysis_process_failed"
+                if envelope.operation == "analyze_structure"
+                else "admission_process_failed",
+                transient=True,
+            )
             await self._ack(delivery.receipt)
         finally:
             stop.set()

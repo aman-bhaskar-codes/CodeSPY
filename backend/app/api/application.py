@@ -12,24 +12,32 @@ from uuid import UUID, uuid4
 from app.analyzers.reporting import render_json, render_markdown
 from app.contracts.http import (
     EventPageV2,
+    EventPageV3,
     GitHubAcquisitionV1,
     GitHubBindingV1,
     InventoryEntryV1,
     InventoryPageV1,
     JobEventV2,
+    JobEventV3,
     RepositoryListItemV1,
     RepositoryPageV1,
     SessionV1,
 )
 from app.contracts.ingestion import SubmissionRecordV1, UploadReservationV1
-from app.contracts.jobs import JobRecordV2, JobRecordV3, RetryResponseV1
-from app.contracts.persistence import RepositoryCreate, RepositoryRecord
+from app.contracts.jobs import JobRecordV2, JobRecordV3, RetryResponseV1, RetryResponseV2
+from app.contracts.persistence import GraphPage, RepositoryCreate, RepositoryRecord
 from app.contracts.structure import (
     AnalysisAcceptedV1,
     AnalysisConfigV1,
     ArchitectureReportV1,
+    GraphQueryV1,
+    GraphTraversalV1,
+    ReportSection,
     StructuralAnalysisRequestV1,
     StructuralLimitsV1,
+    StructuralSectionPageV1,
+    StructuralSummaryV1,
+    stored_report,
 )
 from app.db.transaction import transaction
 from app.domain.canonical_json import canonical_bytes
@@ -56,15 +64,17 @@ from app.security.oauth import OAuthRejected, OAuthService
 from app.security.sessions import SessionService, token_digest
 from app.services.github_acquisition import GitHubAcquisitionService
 from app.services.jobs import JobService
+from app.services.persistence import PersistenceService
 from app.services.retries import RetryService
 from app.services.structural_analysis import StructuralAnalysisService
+from app.services.structural_reads import report_items, summary
 from app.services.submissions import SubmissionService
 from app.services.webhooks import GitHubWebhookService
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from sqlalchemy import and_, literal, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -78,6 +88,20 @@ class ApiSettings(BaseModel):
     environment: Literal["local", "test", "hosted"] = "local"
     auth_mode: Literal["disabled", "local_fixture", "github_app"] = "disabled"
     origin: str = "http://localhost:5173"
+    structural_enabled: bool = False
+    structural_toolchain_hash: str | None = None
+
+    @model_validator(mode="after")
+    def qualified_structure(self) -> "ApiSettings":
+        value = self.structural_toolchain_hash
+        if self.structural_enabled and (
+            value is None
+            or len(value) != 64
+            or value == "0" * 64
+            or any(c not in "0123456789abcdef" for c in value)
+        ):
+            raise ValueError("qualified structural toolchain required")
+        return self
 
 
 @dataclass(frozen=True)
@@ -186,7 +210,10 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             422: "validation_error",
             503: "provider_unconfigured",
         }
-        return error(exception.status_code, codes.get(exception.status_code, "invalid_state"))
+        code = codes.get(exception.status_code, "invalid_state")
+        if exception.status_code == 503 and exception.detail == "analysis_unavailable":
+            code = "analysis_unavailable"
+        return error(exception.status_code, code)
 
     @app.exception_handler(RequestValidationError)
     async def wire_error(request: Request, exception: RequestValidationError) -> Response:
@@ -652,17 +679,31 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         return result
 
     @app.post("/api/v1/jobs/{job_id}/retry", status_code=202)
-    async def retry_job(request: Request, job_id: UUID) -> RetryResponseV1:
+    async def retry_job(request: Request, job_id: UUID) -> RetryResponseV1 | RetryResponseV2:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id, write=True)
+        job = await jobs.get(ctx, job_id)
+        if isinstance(job, JobRecordV3) and job.operation == "analyze_structure":
+            if (
+                not settings.structural_enabled
+                or ports.readiness is None
+                or not await ports.readiness()
+                or job.analysis_spec_id is None
+            ):
+                raise HTTPException(503, detail="analysis_unavailable")
+            spec = await structural.get_spec(ctx, job.repository_id, job.analysis_spec_id)
+            if spec is None or spec.toolchain_hash != settings.structural_toolchain_hash:
+                raise RetryRejected("retry_not_supported")
         return await retries.retry(ctx, job_id, key(request))
 
     @app.get("/api/v1/jobs/{job_id}/events")
     async def job_events(
         request: Request, job_id: UUID, after: str | None = None, limit: int = 50
-    ) -> EventPageV2:
+    ) -> EventPageV2 | EventPageV3:
         if not 1 <= limit <= 200:
             raise HTTPException(422)
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id)
+        job = await jobs.get(ctx, job_id)
+        structural_events = job.operation == "analyze_structure"
         events = PHASE2_TABLES["job_events"]
         scope = {"org": str(ctx.org_id), "job": str(job_id), "version": 2}
         try:
@@ -699,21 +740,24 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 .mappings()
                 .all()
             )
-        items: list[JobEventV2] = []
+        items: list[JobEventV2 | JobEventV3] = []
         size = 0
         for row in rows[:limit]:
-            item = JobEventV2(job_id=job_id, **dict(row))
+            item = (JobEventV3 if structural_events else JobEventV2)(job_id=job_id, **dict(row))
             size += len(canonical_bytes(item.model_dump()))
             if size > 240000:
                 break
             items.append(item)
-        return EventPageV2(
-            items=items,
-            next_cursor=(
-                cursors.encode(scope, str(items[-1].sequence))
-                if items and len(rows) > len(items)
-                else None
-            ),
+        page_type = EventPageV3 if structural_events else EventPageV2
+        return page_type.model_validate(
+            {
+                "items": [item.model_dump() for item in items],
+                "next_cursor": (
+                    cursors.encode(scope, str(items[-1].sequence))
+                    if items and len(rows) > len(items)
+                    else None
+                ),
+            }
         )
 
     @app.get("/api/v1/snapshots/{snapshot_id}/inventory")
@@ -790,8 +834,12 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     async def create_analysis(request: Request, repository_id: UUID) -> AnalysisAcceptedV1:
         ctx = await repository_context(request, repository_id, write=True)
         body = await json_body(request, StructuralAnalysisRequestV1)
+        if not settings.structural_enabled or settings.structural_toolchain_hash is None:
+            raise HTTPException(503, detail="analysis_unavailable")
+        if ports.readiness is None or not await ports.readiness():
+            raise HTTPException(503, detail="analysis_unavailable")
         config = AnalysisConfigV1(
-            toolchain_hash="0" * 64,
+            toolchain_hash=settings.structural_toolchain_hash,
             include_prefixes=body.include_prefixes,
             limits=StructuralLimitsV1(),
         )
@@ -802,20 +850,22 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             spec_id=spec.id,
             job_id=job.id,
             snapshot_id=body.snapshot_id,
+            status_url=f"/api/v1/jobs/{job.id}",
         )
 
     @app.get("/api/v1/repositories/{repository_id}/analyses/{run_id}/report")
     async def get_analysis_report(
         request: Request, repository_id: UUID, run_id: UUID
-    ) -> ArchitectureReportV1:
+    ) -> StructuralSummaryV1:
         ctx = await repository_context(request, repository_id, write=False)
         async with transaction(ports.factory) as s:
             from app.models.phase3_tables import structural_reports
+            from app.repositories.structural_repository import published_reports
 
             row = (
                 (
                     await s.execute(
-                        select(structural_reports).where(
+                        published_reports().where(
                             structural_reports.c.org_id == ctx.org_id,
                             structural_reports.c.repository_id == repository_id,
                             structural_reports.c.run_id == run_id,
@@ -827,7 +877,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             )
             if not row:
                 raise HTTPException(404)
-            return ArchitectureReportV1.model_validate(row["report_json"])
+            return summary(stored_report(row["report_json"]))
 
     @app.get("/api/v1/repositories/{repository_id}/analyses/{run_id}/export")
     async def export_analysis_report(
@@ -836,11 +886,12 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         ctx = await repository_context(request, repository_id, write=False)
         async with transaction(ports.factory) as s:
             from app.models.phase3_tables import structural_reports
+            from app.repositories.structural_repository import published_reports
 
             row = (
                 (
                     await s.execute(
-                        select(structural_reports).where(
+                        published_reports().where(
                             structural_reports.c.org_id == ctx.org_id,
                             structural_reports.c.repository_id == repository_id,
                             structural_reports.c.run_id == run_id,
@@ -852,7 +903,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             )
             if not row:
                 raise HTTPException(404)
-            report = ArchitectureReportV1.model_validate(row["report_json"])
+            report = stored_report(row["report_json"])
 
         if format == "markdown":
             content = render_markdown(report)
@@ -875,12 +926,208 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/structural-report")
     async def get_snapshot_structural_report(
         request: Request, repository_id: UUID, snapshot_id: UUID
-    ) -> ArchitectureReportV1:
+    ) -> StructuralSummaryV1:
         ctx = await repository_context(request, repository_id, write=False)
         report = await structural.get_report_by_snapshot(ctx, repository_id, snapshot_id)
         if not report:
             raise HTTPException(404)
-        return report
+        return summary(report)
+
+    async def published_report(
+        request: Request, repository_id: UUID, run_id: UUID
+    ) -> tuple[TenantContext, ArchitectureReportV1]:
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as s:
+            from app.models.phase3_tables import structural_reports
+            from app.repositories.structural_repository import published_reports
+
+            row = (
+                (
+                    await s.execute(
+                        published_reports().where(
+                            structural_reports.c.org_id == ctx.org_id,
+                            structural_reports.c.repository_id == repository_id,
+                            structural_reports.c.run_id == run_id,
+                        )
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+            if row is None:
+                raise HTTPException(404)
+            return ctx, stored_report(row["report_json"])
+
+    @app.get("/api/v1/repositories/{repository_id}/analyses/{run_id}/report/{section}")
+    async def report_section(
+        request: Request,
+        repository_id: UUID,
+        run_id: UUID,
+        section: ReportSection,
+        after: str | None = None,
+        limit: int = 100,
+    ) -> StructuralSectionPageV1:
+        if not 1 <= limit <= 100:
+            raise HTTPException(422)
+        ctx, report = await published_report(request, repository_id, run_id)
+        cursor_scope = {
+            "org": str(ctx.org_id),
+            "repo": str(repository_id),
+            "run": str(run_id),
+            "section": section,
+            "version": 1,
+        }
+        try:
+            offset = int(cursors.decode(after, cursor_scope)) if after else 0
+            values = report_items(report, section)
+            if not 0 <= offset <= len(values):
+                raise ValueError("invalid cursor")
+        except ValueError:
+            raise HTTPException(422) from None
+        items, size = [], 0
+        for item in values[offset : offset + limit]:
+            value = item.model_dump(mode="json")
+            size += len(canonical_bytes(value))
+            if size > 240000:
+                break
+            items.append(value)
+        end = offset + len(items)
+        return StructuralSectionPageV1(
+            run_ref=report.run_ref,
+            section=section,
+            items=items,
+            next_cursor=cursors.encode(cursor_scope, str(end)) if end < len(values) else None,
+        )
+
+    @app.get("/api/v1/repositories/{repository_id}/analyses/{run_id}/graph")
+    async def structural_graph(
+        request: Request, repository_id: UUID, run_id: UUID, after: str | None = None
+    ) -> GraphPage:
+        ctx, report = await published_report(request, repository_id, run_id)
+        scope = {
+            "org": str(ctx.org_id),
+            "repo": str(repository_id),
+            "run": str(run_id),
+            "kind": "graph",
+            "version": 1,
+        }
+        try:
+            position = cursors.decode(after, scope) if after else None
+        except ValueError:
+            raise HTTPException(422) from None
+        # 33 edges + at most 66 endpoints keeps each page within 100 records.
+        page = await PersistenceService(ports.factory).read_published_graph(
+            ctx, report.run_ref, limit=33, after=position
+        )
+        if len(canonical_bytes(page.model_dump())) > 256000:
+            raise HTTPException(422, detail="graph_budget")
+        return page.model_copy(
+            update={
+                "next_cursor": cursors.encode(scope, page.next_cursor) if page.next_cursor else None
+            }
+        )
+
+    @app.post("/api/v1/repositories/{repository_id}/analyses/{run_id}/traversal")
+    async def structural_traversal(
+        request: Request, repository_id: UUID, run_id: UUID
+    ) -> GraphTraversalV1:
+        # Mutation guard supplies session/CSRF/origin checks even for this read-only POST.
+        query = await json_body(request, GraphQueryV1)
+        _ctx, report = await published_report(request, repository_id, run_id)
+        from app.core.dsa.projection import build_projection
+        from app.core.dsa.puretypes import GraphBudget, GraphEdge
+        from app.core.dsa.traversal import traverse
+        from app.models.tables import cpg_edges, cpg_nodes
+        from app.repositories.graph_repository import scope_filter
+
+        async with transaction(ports.factory) as s:
+            nodes = (
+                await s.scalars(
+                    select(cpg_nodes.c.local_id)
+                    .where(*scope_filter(cpg_nodes, report.run_ref))
+                    .limit(1001)
+                )
+            ).all()
+            rows = (
+                (
+                    await s.execute(
+                        select(cpg_edges)
+                        .where(
+                            *scope_filter(cpg_edges, report.run_ref),
+                            cpg_edges.c.edge_kind == query.edge_kind,
+                        )
+                        .limit(2001)
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        if len(nodes) > 1000 or len(rows) > 2000:
+            raise HTTPException(422, detail="graph_budget")
+        projection = build_projection(
+            [str(n) for n in nodes],
+            [
+                GraphEdge(
+                    id=str(r["id"]),
+                    source=str(r["source_local_id"]),
+                    target=str(r["target_local_id"]),
+                    relation=query.edge_kind,
+                )
+                for r in rows
+            ],
+            relation_family=query.edge_kind,
+            scope_id=str(run_id),
+            source_coverage=report.coverage.graph,
+        )
+        try:
+            result = traverse(
+                projection,
+                [str(n) for n in query.seeds],
+                strategy=query.strategy,
+                direction=query.direction,
+                budget=GraphBudget(
+                    max_nodes=query.max_nodes,
+                    max_edges=query.max_edges,
+                    max_depth=query.max_depth,
+                    max_scanned_edges=query.max_scanned_edges,
+                    max_frontier=500,
+                ),
+            )
+        except ValueError:
+            raise HTTPException(422) from None
+        return GraphTraversalV1(
+            run_ref=report.run_ref,
+            nodes=tuple(UUID(n) for n in result.nodes),
+            edges=tuple(UUID(e.id) for e in result.traversal_edges),
+            truncated=result.disposition != "complete",
+            reason=result.reason,
+            scanned_edges=result.scanned_edges,
+        )
+
+    @app.get("/api/v1/repositories/{repository_id}/analyses/{run_id}/evidence/{evidence_id}")
+    async def structural_evidence(
+        request: Request, repository_id: UUID, run_id: UUID, evidence_id: UUID
+    ) -> dict[str, Any]:
+        ctx, report = await published_report(request, repository_id, run_id)
+        from app.contracts.evidence import EvidenceRef
+        from app.repositories.evidence_repository import EvidenceRepository
+
+        async with transaction(ports.factory) as s:
+            evidence = await EvidenceRepository(s).read_evidence(
+                ctx, EvidenceRef(scope=report.run_ref, evidence_id=evidence_id)
+            )
+        excerpt = next(
+            (
+                e
+                for e in report.excerpts
+                if e.location.file_id == evidence.file_id and e.location.range == evidence.range
+            ),
+            None,
+        )
+        return {
+            "evidence": evidence.model_dump(mode="json"),
+            "excerpt": excerpt.model_dump(mode="json") if excerpt else None,
+        }
 
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
@@ -893,6 +1140,11 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 GitHubBindingV1,
                 StructuralAnalysisRequestV1,
                 AnalysisAcceptedV1,
+                ArchitectureReportV1,
+                GraphQueryV1,
+                GraphTraversalV1,
+                StructuralSummaryV1,
+                StructuralSectionPageV1,
             )
             for model in contract_models:
                 components[model.__name__] = model.model_json_schema(
@@ -904,6 +1156,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 ("/api/v1/repositories/{repository_id}/uploads", UploadReservationV1),
                 ("/api/v1/repositories/{repository_id}/github-acquisitions", GitHubAcquisitionV1),
                 ("/api/v1/repositories/{repository_id}/analyses", StructuralAnalysisRequestV1),
+                ("/api/v1/repositories/{repository_id}/analyses/{run_id}/traversal", GraphQueryV1),
             )
             for path, model in body_contracts:
                 schema["paths"][path]["post"]["requestBody"] = {

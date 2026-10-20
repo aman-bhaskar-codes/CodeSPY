@@ -41,7 +41,15 @@ def job_record(row: dict[str, Any]) -> JobRecordV2:
 
 
 def job_record_v3(row: dict[str, Any]) -> JobRecordV3:
-    return JobRecordV3(**{k: row[k] for k in JobRecordV3.model_fields if k in row})
+    data = {k: row[k] for k in JobRecordV3.model_fields if k in row}
+    data["report_available"] = (
+        row["state"] in {"succeeded", "partial"} and row["result_run_id"] is not None
+    )
+    return JobRecordV3(**data)
+
+
+def public_job_record(row: dict[str, Any]) -> JobRecordV2 | JobRecordV3:
+    return job_record_v3(row) if row["operation"] == "analyze_structure" else job_record(row)
 
 
 async def worker_context(s: AsyncSession, lease: AttemptLeaseV2) -> None:

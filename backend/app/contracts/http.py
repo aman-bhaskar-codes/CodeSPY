@@ -118,3 +118,49 @@ class GitHubAcquisitionV1(Contract):
 class GitHubBindingV1(Contract):
     github_repository_id: int = Field(gt=0)
     installation_id: int = Field(gt=0)
+
+
+class JobEventV3(Contract):
+    job_id: UUID
+    sequence: int = Field(gt=0)
+    public_payload: dict[str, Any]
+    created_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def safe_payload(self) -> "JobEventV3":
+        JobEventV2(
+            job_id=self.job_id,
+            sequence=self.sequence,
+            event_type="progress",
+            public_payload=self.public_payload,
+            created_at=self.created_at,
+        )
+        return self
+
+    schema_version: Literal[3] = 3
+    event_type: Literal[
+        "submitted",
+        "upload_verified",
+        "queued",
+        "commit_pinned",
+        "attempt_started",
+        "progress",
+        "retry_scheduled",
+        "cancel_requested",
+        "cancelled",
+        "admitted",
+        "inventory_completed",
+        "inventory_partial",
+        "failed",
+        "analysis_started",
+        "syntax_completed",
+        "resolution_completed",
+        "report_completed",
+        "report_partial",
+    ]
+
+
+class EventPageV3(Contract):
+    items: list[JobEventV3]
+    next_cursor: str | None = None
+    data_version: Literal[3] = 3

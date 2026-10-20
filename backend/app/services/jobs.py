@@ -23,6 +23,7 @@ from app.repositories.job_repository import (
     job_record_v3,
     jobs,
     load_job,
+    public_job_record,
     worker_context,
 )
 from app.repositories.outbox_repository import enqueue_wakeup
@@ -609,14 +610,14 @@ class JobService:
                 s, job, attempt, code, transient=transient, cancel=code == "access_revoked"
             )
 
-    async def request_cancel(self, ctx: TenantContext, job_id: UUID) -> JobRecordV2:
+    async def request_cancel(self, ctx: TenantContext, job_id: UUID) -> JobRecordV2 | JobRecordV3:
         """API cancellation fences work; broker alone closes an inventory run."""
         async with transaction(self.factory) as s:
             hint = await load_job(s, ctx.org_id, job_id)
             await lock_scope(s, ctx.org_id, ctx.principal_id, hint["repository_id"])
             job = await load_job(s, ctx.org_id, job_id, lock=True)
             if job["state"] in TERMINAL or job["state"] == "cancelling":
-                return job_record(job)
+                return public_job_record(job)
             # Admission has no analysis run and may release its reservation here.
             if job["operation"] == "admit_source" or job["state"] != "running":
                 attempt = (
@@ -653,9 +654,9 @@ class JobService:
                     )
                 )
                 await append_event(s, job, "cancel_requested")
-            return job_record(await load_job(s, ctx.org_id, job_id))
+            return public_job_record(await load_job(s, ctx.org_id, job_id))
 
-    async def cancel(self, ctx: TenantContext, job_id: UUID) -> JobRecordV2:
+    async def cancel(self, ctx: TenantContext, job_id: UUID) -> JobRecordV2 | JobRecordV3:
         async with transaction(self.factory) as s:
             hint = await load_job(s, ctx.org_id, job_id)
             await lock_scope(
@@ -687,7 +688,7 @@ class JobService:
                     cancel=True,
                 )
                 job = await load_job(s, ctx.org_id, job_id)
-        return job_record(job)
+        return public_job_record(job)
 
     async def recover_due(self, limit: int = 100) -> int:
         if not 1 <= limit <= 100:

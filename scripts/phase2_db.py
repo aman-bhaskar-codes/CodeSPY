@@ -349,7 +349,7 @@ def test_suite(values, suite, schema_target="0009_api_commands"):
                     if os.environ.get("CODESPY_TEST_SELECT")
                     else []
                 ),
-                *(["-s"] if suite == "performance" else []),
+                *(["-s"] if suite in {"performance", "phase3"} else []),
                 "-o",
                 "addopts=-ra --strict-markers",
                 "-q",

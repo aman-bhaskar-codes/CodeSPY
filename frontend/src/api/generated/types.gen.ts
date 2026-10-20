@@ -24,6 +24,10 @@ export type AnalysisAcceptedV1 = {
      * Spec Id
      */
     spec_id: string;
+    /**
+     * Status Url
+     */
+    status_url: string;
 };
 
 /**
@@ -194,6 +198,38 @@ export type DiagnosticV1 = {
 };
 
 /**
+ * EdgeCreateV1
+ */
+export type EdgeCreateV1 = {
+    /**
+     * Edge Kind
+     */
+    edge_kind: 'AST_CHILD' | 'IMPORTS' | 'CALLS_CANDIDATE';
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Properties
+     */
+    properties?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Source Local Id
+     */
+    source_local_id: string;
+    /**
+     * Support Evidence Id
+     */
+    support_evidence_id: string;
+    /**
+     * Target Local Id
+     */
+    target_local_id: string;
+};
+
+/**
  * EventPageV2
  */
 export type EventPageV2 = {
@@ -205,6 +241,24 @@ export type EventPageV2 = {
      * Items
      */
     items: Array<JobEventV2>;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: string | null;
+};
+
+/**
+ * EventPageV3
+ */
+export type EventPageV3 = {
+    /**
+     * Data Version
+     */
+    data_version?: 3;
+    /**
+     * Items
+     */
+    items: Array<JobEventV3>;
     /**
      * Next Cursor
      */
@@ -251,6 +305,94 @@ export type GitHubBindingV1 = {
      * Installation Id
      */
     installation_id: number;
+};
+
+/**
+ * GraphPage
+ */
+export type GraphPage = {
+    /**
+     * Edges
+     */
+    edges: Array<EdgeCreateV1>;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: string | null;
+    /**
+     * Nodes
+     */
+    nodes: Array<NodeCreateV1>;
+    scope: RunRef;
+    /**
+     * Truncated
+     */
+    truncated: boolean;
+};
+
+/**
+ * GraphQueryV1
+ */
+export type GraphQueryV1 = {
+    /**
+     * Direction
+     */
+    direction?: 'forward' | 'reverse';
+    /**
+     * Edge Kind
+     */
+    edge_kind?: 'AST_CHILD' | 'IMPORTS' | 'CALLS_CANDIDATE';
+    /**
+     * Max Depth
+     */
+    max_depth?: number;
+    /**
+     * Max Edges
+     */
+    max_edges?: number;
+    /**
+     * Max Nodes
+     */
+    max_nodes?: number;
+    /**
+     * Max Scanned Edges
+     */
+    max_scanned_edges?: number;
+    /**
+     * Seeds
+     */
+    seeds: Array<string>;
+    /**
+     * Strategy
+     */
+    strategy?: 'bfs' | 'dfs';
+};
+
+/**
+ * GraphTraversalV1
+ */
+export type GraphTraversalV1 = {
+    /**
+     * Edges
+     */
+    edges: Array<string>;
+    /**
+     * Nodes
+     */
+    nodes: Array<string>;
+    /**
+     * Reason
+     */
+    reason: string | null;
+    run_ref: RunRef;
+    /**
+     * Scanned Edges
+     */
+    scanned_edges: number;
+    /**
+     * Truncated
+     */
+    truncated: boolean;
 };
 
 /**
@@ -409,6 +551,38 @@ export type JobEventV2 = {
 };
 
 /**
+ * JobEventV3
+ */
+export type JobEventV3 = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Event Type
+     */
+    event_type: 'submitted' | 'upload_verified' | 'queued' | 'commit_pinned' | 'attempt_started' | 'progress' | 'retry_scheduled' | 'cancel_requested' | 'cancelled' | 'admitted' | 'inventory_completed' | 'inventory_partial' | 'failed' | 'analysis_started' | 'syntax_completed' | 'resolution_completed' | 'report_completed' | 'report_partial';
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Public Payload
+     */
+    public_payload: {
+        [key: string]: unknown;
+    };
+    /**
+     * Schema Version
+     */
+    schema_version?: 3;
+    /**
+     * Sequence
+     */
+    sequence: number;
+};
+
+/**
  * JobRecordV2
  */
 export type JobRecordV2 = {
@@ -535,6 +709,10 @@ export type JobRecordV3 = {
      */
     result_run_id: string | null;
     /**
+     * Schema Version
+     */
+    schema_version?: 3;
+    /**
      * Snapshot Id
      */
     snapshot_id: string | null;
@@ -546,6 +724,39 @@ export type JobRecordV3 = {
      * Submission Id
      */
     submission_id: string | null;
+};
+
+/**
+ * NodeCreateV1
+ */
+export type NodeCreateV1 = {
+    /**
+     * Attributes
+     */
+    attributes?: {
+        [key: string]: unknown;
+    };
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * Local Id
+     */
+    local_id: string;
+    /**
+     * Node Kind
+     */
+    node_kind: 'module' | 'class' | 'function' | 'method' | 'call' | 'import';
+    /**
+     * Qualified Name
+     */
+    qualified_name: string;
+    range: SourceRangeV1;
+    /**
+     * Symbol Name
+     */
+    symbol_name: string;
 };
 
 /**
@@ -694,6 +905,36 @@ export type RetryResponseV1 = {
      * Submission Id
      */
     submission_id: string;
+};
+
+/**
+ * RetryResponseV2
+ */
+export type RetryResponseV2 = {
+    /**
+     * Analysis Spec Id
+     */
+    analysis_spec_id: string;
+    /**
+     * Retry Job Id
+     */
+    retry_job_id: string;
+    /**
+     * Retry Of Job Id
+     */
+    retry_of_job_id: string;
+    /**
+     * Retry Of Submission Id
+     */
+    retry_of_submission_id?: string | null;
+    /**
+     * Schema Version
+     */
+    schema_version?: 2;
+    /**
+     * Submission Id
+     */
+    submission_id?: string | null;
 };
 
 /**
@@ -909,6 +1150,10 @@ export type StructuralCoverageV1 = {
      */
     omissions?: Array<FileOmissionV1>;
     /**
+     * Omitted Details Count
+     */
+    omitted_details_count?: number;
+    /**
      * Omitted Diagnostics
      */
     omitted_diagnostics?: number;
@@ -1042,6 +1287,118 @@ export type StructuralLimitsV1 = {
      * Syntax Nodes Per File
      */
     syntax_nodes_per_file?: number;
+};
+
+/**
+ * StructuralSectionPageV1
+ */
+export type StructuralSectionPageV1 = {
+    /**
+     * Items
+     */
+    items: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: string | null;
+    run_ref: RunRef;
+    /**
+     * Section
+     */
+    section: 'symbols' | 'resolutions' | 'routes' | 'requests' | 'links' | 'diagnostics' | 'components' | 'symbol_map' | 'evidence_map' | 'excerpts' | 'omissions';
+};
+
+/**
+ * StructuralSummaryV1
+ */
+export type StructuralSummaryV1 = {
+    /**
+     * Archive Sha256
+     */
+    archive_sha256: string;
+    /**
+     * Components
+     */
+    components?: Array<ComponentSectionV1>;
+    /**
+     * Config Hash
+     */
+    config_hash: string;
+    coverage: StructuralCoverageV1;
+    /**
+     * Diagnostics
+     */
+    diagnostics?: Array<DiagnosticV1>;
+    /**
+     * Evidence Map
+     */
+    evidence_map?: Array<IdentityMapV1>;
+    /**
+     * Excerpts
+     */
+    excerpts?: Array<SourceExcerptV1>;
+    limits?: StructuralLimitsV1;
+    /**
+     * Links
+     */
+    links?: Array<BoundaryLinkV1>;
+    /**
+     * Nonclaims
+     */
+    nonclaims?: Array<string>;
+    /**
+     * Normalized Sha256
+     */
+    normalized_sha256: string;
+    /**
+     * Policy Hash
+     */
+    policy_hash: string;
+    /**
+     * Report Sha256
+     */
+    report_sha256: string;
+    /**
+     * Request Nonce
+     */
+    request_nonce: string;
+    /**
+     * Requests
+     */
+    requests?: Array<HttpRequestObservationV1>;
+    /**
+     * Resolutions
+     */
+    resolutions?: Array<ResolutionV1>;
+    /**
+     * Routes
+     */
+    routes?: Array<RouteObservationV1>;
+    run_ref: RunRef;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+    /**
+     * Section Counts
+     */
+    section_counts: {
+        [key: string]: number;
+    };
+    /**
+     * Symbol Map
+     */
+    symbol_map?: Array<IdentityMapV1>;
+    /**
+     * Symbols
+     */
+    symbols?: Array<SymbolObservationV1>;
+    /**
+     * Toolchain Hash
+     */
+    toolchain_hash: string;
 };
 
 /**
@@ -1345,9 +1702,11 @@ export type JobEventsApiV1JobsJobIdEventsGetError = JobEventsApiV1JobsJobIdEvent
 
 export type JobEventsApiV1JobsJobIdEventsGetResponses = {
     /**
+     * Response Job Events Api V1 Jobs  Job Id  Events Get
+     *
      * Successful Response
      */
-    200: EventPageV2;
+    200: EventPageV2 | EventPageV3;
 };
 
 export type JobEventsApiV1JobsJobIdEventsGetResponse = JobEventsApiV1JobsJobIdEventsGetResponses[keyof JobEventsApiV1JobsJobIdEventsGetResponses];
@@ -1375,9 +1734,11 @@ export type RetryJobApiV1JobsJobIdRetryPostError = RetryJobApiV1JobsJobIdRetryPo
 
 export type RetryJobApiV1JobsJobIdRetryPostResponses = {
     /**
+     * Response Retry Job Api V1 Jobs  Job Id  Retry Post
+     *
      * Successful Response
      */
-    202: RetryResponseV1;
+    202: RetryResponseV1 | RetryResponseV2;
 };
 
 export type RetryJobApiV1JobsJobIdRetryPostResponse = RetryJobApiV1JobsJobIdRetryPostResponses[keyof RetryJobApiV1JobsJobIdRetryPostResponses];
@@ -1478,6 +1839,48 @@ export type CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostResponses = {
 
 export type CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostResponse = CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostResponses[keyof CreateAnalysisApiV1RepositoriesRepositoryIdAnalysesPostResponses];
 
+export type StructuralEvidenceApiV1RepositoriesRepositoryIdAnalysesRunIdEvidenceEvidenceIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+        /**
+         * Evidence Id
+         */
+        evidence_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/analyses/{run_id}/evidence/{evidence_id}';
+};
+
+export type StructuralEvidenceApiV1RepositoriesRepositoryIdAnalysesRunIdEvidenceEvidenceIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StructuralEvidenceApiV1RepositoriesRepositoryIdAnalysesRunIdEvidenceEvidenceIdGetError = StructuralEvidenceApiV1RepositoriesRepositoryIdAnalysesRunIdEvidenceEvidenceIdGetErrors[keyof StructuralEvidenceApiV1RepositoriesRepositoryIdAnalysesRunIdEvidenceEvidenceIdGetErrors];
+
+export type StructuralEvidenceApiV1RepositoriesRepositoryIdAnalysesRunIdEvidenceEvidenceIdGetResponses = {
+    /**
+     * Response Structural Evidence Api V1 Repositories  Repository Id  Analyses  Run Id  Evidence  Evidence Id  Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type StructuralEvidenceApiV1RepositoriesRepositoryIdAnalysesRunIdEvidenceEvidenceIdGetResponse = StructuralEvidenceApiV1RepositoriesRepositoryIdAnalysesRunIdEvidenceEvidenceIdGetResponses[keyof StructuralEvidenceApiV1RepositoriesRepositoryIdAnalysesRunIdEvidenceEvidenceIdGetResponses];
+
 export type ExportAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdExportGetData = {
     body?: never;
     path: {
@@ -1515,6 +1918,45 @@ export type ExportAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdExport
     200: unknown;
 };
 
+export type StructuralGraphApiV1RepositoriesRepositoryIdAnalysesRunIdGraphGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: {
+        /**
+         * After
+         */
+        after?: string | null;
+    };
+    url: '/api/v1/repositories/{repository_id}/analyses/{run_id}/graph';
+};
+
+export type StructuralGraphApiV1RepositoriesRepositoryIdAnalysesRunIdGraphGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StructuralGraphApiV1RepositoriesRepositoryIdAnalysesRunIdGraphGetError = StructuralGraphApiV1RepositoriesRepositoryIdAnalysesRunIdGraphGetErrors[keyof StructuralGraphApiV1RepositoriesRepositoryIdAnalysesRunIdGraphGetErrors];
+
+export type StructuralGraphApiV1RepositoriesRepositoryIdAnalysesRunIdGraphGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: GraphPage;
+};
+
+export type StructuralGraphApiV1RepositoriesRepositoryIdAnalysesRunIdGraphGetResponse = StructuralGraphApiV1RepositoriesRepositoryIdAnalysesRunIdGraphGetResponses[keyof StructuralGraphApiV1RepositoriesRepositoryIdAnalysesRunIdGraphGetResponses];
+
 export type GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetData = {
     body?: never;
     path: {
@@ -1544,10 +1986,91 @@ export type GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGet
     /**
      * Successful Response
      */
-    200: ArchitectureReportV1;
+    200: StructuralSummaryV1;
 };
 
 export type GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetResponse = GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetResponses[keyof GetAnalysisReportApiV1RepositoriesRepositoryIdAnalysesRunIdReportGetResponses];
+
+export type ReportSectionApiV1RepositoriesRepositoryIdAnalysesRunIdReportSectionGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+        /**
+         * Section
+         */
+        section: 'symbols' | 'resolutions' | 'routes' | 'requests' | 'links' | 'diagnostics' | 'components' | 'symbol_map' | 'evidence_map' | 'excerpts' | 'omissions';
+    };
+    query?: {
+        /**
+         * After
+         */
+        after?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{repository_id}/analyses/{run_id}/report/{section}';
+};
+
+export type ReportSectionApiV1RepositoriesRepositoryIdAnalysesRunIdReportSectionGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReportSectionApiV1RepositoriesRepositoryIdAnalysesRunIdReportSectionGetError = ReportSectionApiV1RepositoriesRepositoryIdAnalysesRunIdReportSectionGetErrors[keyof ReportSectionApiV1RepositoriesRepositoryIdAnalysesRunIdReportSectionGetErrors];
+
+export type ReportSectionApiV1RepositoriesRepositoryIdAnalysesRunIdReportSectionGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: StructuralSectionPageV1;
+};
+
+export type ReportSectionApiV1RepositoriesRepositoryIdAnalysesRunIdReportSectionGetResponse = ReportSectionApiV1RepositoriesRepositoryIdAnalysesRunIdReportSectionGetResponses[keyof ReportSectionApiV1RepositoriesRepositoryIdAnalysesRunIdReportSectionGetResponses];
+
+export type StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTraversalPostData = {
+    body: GraphQueryV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/analyses/{run_id}/traversal';
+};
+
+export type StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTraversalPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTraversalPostError = StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTraversalPostErrors[keyof StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTraversalPostErrors];
+
+export type StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTraversalPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: GraphTraversalV1;
+};
+
+export type StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTraversalPostResponse = StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTraversalPostResponses[keyof StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTraversalPostResponses];
 
 export type AcquireGithubApiV1RepositoriesRepositoryIdGithubAcquisitionsPostData = {
     body: GitHubAcquisitionV1;
@@ -1638,7 +2161,7 @@ export type GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSna
     /**
      * Successful Response
      */
-    200: ArchitectureReportV1;
+    200: StructuralSummaryV1;
 };
 
 export type GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetResponse = GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetResponses[keyof GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetResponses];

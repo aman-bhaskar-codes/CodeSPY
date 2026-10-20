@@ -16,6 +16,7 @@ from app.analyzers.frameworks import (
     member,
     method,
     object_field,
+    stable_js_name,
     walk,
 )
 from app.analyzers.positions import SourceIndex
@@ -78,14 +79,27 @@ def observe_http(
 
             # Check for fetch(...)
             if fn.type == "identifier" and js_text(fn, unit) == "fetch":
-                if not args:
+                if not args or not stable_js_name(
+                    root, node, "fetch", unit, allow_module_binding=False
+                ):
                     continue
                 url_node = args[0]
                 options_node = args[1] if len(args) > 1 else None
 
                 req_method = "GET"
+                if options_node is not None and (
+                    options_node.type != "object"
+                    or any(c.type == "spread_element" for c in options_node.named_children)
+                ):
+                    req_method = "UNKNOWN"
                 if options_node and options_node.type == "object":
                     method_val_node = object_field(options_node, "method", unit)
+                    if any(
+                        js_text(c.child_by_field_name("key"), unit).strip("\"'") == "method"
+                        for c in options_node.named_children
+                        if c.type == "pair"
+                    ):
+                        req_method = "UNKNOWN"
                     if method_val_node and method_val_node.type == "string":
                         lit = js_literal(method_val_node, unit)
                         if lit:
@@ -140,7 +154,12 @@ def observe_http(
             # Check for axios.<verb>(...) or axios(...)
             elif axios_aliases:
                 mem = member(fn, unit)
-                if mem and mem[0] in axios_aliases and mem[1].lower() in HTTP_VERBS:
+                if (
+                    mem
+                    and mem[0] in axios_aliases
+                    and mem[1].lower() in HTTP_VERBS
+                    and stable_js_name(root, node, mem[0], unit)
+                ):
                     if not args:
                         continue
                     url_node = args[0]

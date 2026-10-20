@@ -182,7 +182,7 @@ def js_imports(root: Node, unit: SourceUnitV1, package: Literal["express", "axio
                     js_text(c, unit) for c in clause.named_children if c.type == "identifier"
                 )
         for child in walk(node):
-            if child.type == "variable_declarator":
+            if child.type == "variable_declarator" and module_level(child):
                 value = child.child_by_field_name("value")
                 name = child.child_by_field_name("name")
                 if name is None or name.type != "identifier" or value is None:
@@ -195,3 +195,66 @@ def js_imports(root: Node, unit: SourceUnitV1, package: Literal["express", "axio
                 ) or (value.type == "identifier" and js_text(value, unit) in aliases):
                     aliases.add(js_text(name, unit))
     return aliases
+
+
+def module_level(node: Node) -> bool:
+    parent = node.parent
+    while parent:
+        if parent.type in {
+            "function_declaration",
+            "function_expression",
+            "arrow_function",
+            "method_definition",
+            "class_declaration",
+        }:
+            return False
+        parent = parent.parent
+    return True
+
+
+def stable_js_name(
+    root: Node, site: Node, name: str, unit: SourceUnitV1, *, allow_module_binding: bool = True
+) -> bool:
+    """Conservative identity gate; unsupported shadowing/rebinding abstains."""
+    parent = site.parent
+    while parent:
+        if parent.type in {
+            "function_declaration",
+            "function_expression",
+            "arrow_function",
+            "method_definition",
+        }:
+            parameters = parent.child_by_field_name("parameters") or parent.child_by_field_name(
+                "parameter"
+            )
+            if parameters and any(
+                n.type == "identifier" and js_text(n, unit) == name for n in walk(parameters)
+            ):
+                return False
+            if any(
+                n.type == "variable_declarator"
+                and js_text(n.child_by_field_name("name"), unit) == name
+                for n in walk(parent)
+            ):
+                return False
+        parent = parent.parent
+    declarations = 0
+    for node in walk(root):
+        if (
+            node.type == "assignment_expression"
+            and js_text(node.child_by_field_name("left"), unit) == name
+        ):
+            return False
+        if (
+            node.type == "variable_declarator"
+            and module_level(node)
+            and js_text(node.child_by_field_name("name"), unit) == name
+        ):
+            declarations += 1
+        if (
+            not allow_module_binding
+            and node.type == "import_statement"
+            and any(n.type == "identifier" and js_text(n, unit) == name for n in walk(node))
+        ):
+            return False
+    return declarations <= (1 if allow_module_binding else 0)
