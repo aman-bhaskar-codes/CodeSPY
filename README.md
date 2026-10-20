@@ -4,6 +4,10 @@ CodeSPY is a repository analysis project. The planned application will help deve
 
 The current implementation supports local source ingestion and inventory, backed by PostgreSQL. It accepts bounded ZIP uploads, records immutable source snapshots, runs fenced jobs through an outbox and queue, and exposes a small API and upload/status interface. Phase 3 adds bounded structural analysis for Python, JavaScript and TypeScript, with source citations, graph projections, static framework observations and JSON/Markdown reports. AI explanations belong to later phases.
 
+## Development roadmap
+
+The [post-Phase-3 roadmap](docs/CODESPY_POST_PHASE3_MASTER_EXECUTION_ROADMAP.md) controls upcoming development. Phase 4 starts with deterministic findings and triage; retrieval and grounded investigations follow. The [Phase 4 specification](docs/phases/PHASE_4_DETERMINISTIC_FINDINGS_EXECUTION_PLAN.md) records the current package boundaries. Scanner transport contracts are under development; no scanner or AI capability is enabled by their presence.
+
 ## What works
 
 - Tenant-scoped persistence, source manifests and replay checks.
