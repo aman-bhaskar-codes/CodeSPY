@@ -15,7 +15,13 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.contracts.ingestion import AdmissionPolicyV1, ObjectDescriptor, SubmissionRecordV1
+from app.contracts.ingestion import (
+    AdmissionPolicy,
+    AdmissionPolicyV1,
+    ObjectDescriptor,
+    SubmissionRecordV1,
+    resolve_admission_policy,
+)
 from app.contracts.jobs import AttemptLeaseV2, EnqueueJobV2
 from app.db.time import database_now
 from app.db.transaction import transaction
@@ -54,11 +60,14 @@ class GitHubAcquisitionService:
         factory: async_sessionmaker[AsyncSession],
         store: ObjectStore,
         provider: GitHubProvider,
+        *,
+        policy: AdmissionPolicy | None = None,
     ):
         self.factory, self.store, self.provider = factory, store, provider
         self.jobs = JobService(factory)
         self.submissions = SubmissionService(factory, store)
-        self.policy = AdmissionPolicyV1(github_strip_root=True)
+        chosen = policy if policy is not None else AdmissionPolicyV1(github_strip_root=True)
+        self.policy = resolve_admission_policy(chosen.digest(), github_strip_root=True)
 
     async def bind(
         self,

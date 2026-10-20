@@ -16,7 +16,7 @@ Results echo a canonical digest of the entire request, including run/repository/
 
 First proof: malformed/extra fields, unknown rule, duplicate IDs, mismatched source hash, count/byte limits, failed-result coverage and Unicode safe errors. Run focused tests, Ruff and strict typing, then historical Phase 3 unit suite. No scanners enabled by these DTOs.
 
-Admission metadata V2 is a separate increment: inspect archive classification, manifests, acquisition/replay and DB policy constraints before changing them. Preserve V1 byte identity and replay; exact uv.lock opt-in applies only to future admissions. Old exclusions remain unchanged.
+Admission metadata V2 is a separate increment with explicit opt-in via trusted composition. Preserve V1 canonical hashes and replay; exact `uv.lock` opt-in applies only to future admissions and is capped at 256 KiB of UTF-8 TOML metadata. Preserve earlier exclusions and structural source/config budgets. Worker, retry, sandbox and source reconstruction resolve the persisted policy hash through the registered V1/V2 defaults. Unknown/custom hashes fail closed; custom reduced profiles require a future persisted registry. No schema migration is needed for this increment: existing policy hash and text-language fields represent it. Linux CI must qualify actual V2 admission and mixed-policy DB/source/retry behavior before calling the increment qualified.
 
 ## Dependent packages
 

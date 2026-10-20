@@ -303,6 +303,7 @@ def test_suite(values, suite, schema_target="0009_api_commands"):
         }
         paths = {
             "phase3": ["backend/tests/phase3"],
+            "phase4": ["backend/tests/phase4"],
             "integration": [
                 "backend/tests/phase2/integration",
                 "backend/tests/phase2/api",
@@ -378,6 +379,7 @@ def main():
                 "--suite",
                 choices=[
                     "phase3",
+                    "phase4",
                     "integration",
                     "migrations",
                     "concurrency",

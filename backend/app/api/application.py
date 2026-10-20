@@ -3,7 +3,7 @@
 import json
 import secrets
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal
 from urllib.parse import urlsplit
@@ -23,7 +23,12 @@ from app.contracts.http import (
     RepositoryPageV1,
     SessionV1,
 )
-from app.contracts.ingestion import SubmissionRecordV1, UploadReservationV1
+from app.contracts.ingestion import (
+    AdmissionPolicy,
+    AdmissionPolicyV1,
+    SubmissionRecordV1,
+    UploadReservationV1,
+)
 from app.contracts.jobs import JobRecordV2, JobRecordV3, RetryResponseV1, RetryResponseV2
 from app.contracts.persistence import GraphPage, RepositoryCreate, RepositoryRecord
 from app.contracts.structure import (
@@ -113,6 +118,7 @@ class ApplicationPorts:
     github: GitHubAcquisitionService | None = None
     webhooks: GitHubWebhookService | None = None
     readiness: Callable[[], Awaitable[bool]] | None = None
+    admission_policy: AdmissionPolicy = field(default_factory=AdmissionPolicyV1)
 
 
 def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
@@ -155,7 +161,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     sessions = SessionService(ports.factory)
     jobs = JobService(ports.factory)
     retries = RetryService(ports.factory, ports.store)
-    submissions = SubmissionService(ports.factory, ports.store)
+    submissions = SubmissionService(ports.factory, ports.store, policy=ports.admission_policy)
     structural = StructuralAnalysisService(ports.factory)
     cursors = CursorCodec(secrets.token_bytes(32))
 

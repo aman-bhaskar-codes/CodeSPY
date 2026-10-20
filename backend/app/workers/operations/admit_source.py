@@ -1,7 +1,7 @@
 """Load the selected durable acquisition and inventory it in the Linux sandbox."""
 
 from app.admission.process import DockerAdmissionRunner
-from app.contracts.ingestion import AdmissionPolicyV1, ArtifactManifestV1
+from app.contracts.ingestion import AdmissionPolicy, ArtifactManifestV1
 from app.contracts.jobs import AttemptLeaseV2
 from app.db.transaction import transaction
 from app.domain.errors import DuplicateConflict
@@ -28,7 +28,7 @@ class StoredAdmissionProcessor:
         self.acquisition = acquisition
         self.jobs = JobService(factory)
 
-    async def inspect(self, lease: AttemptLeaseV2, policy: AdmissionPolicyV1) -> ArtifactManifestV1:
+    async def inspect(self, lease: AttemptLeaseV2, policy: AdmissionPolicy) -> ArtifactManifestV1:
         submissions = PHASE2_TABLES["source_submissions"]
         objects = PHASE2_TABLES["object_records"]
         bindings = PHASE2_TABLES["github_repository_bindings"]

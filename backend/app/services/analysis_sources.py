@@ -8,7 +8,12 @@ from uuid import UUID, uuid4
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.contracts.ingestion import AdmissionPolicyV1, ArtifactManifestV1, ObjectDescriptor
+from app.contracts.ingestion import (
+    AdmissionPolicy,
+    ArtifactManifestV1,
+    ObjectDescriptor,
+    resolve_admission_policy,
+)
 from app.contracts.structure import (
     AnalysisConfigV1,
     SourceDescriptorV1,
@@ -43,7 +48,7 @@ class LocatedSource:
     archive: ObjectDescriptor
     manifest: ObjectDescriptor
     files: tuple[SourceFileV1, ...]
-    policy: AdmissionPolicyV1
+    policy: AdmissionPolicy
     revision: str | None
 
 
@@ -99,6 +104,7 @@ async def locate_source(
                     submissions.c.state == "admitted",
                     submissions.c.snapshot_id == snapshot_id,
                     submissions.c.actual_sha == art["sha256"],
+                    submissions.c.policy_hash == snap["admission_config_hash"],
                     submissions.c.resolved_commit.is_not_distinct_from(snap["source_revision"]),
                 )
                 .order_by(jobs.c.id)
@@ -110,7 +116,12 @@ async def locate_source(
     )
     if admitted is None:
         raise DuplicateConflict("verified admission unavailable")
-    policy = AdmissionPolicyV1(github_strip_root=admitted["source_kind"] == "github_archive")
+    try:
+        policy = resolve_admission_policy(
+            admitted["policy_hash"], github_strip_root=admitted["source_kind"] == "github_archive"
+        )
+    except ValueError:
+        raise DuplicateConflict("unsupported admission policy") from None
     if (
         policy.digest() != admitted["policy_hash"]
         or policy.digest() != snap["admission_config_hash"]

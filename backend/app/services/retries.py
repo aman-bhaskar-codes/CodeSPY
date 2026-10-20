@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.contracts.ingestion import AdmissionPolicyV1, ObjectDescriptor
+from app.contracts.ingestion import ObjectDescriptor, resolve_admission_policy
 from app.contracts.jobs import EnqueueJobV2, EnqueueJobV3, RetryResponseV1, RetryResponseV2
 from app.db.time import database_now
 from app.db.transaction import transaction
@@ -104,9 +104,13 @@ class RetryService:
                 .mappings()
                 .one()
             )
-            expected_policy = AdmissionPolicyV1(
-                github_strip_root=source["source_kind"] == "github_archive"
-            ).digest()
+            try:
+                expected_policy = resolve_admission_policy(
+                    source["policy_hash"],
+                    github_strip_root=source["source_kind"] == "github_archive",
+                ).digest()
+            except ValueError:
+                raise RetryRejected("retry_not_supported") from None
             if (
                 source["policy_hash"] != old["config_hash"]
                 or source["policy_hash"] != expected_policy

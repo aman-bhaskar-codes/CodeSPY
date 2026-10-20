@@ -9,7 +9,7 @@ from app.adapters.github.http import ProviderFailure
 from app.admission.zip_inventory import AdmissionRejected
 from app.analyzers.runner import AnalysisProcessError
 from app.analyzers.source import SourceIntegrityError
-from app.contracts.ingestion import AdmissionPolicyV1, ArtifactManifestV1
+from app.contracts.ingestion import AdmissionPolicy, ArtifactManifestV1, resolve_admission_policy
 from app.contracts.jobs import AttemptLeaseV2, JobEnvelopeV2, JobEnvelopeV3
 from app.db.transaction import transaction
 from app.domain.errors import (
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 class AdmissionProcessor(Protocol):
     async def inspect(
-        self, lease: AttemptLeaseV2, policy: AdmissionPolicyV1
+        self, lease: AttemptLeaseV2, policy: AdmissionPolicy
     ) -> ArtifactManifestV1: ...
 
 
@@ -115,9 +115,13 @@ class JobConsumer:
 
         async def operate() -> None:
             if envelope.operation == "admit_source":
-                manifest = await self.processor.inspect(
-                    lease, AdmissionPolicyV1(github_strip_root=source_kind == "github_archive")
-                )
+                try:
+                    policy = resolve_admission_policy(
+                        job["config_hash"], github_strip_root=source_kind == "github_archive"
+                    )
+                except ValueError:
+                    raise DuplicateConflict("unsupported admission policy") from None
+                manifest = await self.processor.inspect(lease, policy)
                 prepared = await self.finalizer.prepare_admission(lease, manifest)
                 await self.finalizer.finish_admission(
                     lease, prepared, before_lock=enter_finalization

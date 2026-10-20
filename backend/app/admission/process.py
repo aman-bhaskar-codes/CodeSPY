@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from app.adapters.storage.local import LocalObjectStore
 from app.admission.zip_inventory import AdmissionRejected
-from app.contracts.ingestion import AdmissionPolicyV1, ArtifactManifestV1, ObjectDescriptor
+from app.contracts.ingestion import AdmissionPolicy, ArtifactManifestV1, ObjectDescriptor
 from app.domain.canonical_json import canonical_bytes
 from app.domain.errors import DuplicateConflict, PersistenceError
 
@@ -242,7 +242,7 @@ class DockerAdmissionRunner:
         self,
         chunks: AsyncIterable[bytes],
         expected: ObjectDescriptor,
-        policy: AdmissionPolicyV1,
+        policy: AdmissionPolicy,
         *,
         source_revision: str | None = None,
         github_repository_id: int | None = None,
@@ -279,7 +279,7 @@ class DockerAdmissionRunner:
             if not (directory / "container.json").exists():
                 shutil.rmtree(directory)
 
-    async def inspect_bytes(self, value: bytes, policy: AdmissionPolicyV1) -> ArtifactManifestV1:
+    async def inspect_bytes(self, value: bytes, policy: AdmissionPolicy) -> ArtifactManifestV1:
         async def chunks() -> AsyncIterator[bytes]:
             yield value
 
