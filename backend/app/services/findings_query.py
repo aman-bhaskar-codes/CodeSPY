@@ -156,10 +156,10 @@ class FindingsQueryService:
             rows = (await session.execute(query)).all()
             total = len(rows)
 
-            by_cat = Counter()
-            by_sev = Counter()
-            by_disp = Counter()
-            by_triage = Counter()
+            by_cat: Counter[str] = Counter()
+            by_sev: Counter[str] = Counter()
+            by_disp: Counter[str] = Counter()
+            by_triage: Counter[str] = Counter()
 
             for cat, payload, disp, triage_state in rows:
                 by_cat[cat] += 1
@@ -453,7 +453,7 @@ class FindingsQueryService:
     ) -> str | None:
         located = await locate_source(session, org_id, repository_id, snapshot_id)
         raw_archive = b""
-        async for chunk in store.get_stream(located.archive.storage_key):
+        async for chunk in store.open_verified(located.archive):
             raw_archive += chunk
             if len(raw_archive) > 104857600:
                 return None

@@ -215,7 +215,8 @@ class TriageService:
                         version=finding_triage_projections.c.version + 1,
                     )
                 )
-                if res.rowcount != 1:
+                rowcount = getattr(res, "rowcount", None)
+                if rowcount != 1:
                     raise DuplicateConflict("concurrent triage modification")
                 new_version = current_version + 1
 
