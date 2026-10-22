@@ -19,6 +19,7 @@ from app.contracts.model import (
     ModelRoutingRequirementV1,
 )
 from app.contracts.provider_budget import DisclosurePolicyV1
+from app.services.claim_verification import ClaimVerificationService
 from app.services.investigation_checkpointer import (
     FencedCheckpointer,
 )
@@ -67,10 +68,12 @@ class ShortPathInvestigator:
         model_gateway: ModelGatewayService,
         checkpointer: FencedCheckpointer,
         tool_registry: InvestigatorToolRegistry | None = None,
+        claim_verifier: ClaimVerificationService | None = None,
     ) -> None:
         self.gateway = model_gateway
         self.checkpointer = checkpointer
         self.tools = tool_registry or InvestigatorToolRegistry()
+        self.claim_verifier = claim_verifier or ClaimVerificationService()
 
     async def run_investigation(
         self,
@@ -297,6 +300,58 @@ class ShortPathInvestigator:
                     )
                     for i, c in enumerate(raw_claims)
                 ]
+
+                if extracted_claims:
+                    await self.checkpointer.append_event(
+                        org_id=org_id,
+                        investigation_id=investigation_id,
+                        step_index=current_step,
+                        event_type=InvestigationEventType.CLAIM_EXTRACTED.value,
+                        node_name="claim_extractor",
+                        payload={"total_claims": len(extracted_claims)},
+                    )
+
+                # Deterministic claim verification against ground-truth source
+                if self.claim_verifier and extracted_claims:
+                    await self.checkpointer.append_event(
+                        org_id=org_id,
+                        investigation_id=investigation_id,
+                        step_index=current_step,
+                        event_type=InvestigationEventType.VERIFICATION_STARTED.value,
+                        node_name="claim_verifier",
+                        payload={"claims_to_verify": len(extracted_claims)},
+                    )
+
+                    report = await self.claim_verifier.verify_claims(
+                        claims=extracted_claims,
+                        context=exec_context,
+                        original_verdict=v_str,
+                        original_confidence=v_conf,
+                    )
+
+                    await self.checkpointer.append_event(
+                        org_id=org_id,
+                        investigation_id=investigation_id,
+                        step_index=current_step,
+                        event_type=InvestigationEventType.VERIFICATION_RESULT.value,
+                        node_name="claim_verifier",
+                        payload={
+                            "is_grounded": report.is_grounded,
+                            "grounding_ratio": report.grounding_ratio,
+                            "verified_count": report.verified_count,
+                            "refuted_count": report.refuted_count,
+                            "unsupported_count": report.unsupported_count,
+                            "adjusted_verdict": report.adjusted_verdict,
+                            "summary": report.verification_summary,
+                        },
+                    )
+
+                    extracted_claims = list(report.verified_claims)
+                    if report.adjusted_verdict is not None:
+                        v_str = report.adjusted_verdict
+                    if report.adjusted_confidence is not None:
+                        v_conf = report.adjusted_confidence
+                    v_summ = f"{v_summ}\n\nGrounding: {report.verification_summary}"
 
                 state = state.model_copy(
                     update={

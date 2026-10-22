@@ -2,7 +2,7 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Protocol
 from uuid import UUID, uuid4
 
 from sqlalchemy import desc, select, update
@@ -23,6 +23,15 @@ from app.models.investigation_tables import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class EventSink(Protocol):
+    async def publish_event(
+        self,
+        org_id: UUID,
+        investigation_id: UUID,
+        event: InvestigationEventV1,
+    ) -> None: ...
 
 
 class InvestigationCheckpointerError(Exception):
@@ -58,8 +67,9 @@ class FencedCheckpointer:
     durable checkpoint snapshots, and append-only event auditing.
     """
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, event_sink: EventSink | None = None) -> None:
         self.s = session
+        self.event_sink = event_sink
 
     async def create_investigation(
         self,
@@ -351,6 +361,18 @@ class FencedCheckpointer:
             created_at=now,
         )
         await self.s.execute(stmt)
+        if self.event_sink is not None:
+            ev = InvestigationEventV1(
+                id=event_id,
+                org_id=org_id,
+                investigation_id=investigation_id,
+                step_index=step_index,
+                event_type=event_type,
+                node_name=node_name,
+                payload=payload,
+                created_at=now,
+            )
+            await self.event_sink.publish_event(org_id, investigation_id, ev)
         return event_id
 
     async def list_events(
