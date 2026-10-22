@@ -1,0 +1,165 @@
+{
+  "version": "1.0.0",
+  "created_at": "2026-10-22T20:20:00Z",
+  "description": "Frozen evaluation corpus for CodeSPY Phase 5 retrieval benchmarks.",
+  "cases": [
+    {
+      "case_id": "py_exact_func_01",
+      "split": "dev",
+      "category": "exact_identifier",
+      "language": "python",
+      "query": "authenticate_user_credentials",
+      "expected_answerable": true,
+      "relevant_spans": [
+        {
+          "file_path": "backend/app/services/auth.py",
+          "symbol_name": "authenticate_user_credentials",
+          "start_line": 42,
+          "end_line": 78
+        }
+      ]
+    },
+    {
+      "case_id": "ts_exact_class_02",
+      "split": "dev",
+      "category": "exact_identifier",
+      "language": "typescript",
+      "query": "PaymentTransactionManager",
+      "expected_answerable": true,
+      "relevant_spans": [
+        {
+          "file_path": "frontend/src/services/billing.ts",
+          "symbol_name": "PaymentTransactionManager",
+          "start_line": 15,
+          "end_line": 90
+        }
+      ]
+    },
+    {
+      "case_id": "js_subword_query_03",
+      "split": "dev",
+      "category": "code_search",
+      "language": "javascript",
+      "query": "calculate invoice discount tax rate",
+      "expected_answerable": true,
+      "relevant_spans": [
+        {
+          "file_path": "lib/pricing/calculator.js",
+          "symbol_name": "computeInvoiceTotals",
+          "start_line": 20,
+          "end_line": 65
+        }
+      ]
+    },
+    {
+      "case_id": "cross_file_nav_04",
+      "split": "dev",
+      "category": "cross_file_navigation",
+      "language": "python",
+      "query": "ObjectStore open_verified",
+      "expected_answerable": true,
+      "relevant_spans": [
+        {
+          "file_path": "backend/app/ports/object_store.py",
+          "symbol_name": "open_verified",
+          "start_line": 14,
+          "end_line": 14
+        },
+        {
+          "file_path": "backend/app/adapters/storage/local.py",
+          "symbol_name": "open_verified",
+          "start_line": 120,
+          "end_line": 145
+        }
+      ]
+    },
+    {
+      "case_id": "security_finding_05",
+      "split": "dev",
+      "category": "security_finding_evidence",
+      "language": "python",
+      "query": "codespy_sec_canary SQL injection raw query",
+      "expected_answerable": true,
+      "relevant_spans": [
+        {
+          "file_path": "backend/app/services/findings_query.py",
+          "symbol_name": "query_finding_details",
+          "start_line": 150,
+          "end_line": 195
+        }
+      ]
+    },
+    {
+      "case_id": "unanswerable_absent_06",
+      "split": "held_out",
+      "category": "unanswerable",
+      "language": "python",
+      "query": "quantum_encryption_lattice_keygen",
+      "expected_answerable": false,
+      "relevant_spans": []
+    },
+    {
+      "case_id": "ambiguous_duplicate_07",
+      "split": "held_out",
+      "category": "ambiguous_symbols",
+      "language": "mixed",
+      "query": "validate_payload",
+      "expected_answerable": true,
+      "relevant_spans": [
+        {
+          "file_path": "backend/app/api/validators.py",
+          "symbol_name": "validate_payload",
+          "start_line": 10,
+          "end_line": 35
+        },
+        {
+          "file_path": "frontend/src/utils/validators.ts",
+          "symbol_name": "validate_payload",
+          "start_line": 5,
+          "end_line": 28
+        }
+      ]
+    },
+    {
+      "case_id": "arch_relationship_08",
+      "split": "held_out",
+      "category": "architecture",
+      "language": "python",
+      "query": "SourceViewService verify_scope derived_artifacts",
+      "expected_answerable": true,
+      "relevant_spans": [
+        {
+          "file_path": "backend/app/services/source_view.py",
+          "symbol_name": "SourceViewService",
+          "start_line": 35,
+          "end_line": 120
+        }
+      ]
+    },
+    {
+      "case_id": "path_segment_09",
+      "split": "held_out",
+      "category": "exact_identifier",
+      "language": "typescript",
+      "query": "frontend/src/services/",
+      "expected_answerable": true,
+      "relevant_spans": [
+        {
+          "file_path": "frontend/src/services/billing.ts",
+          "symbol_name": null,
+          "start_line": 1,
+          "end_line": 90
+        }
+      ]
+    },
+    {
+      "case_id": "negative_revoked_10",
+      "split": "held_out",
+      "category": "unanswerable",
+      "language": "python",
+      "query": "secret_internal_admin_token",
+      "expected_answerable": false,
+      "relevant_spans": []
+    }
+  ]
+}
