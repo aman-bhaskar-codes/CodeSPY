@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from app.analyzers.reporting import render_json, render_markdown
+from app.contracts.dependencies import DependencyFileV1
 from app.contracts.http import (
     EventPageV2,
     EventPageV3,
@@ -31,7 +32,14 @@ from app.contracts.ingestion import (
 )
 from app.contracts.jobs import JobRecordV2, JobRecordV3, RetryResponseV1, RetryResponseV2
 from app.contracts.persistence import GraphPage, RepositoryCreate, RepositoryRecord
-from app.contracts.scan_jobs import RetryScanResponseV3, ScanConfigV1, ScanJobRecordV4
+from app.contracts.scan_jobs import (
+    DependencySelectionV1,
+    NativeSelectionV1,
+    RetryScanResponseV3,
+    ScanConfigV1,
+    ScanJobRecordV4,
+)
+from app.contracts.scanners import ScannerFileV1, ScannerProfileV1
 from app.contracts.structure import (
     AnalysisAcceptedV1,
     AnalysisConfigV1,
@@ -1352,6 +1360,12 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 StructuralSummaryV1,
                 StructuralSectionPageV1,
                 CreateScanRequestV1,
+                ScanConfigV1,
+                NativeSelectionV1,
+                DependencySelectionV1,
+                ScannerFileV1,
+                ScannerProfileV1,
+                DependencyFileV1,
                 ScanAcceptedV1,
                 ScanSummaryResponseV1,
                 FindingSummaryV1,

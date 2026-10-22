@@ -10,7 +10,12 @@ from scripts import phase2_db
 if __name__ == "__main__":
     if "test" in sys.argv:
         if "--schema-target" not in sys.argv:
-            sys.argv.extend(["--schema-target", "0011_structural_authority"])
+            target = (
+                "0012_scan_storage"
+                if "phase4" in sys.argv
+                else "0011_structural_authority"
+            )
+            sys.argv.extend(["--schema-target", target])
         if "--suite" not in sys.argv:
             sys.argv.extend(["--suite", "phase3"])
     phase2_db.main()

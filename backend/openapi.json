@@ -1735,6 +1735,112 @@
         "title": "CreateScanRequestV1",
         "type": "object"
       },
+      "DependencyFileV1": {
+        "additionalProperties": false,
+        "properties": {
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "package-lock-v3",
+              "uv-v1-r3"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "maximum": 262144,
+            "minimum": 0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file_id",
+          "sha256",
+          "size_bytes",
+          "format"
+        ],
+        "title": "DependencyFileV1",
+        "type": "object"
+      },
+      "DependencySelectionV1": {
+        "$defs": {
+          "DependencyFileV1": {
+            "additionalProperties": false,
+            "properties": {
+              "file_id": {
+                "format": "uuid",
+                "title": "File Id",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "package-lock-v3",
+                  "uv-v1-r3"
+                ],
+                "title": "Format",
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256",
+                "type": "string"
+              },
+              "size_bytes": {
+                "maximum": 262144,
+                "minimum": 0,
+                "title": "Size Bytes",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "file_id",
+              "sha256",
+              "size_bytes",
+              "format"
+            ],
+            "title": "DependencyFileV1",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "bundle_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Bundle Digest",
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/DependencyFileV1"
+            },
+            "maxItems": 32,
+            "title": "Files",
+            "type": "array"
+          },
+          "parser_profile": {
+            "const": "lockfile-offline-v1",
+            "default": "lockfile-offline-v1",
+            "title": "Parser Profile",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bundle_digest",
+          "files"
+        ],
+        "title": "DependencySelectionV1",
+        "type": "object"
+      },
       "DiagnosticV1": {
         "additionalProperties": false,
         "properties": {
@@ -3431,6 +3537,134 @@
         "title": "JobRecordV3",
         "type": "object"
       },
+      "NativeSelectionV1": {
+        "$defs": {
+          "ScannerFileV1": {
+            "additionalProperties": false,
+            "properties": {
+              "file_id": {
+                "format": "uuid",
+                "title": "File Id",
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256",
+                "type": "string"
+              },
+              "size_bytes": {
+                "maximum": 2097152,
+                "minimum": 0,
+                "title": "Size Bytes",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "file_id",
+              "sha256",
+              "size_bytes"
+            ],
+            "title": "ScannerFileV1",
+            "type": "object"
+          },
+          "ScannerProfileV1": {
+            "additionalProperties": false,
+            "properties": {
+              "artifact_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Artifact Sha256",
+                "type": "string"
+              },
+              "cpu": {
+                "default": 2,
+                "maximum": 2,
+                "minimum": 1,
+                "title": "Cpu",
+                "type": "integer"
+              },
+              "deadline_seconds": {
+                "default": 180,
+                "maximum": 180,
+                "minimum": 1,
+                "title": "Deadline Seconds",
+                "type": "integer"
+              },
+              "memory_bytes": {
+                "default": 1073741824,
+                "maximum": 1073741824,
+                "minimum": 1,
+                "title": "Memory Bytes",
+                "type": "integer"
+              },
+              "output_bytes": {
+                "default": 2097152,
+                "maximum": 2097152,
+                "minimum": 1,
+                "title": "Output Bytes",
+                "type": "integer"
+              },
+              "pids": {
+                "default": 64,
+                "maximum": 64,
+                "minimum": 1,
+                "title": "Pids",
+                "type": "integer"
+              },
+              "rule_ids": {
+                "items": {
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$",
+                  "type": "string"
+                },
+                "maxItems": 128,
+                "minItems": 1,
+                "title": "Rule Ids",
+                "type": "array"
+              },
+              "rules_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Rules Sha256",
+                "type": "string"
+              },
+              "tool": {
+                "enum": [
+                  "semgrep",
+                  "gitleaks"
+                ],
+                "title": "Tool",
+                "type": "string"
+              }
+            },
+            "required": [
+              "tool",
+              "artifact_sha256",
+              "rules_sha256",
+              "rule_ids"
+            ],
+            "title": "ScannerProfileV1",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/ScannerFileV1"
+            },
+            "maxItems": 128,
+            "title": "Files",
+            "type": "array"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ScannerProfileV1"
+          }
+        },
+        "required": [
+          "profile",
+          "files"
+        ],
+        "title": "NativeSelectionV1",
+        "type": "object"
+      },
       "NodeCreateV1": {
         "additionalProperties": false,
         "properties": {
@@ -4017,6 +4251,248 @@
         "title": "ScanAcceptedV1",
         "type": "object"
       },
+      "ScanConfigV1": {
+        "$defs": {
+          "DependencyFileV1": {
+            "additionalProperties": false,
+            "properties": {
+              "file_id": {
+                "format": "uuid",
+                "title": "File Id",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "package-lock-v3",
+                  "uv-v1-r3"
+                ],
+                "title": "Format",
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256",
+                "type": "string"
+              },
+              "size_bytes": {
+                "maximum": 262144,
+                "minimum": 0,
+                "title": "Size Bytes",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "file_id",
+              "sha256",
+              "size_bytes",
+              "format"
+            ],
+            "title": "DependencyFileV1",
+            "type": "object"
+          },
+          "DependencySelectionV1": {
+            "additionalProperties": false,
+            "properties": {
+              "bundle_digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Bundle Digest",
+                "type": "string"
+              },
+              "files": {
+                "items": {
+                  "$ref": "#/components/schemas/DependencyFileV1"
+                },
+                "maxItems": 32,
+                "title": "Files",
+                "type": "array"
+              },
+              "parser_profile": {
+                "const": "lockfile-offline-v1",
+                "default": "lockfile-offline-v1",
+                "title": "Parser Profile",
+                "type": "string"
+              }
+            },
+            "required": [
+              "bundle_digest",
+              "files"
+            ],
+            "title": "DependencySelectionV1",
+            "type": "object"
+          },
+          "NativeSelectionV1": {
+            "additionalProperties": false,
+            "properties": {
+              "files": {
+                "items": {
+                  "$ref": "#/components/schemas/ScannerFileV1"
+                },
+                "maxItems": 128,
+                "title": "Files",
+                "type": "array"
+              },
+              "profile": {
+                "$ref": "#/components/schemas/ScannerProfileV1"
+              }
+            },
+            "required": [
+              "profile",
+              "files"
+            ],
+            "title": "NativeSelectionV1",
+            "type": "object"
+          },
+          "ScannerFileV1": {
+            "additionalProperties": false,
+            "properties": {
+              "file_id": {
+                "format": "uuid",
+                "title": "File Id",
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256",
+                "type": "string"
+              },
+              "size_bytes": {
+                "maximum": 2097152,
+                "minimum": 0,
+                "title": "Size Bytes",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "file_id",
+              "sha256",
+              "size_bytes"
+            ],
+            "title": "ScannerFileV1",
+            "type": "object"
+          },
+          "ScannerProfileV1": {
+            "additionalProperties": false,
+            "properties": {
+              "artifact_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Artifact Sha256",
+                "type": "string"
+              },
+              "cpu": {
+                "default": 2,
+                "maximum": 2,
+                "minimum": 1,
+                "title": "Cpu",
+                "type": "integer"
+              },
+              "deadline_seconds": {
+                "default": 180,
+                "maximum": 180,
+                "minimum": 1,
+                "title": "Deadline Seconds",
+                "type": "integer"
+              },
+              "memory_bytes": {
+                "default": 1073741824,
+                "maximum": 1073741824,
+                "minimum": 1,
+                "title": "Memory Bytes",
+                "type": "integer"
+              },
+              "output_bytes": {
+                "default": 2097152,
+                "maximum": 2097152,
+                "minimum": 1,
+                "title": "Output Bytes",
+                "type": "integer"
+              },
+              "pids": {
+                "default": 64,
+                "maximum": 64,
+                "minimum": 1,
+                "title": "Pids",
+                "type": "integer"
+              },
+              "rule_ids": {
+                "items": {
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$",
+                  "type": "string"
+                },
+                "maxItems": 128,
+                "minItems": 1,
+                "title": "Rule Ids",
+                "type": "array"
+              },
+              "rules_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Rules Sha256",
+                "type": "string"
+              },
+              "tool": {
+                "enum": [
+                  "semgrep",
+                  "gitleaks"
+                ],
+                "title": "Tool",
+                "type": "string"
+              }
+            },
+            "required": [
+              "tool",
+              "artifact_sha256",
+              "rules_sha256",
+              "rule_ids"
+            ],
+            "title": "ScannerProfileV1",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "catalog_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Catalog Digest",
+            "type": "string"
+          },
+          "dependency_selection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DependencySelectionV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "native_selections": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/NativeSelectionV1"
+            },
+            "maxItems": 2,
+            "title": "Native Selections",
+            "type": "array"
+          },
+          "runtime_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Runtime Digest",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "runtime_digest",
+          "catalog_digest"
+        ],
+        "title": "ScanConfigV1",
+        "type": "object"
+      },
       "ScanSummaryResponseV1": {
         "properties": {
           "by_category": {
@@ -4096,6 +4572,110 @@
           "by_triage"
         ],
         "title": "ScanSummaryResponseV1",
+        "type": "object"
+      },
+      "ScannerFileV1": {
+        "additionalProperties": false,
+        "properties": {
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size_bytes": {
+            "maximum": 2097152,
+            "minimum": 0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file_id",
+          "sha256",
+          "size_bytes"
+        ],
+        "title": "ScannerFileV1",
+        "type": "object"
+      },
+      "ScannerProfileV1": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Artifact Sha256",
+            "type": "string"
+          },
+          "cpu": {
+            "default": 2,
+            "maximum": 2,
+            "minimum": 1,
+            "title": "Cpu",
+            "type": "integer"
+          },
+          "deadline_seconds": {
+            "default": 180,
+            "maximum": 180,
+            "minimum": 1,
+            "title": "Deadline Seconds",
+            "type": "integer"
+          },
+          "memory_bytes": {
+            "default": 1073741824,
+            "maximum": 1073741824,
+            "minimum": 1,
+            "title": "Memory Bytes",
+            "type": "integer"
+          },
+          "output_bytes": {
+            "default": 2097152,
+            "maximum": 2097152,
+            "minimum": 1,
+            "title": "Output Bytes",
+            "type": "integer"
+          },
+          "pids": {
+            "default": 64,
+            "maximum": 64,
+            "minimum": 1,
+            "title": "Pids",
+            "type": "integer"
+          },
+          "rule_ids": {
+            "items": {
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$",
+              "type": "string"
+            },
+            "maxItems": 128,
+            "minItems": 1,
+            "title": "Rule Ids",
+            "type": "array"
+          },
+          "rules_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Rules Sha256",
+            "type": "string"
+          },
+          "tool": {
+            "enum": [
+              "semgrep",
+              "gitleaks"
+            ],
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "artifact_sha256",
+          "rules_sha256",
+          "rule_ids"
+        ],
+        "title": "ScannerProfileV1",
         "type": "object"
       },
       "SessionV1": {

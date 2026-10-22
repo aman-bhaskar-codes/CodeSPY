@@ -28,7 +28,7 @@ jobs:
       - run: uv run --frozen --all-packages --all-groups python scripts/phase3_db.py prepare --env-out work/phase3-ci.env
       - run: uv run --frozen --all-packages --all-groups python scripts/build_admission_image.py --image-out work/admission-image.id
       - run: echo "CODESPY_ADMISSION_IMAGE=$(cat work/admission-image.id)" >> "$GITHUB_ENV"
-      - run: uv run --frozen --all-packages --all-groups python scripts/phase3_db.py test --env-file work/phase3-ci.env --suite phase4
+      - run: uv run --frozen --all-packages --all-groups python scripts/phase3_db.py test --env-file work/phase3-ci.env --suite phase4 --schema-target 0012_scan_storage
       - run: uv run --frozen --all-packages --all-groups python scripts/phase3_db.py test --env-file work/phase3-ci.env
       - run: uv run --frozen --all-packages --all-groups python scripts/phase2_db.py test --env-file work/phase3-ci.env --suite integration --schema-target 0011_structural_authority
       - run: npm ci --prefix frontend
