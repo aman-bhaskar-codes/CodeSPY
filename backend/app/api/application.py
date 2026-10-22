@@ -74,6 +74,7 @@ from app.domain.scope import TenantContext
 from app.models.phase2_tables import PHASE2_TABLES
 from app.models.tables import memberships, repositories, source_files, source_snapshots
 from app.ports.object_store import ObjectStore
+from app.ports.scan_execution import ScanCapabilities
 from app.repositories.command_repository import record_command, replay_command
 from app.repositories.identity_repository import IdentityRepository
 from app.repositories.repository_repository import RepositoryRepository
@@ -81,13 +82,12 @@ from app.security.authorization import require_repository
 from app.security.cursors import CursorCodec
 from app.security.oauth import OAuthRejected, OAuthService
 from app.security.sessions import SessionService, token_digest
-from app.ports.scan_execution import ScanCapabilities
 from app.services.feature_trace import FeatureTraceService
 from app.services.findings_query import (
     FindingDetailResponseV1,
     FindingListResponseV1,
-    FindingSummaryV1,
     FindingsQueryService,
+    FindingSummaryV1,
     ScanSummaryResponseV1,
 )
 from app.services.github_acquisition import GitHubAcquisitionService
@@ -342,9 +342,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             raise ScopeViolation("resource unavailable")
         return await repository_context(request, repo, write=write)
 
-    async def json_body(
-        request: Request, model: type[BaseModel], max_size: int = 65536
-    ) -> Any:
+    async def json_body(request: Request, model: type[BaseModel], max_size: int = 65536) -> Any:
         data = bytearray()
         async for chunk in request.stream():
             data.extend(chunk)
@@ -1238,9 +1236,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             status_url=f"/api/v1/repositories/{repository_id}/snapshots/{body.snapshot_id}/scans/{job.id}/summary",
         )
 
-    @app.get(
-        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/summary"
-    )
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/summary")
     async def get_scan_summary(
         request: Request, repository_id: UUID, snapshot_id: UUID, run_id: UUID
     ) -> ScanSummaryResponseV1:
@@ -1248,11 +1244,9 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         try:
             return await findings_query.get_summary(ctx, repository_id, snapshot_id, run_id)
         except NoResultFound:
-            raise HTTPException(404, detail="scan_summary_not_found")
+            raise HTTPException(404, detail="scan_summary_not_found") from None
 
-    @app.get(
-        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/findings"
-    )
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/findings")
     async def list_scan_findings(
         request: Request,
         repository_id: UUID,
@@ -1279,9 +1273,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             limit=limit,
         )
 
-    @app.get(
-        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}"
-    )
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}")
     async def get_finding_detail(
         request: Request, repository_id: UUID, snapshot_id: UUID, finding_id: UUID
     ) -> FindingDetailResponseV1:
@@ -1291,7 +1283,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 ctx, repository_id, snapshot_id, finding_id, store=ports.store
             )
         except NoResultFound:
-            raise HTTPException(404, detail="finding_not_found")
+            raise HTTPException(404, detail="finding_not_found") from None
 
     @app.post(
         "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage"
@@ -1302,13 +1294,15 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         ctx = await repository_context(request, repository_id, write=True)
         body = await json_body(request, TriageTransitionV1)
         try:
-            return await triage_service.transition(ctx, repository_id, snapshot_id, finding_id, body)
+            return await triage_service.transition(
+                ctx, repository_id, snapshot_id, finding_id, body
+            )
         except NoResultFound:
-            raise HTTPException(404, detail="finding_not_found")
+            raise HTTPException(404, detail="finding_not_found") from None
         except DuplicateConflict as e:
-            raise HTTPException(409, detail=str(e))
+            raise HTTPException(409, detail=str(e)) from e
         except PermissionDenied as e:
-            raise HTTPException(403, detail=str(e))
+            raise HTTPException(403, detail=str(e)) from e
 
     @app.get(
         "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage/history"
@@ -1320,7 +1314,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         try:
             return await triage_service.get_history(ctx, repository_id, snapshot_id, finding_id)
         except NoResultFound:
-            raise HTTPException(404, detail="finding_not_found")
+            raise HTTPException(404, detail="finding_not_found") from None
 
     @app.post(
         "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/trace"
@@ -1335,9 +1329,11 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         except Exception:
             body = TraceBudgetV1()
         try:
-            return await trace_service.trace(ctx, repository_id, snapshot_id, finding_id, budget=body)
+            return await trace_service.trace(
+                ctx, repository_id, snapshot_id, finding_id, budget=body
+            )
         except NoResultFound:
-            raise HTTPException(404, detail="finding_not_found")
+            raise HTTPException(404, detail="finding_not_found") from None
 
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
@@ -1381,10 +1377,19 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 ("/api/v1/repositories/{repository_id}/github-acquisitions", GitHubAcquisitionV1),
                 ("/api/v1/repositories/{repository_id}/analyses", StructuralAnalysisRequestV1),
                 ("/api/v1/repositories/{repository_id}/analyses/{run_id}/traversal", GraphQueryV1),
-                ("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans", CreateScanRequestV1),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans",
+                    CreateScanRequestV1,
+                ),
                 ("/api/v1/repositories/{repository_id}/scans", CreateScanRequestV1),
-                ("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage", TriageTransitionV1),
-                ("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/trace", TraceBudgetV1),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage",
+                    TriageTransitionV1,
+                ),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/trace",
+                    TraceBudgetV1,
+                ),
             )
             for path, model in body_contracts:
                 if path in schema.get("paths", {}):

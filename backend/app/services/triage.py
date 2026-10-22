@@ -145,7 +145,8 @@ class TriageService:
 
             if transition.expected_version != current_version:
                 raise DuplicateConflict(
-                    f"triage version conflict: expected {transition.expected_version}, current {current_version}"
+                    f"triage version conflict: expected {transition.expected_version}, "
+                    f"current {current_version}"
                 )
 
             # Idempotent replay: if state and reason match exactly, return existing record

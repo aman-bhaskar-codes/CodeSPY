@@ -6,18 +6,8 @@ from uuid import uuid4
 import httpx
 import pytest
 from app.api.application import ApiSettings, ApplicationPorts, create_app
-from app.contracts.scan_jobs import NativeSelectionV1, ScanConfigV1
-from app.contracts.scanners import ScannerFileV1
-from app.contracts.trace import FeatureTraceV1
-from app.contracts.triage import (
-    TriageHistoryV1,
-    TriageRecordV1,
-    TriageTransitionV1,
-)
 from app.domain.scope import OrgRole, TenantContext
 from app.ports.object_store import ObjectStore
-from app.scanners.finding_catalog import reviewed_catalog
-from tests.phase4.runtime_fixtures import runtime
 
 
 class DummyStore(ObjectStore):
@@ -58,12 +48,30 @@ def test_openapi_schema_includes_scanner_and_triage_contracts() -> None:
     paths = schema["paths"]
     assert "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans" in paths
     assert "/api/v1/repositories/{repository_id}/scans" in paths
-    assert "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/summary" in paths
-    assert "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/findings" in paths
-    assert "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}" in paths
-    assert "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage" in paths
-    assert "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage/history" in paths
-    assert "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/trace" in paths
+    assert (
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/summary"
+        in paths
+    )
+    assert (
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/findings"
+        in paths
+    )
+    assert (
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}"
+        in paths
+    )
+    assert (
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage"
+        in paths
+    )
+    assert (
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage/history"
+        in paths
+    )
+    assert (
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/trace"
+        in paths
+    )
 
 
 @pytest.mark.asyncio
@@ -141,4 +149,3 @@ def test_scan_request_contracts_validation() -> None:
     data = req.model_dump_json()
     parsed = CreateScanRequestV1.model_validate_json(data)
     assert parsed.config is None
-

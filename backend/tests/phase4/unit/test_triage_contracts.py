@@ -1,6 +1,6 @@
 """Unit tests for human triage and feature trace contracts."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -63,7 +63,7 @@ def test_triage_record_and_history_models() -> None:
     finding_id = uuid4()
     event_id = uuid4()
     principal_id = uuid4()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     item = TriageHistoryItemV1(
         event_id=event_id,
@@ -93,7 +93,9 @@ def test_feature_trace_contract() -> None:
     finding_id = uuid4()
     n1_id = uuid4()
     n2_id = uuid4()
-    node1 = TraceNodeV1(id=n1_id, kind="finding", label="Hardcoded Secret", file_path="app/config.py", line=12)
+    node1 = TraceNodeV1(
+        id=n1_id, kind="finding", label="Hardcoded Secret", file_path="app/config.py", line=12
+    )
     node2 = TraceNodeV1(id=n2_id, kind="route", label="GET /api/v1/auth")
     edge = TraceEdgeV1(source_id=n1_id, target_id=n2_id, edge_kind="route_handler")
 

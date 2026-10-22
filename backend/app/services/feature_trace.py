@@ -1,6 +1,5 @@
 """Feature trace service connecting findings to code graph nodes and framework routes."""
 
-from collections import defaultdict
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -64,7 +63,9 @@ class FeatureTraceService:
             if finding_row is None:
                 raise NoResultFound("finding_not_found")
 
-            payload = finding_row["payload_json"] if isinstance(finding_row["payload_json"], dict) else {}
+            payload = (
+                finding_row["payload_json"] if isinstance(finding_row["payload_json"], dict) else {}
+            )
             title = payload.get("title", finding_row["rule_id"])
             entity = payload.get("entity", {})
             start_line = None
@@ -107,7 +108,6 @@ class FeatureTraceService:
                 key=lambda r: abs((r["line_number"] or 1) - (start_line or 1)),
             )
             seeds = [sorted_candidates[0]["local_id"]]
-            seed_row = sorted_candidates[0]
 
             # 3. Load neighborhood edges for this snapshot
             edge_query = (

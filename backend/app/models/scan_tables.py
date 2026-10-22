@@ -245,7 +245,8 @@ finding_triage_events = sa.Table(
     ),
     ck(
         "ck_triage_event_reason",
-        "reason IN ('none', 'code_refactor', 'compensating_control', 'business_context', 'test_code', 'vendor_dependency')",
+        "reason IN ('none', 'code_refactor', 'compensating_control', "
+        "'business_context', 'test_code', 'vendor_dependency')",
     ),
 )
 finding_triage_projections = sa.Table(
@@ -280,11 +281,13 @@ finding_triage_projections = sa.Table(
     ),
     ck(
         "ck_triage_proj_state",
-        "current_state IN ('unreviewed', 'confirmed', 'false_positive', 'mitigated', 'accepted_risk')",
+        "current_state IN ('unreviewed', 'confirmed', 'false_positive', "
+        "'mitigated', 'accepted_risk')",
     ),
     ck(
         "ck_triage_proj_reason",
-        "current_reason IN ('none', 'code_refactor', 'compensating_control', 'business_context', 'test_code', 'vendor_dependency')",
+        "current_reason IN ('none', 'code_refactor', 'compensating_control', "
+        "'business_context', 'test_code', 'vendor_dependency')",
     ),
     ck("ck_triage_proj_version", "version >= 1"),
 )

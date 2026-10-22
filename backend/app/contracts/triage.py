@@ -33,9 +33,8 @@ class TriageTransitionV1(BaseModel):
 
     @model_validator(mode="after")
     def validate_reason_requirement(self) -> "TriageTransitionV1":
-        if self.state in {"false_positive", "mitigated", "accepted_risk"}:
-            if self.reason == "none":
-                raise ValueError(f"reason must be provided when transitioning to {self.state}")
+        if self.state in {"false_positive", "mitigated", "accepted_risk"} and self.reason == "none":
+            raise ValueError(f"reason must be provided when transitioning to {self.state}")
         return self
 
 

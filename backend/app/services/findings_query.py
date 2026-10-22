@@ -1,7 +1,6 @@
 """Findings query reads, safe bounded excerpts, and scan summary metrics."""
 
 import io
-import json
 import zipfile
 from collections import Counter
 from datetime import datetime
@@ -16,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.contracts.triage import TriageReason, TriageRecordV1, TriageState
 from app.db.transaction import transaction
 from app.domain.scope import TenantContext
-from app.models.phase2_tables import PHASE2_TABLES
 from app.models.scan_tables import (
     finding_occurrences,
     finding_support,
@@ -141,7 +139,10 @@ class FindingsQueryService:
                 .outerjoin(
                     finding_triage_projections,
                     (finding_triage_projections.c.org_id == finding_occurrences.c.org_id)
-                    & (finding_triage_projections.c.snapshot_id == finding_occurrences.c.snapshot_id)
+                    & (
+                        finding_triage_projections.c.snapshot_id
+                        == finding_occurrences.c.snapshot_id
+                    )
                     & (finding_triage_projections.c.run_id == finding_occurrences.c.run_id)
                     & (finding_triage_projections.c.finding_id == finding_occurrences.c.id),
                 )
@@ -225,7 +226,10 @@ class FindingsQueryService:
                 .outerjoin(
                     finding_triage_projections,
                     (finding_triage_projections.c.org_id == finding_occurrences.c.org_id)
-                    & (finding_triage_projections.c.snapshot_id == finding_occurrences.c.snapshot_id)
+                    & (
+                        finding_triage_projections.c.snapshot_id
+                        == finding_occurrences.c.snapshot_id
+                    )
                     & (finding_triage_projections.c.run_id == finding_occurrences.c.run_id)
                     & (finding_triage_projections.c.finding_id == finding_occurrences.c.id),
                 )
@@ -345,7 +349,10 @@ class FindingsQueryService:
                 .outerjoin(
                     finding_triage_projections,
                     (finding_triage_projections.c.org_id == finding_occurrences.c.org_id)
-                    & (finding_triage_projections.c.snapshot_id == finding_occurrences.c.snapshot_id)
+                    & (
+                        finding_triage_projections.c.snapshot_id
+                        == finding_occurrences.c.snapshot_id
+                    )
                     & (finding_triage_projections.c.run_id == finding_occurrences.c.run_id)
                     & (finding_triage_projections.c.finding_id == finding_occurrences.c.id),
                 )
