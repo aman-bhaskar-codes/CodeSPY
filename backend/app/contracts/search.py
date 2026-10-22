@@ -154,3 +154,49 @@ class DenseSearchResponseV1(BaseModel):
     total_candidates: int = Field(ge=0)
     hits: tuple[DenseSearchHitV1, ...]
     execution_ms: float = Field(default=0.0, ge=0.0)
+
+
+class HybridSearchRequestV1(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    scope: SearchScopeV1
+    query: str = Field(min_length=1, max_length=1024)
+    limit: int = Field(default=20, ge=1, le=100)
+    rrf_k: int = Field(default=60, ge=1, le=200)
+    weights: dict[str, float] = Field(
+        default_factory=lambda: {"exact": 1.5, "lexical": 1.0, "dense": 1.0}
+    )
+    exact_limit: int = Field(default=20, ge=1, le=100)
+    lexical_limit: int = Field(default=30, ge=1, le=100)
+    dense_limit: int = Field(default=30, ge=1, le=100)
+    dense_index_id: UUID | None = None
+
+
+class HybridSearchHitV1(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    chunk_id: UUID
+    file_id: UUID
+    file_path: str
+    chunk_kind: ChunkKind
+    symbol_name: str | None = None
+    qualified_name: str | None = None
+    start_byte: int = Field(ge=0)
+    end_byte: int = Field(ge=0)
+    start_line: int = Field(ge=1)
+    end_line: int = Field(ge=1)
+    score: float = Field(ge=0.0)
+    snippet: str
+    content_sha256: str
+    match_modalities: tuple[str, ...]
+    modality_ranks: dict[str, int]
+
+
+class HybridSearchResponseV1(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    scope: SearchScopeV1
+    query: str
+    total_candidates: int = Field(ge=0)
+    hits: tuple[HybridSearchHitV1, ...]
+    execution_ms: float = Field(default=0.0, ge=0.0)
