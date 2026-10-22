@@ -21,7 +21,6 @@ export function FindingsWorkbench({
 }: Props) {
   const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
-  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const [filters, setFilters] = useState({
     category: "all",
     severity: "all",
@@ -80,14 +79,12 @@ export function FindingsWorkbench({
 
   const handleNextPage = () => {
     if (findingsQuery.data?.next_cursor) {
-      setCursorHistory((prev) => [...prev, cursor ?? ""]);
       setCursor(findingsQuery.data.next_cursor);
     }
   };
 
   const handleResetPagination = () => {
     setCursor(null);
-    setCursorHistory([]);
   };
 
   return (
