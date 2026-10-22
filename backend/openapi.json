@@ -1383,6 +1383,36 @@
         "title": "BoundaryLinkV1",
         "type": "object"
       },
+      "ByteRangeV1": {
+        "properties": {
+          "end_byte": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "End Byte",
+            "type": "integer"
+          },
+          "start_byte": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Start Byte",
+            "type": "integer"
+          }
+        },
+        "title": "ByteRangeV1",
+        "type": "object"
+      },
+      "ChunkKind": {
+        "enum": [
+          "module",
+          "class",
+          "function",
+          "method",
+          "window",
+          "file"
+        ],
+        "title": "ChunkKind",
+        "type": "string"
+      },
       "ComponentSectionV1": {
         "additionalProperties": false,
         "properties": {
@@ -1460,6 +1490,608 @@
           "state"
         ],
         "title": "ComponentSectionV1",
+        "type": "object"
+      },
+      "ContextAssemblyRequestV1": {
+        "$defs": {
+          "ChunkKind": {
+            "enum": [
+              "module",
+              "class",
+              "function",
+              "method",
+              "window",
+              "file"
+            ],
+            "title": "ChunkKind",
+            "type": "string"
+          },
+          "ContextBudgetV1": {
+            "properties": {
+              "max_bytes": {
+                "default": 32768,
+                "maximum": 262144,
+                "minimum": 512,
+                "title": "Max Bytes",
+                "type": "integer"
+              },
+              "max_tokens": {
+                "default": 4096,
+                "maximum": 32768,
+                "minimum": 128,
+                "title": "Max Tokens",
+                "type": "integer"
+              },
+              "reserved_overhead_tokens": {
+                "default": 256,
+                "minimum": 0,
+                "title": "Reserved Overhead Tokens",
+                "type": "integer"
+              },
+              "tokenizer_name": {
+                "default": "cl100k_base",
+                "title": "Tokenizer Name",
+                "type": "string"
+              }
+            },
+            "title": "ContextBudgetV1",
+            "type": "object"
+          },
+          "HybridSearchHitV1": {
+            "properties": {
+              "chunk_id": {
+                "format": "uuid",
+                "title": "Chunk Id",
+                "type": "string"
+              },
+              "chunk_kind": {
+                "$ref": "#/components/schemas/ChunkKind"
+              },
+              "content_sha256": {
+                "title": "Content Sha256",
+                "type": "string"
+              },
+              "end_byte": {
+                "minimum": 0,
+                "title": "End Byte",
+                "type": "integer"
+              },
+              "end_line": {
+                "minimum": 1,
+                "title": "End Line",
+                "type": "integer"
+              },
+              "file_id": {
+                "format": "uuid",
+                "title": "File Id",
+                "type": "string"
+              },
+              "file_path": {
+                "title": "File Path",
+                "type": "string"
+              },
+              "match_modalities": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Match Modalities",
+                "type": "array"
+              },
+              "modality_ranks": {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "title": "Modality Ranks",
+                "type": "object"
+              },
+              "qualified_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Qualified Name"
+              },
+              "score": {
+                "minimum": 0.0,
+                "title": "Score",
+                "type": "number"
+              },
+              "snippet": {
+                "title": "Snippet",
+                "type": "string"
+              },
+              "start_byte": {
+                "minimum": 0,
+                "title": "Start Byte",
+                "type": "integer"
+              },
+              "start_line": {
+                "minimum": 1,
+                "title": "Start Line",
+                "type": "integer"
+              },
+              "symbol_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Symbol Name"
+              }
+            },
+            "required": [
+              "chunk_id",
+              "file_id",
+              "file_path",
+              "chunk_kind",
+              "start_byte",
+              "end_byte",
+              "start_line",
+              "end_line",
+              "score",
+              "snippet",
+              "content_sha256",
+              "match_modalities",
+              "modality_ranks"
+            ],
+            "title": "HybridSearchHitV1",
+            "type": "object"
+          },
+          "SearchScopeV1": {
+            "properties": {
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "principal_id": {
+                "format": "uuid",
+                "title": "Principal Id",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "snapshot_id": {
+                "format": "uuid",
+                "title": "Snapshot Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "org_id",
+              "repository_id",
+              "snapshot_id",
+              "principal_id"
+            ],
+            "title": "SearchScopeV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "budget": {
+            "$ref": "#/components/schemas/ContextBudgetV1"
+          },
+          "candidate_hits": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HybridSearchHitV1"
+            },
+            "title": "Candidate Hits",
+            "type": "array"
+          },
+          "deduplicate_files": {
+            "default": true,
+            "title": "Deduplicate Files",
+            "type": "boolean"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SearchScopeV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "system_preamble": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "System Preamble"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "ContextAssemblyRequestV1",
+        "type": "object"
+      },
+      "ContextItemV1": {
+        "$defs": {
+          "ChunkKind": {
+            "enum": [
+              "module",
+              "class",
+              "function",
+              "method",
+              "window",
+              "file"
+            ],
+            "title": "ChunkKind",
+            "type": "string"
+          }
+        },
+        "properties": {
+          "byte_count": {
+            "minimum": 0,
+            "title": "Byte Count",
+            "type": "integer"
+          },
+          "chunk_id": {
+            "format": "uuid",
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "chunk_kind": {
+            "$ref": "#/components/schemas/ChunkKind"
+          },
+          "citation_key": {
+            "title": "Citation Key",
+            "type": "string"
+          },
+          "end_byte": {
+            "minimum": 0,
+            "title": "End Byte",
+            "type": "integer"
+          },
+          "end_line": {
+            "minimum": 1,
+            "title": "End Line",
+            "type": "integer"
+          },
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "file_path": {
+            "title": "File Path",
+            "type": "string"
+          },
+          "match_modalities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Match Modalities",
+            "type": "array"
+          },
+          "qualified_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Qualified Name"
+          },
+          "relevance_score": {
+            "minimum": 0.0,
+            "title": "Relevance Score",
+            "type": "number"
+          },
+          "safe_content": {
+            "title": "Safe Content",
+            "type": "string"
+          },
+          "start_byte": {
+            "minimum": 0,
+            "title": "Start Byte",
+            "type": "integer"
+          },
+          "start_line": {
+            "minimum": 1,
+            "title": "Start Line",
+            "type": "integer"
+          },
+          "symbol_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Symbol Name"
+          },
+          "token_count": {
+            "minimum": 0,
+            "title": "Token Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "file_id",
+          "file_path",
+          "chunk_kind",
+          "start_line",
+          "end_line",
+          "start_byte",
+          "end_byte",
+          "token_count",
+          "byte_count",
+          "safe_content",
+          "citation_key",
+          "relevance_score",
+          "match_modalities"
+        ],
+        "title": "ContextItemV1",
+        "type": "object"
+      },
+      "ContextPacketV1": {
+        "$defs": {
+          "ChunkKind": {
+            "enum": [
+              "module",
+              "class",
+              "function",
+              "method",
+              "window",
+              "file"
+            ],
+            "title": "ChunkKind",
+            "type": "string"
+          },
+          "ContextItemV1": {
+            "properties": {
+              "byte_count": {
+                "minimum": 0,
+                "title": "Byte Count",
+                "type": "integer"
+              },
+              "chunk_id": {
+                "format": "uuid",
+                "title": "Chunk Id",
+                "type": "string"
+              },
+              "chunk_kind": {
+                "$ref": "#/components/schemas/ChunkKind"
+              },
+              "citation_key": {
+                "title": "Citation Key",
+                "type": "string"
+              },
+              "end_byte": {
+                "minimum": 0,
+                "title": "End Byte",
+                "type": "integer"
+              },
+              "end_line": {
+                "minimum": 1,
+                "title": "End Line",
+                "type": "integer"
+              },
+              "file_id": {
+                "format": "uuid",
+                "title": "File Id",
+                "type": "string"
+              },
+              "file_path": {
+                "title": "File Path",
+                "type": "string"
+              },
+              "match_modalities": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Match Modalities",
+                "type": "array"
+              },
+              "qualified_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Qualified Name"
+              },
+              "relevance_score": {
+                "minimum": 0.0,
+                "title": "Relevance Score",
+                "type": "number"
+              },
+              "safe_content": {
+                "title": "Safe Content",
+                "type": "string"
+              },
+              "start_byte": {
+                "minimum": 0,
+                "title": "Start Byte",
+                "type": "integer"
+              },
+              "start_line": {
+                "minimum": 1,
+                "title": "Start Line",
+                "type": "integer"
+              },
+              "symbol_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Symbol Name"
+              },
+              "token_count": {
+                "minimum": 0,
+                "title": "Token Count",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "chunk_id",
+              "file_id",
+              "file_path",
+              "chunk_kind",
+              "start_line",
+              "end_line",
+              "start_byte",
+              "end_byte",
+              "token_count",
+              "byte_count",
+              "safe_content",
+              "citation_key",
+              "relevance_score",
+              "match_modalities"
+            ],
+            "title": "ContextItemV1",
+            "type": "object"
+          },
+          "SearchScopeV1": {
+            "properties": {
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "principal_id": {
+                "format": "uuid",
+                "title": "Principal Id",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "snapshot_id": {
+                "format": "uuid",
+                "title": "Snapshot Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "org_id",
+              "repository_id",
+              "snapshot_id",
+              "principal_id"
+            ],
+            "title": "SearchScopeV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContextItemV1"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "items_count": {
+            "minimum": 0,
+            "title": "Items Count",
+            "type": "integer"
+          },
+          "omitted_count": {
+            "minimum": 0,
+            "title": "Omitted Count",
+            "type": "integer"
+          },
+          "packet_id": {
+            "format": "uuid",
+            "title": "Packet Id",
+            "type": "string"
+          },
+          "packet_sha256": {
+            "title": "Packet Sha256",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/SearchScopeV1"
+          },
+          "system_preamble": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "System Preamble"
+          },
+          "total_bytes": {
+            "minimum": 0,
+            "title": "Total Bytes",
+            "type": "integer"
+          },
+          "total_tokens": {
+            "minimum": 0,
+            "title": "Total Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "packet_id",
+          "scope",
+          "query",
+          "items",
+          "total_tokens",
+          "total_bytes",
+          "items_count",
+          "omitted_count",
+          "packet_sha256",
+          "created_at"
+        ],
+        "title": "ContextPacketV1",
         "type": "object"
       },
       "CreateScanRequestV1": {
@@ -1733,6 +2365,373 @@
           }
         },
         "title": "CreateScanRequestV1",
+        "type": "object"
+      },
+      "DenseSearchHitV1": {
+        "properties": {
+          "chunk_id": {
+            "format": "uuid",
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "chunk_kind": {
+            "$ref": "#/components/schemas/ChunkKind"
+          },
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "end_byte": {
+            "minimum": 0.0,
+            "title": "End Byte",
+            "type": "integer"
+          },
+          "end_line": {
+            "minimum": 1.0,
+            "title": "End Line",
+            "type": "integer"
+          },
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "file_path": {
+            "title": "File Path",
+            "type": "string"
+          },
+          "qualified_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualified Name"
+          },
+          "score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          },
+          "start_byte": {
+            "minimum": 0.0,
+            "title": "Start Byte",
+            "type": "integer"
+          },
+          "start_line": {
+            "minimum": 1.0,
+            "title": "Start Line",
+            "type": "integer"
+          },
+          "symbol_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol Name"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "file_id",
+          "file_path",
+          "chunk_kind",
+          "start_byte",
+          "end_byte",
+          "start_line",
+          "end_line",
+          "score",
+          "snippet",
+          "content_sha256"
+        ],
+        "title": "DenseSearchHitV1",
+        "type": "object"
+      },
+      "DenseSearchRequestV1": {
+        "$defs": {
+          "SearchScopeV1": {
+            "properties": {
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "principal_id": {
+                "format": "uuid",
+                "title": "Principal Id",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "snapshot_id": {
+                "format": "uuid",
+                "title": "Snapshot Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "org_id",
+              "repository_id",
+              "snapshot_id",
+              "principal_id"
+            ],
+            "title": "SearchScopeV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "index_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Index Id"
+          },
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "min_score": {
+            "default": 0.0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Min Score",
+            "type": "number"
+          },
+          "query": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SearchScopeV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "DenseSearchRequestV1",
+        "type": "object"
+      },
+      "DenseSearchResponseV1": {
+        "$defs": {
+          "ChunkKind": {
+            "enum": [
+              "module",
+              "class",
+              "function",
+              "method",
+              "window",
+              "file"
+            ],
+            "title": "ChunkKind",
+            "type": "string"
+          },
+          "DenseSearchHitV1": {
+            "properties": {
+              "chunk_id": {
+                "format": "uuid",
+                "title": "Chunk Id",
+                "type": "string"
+              },
+              "chunk_kind": {
+                "$ref": "#/components/schemas/ChunkKind"
+              },
+              "content_sha256": {
+                "title": "Content Sha256",
+                "type": "string"
+              },
+              "end_byte": {
+                "minimum": 0,
+                "title": "End Byte",
+                "type": "integer"
+              },
+              "end_line": {
+                "minimum": 1,
+                "title": "End Line",
+                "type": "integer"
+              },
+              "file_id": {
+                "format": "uuid",
+                "title": "File Id",
+                "type": "string"
+              },
+              "file_path": {
+                "title": "File Path",
+                "type": "string"
+              },
+              "qualified_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Qualified Name"
+              },
+              "score": {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "title": "Score",
+                "type": "number"
+              },
+              "snippet": {
+                "title": "Snippet",
+                "type": "string"
+              },
+              "start_byte": {
+                "minimum": 0,
+                "title": "Start Byte",
+                "type": "integer"
+              },
+              "start_line": {
+                "minimum": 1,
+                "title": "Start Line",
+                "type": "integer"
+              },
+              "symbol_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Symbol Name"
+              }
+            },
+            "required": [
+              "chunk_id",
+              "file_id",
+              "file_path",
+              "chunk_kind",
+              "start_byte",
+              "end_byte",
+              "start_line",
+              "end_line",
+              "score",
+              "snippet",
+              "content_sha256"
+            ],
+            "title": "DenseSearchHitV1",
+            "type": "object"
+          },
+          "SearchScopeV1": {
+            "properties": {
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "principal_id": {
+                "format": "uuid",
+                "title": "Principal Id",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "snapshot_id": {
+                "format": "uuid",
+                "title": "Snapshot Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "org_id",
+              "repository_id",
+              "snapshot_id",
+              "principal_id"
+            ],
+            "title": "SearchScopeV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "embedding_model": {
+            "title": "Embedding Model",
+            "type": "string"
+          },
+          "execution_ms": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Execution Ms",
+            "type": "number"
+          },
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/DenseSearchHitV1"
+            },
+            "title": "Hits",
+            "type": "array"
+          },
+          "index_id": {
+            "format": "uuid",
+            "title": "Index Id",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/SearchScopeV1"
+          },
+          "total_candidates": {
+            "minimum": 0,
+            "title": "Total Candidates",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope",
+          "query",
+          "index_id",
+          "embedding_model",
+          "total_candidates",
+          "hits"
+        ],
+        "title": "DenseSearchResponseV1",
         "type": "object"
       },
       "DependencyFileV1": {
@@ -2009,6 +3008,165 @@
           "items"
         ],
         "title": "EventPageV3",
+        "type": "object"
+      },
+      "EvidencePointerV1": {
+        "properties": {
+          "chunk_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
+          },
+          "end_line": {
+            "minimum": 1.0,
+            "title": "End Line",
+            "type": "integer"
+          },
+          "file_path": {
+            "title": "File Path",
+            "type": "string"
+          },
+          "finding_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finding Id"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "start_line": {
+            "minimum": 1.0,
+            "title": "Start Line",
+            "type": "integer"
+          },
+          "symbol_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol Name"
+          }
+        },
+        "required": [
+          "file_path",
+          "start_line",
+          "end_line"
+        ],
+        "title": "EvidencePointerV1",
+        "type": "object"
+      },
+      "ExactSearchRequestV1": {
+        "$defs": {
+          "ExactSearchType": {
+            "enum": [
+              "file_path",
+              "path_segment",
+              "symbol",
+              "qualified_name"
+            ],
+            "title": "ExactSearchType",
+            "type": "string"
+          },
+          "SearchScopeV1": {
+            "properties": {
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "principal_id": {
+                "format": "uuid",
+                "title": "Principal Id",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "snapshot_id": {
+                "format": "uuid",
+                "title": "Snapshot Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "org_id",
+              "repository_id",
+              "snapshot_id",
+              "principal_id"
+            ],
+            "title": "SearchScopeV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SearchScopeV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "search_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExactSearchType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "ExactSearchRequestV1",
         "type": "object"
       },
       "FeatureTraceV1": {
@@ -2972,6 +4130,420 @@
         "title": "HttpRequestObservationV1",
         "type": "object"
       },
+      "HybridSearchHitV1": {
+        "properties": {
+          "chunk_id": {
+            "format": "uuid",
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "chunk_kind": {
+            "$ref": "#/components/schemas/ChunkKind"
+          },
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "end_byte": {
+            "minimum": 0.0,
+            "title": "End Byte",
+            "type": "integer"
+          },
+          "end_line": {
+            "minimum": 1.0,
+            "title": "End Line",
+            "type": "integer"
+          },
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "file_path": {
+            "title": "File Path",
+            "type": "string"
+          },
+          "match_modalities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Match Modalities",
+            "type": "array"
+          },
+          "modality_ranks": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Modality Ranks",
+            "type": "object"
+          },
+          "qualified_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualified Name"
+          },
+          "score": {
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          },
+          "start_byte": {
+            "minimum": 0.0,
+            "title": "Start Byte",
+            "type": "integer"
+          },
+          "start_line": {
+            "minimum": 1.0,
+            "title": "Start Line",
+            "type": "integer"
+          },
+          "symbol_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol Name"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "file_id",
+          "file_path",
+          "chunk_kind",
+          "start_byte",
+          "end_byte",
+          "start_line",
+          "end_line",
+          "score",
+          "snippet",
+          "content_sha256",
+          "match_modalities",
+          "modality_ranks"
+        ],
+        "title": "HybridSearchHitV1",
+        "type": "object"
+      },
+      "HybridSearchRequestV1": {
+        "$defs": {
+          "SearchScopeV1": {
+            "properties": {
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "principal_id": {
+                "format": "uuid",
+                "title": "Principal Id",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "snapshot_id": {
+                "format": "uuid",
+                "title": "Snapshot Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "org_id",
+              "repository_id",
+              "snapshot_id",
+              "principal_id"
+            ],
+            "title": "SearchScopeV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "dense_index_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Dense Index Id"
+          },
+          "dense_limit": {
+            "default": 30,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Dense Limit",
+            "type": "integer"
+          },
+          "exact_limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Exact Limit",
+            "type": "integer"
+          },
+          "lexical_limit": {
+            "default": 30,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Lexical Limit",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "rrf_k": {
+            "default": 60,
+            "maximum": 200,
+            "minimum": 1,
+            "title": "Rrf K",
+            "type": "integer"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SearchScopeV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Weights",
+            "type": "object"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "HybridSearchRequestV1",
+        "type": "object"
+      },
+      "HybridSearchResponseV1": {
+        "$defs": {
+          "ChunkKind": {
+            "enum": [
+              "module",
+              "class",
+              "function",
+              "method",
+              "window",
+              "file"
+            ],
+            "title": "ChunkKind",
+            "type": "string"
+          },
+          "HybridSearchHitV1": {
+            "properties": {
+              "chunk_id": {
+                "format": "uuid",
+                "title": "Chunk Id",
+                "type": "string"
+              },
+              "chunk_kind": {
+                "$ref": "#/components/schemas/ChunkKind"
+              },
+              "content_sha256": {
+                "title": "Content Sha256",
+                "type": "string"
+              },
+              "end_byte": {
+                "minimum": 0,
+                "title": "End Byte",
+                "type": "integer"
+              },
+              "end_line": {
+                "minimum": 1,
+                "title": "End Line",
+                "type": "integer"
+              },
+              "file_id": {
+                "format": "uuid",
+                "title": "File Id",
+                "type": "string"
+              },
+              "file_path": {
+                "title": "File Path",
+                "type": "string"
+              },
+              "match_modalities": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Match Modalities",
+                "type": "array"
+              },
+              "modality_ranks": {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "title": "Modality Ranks",
+                "type": "object"
+              },
+              "qualified_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Qualified Name"
+              },
+              "score": {
+                "minimum": 0.0,
+                "title": "Score",
+                "type": "number"
+              },
+              "snippet": {
+                "title": "Snippet",
+                "type": "string"
+              },
+              "start_byte": {
+                "minimum": 0,
+                "title": "Start Byte",
+                "type": "integer"
+              },
+              "start_line": {
+                "minimum": 1,
+                "title": "Start Line",
+                "type": "integer"
+              },
+              "symbol_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Symbol Name"
+              }
+            },
+            "required": [
+              "chunk_id",
+              "file_id",
+              "file_path",
+              "chunk_kind",
+              "start_byte",
+              "end_byte",
+              "start_line",
+              "end_line",
+              "score",
+              "snippet",
+              "content_sha256",
+              "match_modalities",
+              "modality_ranks"
+            ],
+            "title": "HybridSearchHitV1",
+            "type": "object"
+          },
+          "SearchScopeV1": {
+            "properties": {
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "principal_id": {
+                "format": "uuid",
+                "title": "Principal Id",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "snapshot_id": {
+                "format": "uuid",
+                "title": "Snapshot Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "org_id",
+              "repository_id",
+              "snapshot_id",
+              "principal_id"
+            ],
+            "title": "SearchScopeV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "execution_ms": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Execution Ms",
+            "type": "number"
+          },
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/HybridSearchHitV1"
+            },
+            "title": "Hits",
+            "type": "array"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/SearchScopeV1"
+          },
+          "total_candidates": {
+            "minimum": 0,
+            "title": "Total Candidates",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope",
+          "query",
+          "total_candidates",
+          "hits"
+        ],
+        "title": "HybridSearchResponseV1",
+        "type": "object"
+      },
       "IdentityMapV1": {
         "additionalProperties": false,
         "properties": {
@@ -2991,6 +4563,54 @@
           "physical_id"
         ],
         "title": "IdentityMapV1",
+        "type": "object"
+      },
+      "IntervalMappingV1": {
+        "properties": {
+          "is_redacted": {
+            "default": false,
+            "title": "Is Redacted",
+            "type": "boolean"
+          },
+          "original_end_byte": {
+            "minimum": 0.0,
+            "title": "Original End Byte",
+            "type": "integer"
+          },
+          "original_start_byte": {
+            "minimum": 0.0,
+            "title": "Original Start Byte",
+            "type": "integer"
+          },
+          "redaction_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redaction Type"
+          },
+          "safe_end_byte": {
+            "minimum": 0.0,
+            "title": "Safe End Byte",
+            "type": "integer"
+          },
+          "safe_start_byte": {
+            "minimum": 0.0,
+            "title": "Safe Start Byte",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "safe_start_byte",
+          "safe_end_byte",
+          "original_start_byte",
+          "original_end_byte"
+        ],
+        "title": "IntervalMappingV1",
         "type": "object"
       },
       "InventoryEntryV1": {
@@ -3535,6 +5155,597 @@
           "finished_at"
         ],
         "title": "JobRecordV3",
+        "type": "object"
+      },
+      "LexicalSearchRequestV1": {
+        "$defs": {
+          "SearchScopeV1": {
+            "properties": {
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "principal_id": {
+                "format": "uuid",
+                "title": "Principal Id",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "snapshot_id": {
+                "format": "uuid",
+                "title": "Snapshot Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "org_id",
+              "repository_id",
+              "snapshot_id",
+              "principal_id"
+            ],
+            "title": "SearchScopeV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "limit": {
+            "default": 40,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SearchScopeV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "LexicalSearchRequestV1",
+        "type": "object"
+      },
+      "MemoryCreateRequestV1": {
+        "$defs": {
+          "EvidencePointerV1": {
+            "properties": {
+              "chunk_id": {
+                "anyOf": [
+                  {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Chunk Id"
+              },
+              "end_line": {
+                "minimum": 1,
+                "title": "End Line",
+                "type": "integer"
+              },
+              "file_path": {
+                "title": "File Path",
+                "type": "string"
+              },
+              "finding_id": {
+                "anyOf": [
+                  {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Finding Id"
+              },
+              "sha256": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sha256"
+              },
+              "start_line": {
+                "minimum": 1,
+                "title": "Start Line",
+                "type": "integer"
+              },
+              "symbol_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Symbol Name"
+              }
+            },
+            "required": [
+              "file_path",
+              "start_line",
+              "end_line"
+            ],
+            "title": "EvidencePointerV1",
+            "type": "object"
+          },
+          "MemoryKind": {
+            "enum": [
+              "triage_resolution",
+              "security_finding_evidence",
+              "architecture_fact"
+            ],
+            "title": "MemoryKind",
+            "type": "string"
+          }
+        },
+        "properties": {
+          "evidence_pointers": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/EvidencePointerV1"
+            },
+            "title": "Evidence Pointers",
+            "type": "array"
+          },
+          "memory_kind": {
+            "$ref": "#/components/schemas/MemoryKind"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Org Id"
+          },
+          "principal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Principal Id"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repository Id"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Snapshot Id"
+          },
+          "summary": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "topic": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "memory_kind",
+          "topic",
+          "summary"
+        ],
+        "title": "MemoryCreateRequestV1",
+        "type": "object"
+      },
+      "MemoryEntryV1": {
+        "$defs": {
+          "EvidencePointerV1": {
+            "properties": {
+              "chunk_id": {
+                "anyOf": [
+                  {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Chunk Id"
+              },
+              "end_line": {
+                "minimum": 1,
+                "title": "End Line",
+                "type": "integer"
+              },
+              "file_path": {
+                "title": "File Path",
+                "type": "string"
+              },
+              "finding_id": {
+                "anyOf": [
+                  {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Finding Id"
+              },
+              "sha256": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sha256"
+              },
+              "start_line": {
+                "minimum": 1,
+                "title": "Start Line",
+                "type": "integer"
+              },
+              "symbol_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Symbol Name"
+              }
+            },
+            "required": [
+              "file_path",
+              "start_line",
+              "end_line"
+            ],
+            "title": "EvidencePointerV1",
+            "type": "object"
+          },
+          "MemoryKind": {
+            "enum": [
+              "triage_resolution",
+              "security_finding_evidence",
+              "architecture_fact"
+            ],
+            "title": "MemoryKind",
+            "type": "string"
+          }
+        },
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "evidence_pointers": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/EvidencePointerV1"
+            },
+            "title": "Evidence Pointers",
+            "type": "array"
+          },
+          "memory_id": {
+            "format": "uuid",
+            "title": "Memory Id",
+            "type": "string"
+          },
+          "memory_kind": {
+            "$ref": "#/components/schemas/MemoryKind"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "memory_id",
+          "org_id",
+          "repository_id",
+          "snapshot_id",
+          "memory_kind",
+          "topic",
+          "summary",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "MemoryEntryV1",
+        "type": "object"
+      },
+      "MemoryKind": {
+        "enum": [
+          "triage_resolution",
+          "security_finding_evidence",
+          "architecture_fact"
+        ],
+        "title": "MemoryKind",
+        "type": "string"
+      },
+      "MemoryQueryResponseV1": {
+        "$defs": {
+          "EvidencePointerV1": {
+            "properties": {
+              "chunk_id": {
+                "anyOf": [
+                  {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Chunk Id"
+              },
+              "end_line": {
+                "minimum": 1,
+                "title": "End Line",
+                "type": "integer"
+              },
+              "file_path": {
+                "title": "File Path",
+                "type": "string"
+              },
+              "finding_id": {
+                "anyOf": [
+                  {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Finding Id"
+              },
+              "sha256": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sha256"
+              },
+              "start_line": {
+                "minimum": 1,
+                "title": "Start Line",
+                "type": "integer"
+              },
+              "symbol_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Symbol Name"
+              }
+            },
+            "required": [
+              "file_path",
+              "start_line",
+              "end_line"
+            ],
+            "title": "EvidencePointerV1",
+            "type": "object"
+          },
+          "MemoryEntryV1": {
+            "properties": {
+              "created_at": {
+                "format": "date-time",
+                "title": "Created At",
+                "type": "string"
+              },
+              "evidence_pointers": {
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/EvidencePointerV1"
+                },
+                "title": "Evidence Pointers",
+                "type": "array"
+              },
+              "memory_id": {
+                "format": "uuid",
+                "title": "Memory Id",
+                "type": "string"
+              },
+              "memory_kind": {
+                "$ref": "#/components/schemas/MemoryKind"
+              },
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "snapshot_id": {
+                "format": "uuid",
+                "title": "Snapshot Id",
+                "type": "string"
+              },
+              "summary": {
+                "title": "Summary",
+                "type": "string"
+              },
+              "topic": {
+                "title": "Topic",
+                "type": "string"
+              },
+              "updated_at": {
+                "format": "date-time",
+                "title": "Updated At",
+                "type": "string"
+              }
+            },
+            "required": [
+              "memory_id",
+              "org_id",
+              "repository_id",
+              "snapshot_id",
+              "memory_kind",
+              "topic",
+              "summary",
+              "created_at",
+              "updated_at"
+            ],
+            "title": "MemoryEntryV1",
+            "type": "object"
+          },
+          "MemoryKind": {
+            "enum": [
+              "triage_resolution",
+              "security_finding_evidence",
+              "architecture_fact"
+            ],
+            "title": "MemoryKind",
+            "type": "string"
+          }
+        },
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryEntryV1"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "total_candidates": {
+            "minimum": 0,
+            "title": "Total Candidates",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "org_id",
+          "repository_id",
+          "query",
+          "total_candidates",
+          "items"
+        ],
+        "title": "MemoryQueryResponseV1",
         "type": "object"
       },
       "NativeSelectionV1": {
@@ -4678,6 +6889,356 @@
         "title": "ScannerProfileV1",
         "type": "object"
       },
+      "SearchHitV1": {
+        "properties": {
+          "chunk_id": {
+            "format": "uuid",
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "chunk_kind": {
+            "$ref": "#/components/schemas/ChunkKind"
+          },
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "end_byte": {
+            "minimum": 0.0,
+            "title": "End Byte",
+            "type": "integer"
+          },
+          "end_line": {
+            "minimum": 1.0,
+            "title": "End Line",
+            "type": "integer"
+          },
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "file_path": {
+            "title": "File Path",
+            "type": "string"
+          },
+          "match_reasons": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Match Reasons",
+            "type": "array"
+          },
+          "qualified_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualified Name"
+          },
+          "score": {
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          },
+          "start_byte": {
+            "minimum": 0.0,
+            "title": "Start Byte",
+            "type": "integer"
+          },
+          "start_line": {
+            "minimum": 1.0,
+            "title": "Start Line",
+            "type": "integer"
+          },
+          "symbol_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol Name"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "file_id",
+          "file_path",
+          "chunk_kind",
+          "start_byte",
+          "end_byte",
+          "start_line",
+          "end_line",
+          "score",
+          "snippet",
+          "content_sha256"
+        ],
+        "title": "SearchHitV1",
+        "type": "object"
+      },
+      "SearchMode": {
+        "enum": [
+          "exact",
+          "lexical",
+          "dense",
+          "hybrid"
+        ],
+        "title": "SearchMode",
+        "type": "string"
+      },
+      "SearchResponseV1": {
+        "$defs": {
+          "ChunkKind": {
+            "enum": [
+              "module",
+              "class",
+              "function",
+              "method",
+              "window",
+              "file"
+            ],
+            "title": "ChunkKind",
+            "type": "string"
+          },
+          "SearchHitV1": {
+            "properties": {
+              "chunk_id": {
+                "format": "uuid",
+                "title": "Chunk Id",
+                "type": "string"
+              },
+              "chunk_kind": {
+                "$ref": "#/components/schemas/ChunkKind"
+              },
+              "content_sha256": {
+                "title": "Content Sha256",
+                "type": "string"
+              },
+              "end_byte": {
+                "minimum": 0,
+                "title": "End Byte",
+                "type": "integer"
+              },
+              "end_line": {
+                "minimum": 1,
+                "title": "End Line",
+                "type": "integer"
+              },
+              "file_id": {
+                "format": "uuid",
+                "title": "File Id",
+                "type": "string"
+              },
+              "file_path": {
+                "title": "File Path",
+                "type": "string"
+              },
+              "match_reasons": {
+                "default": [],
+                "items": {
+                  "type": "string"
+                },
+                "title": "Match Reasons",
+                "type": "array"
+              },
+              "qualified_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Qualified Name"
+              },
+              "score": {
+                "minimum": 0.0,
+                "title": "Score",
+                "type": "number"
+              },
+              "snippet": {
+                "title": "Snippet",
+                "type": "string"
+              },
+              "start_byte": {
+                "minimum": 0,
+                "title": "Start Byte",
+                "type": "integer"
+              },
+              "start_line": {
+                "minimum": 1,
+                "title": "Start Line",
+                "type": "integer"
+              },
+              "symbol_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Symbol Name"
+              }
+            },
+            "required": [
+              "chunk_id",
+              "file_id",
+              "file_path",
+              "chunk_kind",
+              "start_byte",
+              "end_byte",
+              "start_line",
+              "end_line",
+              "score",
+              "snippet",
+              "content_sha256"
+            ],
+            "title": "SearchHitV1",
+            "type": "object"
+          },
+          "SearchMode": {
+            "enum": [
+              "exact",
+              "lexical",
+              "dense",
+              "hybrid"
+            ],
+            "title": "SearchMode",
+            "type": "string"
+          },
+          "SearchScopeV1": {
+            "properties": {
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "principal_id": {
+                "format": "uuid",
+                "title": "Principal Id",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "snapshot_id": {
+                "format": "uuid",
+                "title": "Snapshot Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "org_id",
+              "repository_id",
+              "snapshot_id",
+              "principal_id"
+            ],
+            "title": "SearchScopeV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "coverage_status": {
+            "default": "complete",
+            "title": "Coverage Status",
+            "type": "string"
+          },
+          "execution_ms": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Execution Ms",
+            "type": "number"
+          },
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/SearchHitV1"
+            },
+            "title": "Hits",
+            "type": "array"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/SearchMode"
+          },
+          "omitted_count": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Omitted Count",
+            "type": "integer"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/SearchScopeV1"
+          },
+          "total_candidates": {
+            "minimum": 0,
+            "title": "Total Candidates",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope",
+          "mode",
+          "query",
+          "total_candidates",
+          "hits"
+        ],
+        "title": "SearchResponseV1",
+        "type": "object"
+      },
+      "SearchScopeV1": {
+        "properties": {
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "principal_id": {
+            "format": "uuid",
+            "title": "Principal Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_id",
+          "repository_id",
+          "snapshot_id",
+          "principal_id"
+        ],
+        "title": "SearchScopeV1",
+        "type": "object"
+      },
       "SessionV1": {
         "additionalProperties": false,
         "properties": {
@@ -4808,6 +7369,212 @@
           "end_col"
         ],
         "title": "SourceRangeV1",
+        "type": "object"
+      },
+      "SourceRepresentation": {
+        "enum": [
+          "original",
+          "model_safe"
+        ],
+        "title": "SourceRepresentation",
+        "type": "string"
+      },
+      "SourceViewResultV1": {
+        "$defs": {
+          "ByteRangeV1": {
+            "properties": {
+              "end_byte": {
+                "default": 0,
+                "minimum": 0,
+                "title": "End Byte",
+                "type": "integer"
+              },
+              "start_byte": {
+                "default": 0,
+                "minimum": 0,
+                "title": "Start Byte",
+                "type": "integer"
+              }
+            },
+            "title": "ByteRangeV1",
+            "type": "object"
+          },
+          "IntervalMappingV1": {
+            "properties": {
+              "is_redacted": {
+                "default": false,
+                "title": "Is Redacted",
+                "type": "boolean"
+              },
+              "original_end_byte": {
+                "minimum": 0,
+                "title": "Original End Byte",
+                "type": "integer"
+              },
+              "original_start_byte": {
+                "minimum": 0,
+                "title": "Original Start Byte",
+                "type": "integer"
+              },
+              "redaction_type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Redaction Type"
+              },
+              "safe_end_byte": {
+                "minimum": 0,
+                "title": "Safe End Byte",
+                "type": "integer"
+              },
+              "safe_start_byte": {
+                "minimum": 0,
+                "title": "Safe Start Byte",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "safe_start_byte",
+              "safe_end_byte",
+              "original_start_byte",
+              "original_end_byte"
+            ],
+            "title": "IntervalMappingV1",
+            "type": "object"
+          },
+          "SourceRepresentation": {
+            "enum": [
+              "original",
+              "model_safe"
+            ],
+            "title": "SourceRepresentation",
+            "type": "string"
+          }
+        },
+        "properties": {
+          "actual_range": {
+            "$ref": "#/components/schemas/ByteRangeV1"
+          },
+          "content_bytes": {
+            "format": "binary",
+            "title": "Content Bytes",
+            "type": "string"
+          },
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "content_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Content Text"
+          },
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "file_path": {
+            "title": "File Path",
+            "type": "string"
+          },
+          "file_sha256": {
+            "title": "File Sha256",
+            "type": "string"
+          },
+          "interval_mappings": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IntervalMappingV1"
+            },
+            "title": "Interval Mappings",
+            "type": "array"
+          },
+          "is_omitted": {
+            "default": false,
+            "title": "Is Omitted",
+            "type": "boolean"
+          },
+          "omission_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Omission Reason"
+          },
+          "policy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Policy Version"
+          },
+          "redaction_map_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Redaction Map Digest"
+          },
+          "remaining_privacy_risks": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Remaining Privacy Risks",
+            "type": "array"
+          },
+          "representation": {
+            "$ref": "#/components/schemas/SourceRepresentation"
+          },
+          "requested_range": {
+            "$ref": "#/components/schemas/ByteRangeV1"
+          },
+          "total_file_size": {
+            "title": "Total File Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file_id",
+          "file_path",
+          "file_sha256",
+          "representation",
+          "requested_range",
+          "actual_range",
+          "content_bytes",
+          "content_sha256",
+          "total_file_size"
+        ],
+        "title": "SourceViewResultV1",
         "type": "object"
       },
       "StructuralAnalysisRequestV1": {
@@ -8193,6 +10960,167 @@
         "summary": "Create Scan"
       }
     },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/context/assemble": {
+      "post": {
+        "operationId": "assemble_context_endpoint_api_v1_repositories__repository_id__snapshots__snapshot_id__context_assemble_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContextAssemblyRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextPacketV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assemble Context Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/files/{file_id}/source-view": {
+      "get": {
+        "operationId": "get_source_view_endpoint_api_v1_repositories__repository_id__snapshots__snapshot_id__files__file_id__source_view_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "File Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_byte",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Byte"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_byte",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Byte"
+            }
+          },
+          {
+            "in": "query",
+            "name": "representation",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SourceRepresentation",
+              "default": "model_safe"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceViewResultV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Source View Endpoint"
+      }
+    },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}": {
       "get": {
         "operationId": "get_finding_detail_api_v1_repositories__repository_id__snapshots__snapshot_id__findings__finding_id__get",
@@ -8451,6 +11379,166 @@
           }
         },
         "summary": "Get Triage History"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/memories": {
+      "get": {
+        "operationId": "query_memory_endpoint_api_v1_repositories__repository_id__snapshots__snapshot_id__memories_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Query",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "topic",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic"
+            }
+          },
+          {
+            "in": "query",
+            "name": "memory_kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/MemoryKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memory Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryQueryResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Query Memory Endpoint"
+      },
+      "post": {
+        "operationId": "record_memory_endpoint_api_v1_repositories__repository_id__snapshots__snapshot_id__memories_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryCreateRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryEntryV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Memory Endpoint"
       }
     },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans": {
@@ -8721,6 +11809,246 @@
           }
         },
         "summary": "Get Scan Summary"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/dense": {
+      "post": {
+        "operationId": "search_dense_endpoint_api_v1_repositories__repository_id__snapshots__snapshot_id__search_dense_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DenseSearchRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DenseSearchResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Dense Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/exact": {
+      "post": {
+        "operationId": "search_exact_endpoint_api_v1_repositories__repository_id__snapshots__snapshot_id__search_exact_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExactSearchRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Exact Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/hybrid": {
+      "post": {
+        "operationId": "search_hybrid_endpoint_api_v1_repositories__repository_id__snapshots__snapshot_id__search_hybrid_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HybridSearchRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HybridSearchResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Hybrid Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/lexical": {
+      "post": {
+        "operationId": "search_lexical_endpoint_api_v1_repositories__repository_id__snapshots__snapshot_id__search_lexical_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LexicalSearchRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Lexical Endpoint"
       }
     },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/structural-report": {

@@ -13,6 +13,7 @@ import type {
 } from "./api/generated/types.gen";
 import { StructuralReportView } from "./features/structure/StructuralReportView";
 import { FindingsWorkbench } from "./features/findings/FindingsWorkbench";
+import { RetrievalWorkbench } from "./features/retrieval/RetrievalWorkbench";
 
 const terminal = new Set(["succeeded", "partial", "failed", "cancelled"]);
 function selectedId(name: string): string | null {
@@ -778,6 +779,13 @@ export default function App() {
                   </div>
                 )}
               </section>
+            )}
+            {snapshot && repository && (
+              <RetrievalWorkbench
+                repositoryId={repository}
+                snapshotId={snapshot}
+                csrfToken={session.data?.csrf_token ?? ""}
+              />
             )}
           </>
         )}

@@ -138,6 +138,25 @@ export type BoundaryLinkV1 = {
 };
 
 /**
+ * ByteRangeV1
+ */
+export type ByteRangeV1 = {
+    /**
+     * End Byte
+     */
+    end_byte?: number;
+    /**
+     * Start Byte
+     */
+    start_byte?: number;
+};
+
+/**
+ * ChunkKind
+ */
+export type ChunkKind = 'module' | 'class' | 'function' | 'method' | 'window' | 'file';
+
+/**
  * ComponentSectionV1
  */
 export type ComponentSectionV1 = {
@@ -171,6 +190,144 @@ export type ComponentSectionV1 = {
 };
 
 /**
+ * ContextAssemblyRequestV1
+ */
+export type ContextAssemblyRequestV1 = {
+    budget?: unknown;
+    /**
+     * Candidate Hits
+     */
+    candidate_hits?: Array<HybridSearchHitV1>;
+    /**
+     * Deduplicate Files
+     */
+    deduplicate_files?: boolean;
+    /**
+     * Query
+     */
+    query: string;
+    scope?: SearchScopeV1 | null;
+    /**
+     * System Preamble
+     */
+    system_preamble?: string | null;
+};
+
+/**
+ * ContextItemV1
+ */
+export type ContextItemV1 = {
+    /**
+     * Byte Count
+     */
+    byte_count: number;
+    /**
+     * Chunk Id
+     */
+    chunk_id: string;
+    chunk_kind: ChunkKind;
+    /**
+     * Citation Key
+     */
+    citation_key: string;
+    /**
+     * End Byte
+     */
+    end_byte: number;
+    /**
+     * End Line
+     */
+    end_line: number;
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * Match Modalities
+     */
+    match_modalities: Array<string>;
+    /**
+     * Qualified Name
+     */
+    qualified_name?: string | null;
+    /**
+     * Relevance Score
+     */
+    relevance_score: number;
+    /**
+     * Safe Content
+     */
+    safe_content: string;
+    /**
+     * Start Byte
+     */
+    start_byte: number;
+    /**
+     * Start Line
+     */
+    start_line: number;
+    /**
+     * Symbol Name
+     */
+    symbol_name?: string | null;
+    /**
+     * Token Count
+     */
+    token_count: number;
+};
+
+/**
+ * ContextPacketV1
+ */
+export type ContextPacketV1 = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Items
+     */
+    items: Array<ContextItemV1>;
+    /**
+     * Items Count
+     */
+    items_count: number;
+    /**
+     * Omitted Count
+     */
+    omitted_count: number;
+    /**
+     * Packet Id
+     */
+    packet_id: string;
+    /**
+     * Packet Sha256
+     */
+    packet_sha256: string;
+    /**
+     * Query
+     */
+    query: string;
+    scope: SearchScopeV1;
+    /**
+     * System Preamble
+     */
+    system_preamble?: string | null;
+    /**
+     * Total Bytes
+     */
+    total_bytes: number;
+    /**
+     * Total Tokens
+     */
+    total_tokens: number;
+};
+
+/**
  * CreateScanRequestV1
  */
 export type CreateScanRequestV1 = {
@@ -179,6 +336,115 @@ export type CreateScanRequestV1 = {
      * Snapshot Id
      */
     snapshot_id?: string | null;
+};
+
+/**
+ * DenseSearchHitV1
+ */
+export type DenseSearchHitV1 = {
+    /**
+     * Chunk Id
+     */
+    chunk_id: string;
+    chunk_kind: ChunkKind;
+    /**
+     * Content Sha256
+     */
+    content_sha256: string;
+    /**
+     * End Byte
+     */
+    end_byte: number;
+    /**
+     * End Line
+     */
+    end_line: number;
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * Qualified Name
+     */
+    qualified_name?: string | null;
+    /**
+     * Score
+     */
+    score: number;
+    /**
+     * Snippet
+     */
+    snippet: string;
+    /**
+     * Start Byte
+     */
+    start_byte: number;
+    /**
+     * Start Line
+     */
+    start_line: number;
+    /**
+     * Symbol Name
+     */
+    symbol_name?: string | null;
+};
+
+/**
+ * DenseSearchRequestV1
+ */
+export type DenseSearchRequestV1 = {
+    /**
+     * Index Id
+     */
+    index_id?: string | null;
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Min Score
+     */
+    min_score?: number;
+    /**
+     * Query
+     */
+    query: string;
+    scope?: SearchScopeV1 | null;
+};
+
+/**
+ * DenseSearchResponseV1
+ */
+export type DenseSearchResponseV1 = {
+    /**
+     * Embedding Model
+     */
+    embedding_model: string;
+    /**
+     * Execution Ms
+     */
+    execution_ms?: number;
+    /**
+     * Hits
+     */
+    hits: Array<DenseSearchHitV1>;
+    /**
+     * Index Id
+     */
+    index_id: string;
+    /**
+     * Query
+     */
+    query: string;
+    scope: SearchScopeV1;
+    /**
+     * Total Candidates
+     */
+    total_candidates: number;
 };
 
 /**
@@ -314,6 +580,56 @@ export type EventPageV3 = {
      * Next Cursor
      */
     next_cursor?: string | null;
+};
+
+/**
+ * EvidencePointerV1
+ */
+export type EvidencePointerV1 = {
+    /**
+     * Chunk Id
+     */
+    chunk_id?: string | null;
+    /**
+     * End Line
+     */
+    end_line: number;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * Finding Id
+     */
+    finding_id?: string | null;
+    /**
+     * Sha256
+     */
+    sha256?: string | null;
+    /**
+     * Start Line
+     */
+    start_line: number;
+    /**
+     * Symbol Name
+     */
+    symbol_name?: string | null;
+};
+
+/**
+ * ExactSearchRequestV1
+ */
+export type ExactSearchRequestV1 = {
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Query
+     */
+    query: string;
+    scope?: SearchScopeV1 | null;
+    search_type?: unknown | null;
 };
 
 /**
@@ -683,6 +999,135 @@ export type HttpRequestObservationV1 = {
 };
 
 /**
+ * HybridSearchHitV1
+ */
+export type HybridSearchHitV1 = {
+    /**
+     * Chunk Id
+     */
+    chunk_id: string;
+    chunk_kind: ChunkKind;
+    /**
+     * Content Sha256
+     */
+    content_sha256: string;
+    /**
+     * End Byte
+     */
+    end_byte: number;
+    /**
+     * End Line
+     */
+    end_line: number;
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * Match Modalities
+     */
+    match_modalities: Array<string>;
+    /**
+     * Modality Ranks
+     */
+    modality_ranks: {
+        [key: string]: number;
+    };
+    /**
+     * Qualified Name
+     */
+    qualified_name?: string | null;
+    /**
+     * Score
+     */
+    score: number;
+    /**
+     * Snippet
+     */
+    snippet: string;
+    /**
+     * Start Byte
+     */
+    start_byte: number;
+    /**
+     * Start Line
+     */
+    start_line: number;
+    /**
+     * Symbol Name
+     */
+    symbol_name?: string | null;
+};
+
+/**
+ * HybridSearchRequestV1
+ */
+export type HybridSearchRequestV1 = {
+    /**
+     * Dense Index Id
+     */
+    dense_index_id?: string | null;
+    /**
+     * Dense Limit
+     */
+    dense_limit?: number;
+    /**
+     * Exact Limit
+     */
+    exact_limit?: number;
+    /**
+     * Lexical Limit
+     */
+    lexical_limit?: number;
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Query
+     */
+    query: string;
+    /**
+     * Rrf K
+     */
+    rrf_k?: number;
+    scope?: SearchScopeV1 | null;
+    /**
+     * Weights
+     */
+    weights?: {
+        [key: string]: number;
+    };
+};
+
+/**
+ * HybridSearchResponseV1
+ */
+export type HybridSearchResponseV1 = {
+    /**
+     * Execution Ms
+     */
+    execution_ms?: number;
+    /**
+     * Hits
+     */
+    hits: Array<HybridSearchHitV1>;
+    /**
+     * Query
+     */
+    query: string;
+    scope: SearchScopeV1;
+    /**
+     * Total Candidates
+     */
+    total_candidates: number;
+};
+
+/**
  * IdentityMapV1
  */
 export type IdentityMapV1 = {
@@ -694,6 +1139,36 @@ export type IdentityMapV1 = {
      * Semantic Key
      */
     semantic_key: string;
+};
+
+/**
+ * IntervalMappingV1
+ */
+export type IntervalMappingV1 = {
+    /**
+     * Is Redacted
+     */
+    is_redacted?: boolean;
+    /**
+     * Original End Byte
+     */
+    original_end_byte: number;
+    /**
+     * Original Start Byte
+     */
+    original_start_byte: number;
+    /**
+     * Redaction Type
+     */
+    redaction_type?: string | null;
+    /**
+     * Safe End Byte
+     */
+    safe_end_byte: number;
+    /**
+     * Safe Start Byte
+     */
+    safe_start_byte: number;
 };
 
 /**
@@ -958,6 +1433,130 @@ export type JobRecordV3 = {
      * Submission Id
      */
     submission_id: string | null;
+};
+
+/**
+ * LexicalSearchRequestV1
+ */
+export type LexicalSearchRequestV1 = {
+    /**
+     * Limit
+     */
+    limit?: number;
+    /**
+     * Query
+     */
+    query: string;
+    scope?: SearchScopeV1 | null;
+};
+
+/**
+ * MemoryCreateRequestV1
+ */
+export type MemoryCreateRequestV1 = {
+    /**
+     * Evidence Pointers
+     */
+    evidence_pointers?: Array<EvidencePointerV1>;
+    memory_kind: MemoryKind;
+    /**
+     * Org Id
+     */
+    org_id?: string | null;
+    /**
+     * Principal Id
+     */
+    principal_id?: string | null;
+    /**
+     * Repository Id
+     */
+    repository_id?: string | null;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id?: string | null;
+    /**
+     * Summary
+     */
+    summary: string;
+    /**
+     * Topic
+     */
+    topic: string;
+};
+
+/**
+ * MemoryEntryV1
+ */
+export type MemoryEntryV1 = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Evidence Pointers
+     */
+    evidence_pointers?: Array<EvidencePointerV1>;
+    /**
+     * Memory Id
+     */
+    memory_id: string;
+    memory_kind: MemoryKind;
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+    /**
+     * Summary
+     */
+    summary: string;
+    /**
+     * Topic
+     */
+    topic: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+};
+
+/**
+ * MemoryKind
+ */
+export type MemoryKind = 'triage_resolution' | 'security_finding_evidence' | 'architecture_fact';
+
+/**
+ * MemoryQueryResponseV1
+ */
+export type MemoryQueryResponseV1 = {
+    /**
+     * Items
+     */
+    items: Array<MemoryEntryV1>;
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Query
+     */
+    query: string;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Total Candidates
+     */
+    total_candidates: number;
 };
 
 /**
@@ -1412,6 +2011,124 @@ export type ScannerProfileV1 = {
 };
 
 /**
+ * SearchHitV1
+ */
+export type SearchHitV1 = {
+    /**
+     * Chunk Id
+     */
+    chunk_id: string;
+    chunk_kind: ChunkKind;
+    /**
+     * Content Sha256
+     */
+    content_sha256: string;
+    /**
+     * End Byte
+     */
+    end_byte: number;
+    /**
+     * End Line
+     */
+    end_line: number;
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * Match Reasons
+     */
+    match_reasons?: Array<string>;
+    /**
+     * Qualified Name
+     */
+    qualified_name?: string | null;
+    /**
+     * Score
+     */
+    score: number;
+    /**
+     * Snippet
+     */
+    snippet: string;
+    /**
+     * Start Byte
+     */
+    start_byte: number;
+    /**
+     * Start Line
+     */
+    start_line: number;
+    /**
+     * Symbol Name
+     */
+    symbol_name?: string | null;
+};
+
+/**
+ * SearchMode
+ */
+export type SearchMode = 'exact' | 'lexical' | 'dense' | 'hybrid';
+
+/**
+ * SearchResponseV1
+ */
+export type SearchResponseV1 = {
+    /**
+     * Coverage Status
+     */
+    coverage_status?: string;
+    /**
+     * Execution Ms
+     */
+    execution_ms?: number;
+    /**
+     * Hits
+     */
+    hits: Array<SearchHitV1>;
+    mode: SearchMode;
+    /**
+     * Omitted Count
+     */
+    omitted_count?: number;
+    /**
+     * Query
+     */
+    query: string;
+    scope: SearchScopeV1;
+    /**
+     * Total Candidates
+     */
+    total_candidates: number;
+};
+
+/**
+ * SearchScopeV1
+ */
+export type SearchScopeV1 = {
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Principal Id
+     */
+    principal_id: string;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+};
+
+/**
  * SessionV1
  */
 export type SessionV1 = {
@@ -1493,6 +2210,72 @@ export type SourceRangeV1 = {
      * Start Line
      */
     start_line: number;
+};
+
+/**
+ * SourceRepresentation
+ */
+export type SourceRepresentation = 'original' | 'model_safe';
+
+/**
+ * SourceViewResultV1
+ */
+export type SourceViewResultV1 = {
+    actual_range: ByteRangeV1;
+    /**
+     * Content Bytes
+     */
+    content_bytes: Blob | File;
+    /**
+     * Content Sha256
+     */
+    content_sha256: string;
+    /**
+     * Content Text
+     */
+    content_text?: string | null;
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * File Sha256
+     */
+    file_sha256: string;
+    /**
+     * Interval Mappings
+     */
+    interval_mappings?: Array<IntervalMappingV1>;
+    /**
+     * Is Omitted
+     */
+    is_omitted?: boolean;
+    /**
+     * Omission Reason
+     */
+    omission_reason?: string | null;
+    /**
+     * Policy Version
+     */
+    policy_version?: string | null;
+    /**
+     * Redaction Map Digest
+     */
+    redaction_map_digest?: string | null;
+    /**
+     * Remaining Privacy Risks
+     */
+    remaining_privacy_risks?: Array<string>;
+    representation: SourceRepresentation;
+    requested_range: ByteRangeV1;
+    /**
+     * Total File Size
+     */
+    total_file_size: number;
 };
 
 /**
@@ -2740,6 +3523,88 @@ export type CreateScanApiV1RepositoriesRepositoryIdScansPostResponses = {
 
 export type CreateScanApiV1RepositoriesRepositoryIdScansPostResponse = CreateScanApiV1RepositoriesRepositoryIdScansPostResponses[keyof CreateScanApiV1RepositoriesRepositoryIdScansPostResponses];
 
+export type AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostData = {
+    body: ContextAssemblyRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/context/assemble';
+};
+
+export type AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostError = AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostErrors[keyof AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostErrors];
+
+export type AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ContextPacketV1;
+};
+
+export type AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostResponse = AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostResponses[keyof AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostResponses];
+
+export type GetSourceViewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFilesFileIdSourceViewGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * File Id
+         */
+        file_id: string;
+    };
+    query?: {
+        /**
+         * Start Byte
+         */
+        start_byte?: number | null;
+        /**
+         * End Byte
+         */
+        end_byte?: number | null;
+        representation?: SourceRepresentation;
+    };
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/files/{file_id}/source-view';
+};
+
+export type GetSourceViewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFilesFileIdSourceViewGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetSourceViewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFilesFileIdSourceViewGetError = GetSourceViewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFilesFileIdSourceViewGetErrors[keyof GetSourceViewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFilesFileIdSourceViewGetErrors];
+
+export type GetSourceViewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFilesFileIdSourceViewGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: SourceViewResultV1;
+};
+
+export type GetSourceViewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFilesFileIdSourceViewGetResponse = GetSourceViewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFilesFileIdSourceViewGetResponses[keyof GetSourceViewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFilesFileIdSourceViewGetResponses];
+
 export type GetFindingDetailApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdGetData = {
     body?: never;
     path: {
@@ -2892,6 +3757,91 @@ export type GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFind
 
 export type GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetResponse = GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetResponses[keyof GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetResponses];
 
+export type QueryMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: {
+        /**
+         * Query
+         */
+        query?: string;
+        /**
+         * Topic
+         */
+        topic?: string | null;
+        /**
+         * Memory Kind
+         */
+        memory_kind?: MemoryKind | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/memories';
+};
+
+export type QueryMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type QueryMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesGetError = QueryMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesGetErrors[keyof QueryMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesGetErrors];
+
+export type QueryMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: MemoryQueryResponseV1;
+};
+
+export type QueryMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesGetResponse = QueryMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesGetResponses[keyof QueryMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesGetResponses];
+
+export type RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostData = {
+    body: MemoryCreateRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/memories';
+};
+
+export type RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostError = RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostErrors[keyof RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostErrors];
+
+export type RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: MemoryEntryV1;
+};
+
+export type RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostResponse = RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostResponses[keyof RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostResponses];
+
 export type CreateSnapshotScanApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansPostData = {
     body: CreateScanRequestV1;
     path: {
@@ -3026,6 +3976,142 @@ export type GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansR
 };
 
 export type GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdSummaryGetResponse = GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdSummaryGetResponses[keyof GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdSummaryGetResponses];
+
+export type SearchDenseEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchDensePostData = {
+    body: DenseSearchRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/dense';
+};
+
+export type SearchDenseEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchDensePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SearchDenseEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchDensePostError = SearchDenseEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchDensePostErrors[keyof SearchDenseEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchDensePostErrors];
+
+export type SearchDenseEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchDensePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: DenseSearchResponseV1;
+};
+
+export type SearchDenseEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchDensePostResponse = SearchDenseEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchDensePostResponses[keyof SearchDenseEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchDensePostResponses];
+
+export type SearchExactEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchExactPostData = {
+    body: ExactSearchRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/exact';
+};
+
+export type SearchExactEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchExactPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SearchExactEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchExactPostError = SearchExactEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchExactPostErrors[keyof SearchExactEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchExactPostErrors];
+
+export type SearchExactEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchExactPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SearchResponseV1;
+};
+
+export type SearchExactEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchExactPostResponse = SearchExactEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchExactPostResponses[keyof SearchExactEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchExactPostResponses];
+
+export type SearchHybridEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchHybridPostData = {
+    body: HybridSearchRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/hybrid';
+};
+
+export type SearchHybridEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchHybridPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SearchHybridEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchHybridPostError = SearchHybridEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchHybridPostErrors[keyof SearchHybridEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchHybridPostErrors];
+
+export type SearchHybridEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchHybridPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: HybridSearchResponseV1;
+};
+
+export type SearchHybridEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchHybridPostResponse = SearchHybridEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchHybridPostResponses[keyof SearchHybridEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchHybridPostResponses];
+
+export type SearchLexicalEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchLexicalPostData = {
+    body: LexicalSearchRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/lexical';
+};
+
+export type SearchLexicalEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchLexicalPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SearchLexicalEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchLexicalPostError = SearchLexicalEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchLexicalPostErrors[keyof SearchLexicalEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchLexicalPostErrors];
+
+export type SearchLexicalEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchLexicalPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SearchResponseV1;
+};
+
+export type SearchLexicalEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchLexicalPostResponse = SearchLexicalEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchLexicalPostResponses[keyof SearchLexicalEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdSearchLexicalPostResponses];
 
 export type GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetData = {
     body?: never;

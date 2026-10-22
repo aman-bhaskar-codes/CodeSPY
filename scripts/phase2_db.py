@@ -255,6 +255,32 @@ def grant_app(values, name):
         ]:
             c.execute("GRANT INSERT ON finding_triage_events TO p2_api")
             c.execute("GRANT INSERT, UPDATE ON finding_triage_projections TO p2_api")
+        if c.execute("SELECT to_regclass('public.embedding_budgets')").fetchone()[0]:
+            c.execute("GRANT INSERT, UPDATE ON embedding_budgets TO p2_api,p2_broker")
+            c.execute(
+                "GRANT INSERT, UPDATE ON embedding_reservations TO p2_api,p2_broker"
+            )
+            c.execute("GRANT INSERT, UPDATE ON price_schedules TO p2_api")
+        if c.execute("SELECT to_regclass('public.derived_artifacts')").fetchone()[0]:
+            c.execute(
+                "GRANT INSERT, UPDATE, DELETE ON derived_artifacts TO p2_api,p2_broker"
+            )
+        if c.execute("SELECT to_regclass('public.source_chunks')").fetchone()[0]:
+            c.execute(
+                "GRANT INSERT, UPDATE, DELETE ON source_chunks TO p2_api,p2_broker"
+            )
+        if c.execute("SELECT to_regclass('public.search_indices')").fetchone()[0]:
+            c.execute(
+                "GRANT INSERT, UPDATE, DELETE ON search_indices TO p2_api,p2_broker"
+            )
+        if c.execute("SELECT to_regclass('public.chunk_embeddings')").fetchone()[0]:
+            c.execute(
+                "GRANT INSERT, UPDATE, DELETE ON chunk_embeddings TO p2_api,p2_broker"
+            )
+        if c.execute("SELECT to_regclass('public.repo_memories')").fetchone()[0]:
+            c.execute(
+                "GRANT INSERT, UPDATE, DELETE ON repo_memories TO p2_api,p2_broker"
+            )
         c.execute("REVOKE ALL ON public.alembic_version FROM p2_api,p2_broker")
         c.execute("REVOKE CREATE ON SCHEMA public FROM p2_api,p2_broker")
 
@@ -404,6 +430,7 @@ def main():
                     "0012_scan_storage",
                     "0013_scan_authority",
                     "0014_finding_triage",
+                    "0015_provider_budget",
                 ],
             )
             p.add_argument(

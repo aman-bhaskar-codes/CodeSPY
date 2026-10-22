@@ -186,6 +186,149 @@ export const api = {
         body: JSON.stringify(budget ?? {}),
       },
     ),
+  searchExact: (
+    repoId: string,
+    snapshotId: string,
+    query: string,
+    limit: number = 20,
+    csrf?: string,
+    key?: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("../features/retrieval/types").SearchResponseV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/search/exact`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf ?? "", key),
+        body: JSON.stringify({ query, limit }),
+        signal,
+      },
+    ),
+  searchLexical: (
+    repoId: string,
+    snapshotId: string,
+    query: string,
+    limit: number = 20,
+    csrf?: string,
+    key?: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("../features/retrieval/types").SearchResponseV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/search/lexical`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf ?? "", key),
+        body: JSON.stringify({ query, limit }),
+        signal,
+      },
+    ),
+  searchDense: (
+    repoId: string,
+    snapshotId: string,
+    query: string,
+    indexId?: string,
+    limit: number = 20,
+    csrf?: string,
+    key?: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("../features/retrieval/types").DenseSearchResponseV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/search/dense`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf ?? "", key),
+        body: JSON.stringify({ query, index_id: indexId, limit }),
+        signal,
+      },
+    ),
+  searchHybrid: (
+    repoId: string,
+    snapshotId: string,
+    query: string,
+    limit: number = 20,
+    denseIndexId?: string,
+    csrf?: string,
+    key?: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("../features/retrieval/types").HybridSearchResponseV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/search/hybrid`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf ?? "", key),
+        body: JSON.stringify({
+          query,
+          limit,
+          dense_index_id: denseIndexId,
+        }),
+        signal,
+      },
+    ),
+  assembleContext: (
+    repoId: string,
+    snapshotId: string,
+    body: import("../features/retrieval/types").ContextAssemblyRequestV1,
+    csrf?: string,
+    key?: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("../features/retrieval/types").ContextPacketV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/context/assemble`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf ?? "", key),
+        body: JSON.stringify(body),
+        signal,
+      },
+    ),
+  recordMemory: (
+    repoId: string,
+    snapshotId: string,
+    body: import("../features/retrieval/types").MemoryCreateRequestV1,
+    csrf: string,
+    key?: string,
+  ) =>
+    request<import("../features/retrieval/types").MemoryEntryV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/memories`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf, key),
+        body: JSON.stringify(body),
+      },
+    ),
+  queryMemories: (
+    repoId: string,
+    snapshotId: string,
+    params: { query?: string; memory_kind?: string; topic?: string } = {},
+    signal?: AbortSignal,
+  ) => {
+    const q = new URLSearchParams();
+    if (params.query) q.set("query", params.query);
+    if (params.memory_kind) q.set("memory_kind", params.memory_kind);
+    if (params.topic) q.set("topic", params.topic);
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    return request<import("../features/retrieval/types").MemoryQueryResponseV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/memories${qs}`,
+      { signal },
+    );
+  },
+  sourceView: (
+    repoId: string,
+    snapshotId: string,
+    fileId: string,
+    params: { start_line?: number; end_line?: number; representation?: string } = {},
+    signal?: AbortSignal,
+  ) => {
+    const q = new URLSearchParams();
+    if (params.start_line) q.set("start_line", String(params.start_line));
+    if (params.end_line) q.set("end_line", String(params.end_line));
+    if (params.representation) q.set("representation", params.representation);
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    return request<import("../features/retrieval/types").SourceViewResultV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/files/${fileId}/source-view${qs}`,
+      { signal },
+    );
+  },
 };
 export function mutationHeaders(
   csrf: string,
