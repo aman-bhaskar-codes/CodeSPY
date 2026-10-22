@@ -13,6 +13,7 @@ from app.contracts.model import (
     ModelRole,
     ModelRoutingRequirementV1,
     RoutedModelV1,
+    ToolDefinitionV1,
 )
 from app.contracts.provider_budget import DisclosurePolicyV1
 from app.ports.model import ModelPort
@@ -49,6 +50,7 @@ class ModelGatewayService:
         requirement: ModelRoutingRequirementV1,
         disclosure_policy: DisclosurePolicyV1,
         idempotency_key: str,
+        tools: tuple[ToolDefinitionV1, ...] | None = None,
         preferred_provider: str | None = None,
         max_tokens: int = 2048,
         temperature: float = 0.0,
@@ -91,6 +93,7 @@ class ModelGatewayService:
             provider=routed.provider,
             model_id=routed.model_id,
             messages=messages,
+            tools=tools or (),
             temperature=temperature,
             max_tokens=max_tokens,
             response_schema=response_schema,
