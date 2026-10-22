@@ -30,6 +30,14 @@ class MemoryService:
 
     async def record_memory(self, request: MemoryCreateRequestV1) -> MemoryEntryV1:
         """Persist a new grounded memory entry with verified evidence pointers."""
+        if (
+            request.org_id is None
+            or request.repository_id is None
+            or request.snapshot_id is None
+            or request.principal_id is None
+        ):
+            raise ValueError("org_id, repository_id, snapshot_id, and principal_id are required")
+
         await self._verify_scope(
             request.org_id,
             request.repository_id,
@@ -69,6 +77,9 @@ class MemoryService:
 
     async def query_memory(self, request: MemoryQueryRequestV1) -> MemoryQueryResponseV1:
         """Search repository memories matching query tokens within the authorized tenant scope."""
+        if request.org_id is None or request.repository_id is None or request.principal_id is None:
+            raise ValueError("org_id, repository_id, and principal_id are required")
+
         await self._verify_scope(
             request.org_id,
             request.repository_id,

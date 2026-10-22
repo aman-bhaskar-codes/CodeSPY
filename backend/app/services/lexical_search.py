@@ -112,6 +112,8 @@ class LexicalSearchService:
     async def search_exact(self, request: ExactSearchRequestV1) -> SearchResponseV1:
         """Search exact file paths, path segments, and symbol identifiers."""
         t0 = time.perf_counter()
+        if request.scope is None:
+            raise ValueError("scope is required for search")
         await self._verify_scope(request.scope)
 
         q = request.query.strip()
@@ -205,6 +207,8 @@ class LexicalSearchService:
     async def search_lexical(self, request: LexicalSearchRequestV1) -> SearchResponseV1:
         """Full-text lexical search using PostgreSQL tsvector or dialect fallback."""
         t0 = time.perf_counter()
+        if request.scope is None:
+            raise ValueError("scope is required for search")
         await self._verify_scope(request.scope)
 
         dialect_name = self.s.bind.dialect.name if self.s.bind else "postgresql"

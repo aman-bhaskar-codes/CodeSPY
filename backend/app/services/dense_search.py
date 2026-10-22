@@ -43,6 +43,8 @@ class DenseSearchService:
     async def search_dense(self, request: DenseSearchRequestV1) -> DenseSearchResponseV1:
         """Execute a dense vector search within the authorized scope."""
         t0 = time.perf_counter()
+        if request.scope is None:
+            raise ValueError("scope is required for dense search")
 
         await self._verify_scope(
             request.scope.org_id,
@@ -185,6 +187,8 @@ class DenseSearchService:
 
     async def _resolve_index(self, request: DenseSearchRequestV1) -> Any | None:
         """Resolve the requested or latest ready dense/hybrid index."""
+        if request.scope is None:
+            raise ValueError("scope is required")
         if request.index_id is not None:
             stmt = select(search_indices).where(
                 search_indices.c.org_id == request.scope.org_id,

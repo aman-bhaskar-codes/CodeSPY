@@ -32,6 +32,9 @@ class ContextAssemblyService:
     ) -> ContextPacketV1:
         """Assemble a budgeted ContextPacketV1 from candidate search hits."""
         # Step 1: Verify tenant scope & principal authorization
+        if request.scope is None:
+            raise ValueError("scope is required for context assembly")
+
         await self._verify_scope(
             request.scope.org_id,
             request.scope.repository_id,

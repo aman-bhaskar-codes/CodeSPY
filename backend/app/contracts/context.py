@@ -42,9 +42,9 @@ class ContextBudgetV1(BaseModel):
 class ContextAssemblyRequestV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    scope: SearchScopeV1
+    scope: SearchScopeV1 | None = None
     query: str
-    candidate_hits: tuple[HybridSearchHitV1, ...]
+    candidate_hits: tuple[HybridSearchHitV1, ...] = ()
     budget: ContextBudgetV1 = Field(default_factory=ContextBudgetV1)
     deduplicate_files: bool = True
     system_preamble: str | None = None

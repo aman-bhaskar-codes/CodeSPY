@@ -43,10 +43,10 @@ class MemoryEntryV1(BaseModel):
 class MemoryCreateRequestV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    org_id: UUID
-    repository_id: UUID
-    snapshot_id: UUID
-    principal_id: UUID
+    org_id: UUID | None = None
+    repository_id: UUID | None = None
+    snapshot_id: UUID | None = None
+    principal_id: UUID | None = None
     memory_kind: MemoryKind
     topic: str = Field(min_length=1, max_length=128)
     summary: str = Field(min_length=1, max_length=4096)
@@ -56,9 +56,9 @@ class MemoryCreateRequestV1(BaseModel):
 class MemoryQueryRequestV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    org_id: UUID
-    repository_id: UUID
-    principal_id: UUID
+    org_id: UUID | None = None
+    repository_id: UUID | None = None
+    principal_id: UUID | None = None
     query: str = Field(min_length=1, max_length=256)
     memory_kind: MemoryKind | None = None
     topic: str | None = None

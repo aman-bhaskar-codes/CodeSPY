@@ -10,6 +10,11 @@ from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from app.analyzers.reporting import render_json, render_markdown
+from app.contracts.context import (
+    ContextAssemblyRequestV1,
+    ContextItemV1,
+    ContextPacketV1,
+)
 from app.contracts.dependencies import DependencyFileV1
 from app.contracts.http import (
     EventPageV2,
@@ -31,6 +36,13 @@ from app.contracts.ingestion import (
     UploadReservationV1,
 )
 from app.contracts.jobs import JobRecordV2, JobRecordV3, RetryResponseV1, RetryResponseV2
+from app.contracts.memory import (
+    MemoryCreateRequestV1,
+    MemoryEntryV1,
+    MemoryKind,
+    MemoryQueryRequestV1,
+    MemoryQueryResponseV1,
+)
 from app.contracts.persistence import GraphPage, RepositoryCreate, RepositoryRecord
 from app.contracts.scan_jobs import (
     DependencySelectionV1,
@@ -40,6 +52,23 @@ from app.contracts.scan_jobs import (
     ScanJobRecordV4,
 )
 from app.contracts.scanners import ScannerFileV1, ScannerProfileV1
+from app.contracts.search import (
+    DenseSearchRequestV1,
+    DenseSearchResponseV1,
+    ExactSearchRequestV1,
+    HybridSearchRequestV1,
+    HybridSearchResponseV1,
+    LexicalSearchRequestV1,
+    SearchResponseV1,
+    SearchScopeV1,
+)
+from app.contracts.source_view import (
+    ByteRangeV1,
+    PrivacyPolicyV1,
+    SourceRepresentation,
+    SourceViewRequestV1,
+    SourceViewResultV1,
+)
 from app.contracts.structure import (
     AnalysisAcceptedV1,
     AnalysisConfigV1,
@@ -90,6 +119,8 @@ from app.security.authorization import require_repository
 from app.security.cursors import CursorCodec
 from app.security.oauth import OAuthRejected, OAuthService
 from app.security.sessions import SessionService, token_digest
+from app.services.context_assembly import ContextAssemblyService
+from app.services.dense_search import DenseSearchService
 from app.services.feature_trace import FeatureTraceService
 from app.services.findings_query import (
     FindingDetailResponseV1,
@@ -99,10 +130,14 @@ from app.services.findings_query import (
     ScanSummaryResponseV1,
 )
 from app.services.github_acquisition import GitHubAcquisitionService
+from app.services.hybrid_search import HybridSearchService
 from app.services.jobs import JobService
+from app.services.lexical_search import LexicalSearchService
+from app.services.memory_service import MemoryService
 from app.services.persistence import PersistenceService
 from app.services.retries import RetryService
 from app.services.scan_jobs import ScanJobService
+from app.services.source_view import SourceViewService
 from app.services.structural_analysis import StructuralAnalysisService
 from app.services.structural_reads import report_items, summary
 from app.services.submissions import SubmissionService
@@ -1343,6 +1378,207 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         except NoResultFound:
             raise HTTPException(404, detail="finding_not_found") from None
 
+    @app.post("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/exact")
+    async def search_exact_endpoint(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> SearchResponseV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        body = await json_body(request, ExactSearchRequestV1)
+        scope = SearchScopeV1(
+            org_id=ctx.org_id,
+            repository_id=repository_id,
+            snapshot_id=snapshot_id,
+            principal_id=ctx.principal_id,
+        )
+        req = ExactSearchRequestV1(
+            scope=scope,
+            query=body.query,
+            search_type=body.search_type,
+            limit=body.limit,
+        )
+        async with transaction(ports.factory) as s:
+            svc = LexicalSearchService(s)
+            return await svc.search_exact(req)
+
+    @app.post("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/lexical")
+    async def search_lexical_endpoint(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> SearchResponseV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        body = await json_body(request, LexicalSearchRequestV1)
+        scope = SearchScopeV1(
+            org_id=ctx.org_id,
+            repository_id=repository_id,
+            snapshot_id=snapshot_id,
+            principal_id=ctx.principal_id,
+        )
+        req = LexicalSearchRequestV1(
+            scope=scope,
+            query=body.query,
+            limit=body.limit,
+        )
+        async with transaction(ports.factory) as s:
+            svc = LexicalSearchService(s)
+            return await svc.search_lexical(req)
+
+    @app.post("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/dense")
+    async def search_dense_endpoint(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> DenseSearchResponseV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        body = await json_body(request, DenseSearchRequestV1)
+        scope = SearchScopeV1(
+            org_id=ctx.org_id,
+            repository_id=repository_id,
+            snapshot_id=snapshot_id,
+            principal_id=ctx.principal_id,
+        )
+        req = DenseSearchRequestV1(
+            scope=scope,
+            query=body.query,
+            index_id=body.index_id,
+            limit=body.limit,
+            min_score=body.min_score,
+        )
+        async with transaction(ports.factory) as s:
+            svc = DenseSearchService(s)
+            return await svc.search_dense(req)
+
+    @app.post("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/hybrid")
+    async def search_hybrid_endpoint(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> HybridSearchResponseV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        body = await json_body(request, HybridSearchRequestV1)
+        scope = SearchScopeV1(
+            org_id=ctx.org_id,
+            repository_id=repository_id,
+            snapshot_id=snapshot_id,
+            principal_id=ctx.principal_id,
+        )
+        req = HybridSearchRequestV1(
+            scope=scope,
+            query=body.query,
+            limit=body.limit,
+            rrf_k=body.rrf_k,
+            weights=body.weights,
+            exact_limit=body.exact_limit,
+            lexical_limit=body.lexical_limit,
+            dense_limit=body.dense_limit,
+            dense_index_id=body.dense_index_id,
+        )
+        async with transaction(ports.factory) as s:
+            svc = HybridSearchService(s)
+            return await svc.search_hybrid(req)
+
+    @app.post("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/context/assemble")
+    async def assemble_context_endpoint(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> ContextPacketV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        body = await json_body(request, ContextAssemblyRequestV1)
+        scope = SearchScopeV1(
+            org_id=ctx.org_id,
+            repository_id=repository_id,
+            snapshot_id=snapshot_id,
+            principal_id=ctx.principal_id,
+        )
+        async with transaction(ports.factory) as s:
+            candidate_hits = body.candidate_hits
+            if not candidate_hits:
+                h_svc = HybridSearchService(s)
+                h_res = await h_svc.search_hybrid(
+                    HybridSearchRequestV1(scope=scope, query=body.query, limit=20)
+                )
+                candidate_hits = h_res.hits
+            c_svc = ContextAssemblyService(s)
+            return await c_svc.assemble_context(
+                ContextAssemblyRequestV1(
+                    scope=scope,
+                    query=body.query,
+                    candidate_hits=candidate_hits,
+                    budget=body.budget,
+                    deduplicate_files=body.deduplicate_files,
+                    system_preamble=body.system_preamble,
+                )
+            )
+
+    @app.post("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/memories")
+    async def record_memory_endpoint(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> MemoryEntryV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        body = await json_body(request, MemoryCreateRequestV1)
+        req = MemoryCreateRequestV1(
+            org_id=ctx.org_id,
+            repository_id=repository_id,
+            snapshot_id=snapshot_id,
+            principal_id=ctx.principal_id,
+            memory_kind=body.memory_kind,
+            topic=body.topic,
+            summary=body.summary,
+            evidence_pointers=body.evidence_pointers,
+        )
+        async with transaction(ports.factory) as s:
+            svc = MemoryService(s)
+            return await svc.record_memory(req)
+
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/memories")
+    async def query_memory_endpoint(
+        request: Request,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        query: str = "",
+        topic: str | None = None,
+        memory_kind: MemoryKind | None = None,
+        limit: int = 20,
+    ) -> MemoryQueryResponseV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        req = MemoryQueryRequestV1(
+            org_id=ctx.org_id,
+            repository_id=repository_id,
+            principal_id=ctx.principal_id,
+            query=query or "memory",
+            topic=topic,
+            memory_kind=memory_kind,
+            limit=limit,
+        )
+        async with transaction(ports.factory) as s:
+            svc = MemoryService(s)
+            return await svc.query_memory(req)
+
+    @app.get(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/files/{file_id}/source-view"
+    )
+    async def get_source_view_endpoint(
+        request: Request,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        file_id: UUID,
+        start_byte: int | None = None,
+        end_byte: int | None = None,
+        representation: SourceRepresentation = SourceRepresentation.MODEL_SAFE,
+    ) -> SourceViewResultV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        byte_range = None
+        if start_byte is not None and end_byte is not None:
+            byte_range = ByteRangeV1(start_byte=start_byte, end_byte=end_byte)
+        req = SourceViewRequestV1(
+            org_id=ctx.org_id,
+            repository_id=repository_id,
+            snapshot_id=snapshot_id,
+            principal_id=ctx.principal_id,
+            file_id=file_id,
+            byte_range=byte_range,
+            representation=representation,
+        )
+        async with transaction(ports.factory) as s:
+            svc = SourceViewService(s, ports.store)
+            try:
+                return await svc.get(req, PrivacyPolicyV1())
+            except ScopeViolation as e:
+                raise HTTPException(403, detail=str(e)) from e
+
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
             schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
@@ -1379,6 +1615,20 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 TraceEdgeV1,
                 TraceBudgetV1,
                 FeatureTraceV1,
+                ExactSearchRequestV1,
+                LexicalSearchRequestV1,
+                DenseSearchRequestV1,
+                HybridSearchRequestV1,
+                SearchResponseV1,
+                DenseSearchResponseV1,
+                HybridSearchResponseV1,
+                ContextAssemblyRequestV1,
+                ContextPacketV1,
+                ContextItemV1,
+                MemoryCreateRequestV1,
+                MemoryQueryResponseV1,
+                MemoryEntryV1,
+                SourceViewResultV1,
             )
             for model in contract_models:
                 components[model.__name__] = model.model_json_schema(
@@ -1403,6 +1653,30 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 (
                     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/trace",
                     TraceBudgetV1,
+                ),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/exact",
+                    ExactSearchRequestV1,
+                ),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/lexical",
+                    LexicalSearchRequestV1,
+                ),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/dense",
+                    DenseSearchRequestV1,
+                ),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/hybrid",
+                    HybridSearchRequestV1,
+                ),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/context/assemble",
+                    ContextAssemblyRequestV1,
+                ),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/memories",
+                    MemoryCreateRequestV1,
                 ),
             )
             for path, model in body_contracts:

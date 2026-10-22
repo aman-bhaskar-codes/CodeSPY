@@ -49,7 +49,7 @@ class SearchScopeV1(BaseModel):
 class ExactSearchRequestV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    scope: SearchScopeV1
+    scope: SearchScopeV1 | None = None
     query: str = Field(min_length=1, max_length=256)
     search_type: ExactSearchType | None = None
     limit: int = Field(default=20, ge=1, le=100)
@@ -58,7 +58,7 @@ class ExactSearchRequestV1(BaseModel):
 class LexicalSearchRequestV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    scope: SearchScopeV1
+    scope: SearchScopeV1 | None = None
     query: str = Field(min_length=1, max_length=512)
     limit: int = Field(default=40, ge=1, le=100)
 
@@ -119,7 +119,7 @@ class SearchIndexRecordV1(BaseModel):
 class DenseSearchRequestV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    scope: SearchScopeV1
+    scope: SearchScopeV1 | None = None
     query: str = Field(min_length=1, max_length=1024)
     index_id: UUID | None = None
     limit: int = Field(default=20, ge=1, le=100)
@@ -159,7 +159,7 @@ class DenseSearchResponseV1(BaseModel):
 class HybridSearchRequestV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    scope: SearchScopeV1
+    scope: SearchScopeV1 | None = None
     query: str = Field(min_length=1, max_length=1024)
     limit: int = Field(default=20, ge=1, le=100)
     rrf_k: int = Field(default=60, ge=1, le=200)

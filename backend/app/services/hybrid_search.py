@@ -38,6 +38,8 @@ class HybridSearchService:
 
     async def search_hybrid(self, request: HybridSearchRequestV1) -> HybridSearchResponseV1:
         t0 = time.perf_counter()
+        if request.scope is None:
+            raise ValueError("scope is required for hybrid search")
 
         # Step 1: Execute retrieval channels
         exact_req = ExactSearchRequestV1(
