@@ -277,6 +277,10 @@ def grant_app(values, name):
             c.execute(
                 "GRANT INSERT, UPDATE, DELETE ON chunk_embeddings TO p2_api,p2_broker"
             )
+        if c.execute("SELECT to_regclass('public.repo_memories')").fetchone()[0]:
+            c.execute(
+                "GRANT INSERT, UPDATE, DELETE ON repo_memories TO p2_api,p2_broker"
+            )
         c.execute("REVOKE ALL ON public.alembic_version FROM p2_api,p2_broker")
         c.execute("REVOKE CREATE ON SCHEMA public FROM p2_api,p2_broker")
 
