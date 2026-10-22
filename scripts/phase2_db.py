@@ -250,6 +250,9 @@ def grant_app(values, name):
                     "GRANT EXECUTE ON FUNCTION public.codespy_scan_complete_set(uuid,uuid,uuid), "
                     "public.codespy_scan_json(jsonb),public.codespy_scan_digest(jsonb) TO p2_broker"
                 )
+        if c.execute("SELECT to_regclass('public.finding_triage_events')").fetchone()[0]:
+            c.execute("GRANT INSERT ON finding_triage_events TO p2_api")
+            c.execute("GRANT INSERT, UPDATE ON finding_triage_projections TO p2_api")
         c.execute("REVOKE ALL ON public.alembic_version FROM p2_api,p2_broker")
         c.execute("REVOKE CREATE ON SCHEMA public FROM p2_api,p2_broker")
 

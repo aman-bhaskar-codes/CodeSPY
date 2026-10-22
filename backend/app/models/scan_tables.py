@@ -216,6 +216,78 @@ verification_decisions = sa.Table(
         "disposition IN ('proposed','supported-static','contradicted','unresolved')",
     ),
 )
+finding_triage_events = sa.Table(
+    "finding_triage_events",
+    md,
+    *scope(),
+    col("finding_id", "uuid"),
+    col("event_id", "uuid"),
+    col("principal_id", "uuid"),
+    col("state"),
+    col("reason"),
+    created(),
+    pk("org_id", "snapshot_id", "run_id", "finding_id", "event_id"),
+    fk(
+        "fk_triage_event_finding",
+        ["org_id", "snapshot_id", "run_id", "finding_id"],
+        "finding_occurrences",
+        ["org_id", "snapshot_id", "run_id", "id"],
+    ),
+    fk(
+        "fk_triage_event_member",
+        ["org_id", "principal_id"],
+        "memberships",
+        ["org_id", "principal_id"],
+    ),
+    ck(
+        "ck_triage_event_state",
+        "state IN ('unreviewed', 'confirmed', 'false_positive', 'mitigated', 'accepted_risk')",
+    ),
+    ck(
+        "ck_triage_event_reason",
+        "reason IN ('none', 'code_refactor', 'compensating_control', 'business_context', 'test_code', 'vendor_dependency')",
+    ),
+)
+finding_triage_projections = sa.Table(
+    "finding_triage_projections",
+    md,
+    *scope(),
+    col("finding_id", "uuid"),
+    col("current_state"),
+    col("current_reason"),
+    col("last_event_id", "uuid"),
+    col("updated_by", "uuid"),
+    col("updated_at", "time", default="CURRENT_TIMESTAMP"),
+    col("version", "int", default="1"),
+    pk("org_id", "snapshot_id", "run_id", "finding_id"),
+    fk(
+        "fk_triage_proj_finding",
+        ["org_id", "snapshot_id", "run_id", "finding_id"],
+        "finding_occurrences",
+        ["org_id", "snapshot_id", "run_id", "id"],
+    ),
+    fk(
+        "fk_triage_proj_event",
+        ["org_id", "snapshot_id", "run_id", "finding_id", "last_event_id"],
+        "finding_triage_events",
+        ["org_id", "snapshot_id", "run_id", "finding_id", "event_id"],
+    ),
+    fk(
+        "fk_triage_proj_member",
+        ["org_id", "updated_by"],
+        "memberships",
+        ["org_id", "principal_id"],
+    ),
+    ck(
+        "ck_triage_proj_state",
+        "current_state IN ('unreviewed', 'confirmed', 'false_positive', 'mitigated', 'accepted_risk')",
+    ),
+    ck(
+        "ck_triage_proj_reason",
+        "current_reason IN ('none', 'code_refactor', 'compensating_control', 'business_context', 'test_code', 'vendor_dependency')",
+    ),
+    ck("ck_triage_proj_version", "version >= 1"),
+)
 SCAN_TABLES = {
     t.name: t
     for t in (
@@ -226,6 +298,13 @@ SCAN_TABLES = {
         finding_occurrences,
         finding_support,
         verification_decisions,
+    )
+}
+TRIAGE_TABLES = {
+    t.name: t
+    for t in (
+        finding_triage_events,
+        finding_triage_projections,
     )
 }
 for name, table, columns in (
@@ -249,6 +328,16 @@ for name, table, columns in (
         "ix_scan_observations_file",
         scan_observations,
         ("org_id", "snapshot_id", "run_id", "file_id", "observation_key"),
+    ),
+    (
+        "ix_triage_events_history",
+        finding_triage_events,
+        ("org_id", "snapshot_id", "run_id", "finding_id", "created_at", "event_id"),
+    ),
+    (
+        "ix_triage_proj_state",
+        finding_triage_projections,
+        ("org_id", "snapshot_id", "run_id", "current_state", "finding_id"),
     ),
 ):
     sa.Index(name, *[table.c[c] for c in columns])
