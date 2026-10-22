@@ -402,6 +402,8 @@ def main():
                     "0009_api_commands",
                     "0011_structural_authority",
                     "0012_scan_storage",
+                    "0013_scan_authority",
+                    "0014_finding_triage",
                 ],
             )
             p.add_argument(

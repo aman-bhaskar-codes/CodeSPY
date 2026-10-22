@@ -79,8 +79,8 @@ def main():
     )
     test.add_argument(
         "--schema-target",
-        choices=("0012_scan_storage", "0013_scan_authority"),
-        default="0013_scan_authority",
+        choices=("0012_scan_storage", "0013_scan_authority", "0014_finding_triage"),
+        default="0014_finding_triage",
     )
     test.add_argument("--select", default="")
     args = parser.parse_args()

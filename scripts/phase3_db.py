@@ -11,7 +11,7 @@ if __name__ == "__main__":
     if "test" in sys.argv:
         if "--schema-target" not in sys.argv:
             target = (
-                "0012_scan_storage"
+                "0014_finding_triage"
                 if "phase4" in sys.argv
                 else "0011_structural_authority"
             )

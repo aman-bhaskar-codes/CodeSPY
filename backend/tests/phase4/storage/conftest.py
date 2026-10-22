@@ -19,7 +19,7 @@ def db_values():
     name = harness.create_database(values, "scancase")
     try:
         harness.migrate(
-            values, name, values.get("CODESPY_TEST_SCHEMA_TARGET", "0013_scan_authority")
+            values, name, values.get("CODESPY_TEST_SCHEMA_TARGET", "0014_finding_triage")
         )
         harness.grant_app(values, name)
         yield {**values, "CODESPY_TEST_DATABASE": name}

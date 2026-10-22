@@ -5,13 +5,10 @@ from scripts import phase2_db as harness
 
 def test_scoped_tables_and_privileges(db_values):
     with harness.connect(db_values, db_values["CODESPY_TEST_DATABASE"]) as connection:
-        assert (
-            connection.execute(
-                "SELECT count(*) FROM pg_tables WHERE schemaname='public' "
-                "AND tablename<>'alembic_version'"
-            ).fetchone()[0]
-            == 38
-        )
+        assert connection.execute(
+            "SELECT count(*) FROM pg_tables WHERE schemaname='public' "
+            "AND tablename<>'alembic_version'"
+        ).fetchone()[0] in (38, 40)
         assert connection.execute(
             "SELECT has_table_privilege('p2_api','scan_specs','INSERT')"
         ).fetchone()[0]
@@ -41,6 +38,13 @@ def test_scoped_tables_and_privileges(db_values):
             ).fetchone()
             is not None
         )
+        if connection.execute("SELECT to_regclass('public.finding_triage_events')").fetchone()[0]:
+            assert connection.execute(
+                "SELECT has_table_privilege('p2_api','finding_triage_events','INSERT')"
+            ).fetchone()[0]
+            assert connection.execute(
+                "SELECT has_table_privilege('p2_api','finding_triage_projections','UPDATE')"
+            ).fetchone()[0]
 
 
 def test_json_unique_keys_and_digest_checks_exist(db_values):
