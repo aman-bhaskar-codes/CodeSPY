@@ -1,7 +1,7 @@
 """SQLAlchemy table definition for source code chunks and full-text search indexes."""
 
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 
 from app.models.phase2_tables import ck, col, created, fk, md, orgid, pk, uq
 
@@ -49,5 +49,86 @@ source_chunks = sa.Table(
         ["org_id", "snapshot_id", "file_id"],
         "source_files",
         ["org_id", "snapshot_id", "id"],
+    ),
+)
+
+search_indices = sa.Table(
+    "search_indices",
+    md,
+    orgid(),
+    col("id", "uuid"),
+    col("repository_id", "uuid"),
+    col("snapshot_id", "uuid"),
+    sa.Column("index_type", sa.String(32), nullable=False),
+    sa.Column("state", sa.String(32), nullable=False),
+    sa.Column("embedding_provider", sa.String(64), nullable=True),
+    sa.Column("embedding_model", sa.String(128), nullable=True),
+    sa.Column("dimension", sa.Integer, nullable=True),
+    sa.Column("total_chunks", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("indexed_chunks", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("failed_chunks", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("sealed_at", sa.DateTime(timezone=True), nullable=True),
+    sa.Column(
+        "metadata_json",
+        JSONB().with_variant(sa.JSON, "sqlite"),
+        nullable=False,
+        server_default="{}",
+    ),
+    created(),
+    sa.Column(
+        "updated_at",
+        sa.DateTime(timezone=True),
+        nullable=False,
+        server_default=sa.func.clock_timestamp(),
+    ),
+    pk("org_id", "id"),
+    ck(
+        "ck_index_state",
+        "state IN ('building', 'sealing', 'ready', 'partial_ready', 'failed', 'stale')",
+    ),
+    ck("ck_index_type", "index_type IN ('lexical', 'dense', 'hybrid')"),
+    fk("fk_index_repo", ["org_id", "repository_id"], "repositories", ["org_id", "id"]),
+    fk(
+        "fk_index_snapshot",
+        ["org_id", "snapshot_id"],
+        "source_snapshots",
+        ["org_id", "id"],
+    ),
+)
+
+chunk_embeddings = sa.Table(
+    "chunk_embeddings",
+    md,
+    orgid(),
+    col("chunk_id", "uuid"),
+    col("index_id", "uuid"),
+    col("repository_id", "uuid"),
+    col("snapshot_id", "uuid"),
+    sa.Column(
+        "embedding_json",
+        JSONB().with_variant(sa.JSON, "sqlite"),
+        nullable=False,
+    ),
+    sa.Column("token_count", sa.Integer, nullable=False, server_default="0"),
+    created(),
+    pk("org_id", "chunk_id", "index_id"),
+    sa.ForeignKeyConstraint(
+        ["org_id", "chunk_id"],
+        ["source_chunks.org_id", "source_chunks.id"],
+        name="fk_emb_chunk",
+        ondelete="CASCADE",
+    ),
+    sa.ForeignKeyConstraint(
+        ["org_id", "index_id"],
+        ["search_indices.org_id", "search_indices.id"],
+        name="fk_emb_index",
+        ondelete="CASCADE",
+    ),
+    fk("fk_emb_repo", ["org_id", "repository_id"], "repositories", ["org_id", "id"]),
+    fk(
+        "fk_emb_snapshot",
+        ["org_id", "snapshot_id"],
+        "source_snapshots",
+        ["org_id", "id"],
     ),
 )

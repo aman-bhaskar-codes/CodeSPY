@@ -269,6 +269,14 @@ def grant_app(values, name):
             c.execute(
                 "GRANT INSERT, UPDATE, DELETE ON source_chunks TO p2_api,p2_broker"
             )
+        if c.execute("SELECT to_regclass('public.search_indices')").fetchone()[0]:
+            c.execute(
+                "GRANT INSERT, UPDATE, DELETE ON search_indices TO p2_api,p2_broker"
+            )
+        if c.execute("SELECT to_regclass('public.chunk_embeddings')").fetchone()[0]:
+            c.execute(
+                "GRANT INSERT, UPDATE, DELETE ON chunk_embeddings TO p2_api,p2_broker"
+            )
         c.execute("REVOKE ALL ON public.alembic_version FROM p2_api,p2_broker")
         c.execute("REVOKE CREATE ON SCHEMA public FROM p2_api,p2_broker")
 

@@ -1,6 +1,6 @@
-"""Typed contracts for exact symbol/path search and PostgreSQL lexical search."""
-
+from datetime import datetime
 from enum import StrEnum
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -11,6 +11,22 @@ from app.contracts.chunking import ChunkKind
 class SearchMode(StrEnum):
     EXACT = "exact"
     LEXICAL = "lexical"
+    DENSE = "dense"
+    HYBRID = "hybrid"
+
+
+class IndexState(StrEnum):
+    BUILDING = "building"
+    SEALING = "sealing"
+    READY = "ready"
+    PARTIAL_READY = "partial_ready"
+    FAILED = "failed"
+    STALE = "stale"
+
+
+class IndexType(StrEnum):
+    LEXICAL = "lexical"
+    DENSE = "dense"
     HYBRID = "hybrid"
 
 
@@ -76,4 +92,65 @@ class SearchResponseV1(BaseModel):
     hits: tuple[SearchHitV1, ...]
     coverage_status: str = "complete"
     omitted_count: int = Field(default=0, ge=0)
+    execution_ms: float = Field(default=0.0, ge=0.0)
+
+
+class SearchIndexRecordV1(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    index_id: UUID
+    org_id: UUID
+    repository_id: UUID
+    snapshot_id: UUID
+    index_type: IndexType
+    state: IndexState
+    embedding_provider: str | None = None
+    embedding_model: str | None = None
+    dimension: int | None = None
+    total_chunks: int = 0
+    indexed_chunks: int = 0
+    failed_chunks: int = 0
+    sealed_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+    metadata_json: dict[str, Any] = Field(default_factory=dict)
+
+
+class DenseSearchRequestV1(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    scope: SearchScopeV1
+    query: str = Field(min_length=1, max_length=1024)
+    index_id: UUID | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+    min_score: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
+class DenseSearchHitV1(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    chunk_id: UUID
+    file_id: UUID
+    file_path: str
+    chunk_kind: ChunkKind
+    symbol_name: str | None = None
+    qualified_name: str | None = None
+    start_byte: int = Field(ge=0)
+    end_byte: int = Field(ge=0)
+    start_line: int = Field(ge=1)
+    end_line: int = Field(ge=1)
+    score: float = Field(ge=0.0, le=1.0)
+    snippet: str
+    content_sha256: str
+
+
+class DenseSearchResponseV1(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    scope: SearchScopeV1
+    query: str
+    index_id: UUID
+    embedding_model: str
+    total_candidates: int = Field(ge=0)
+    hits: tuple[DenseSearchHitV1, ...]
     execution_ms: float = Field(default=0.0, ge=0.0)

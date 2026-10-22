@@ -79,6 +79,7 @@ class PrivacyPolicyV1(BaseModel):
 
     policy_version: str = "v1_default"
     allow_original_view: bool = False
+    allow_cloud_providers: bool = False
     sensitive_path_patterns: tuple[str, ...] = DEFAULT_SENSITIVE_PATH_PATTERNS
     redact_secrets: bool = True
     replacement_template: str = "[REDACTED_SECRET:{secret_type}]"
