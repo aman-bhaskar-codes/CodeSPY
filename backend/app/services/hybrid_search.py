@@ -75,36 +75,36 @@ class HybridSearchService:
         chunk_data: dict[UUID, Any] = {}
 
         # Channel 1: Exact matches
-        for r, hit in enumerate(exact_res.hits, start=1):
-            cid = hit.chunk_id
+        for r, exact_hit in enumerate(exact_res.hits, start=1):
+            cid = exact_hit.chunk_id
             delta = w_exact / (k + r)
             scores[cid] = scores.get(cid, 0.0) + delta
             modalities.setdefault(cid, []).append("exact")
             ranks.setdefault(cid, {})["exact"] = r
             if cid not in chunk_data:
-                chunk_data[cid] = hit
+                chunk_data[cid] = exact_hit
 
         # Channel 2: Lexical matches
-        for r, hit in enumerate(lexical_res.hits, start=1):
-            cid = hit.chunk_id
+        for r, lexical_hit in enumerate(lexical_res.hits, start=1):
+            cid = lexical_hit.chunk_id
             delta = w_lexical / (k + r)
             scores[cid] = scores.get(cid, 0.0) + delta
             if "lexical" not in modalities.setdefault(cid, []):
                 modalities[cid].append("lexical")
             ranks.setdefault(cid, {})["lexical"] = r
             if cid not in chunk_data:
-                chunk_data[cid] = hit
+                chunk_data[cid] = lexical_hit
 
         # Channel 3: Dense vector matches
-        for r, hit in enumerate(dense_res.hits, start=1):
-            cid = hit.chunk_id
+        for r, dense_hit in enumerate(dense_res.hits, start=1):
+            cid = dense_hit.chunk_id
             delta = w_dense / (k + r)
             scores[cid] = scores.get(cid, 0.0) + delta
             if "dense" not in modalities.setdefault(cid, []):
                 modalities[cid].append("dense")
             ranks.setdefault(cid, {})["dense"] = r
             if cid not in chunk_data:
-                chunk_data[cid] = hit
+                chunk_data[cid] = dense_hit
 
         # Step 3: Sort by fused score
         ranked_candidates = sorted(
