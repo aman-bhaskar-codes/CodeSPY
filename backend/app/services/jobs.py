@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.contracts.jobs import AttemptLeaseV2, EnqueueJobV2, EnqueueJobV3, JobRecordV2, JobRecordV3
 from app.contracts.persistence import RunCreate
+from app.contracts.scan_jobs import EnqueueScanJobV4, ScanJobRecordV4
 from app.db.time import database_now
 from app.db.transaction import transaction
 from app.domain.canonical_json import semantic_digest
@@ -44,8 +45,8 @@ class JobService:
         self.persistence = PersistenceService(factory)
 
     async def enqueue(
-        self, ctx: TenantContext, request: EnqueueJobV2 | EnqueueJobV3
-    ) -> JobRecordV2 | JobRecordV3:
+        self, ctx: TenantContext, request: EnqueueJobV2 | EnqueueJobV3 | EnqueueScanJobV4
+    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4:
         if request.request_key.startswith(("job:", "child:")):
             raise ValueError("reserved request namespace")
         async with transaction(self.factory) as s:
@@ -53,16 +54,25 @@ class JobService:
                 s, ctx.org_id, ctx.principal_id, request.repository_id, request.snapshot_id
             )
             row = await self._enqueue(s, ctx, request)
+        if row.get("operation") == "scan_snapshot":
+            return public_job_record(row)
         if isinstance(request, EnqueueJobV3) or row.get("operation") == "analyze_structure":
             return job_record_v3(row)
         return job_record(row)
 
     async def _enqueue(
-        self, s: AsyncSession, ctx: TenantContext, request: EnqueueJobV2 | EnqueueJobV3
+        self,
+        s: AsyncSession,
+        ctx: TenantContext,
+        request: EnqueueJobV2 | EnqueueJobV3 | EnqueueScanJobV4,
     ) -> dict[str, Any]:
         digest = semantic_digest(request.model_dump())
         target_jobs = jobs
-        if isinstance(request, EnqueueJobV3):
+        if isinstance(request, EnqueueScanJobV4):
+            from app.models.scan_tables import scan_jobs
+
+            target_jobs = scan_jobs
+        elif isinstance(request, EnqueueJobV3):
             from app.models.phase3_tables import structural_jobs
 
             target_jobs = structural_jobs
@@ -82,7 +92,9 @@ class JobService:
             await require_repository(
                 s, ctx.org_id, ctx.principal_id, old["repository_id"], write=True
             )
-            if old["request_hash"] != digest:
+            if old["request_hash"] != digest or (
+                request.operation == "scan_snapshot" and old["principal_id"] != ctx.principal_id
+            ):
                 raise DuplicateConflict("request key has different input")
             return dict(old)
         limits = PHASE2_TABLES["org_work_limits"]
@@ -117,7 +129,9 @@ class JobService:
         await append_event(s, row, "queued")
         return row
 
-    async def get(self, ctx: TenantContext, job_id: UUID) -> JobRecordV2 | JobRecordV3:
+    async def get(
+        self, ctx: TenantContext, job_id: UUID
+    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4:
         async with transaction(self.factory) as s:
             row = await load_job(s, ctx.org_id, job_id)
             await require_repository(s, ctx.org_id, ctx.principal_id, row["repository_id"])
@@ -132,6 +146,8 @@ class JobService:
                     .order_by(jobs.c.created_at.desc(), jobs.c.id.desc())
                     .limit(1)
                 )
+        if row.get("operation") == "scan_snapshot":
+            return public_job_record(row)
         if row.get("operation") == "analyze_structure":
             return job_record_v3(row)
         return job_record(row)
@@ -233,7 +249,9 @@ class JobService:
             assert ctx is not None
             attempt_id = uuid4()
             run_id = (
-                uuid4() if job["operation"] in ("inventory_snapshot", "analyze_structure") else None
+                uuid4()
+                if job["operation"] in ("inventory_snapshot", "analyze_structure", "scan_snapshot")
+                else None
             )
             fence = job["fence"] + 1
             row = (
@@ -259,7 +277,11 @@ class JobService:
                 .one()
             )
             target_jobs = jobs
-            if job.get("operation") == "analyze_structure":
+            if job.get("operation") == "scan_snapshot":
+                from app.models.scan_tables import scan_jobs
+
+                target_jobs = scan_jobs
+            elif job.get("operation") == "analyze_structure":
                 from app.models.phase3_tables import structural_jobs
 
                 target_jobs = structural_jobs
@@ -295,7 +317,26 @@ class JobService:
             )
             await worker_context(s, lease)
             if run_id:
-                if job["operation"] == "analyze_structure":
+                if job["operation"] == "scan_snapshot":
+                    from app.contracts.scan_jobs import stored_config
+                    from app.models.scan_tables import scan_specs
+
+                    spec_row = (
+                        (
+                            await s.execute(
+                                select(scan_specs).where(
+                                    scan_specs.c.org_id == org_id,
+                                    scan_specs.c.id == job["scan_spec_id"],
+                                )
+                            )
+                        )
+                        .mappings()
+                        .one()
+                    )
+                    scan_config = stored_config(spec_row["config_json"])
+                    analyzer_name = "codespy-findings"
+                    run_config = scan_config.model_dump(mode="json")
+                elif job["operation"] == "analyze_structure":
                     from app.models.phase3_tables import analysis_specs
 
                     spec_row = (
@@ -330,6 +371,12 @@ class JobService:
                     worker_binding=(job_id, attempt_id, fence),
                 )
                 await self.persistence._transition_in_session(s, ctx, run.ref, 0, "running")
+                if job["operation"] == "scan_snapshot":
+                    from app.repositories.scan_repository import ScanRepository
+
+                    await ScanRepository(s).create_attempt_spec(
+                        lease, job["scan_spec_id"], job["repository_id"], scan_config, now
+                    )
             elif job["submission_id"]:
                 sub = PHASE2_TABLES["source_submissions"]
                 await s.execute(
@@ -498,7 +545,11 @@ class JobService:
         if retry:
             delay = min(60, 5 * 2 ** max(0, job["attempt_count"] - 1))
             target_jobs = jobs
-            if job.get("operation") == "analyze_structure":
+            if job.get("operation") == "scan_snapshot":
+                from app.models.scan_tables import scan_jobs
+
+                target_jobs = scan_jobs
+            elif job.get("operation") == "analyze_structure":
                 from app.models.phase3_tables import structural_jobs
 
                 target_jobs = structural_jobs
@@ -610,7 +661,9 @@ class JobService:
                 s, job, attempt, code, transient=transient, cancel=code == "access_revoked"
             )
 
-    async def request_cancel(self, ctx: TenantContext, job_id: UUID) -> JobRecordV2 | JobRecordV3:
+    async def request_cancel(
+        self, ctx: TenantContext, job_id: UUID
+    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4:
         """API cancellation fences work; broker alone closes an inventory run."""
         async with transaction(self.factory) as s:
             hint = await load_job(s, ctx.org_id, job_id)
@@ -656,7 +709,9 @@ class JobService:
                 await append_event(s, job, "cancel_requested")
             return public_job_record(await load_job(s, ctx.org_id, job_id))
 
-    async def cancel(self, ctx: TenantContext, job_id: UUID) -> JobRecordV2 | JobRecordV3:
+    async def cancel(
+        self, ctx: TenantContext, job_id: UUID
+    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4:
         async with transaction(self.factory) as s:
             hint = await load_job(s, ctx.org_id, job_id)
             await lock_scope(

@@ -237,11 +237,31 @@ def grant_app(values, name):
         if c.execute("SELECT to_regclass('public.analysis_specs')").fetchone()[0]:
             c.execute("GRANT INSERT ON analysis_specs TO p2_api")
             c.execute("GRANT INSERT ON structural_reports TO p2_broker")
+        if c.execute("SELECT to_regclass('public.scan_specs')").fetchone()[0]:
+            c.execute("GRANT INSERT ON scan_specs TO p2_api")
+            c.execute(
+                "GRANT INSERT ON scan_attempt_specs,scan_reports,scan_observations,"
+                "finding_occurrences,finding_support,verification_decisions TO p2_broker"
+            )
+            if c.execute(
+                "SELECT to_regprocedure('public.codespy_scan_complete_set(uuid,uuid,uuid)')"
+            ).fetchone()[0]:
+                c.execute(
+                    "GRANT EXECUTE ON FUNCTION public.codespy_scan_complete_set(uuid,uuid,uuid), "
+                    "public.codespy_scan_json(jsonb),public.codespy_scan_digest(jsonb) TO p2_broker"
+                )
         c.execute("REVOKE ALL ON public.alembic_version FROM p2_api,p2_broker")
         c.execute("REVOKE CREATE ON SCHEMA public FROM p2_api,p2_broker")
 
 
-def prepare(path):
+def prepare(path, *, services=("postgres", "localstack")):
+    if (
+        not services
+        or len(set(services)) != len(services)
+        or not set(services) <= {"postgres", "localstack"}
+        or "postgres" not in services
+    ):
+        raise ValueError("invalid owned test service selection")
     if path.exists():
         raise ValueError("refusing to overwrite existing ownership file")
     values = {
@@ -264,7 +284,7 @@ def prepare(path):
     existing = compose(values, "ps", "-q", "--all", capture=True).stdout.strip()
     if existing:
         assert_container(values)
-    compose(values, "up", "-d", "--wait", "--wait-timeout", "120")
+    compose(values, "up", "-d", "--wait", "--wait-timeout", "120", *services)
     assert_container(values)
     with connect(values) as c:
         for role, key in [

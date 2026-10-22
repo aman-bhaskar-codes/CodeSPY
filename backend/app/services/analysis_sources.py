@@ -186,9 +186,9 @@ async def locate_source(
     )
 
 
-async def stage_source(
-    store: ObjectStore, located: LocatedSource, config: AnalysisConfigV1, root: Path
-) -> SourceInputV1:
+async def stage_admitted_artifact(
+    store: ObjectStore, located: LocatedSource, root: Path
+) -> ArtifactManifestV1:
     for obj, filename, cap in (
         (located.archive, "archive.zip", 104857600),
         (located.manifest, "manifest.json", 67108864),
@@ -212,6 +212,13 @@ async def stage_source(
         or manifest.source_revision != located.revision
     ):
         raise DuplicateConflict("admitted manifest identity differs")
+    return manifest
+
+
+async def stage_source(
+    store: ObjectStore, located: LocatedSource, config: AnalysisConfigV1, root: Path
+) -> SourceInputV1:
+    await stage_admitted_artifact(store, located, root)
     return SourceInputV1(
         archive=SourceDescriptorV1(
             path="archive.zip", sha256=located.archive.sha256, size_bytes=located.archive.size_bytes

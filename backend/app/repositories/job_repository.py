@@ -7,6 +7,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contracts.jobs import AttemptLeaseV2, JobRecordV2, JobRecordV3
+from app.contracts.scan_jobs import ScanJobRecordV4
 from app.domain.errors import ScopeViolation
 from app.models.phase2_tables import PHASE2_TABLES
 
@@ -24,6 +25,25 @@ async def load_job(
     if row is None:
         raise ScopeViolation("job unavailable")
     res: dict[str, Any] = dict(row)
+    if res.get("operation") == "scan_snapshot":
+        from app.models.scan_tables import scan_jobs, scan_reports
+
+        res["scan_spec_id"] = await s.scalar(
+            select(scan_jobs.c.scan_spec_id).where(
+                scan_jobs.c.org_id == org_id,
+                scan_jobs.c.id == job_id,
+            )
+        )
+        res["report_available"] = row["state"] in {"succeeded", "partial"} and (
+            await s.scalar(
+                select(scan_reports.c.run_id).where(
+                    scan_reports.c.org_id == org_id,
+                    scan_reports.c.snapshot_id == row["snapshot_id"],
+                    scan_reports.c.run_id == row["result_run_id"],
+                )
+            )
+            is not None
+        )
     if res.get("operation") == "analyze_structure":
         from app.models.phase3_tables import structural_jobs
 
@@ -48,7 +68,13 @@ def job_record_v3(row: dict[str, Any]) -> JobRecordV3:
     return JobRecordV3(**data)
 
 
-def public_job_record(row: dict[str, Any]) -> JobRecordV2 | JobRecordV3:
+def scan_job_record(row: dict[str, Any]) -> ScanJobRecordV4:
+    return ScanJobRecordV4(**{k: row[k] for k in ScanJobRecordV4.model_fields if k in row})
+
+
+def public_job_record(row: dict[str, Any]) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4:
+    if row["operation"] == "scan_snapshot":
+        return scan_job_record(row)
     return job_record_v3(row) if row["operation"] == "analyze_structure" else job_record(row)
 
 

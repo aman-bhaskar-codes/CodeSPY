@@ -9,6 +9,7 @@ from uuid import UUID
 
 from pydantic import Field, model_validator
 
+from app.contracts.structure import SourceDescriptorV1, SourceFileV1, SourcePolicyV1
 from app.domain.canonical_json import canonical_bytes, semantic_digest
 from app.domain.scope import Contract, RunRef
 from app.domain.source_ranges import SourceRangeV1
@@ -125,3 +126,29 @@ class ScannerResultV1(Contract):
             if identity in seen:
                 raise ValueError("duplicate observation")
             seen.add(identity)
+
+
+class ScannerArchiveV1(Contract):
+    request: ScannerRequestV1
+    archive: SourceDescriptorV1
+    manifest: SourceDescriptorV1
+    files: tuple[SourceFileV1, ...] = Field(max_length=10000)
+    policy: SourcePolicyV1
+
+    @model_validator(mode="after")
+    def selected_authority(self) -> Self:
+        if len(canonical_bytes(self.model_dump())) > 8388608:
+            raise ValueError("scanner archive metadata exceeds bound")
+        stored = {file.file_id: file for file in self.files}
+        if len(stored) != len(self.files) or len({f.path for f in self.files}) != len(self.files):
+            raise ValueError("duplicate persisted source identity")
+        for selected in self.request.files:
+            file = stored.get(selected.file_id)
+            if (
+                file is None
+                or not file.eligible
+                or (selected.sha256, selected.size_bytes) != (file.sha256, file.size_bytes)
+                or (self.request.profile.tool == "semgrep" and file.language != "python")
+            ):
+                raise ValueError("scanner selection differs from admitted source")
+        return self

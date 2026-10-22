@@ -31,6 +31,7 @@ from app.contracts.ingestion import (
 )
 from app.contracts.jobs import JobRecordV2, JobRecordV3, RetryResponseV1, RetryResponseV2
 from app.contracts.persistence import GraphPage, RepositoryCreate, RepositoryRecord
+from app.contracts.scan_jobs import RetryScanResponseV3, ScanJobRecordV4
 from app.contracts.structure import (
     AnalysisAcceptedV1,
     AnalysisConfigV1,
@@ -119,6 +120,14 @@ class ApplicationPorts:
     webhooks: GitHubWebhookService | None = None
     readiness: Callable[[], Awaitable[bool]] | None = None
     admission_policy: AdmissionPolicy = field(default_factory=AdmissionPolicyV1)
+
+
+def legacy_job_record(
+    value: JobRecordV2 | JobRecordV3 | ScanJobRecordV4,
+) -> JobRecordV2 | JobRecordV3:
+    if isinstance(value, ScanJobRecordV4):
+        raise HTTPException(409, detail="scan_operation_unavailable")
+    return value
 
 
 def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
@@ -219,6 +228,8 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         code = codes.get(exception.status_code, "invalid_state")
         if exception.status_code == 503 and exception.detail == "analysis_unavailable":
             code = "analysis_unavailable"
+        if exception.status_code == 409 and exception.detail == "scan_operation_unavailable":
+            code = "scan_operation_unavailable"
         return error(exception.status_code, code)
 
     @app.exception_handler(RequestValidationError)
@@ -673,21 +684,22 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     @app.get("/api/v1/jobs/{job_id}")
     async def get_job(request: Request, job_id: UUID) -> JobRecordV2 | JobRecordV3:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id)
-        return await jobs.get(ctx, job_id)
+        return legacy_job_record(await jobs.get(ctx, job_id))
 
     @app.post("/api/v1/jobs/{job_id}/cancel")
     async def cancel_job(
         request: Request, response: Response, job_id: UUID
     ) -> JobRecordV2 | JobRecordV3:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id, write=True)
-        result = await jobs.request_cancel(ctx, job_id)
+        legacy_job_record(await jobs.get(ctx, job_id))
+        result = legacy_job_record(await jobs.request_cancel(ctx, job_id))
         response.status_code = 202 if result.state == "cancelling" else 200
         return result
 
     @app.post("/api/v1/jobs/{job_id}/retry", status_code=202)
     async def retry_job(request: Request, job_id: UUID) -> RetryResponseV1 | RetryResponseV2:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id, write=True)
-        job = await jobs.get(ctx, job_id)
+        job = legacy_job_record(await jobs.get(ctx, job_id))
         if isinstance(job, JobRecordV3) and job.operation == "analyze_structure":
             if (
                 not settings.structural_enabled
@@ -699,7 +711,10 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             spec = await structural.get_spec(ctx, job.repository_id, job.analysis_spec_id)
             if spec is None or spec.toolchain_hash != settings.structural_toolchain_hash:
                 raise RetryRejected("retry_not_supported")
-        return await retries.retry(ctx, job_id, key(request))
+        result = await retries.retry(ctx, job_id, key(request))
+        if isinstance(result, RetryScanResponseV3):
+            raise HTTPException(409, detail="scan_operation_unavailable")
+        return result
 
     @app.get("/api/v1/jobs/{job_id}/events")
     async def job_events(
@@ -708,7 +723,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         if not 1 <= limit <= 200:
             raise HTTPException(422)
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id)
-        job = await jobs.get(ctx, job_id)
+        job = legacy_job_record(await jobs.get(ctx, job_id))
         structural_events = job.operation == "analyze_structure"
         events = PHASE2_TABLES["job_events"]
         scope = {"org": str(ctx.org_id), "job": str(job_id), "version": 2}

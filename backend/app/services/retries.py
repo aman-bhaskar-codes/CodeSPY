@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.contracts.ingestion import ObjectDescriptor, resolve_admission_policy
 from app.contracts.jobs import EnqueueJobV2, EnqueueJobV3, RetryResponseV1, RetryResponseV2
+from app.contracts.scan_jobs import EnqueueScanJobV4, RetryScanResponseV3
 from app.db.time import database_now
 from app.db.transaction import transaction
 from app.domain.canonical_json import semantic_digest
@@ -16,6 +17,7 @@ from app.domain.errors import CapacityExceeded, DuplicateConflict, RetryRejected
 from app.domain.scope import TenantContext
 from app.models.phase2_tables import PHASE2_TABLES
 from app.ports.object_store import ObjectStore
+from app.ports.scan_execution import ScanCapabilities
 from app.repositories.job_repository import jobs, load_job
 from app.security.authorization import lock_scope, require_repository
 from app.services.jobs import JobService
@@ -37,10 +39,17 @@ RECOVERABLE = {
 
 
 class RetryService:
-    def __init__(self, factory: async_sessionmaker[AsyncSession], store: ObjectStore):
+    def __init__(
+        self,
+        factory: async_sessionmaker[AsyncSession],
+        store: ObjectStore,
+        *,
+        scan_capabilities: ScanCapabilities | None = None,
+    ):
         self.factory = factory
         self.store = store
         self.jobs = JobService(factory)
+        self.scan_capabilities = scan_capabilities
 
     async def _existing(
         self, s: AsyncSession, ctx: TenantContext, old: dict[str, Any], key: str
@@ -75,7 +84,7 @@ class RetryService:
 
     async def retry(
         self, ctx: TenantContext, job_id: UUID, key: str
-    ) -> RetryResponseV1 | RetryResponseV2:
+    ) -> RetryResponseV1 | RetryResponseV2 | RetryScanResponseV3:
         if not 1 <= len(key.encode()) <= 128 or key.startswith(("job:", "child:")):
             raise ValueError("invalid retry key")
         subs = PHASE2_TABLES["source_submissions"]
@@ -86,6 +95,8 @@ class RetryService:
             await require_repository(
                 s, ctx.org_id, ctx.principal_id, old["repository_id"], write=True
             )
+            if old["operation"] == "scan_snapshot":
+                return await self._retry_scan(s, ctx, old, key)
             if old["operation"] == "analyze_structure":
                 return await self._retry_structure(s, ctx, old, key)
             existing = await self._existing(s, ctx, old, key)
@@ -278,6 +289,99 @@ class RetryService:
                 retry_of_job_id=job_id,
                 retry_of_submission_id=retry_sub,
             )
+
+    async def _retry_scan(
+        self, s: AsyncSession, ctx: TenantContext, old: dict[str, Any], key: str
+    ) -> RetryScanResponseV3:
+        from app.models.scan_tables import scan_jobs
+        from app.repositories.scan_repository import ScanRepository
+        from app.services.analysis_sources import locate_source
+
+        await lock_scope(s, ctx.org_id, ctx.principal_id, old["repository_id"], old["snapshot_id"])
+        old = await load_job(s, ctx.org_id, old["id"], lock=True)
+        if old["principal_id"] != ctx.principal_id:
+            raise RetryRejected("retry_principal_mismatch")
+        existing = (
+            (
+                await s.execute(
+                    select(scan_jobs).where(
+                        scan_jobs.c.org_id == ctx.org_id,
+                        scan_jobs.c.request_key == key,
+                    )
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if existing is not None:
+            if (
+                any(
+                    existing[k] != old[k]
+                    for k in (
+                        "principal_id",
+                        "repository_id",
+                        "snapshot_id",
+                        "scan_spec_id",
+                        "config_hash",
+                        "operation",
+                    )
+                )
+                or existing["retry_of_job_id"] != old["id"]
+            ):
+                raise DuplicateConflict("retry key has different input")
+            return RetryScanResponseV3(
+                retry_job_id=existing["id"],
+                retry_of_job_id=old["id"],
+                scan_spec_id=old["scan_spec_id"],
+            )
+        if old["state"] not in {"failed", "cancelled"}:
+            raise RetryRejected("retry_not_supported")
+        allowed = {
+            "scanner_unavailable",
+            "scanner_timeout",
+            "scanner_process_failed",
+            "finalization_timeout",
+            "deadline_exceeded",
+            "lease_expired",
+            "user_requested",
+            "access_revoked",
+            "storage_unavailable",
+        }
+        code = old["failure_code"]
+        if old["state"] == "failed":
+            if code == "attempts_exhausted":
+                attempts = PHASE2_TABLES["job_attempts"]
+                code = await s.scalar(
+                    select(attempts.c.error_code)
+                    .where(
+                        attempts.c.org_id == ctx.org_id,
+                        attempts.c.job_id == old["id"],
+                    )
+                    .order_by(attempts.c.fence.desc())
+                    .limit(1)
+                )
+            if code not in allowed:
+                raise RetryRejected("retry_not_supported")
+        spec = await ScanRepository(s).get_spec(ctx, old["repository_id"], old["scan_spec_id"])
+        if spec is None or self.scan_capabilities is None:
+            raise RetryRejected("scanner_unavailable")
+        self.scan_capabilities.validate(spec.config)
+        await locate_source(s, ctx.org_id, old["repository_id"], old["snapshot_id"])
+        new = await self.jobs._enqueue(
+            s,
+            ctx,
+            EnqueueScanJobV4(
+                repository_id=old["repository_id"],
+                snapshot_id=old["snapshot_id"],
+                scan_spec_id=old["scan_spec_id"],
+                config_hash=old["config_hash"],
+                request_key=key,
+                retry_of_job_id=old["id"],
+            ),
+        )
+        return RetryScanResponseV3(
+            retry_job_id=new["id"], retry_of_job_id=old["id"], scan_spec_id=old["scan_spec_id"]
+        )
 
     async def _retry_structure(
         self, s: AsyncSession, ctx: TenantContext, old: dict[str, Any], key: str

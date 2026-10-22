@@ -7,12 +7,26 @@ from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contracts.jobs import JobEnvelopeV2, JobEnvelopeV3
+from app.contracts.scan_jobs import JobEnvelopeV4
 from app.models.phase2_tables import PHASE2_TABLES
 
 
 async def enqueue_wakeup(s: AsyncSession, job: dict[str, Any]) -> None:
-    if job["operation"] == "analyze_structure":
-        envelope: JobEnvelopeV2 | JobEnvelopeV3 = JobEnvelopeV3(
+    envelope: JobEnvelopeV2 | JobEnvelopeV3 | JobEnvelopeV4
+    if job["operation"] == "scan_snapshot":
+        from app.repositories.job_repository import load_job
+
+        current = await load_job(s, job["org_id"], job["id"])
+        envelope = JobEnvelopeV4(
+            org_id=job["org_id"],
+            job_id=job["id"],
+            scan_spec_id=current["scan_spec_id"],
+            dispatch_generation=job["dispatch_generation"],
+            config_hash=job["config_hash"],
+            deadline=job["deadline"],
+        )
+    elif job["operation"] == "analyze_structure":
+        envelope = JobEnvelopeV3(
             org_id=job["org_id"],
             job_id=job["id"],
             operation="analyze_structure",
