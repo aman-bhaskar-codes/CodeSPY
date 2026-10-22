@@ -1,4 +1,4 @@
-"""Phase 2 fixtures accept only the separately owned disposable destination."""
+"""ingestion fixtures accept only the separately owned disposable destination."""
 
 import os
 

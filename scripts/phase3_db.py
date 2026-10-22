@@ -1,4 +1,4 @@
-"""Owned Phase 2 cluster lifecycle with the explicitly selected structural head."""
+"""Owned ingestion cluster lifecycle with the explicitly selected structural head."""
 
 import sys
 from pathlib import Path

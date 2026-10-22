@@ -1,6 +1,6 @@
 # Local database operations
 
-Phase 1 implements the persistence layer described in [ADR 0002](adr/0002-phase1-persistence.md). It has twelve application tables and four explicit Alembic revisions:
+The persistence core implements the storage contracts described in [ADR 0002](adr/0002-persistence.md). It has twelve application tables and four explicit Alembic revisions:
 
 1. `0001_identity`: organizations, principals, memberships, repositories.
 2. `0002_source`: artifacts, source snapshots, source files.
@@ -17,7 +17,7 @@ Graph pages first return edges with their endpoint nodes. Typed cursors continue
 
 ## Test environment
 
-Use the README commands or `make phase1-unit`, `make phase1-test`, `make phase1-demo`, and `make phase1-performance`. Prepare the ignored `.phase1-test.env` first. The harness uses port 55432 and tmpfs storage; each suite gets a separate ownership-marked database. It refuses other hosts, ports, project labels, markers and database names. Cleanup verifies container ownership even when database provisioning failed partway through.
+Use the README commands or `make persistence-unit`, `make persistence-test`, `make persistence-demo`, and `make persistence-performance`. Prepare the ignored `.persistence-test.env` first. The harness uses port 55432 and tmpfs storage; each suite gets a separate ownership-marked database. It refuses other hosts, ports, project labels, markers and database names. Cleanup verifies container ownership even when database provisioning failed partway through.
 
 The test-only admin provisions extensions and roles. The migration role owns application tables; the application role has scoped operation privileges but no DDL, TRUNCATE, DELETE on historical results, or trigger bypass. It cannot run owner-only ANALYZE; the performance fixture deliberately uses the migration owner for that operation. Developer credentials and volumes are never test inputs.
 
@@ -35,8 +35,8 @@ uv run --frozen --all-packages --all-groups alembic -c backend/alembic.ini upgra
 uv run --frozen --all-packages --all-groups alembic -c backend/alembic.ini check
 ```
 
-Do not stamp unknown tables or downgrade a developer database to match this plan. Destructive roundtrips are tested only in disposable databases. Accepted migrations become historical records; later changes require new revisions.
+Do not stamp unknown tables or downgrade a developer database to match an expected catalog. Destructive roundtrips are tested only in disposable databases. Accepted migrations become historical records; later changes require new revisions.
 
-## Next-phase boundaries
+## Scope and authority
 
-Findings, jobs, attempt leases, progress events, and embedding profiles are contracts only. Phase 2 must add admission, sessions, jobs/outbox/leases/fencing and storage through new migrations. Source ranges record UTF-8 byte positions; this database validates bounds, not source-to-line correspondence. Evidence digests detect altered content, not truth. The vector check uses temporary three-element values and selects no production embedding profile or index.
+The current schema includes identity, ingestion, sessions, leased jobs/outbox and structural reports through additive revisions. Source ranges use UTF-8 bytes; database bounds checks do not themselves verify source-to-line correspondence. Evidence digests detect altered content, not semantic truth. The vector fixture uses temporary three-element values and does not select a production embedding profile.

@@ -1,10 +1,10 @@
-# Phase 1 acceptance
+# persistence acceptance
 
-Date: 18 October 2026. Starting commit: `04de7aa4fbb5807de9e409bf82229d86b888e3b4`. Delivery branch: `feat/phase1-database`. The final implementation and evidence are versioned together; use the pull request head for the delivered revision.
+Date: 18 October 2026. Starting commit: `04de7aa4fbb5807de9e409bf82229d86b888e3b4`. The final implementation and evidence are versioned together; use the pull request head for the delivered revision.
 
 ## Implemented scope
 
-Twelve mapped tables, four independent Alembic revisions through `0004_guards`, explicit async session/transaction lifecycle, concrete scoped repositories, immutable DTOs, and atomic snapshot/result services. Findings, jobs, leases, events and embeddings are contract-only schemas under `docs/contracts/`. No ingestion, parser, scanner, identity flow, HTTP API, frontend, queue worker or hosted deployment is implemented.
+Twelve mapped tables, four independent Alembic revisions through `0004_guards`, explicit async session/transaction lifecycle, concrete scoped repositories, immutable DTOs, and atomic snapshot/result services. Findings, jobs, leases, events and embeddings are contract-only schemas under `docs/contracts/`. Ingestion, parsing, scanners, HTTP APIs, frontend, workers and hosting are outside this inspected persistence snapshot.
 
 A role-separated disposable PostgreSQL cluster was used. Developer `.env`, database and volumes were not used. No API keys, AWS account access, Chrome automation or external design workspace was required.
 
@@ -22,16 +22,16 @@ Locked packages retained: SQLAlchemy 2.0.54, Alembic 1.20.0, asyncpg 0.32.0, psy
 - Migration suite: 3 passed; exact 12-table schema, one head, no metadata drift, trigger catalog, source-preserving upgrade and disposable downgrade/re-upgrade. Extensions remain installed.
 - Performance suite: 1 passed; 100,000 nodes / 300,000 edges, with owner-refreshed statistics.
 - Strict mypy: passed on 29 application modules.
-- Ruff lint and formatting: passed on application, migrations, tests and Phase 1 scripts.
+- Ruff lint and formatting: passed on application, migrations, tests and persistence scripts.
 - Standalone demo: two nodes, one edge, two evidence records, one derivation; same-result replay, changed-result rejection, rollback, foreign-scope denial and stale-write rejection passed. Its database was removed after engine disposal. Fixture digests and sizes come from known UTF-8 source bytes, including CRLF and a Unicode identifier.
 
-Commands are reproducible through `make phase1-unit`, `make phase1-test`, `make phase1-demo`, and `make phase1-performance` after the README preparation command. There are no SQLite substitutes or skipped integration checks in these counts. Concurrency cases are included in the integration count, not counted twice.
+Commands are reproducible through `make persistence-unit`, `make persistence-test`, `make persistence-demo`, and `make persistence-performance` after the README preparation command. There are no SQLite substitutes or skipped integration checks in these counts. Concurrency cases are included in the integration count, not counted twice.
 
 ## Query plans
 
 The dedicated corpus contains ten independent runs, each with 10,000 nodes and 30,000 edges (100,000 nodes / 300,000 edges total). Normal guards remain active; seed transactions use an explicit larger statement budget. The migration owner refreshes statistics with ANALYZE; the runtime role retains its restricted privileges. Acceptance permits index/bitmap/index-only variants and checks bounded results and filtering work without disabling sequential scans.
 
-Final measured plans are saved in [phase1-query-plans.json](acceptance/phase1-query-plans.json). Timings are local observations, not a service objective or retrieval-quality measurement.
+Final measured plans are saved in [persistence-query-plans.json](database-query-plans.json). Timings are local observations, not a service objective or retrieval-quality measurement.
 
 ## Review and limitations
 
@@ -41,6 +41,6 @@ Scope constraints prevent invalid associations, not unauthorized direct SQL read
 
 The new workflow validates relevant pull requests/manual runs with disposable PostgreSQL only. It preserves the existing required check context and does not reactivate the old setup workflow, dependency schedules or cloud workflow.
 
-## Handoff
+## Resource cleanup
 
-Local test services are stopped at handoff, with the ownership file removed by the guarded cleanup command. Phase 2 must start from the accepted Phase 1 commit and introduce its own explicit migrations and behavioral tests. Existing Phase 0 history and unrelated local files are preserved.
+Owned local test services were stopped and the ownership file removed through guarded cleanup. Developer files and volumes were preserved.

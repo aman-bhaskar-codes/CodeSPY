@@ -1,4 +1,4 @@
-"""Unit tests for Phase 3 Structural Analysis API endpoints and schema."""
+"""Unit tests for structural analysis Structural Analysis API endpoints and schema."""
 
 from uuid import uuid4
 
@@ -9,7 +9,7 @@ from app.domain.scope import OrgRole, TenantContext
 
 
 def test_openapi_schema_includes_structural_contracts() -> None:
-    """Verify OpenAPI generator includes Phase 3 contracts and request bodies."""
+    """Verify OpenAPI generator includes structural analysis contracts and request bodies."""
     ctx = TenantContext(org_id=uuid4(), principal_id=uuid4(), role=OrgRole.OWNER)
     app = create_app(
         ApiSettings(environment="test", auth_mode="local_fixture", origin="http://testserver"),

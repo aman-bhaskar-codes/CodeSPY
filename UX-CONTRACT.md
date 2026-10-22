@@ -1,13 +1,13 @@
 # CodeSPY interaction contract
 
-Sources: docs/phases/PHASE_2_SAFE_INGESTION_IDENTITY_JOBS_EXECUTION_PLAN.md sections6,8–10; backend/openapi.json. These sources own lifecycle and permissions.
+Sources: backend/openapi.json, backend/app/contracts/ingestion.py and backend/app/contracts/jobs.py. Application services and database guards enforce lifecycle and permissions.
 
 ## Canonical UI Map
 
 | Capability     | Canonical owner                         | Source of truth      | Allowed variants                 | Verification                     |
 | -------------- | --------------------------------------- | -------------------- | -------------------------------- | -------------------------------- |
 | Select/Listbox | Native select in App                    | DESIGN.md            | Native platform popup            | App.test.tsx; browser unexecuted |
-| Form           | App upload form                         | Phase2 API contract  | ZIP upload                       | App.test.tsx                     |
+| Form           | App upload form                         | Generated API contract  | ZIP upload                       | App.test.tsx                     |
 | Scrollbar      | styles/app.css                          | DESIGN.md            | Global visible baseline          | Static audit; browser unexecuted |
 | Toast          | App persistent status and alert regions | UX-CONTRACT.md       | Status, error                    | App.test.tsx                     |
 | CRUD           | api/client.ts and App                   | backend/openapi.json | Submit, cancel, retry, inventory | Backend API tests                |

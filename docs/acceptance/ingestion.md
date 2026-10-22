@@ -1,10 +1,10 @@
-# Phase 2 local acceptance
+# ingestion local acceptance
 
-The local implementation covers safe ZIP ingestion, identity, durable jobs and inventory. The reference implementation was inspected at `fc39852b04909c04fbeb4c38a8b4c668a224f4d1`. Phase 1 public persistence contracts remain available. This is local qualification; hosted approval and live provider qualification remain separate.
+The local implementation covers safe ZIP ingestion, identity, durable jobs and inventory. The reference implementation was inspected at `fc39852b04909c04fbeb4c38a8b4c668a224f4d1`. persistence public persistence contracts remain available. This is local qualification; hosted approval and live provider qualification remain separate.
 
 ## Implemented boundaries
 
-- Additive revisions 0005–0009: seventeen Phase 2 tables, including an immutable API command ledger for repository and binding replay. Phase 1 stays at revision 0004 in its original harness.
+- Additive revisions 0005–0009: seventeen ingestion tables, including an immutable API command ledger for repository and binding replay. persistence stays at revision 0004 in its original harness.
 - Opaque sessions, CSRF, encrypted OAuth grants, numeric GitHub identities, repository authorization, signed webhook revocation and bounded fixed-origin acquisition. Provider behavior is tested with fixtures; no real account or key was accessed.
 - Bounded streaming uploads, tracked quarantine and canonical objects, immutable source manifests, persisted file-ID replay mapping and visible eligibility exclusions. ZIP contents are never executed or extracted into a shared source tree.
 - SQS-compatible transport, transactional outbox, independent database recovery, global capacity two, attempt fences, cancellation, retry history and exactly-once reservation release.
@@ -31,7 +31,7 @@ The independent review identified important defects. Each correction below has a
 | API idempotency keys discarded                   | Atomic `api_commands` replay, input conflict and revoked-binding refusal tests      |
 | Navigation and pagination absent                 | URL selection and scoped keyset pages; repository page test                         |
 
-Additional regressions cover redirect-cookie stripping, transient metadata retention, recovery sweep progress and hard asyncpg transport invalidation. The original Phase 1 demo exposed metadata contamination after in-process migration; public run projections now select Phase 1 fields explicitly, and the original demo passes.
+Additional regressions cover redirect-cookie stripping, transient metadata retention, recovery sweep progress and hard asyncpg transport invalidation. The original persistence demo exposed metadata contamination after in-process migration; public run projections now select persistence fields explicitly, and the original demo passes.
 
 Canonical object rows retain byte identity when a deleted row begins a fresh intent; ownership/fence and version distinguish that intent. No historical submission, run or snapshot is reopened. Canonical available sources are not deleted by staging retention.
 
@@ -39,11 +39,11 @@ Canonical object rows retain byte identity when a deleted row begins a fresh int
 
 | Check                                                                               | Result                                                                        |
 | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Phase 2 database, API, migration, emulator, unit, storage and Linux admission suite | 92 passed                                                                     |
-| Legacy and pure Phase 2 suites                                                      | 70 passed                                                                     |
-| Original Phase 1 integration / migration                                            | 21 / 3 passed                                                                 |
-| Original synthetic Phase 1 demo                                                     | Replay, rollback, scope and stale-write checks passed; owned database removed |
-| Disposable Phase 2 CLI check                                                        | Passed; its database, queues and bucket removed                               |
+| ingestion database, API, migration, emulator, unit, storage and Linux admission suite | 92 passed                                                                     |
+| Legacy and pure ingestion suites                                                      | 70 passed                                                                     |
+| Original persistence integration / migration                                            | 21 / 3 passed                                                                 |
+| Original synthetic persistence demo                                                     | Replay, rollback, scope and stale-write checks passed; owned database removed |
+| Disposable ingestion CLI check                                                        | Passed; its database, queues and bucket removed                               |
 | Frontend component tests                                                            | 5 passed                                                                      |
 | Backend lint / strict types                                                         | Passed; 78 application modules                                                |
 | Frontend lint / production build                                                    | Passed                                                                        |
@@ -56,4 +56,4 @@ The initial 50,000-file fixture exceeded the statement or total finalization bud
 
 No AWS deployment, IAM/network validation, real OAuth/App registration, provider secret, browser automation or live provider integration was performed. Browser accessibility, responsive interaction and hostile hosted multi-tenant isolation require their later authorized gates. S3/SQS evidence comes from the pinned local emulator, not AWS. Inventory is source metadata, not structural analysis or a security finding.
 
-Phase 3 consumes persisted snapshot/file IDs, archive and manifest digests, policy/exclusion metadata and fenced operation contracts. It must preserve these lifecycle and identity rules. GitHub CI publication results are recorded on the delivery pull request.
+structural analysis consumes persisted snapshot/file IDs, archive and manifest digests, policy/exclusion metadata and fenced operation contracts. It must preserve these lifecycle and identity rules. GitHub CI publication results are recorded on the delivery pull request.

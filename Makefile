@@ -43,3 +43,39 @@ phase2-capacity:
 	CODESPY_ADMISSION_IMAGE=$$(cat $(PHASE2_IMAGE)) $(PHASE1_PYTHON) scripts/phase2_db.py test --env-file $(PHASE2_ENV) --suite performance
 phase2-local-check:
 	$(PHASE1_PYTHON) scripts/phase2_local.py --env-file $(PHASE2_ENV) --image-file $(PHASE2_IMAGE) --check
+
+# Capability-based public commands; existing harness entrypoints remain compatible.
+.PHONY: unit database-unit database-prepare database-test database-demo database-performance database-cleanup admission-image structural-image source-prepare ingestion-test scanner-contract-test structural-test local-demo source-cleanup
+DATABASE_ENV ?= .local/database-tests.env
+SOURCE_ENV ?= work/source-tests.env
+unit:
+	$(PHASE1_PYTHON) -m pytest -c backend/pyproject.toml backend/tests/unit backend/tests/phase2/unit backend/tests/phase2/ports backend/tests/phase3/unit backend/tests/phase4/unit
+database-unit: phase1-unit
+database-prepare:
+	mkdir -p $(dir $(DATABASE_ENV))
+	$(PHASE1_PYTHON) scripts/phase1_db.py prepare --env-out $(DATABASE_ENV)
+database-test:
+	$(PHASE1_PYTHON) scripts/phase1_db.py test --env-file $(DATABASE_ENV) --suite integration
+	$(PHASE1_PYTHON) scripts/phase1_db.py test --env-file $(DATABASE_ENV) --suite migrations
+database-demo:
+	$(PHASE1_PYTHON) scripts/phase1_demo.py --env-file $(DATABASE_ENV)
+database-performance:
+	$(PHASE1_PYTHON) scripts/phase1_db.py test --env-file $(DATABASE_ENV) --suite performance
+database-cleanup:
+	$(PHASE1_PYTHON) scripts/phase1_db.py cleanup --env-file $(DATABASE_ENV)
+admission-image:
+	$(PHASE1_PYTHON) scripts/build_admission_image.py --image-out work/admission-image.id
+structural-image:
+	$(PHASE1_PYTHON) scripts/build_analysis_image.py --image-out work/analysis-image.id
+source-prepare:
+	$(PHASE1_PYTHON) scripts/phase3_db.py prepare --env-out $(SOURCE_ENV)
+ingestion-test:
+	CODESPY_ADMISSION_IMAGE=$$(cat work/admission-image.id) $(PHASE1_PYTHON) scripts/phase2_db.py test --env-file $(SOURCE_ENV) --suite all
+scanner-contract-test:
+	CODESPY_ADMISSION_IMAGE=$$(cat work/admission-image.id) $(PHASE1_PYTHON) scripts/phase3_db.py test --env-file $(SOURCE_ENV) --suite phase4
+structural-test:
+	CODESPY_ANALYSIS_IMAGE=$$(cat work/analysis-image.id) $(PHASE1_PYTHON) scripts/phase3_db.py test --env-file $(SOURCE_ENV)
+local-demo:
+	$(PHASE1_PYTHON) scripts/phase2_local.py --env-file $(SOURCE_ENV) --image-file work/admission-image.id --analysis-image-file work/analysis-image.id
+source-cleanup:
+	$(PHASE1_PYTHON) scripts/phase3_db.py cleanup --env-file $(SOURCE_ENV)

@@ -1,6 +1,6 @@
 # Scanner adapter qualification notes
 
-These observations prepare P4.02. They do not enable a scanner or establish Linux hostile-input isolation.
+These observations support scanner adapter qualification. They do not enable product scanning or establish complete Linux hostile-input isolation.
 
 ## Inspected references
 
@@ -26,4 +26,12 @@ A subsequent owned synthetic probe executed that trusted scanner with an authore
 
 For the observed later-line cases, columns are relative to the preceding newline byte, rather than the expected first character after that newline. Blindly subtracting one from every reported column would produce wrong source citations. These four probes do not establish behavior across fragment boundaries, multiline matches, decoding, archives or all platform builds. Qualification must include those boundaries or explicitly reject unsupported cases before publishing evidence.
 
-Next P4.02 proof includes actual pinned Linux output, authored detector cases, malformed/flooded diagnostics, cancellation/cleanup and zero secret sinks. Native source scopes, toolchain/rule digests and successful processed coverage must be validated before constructing the public metadata-only result.
+Required proof includes actual pinned Linux output, authored detector cases, malformed/flooded diagnostics, cancellation/cleanup and zero secret sinks. Native source scopes, toolchain/rule digests and successful processed coverage must be validated before constructing the public metadata-only result.
+
+## Source and runtime boundaries
+
+The scanner port consumes a request bound to a run, repository, immutable file IDs and a qualified tool profile. The bound object-store stager reuses admitted object streaming; the isolated reader reuses archive/manifest authentication under the original admission policy. Scanner selections refer to stored file identities rather than newly generated candidates. Generated UUID aliases exist only inside the private scanner workspace.
+
+The host records exact container ownership before creation and verifies actual resource controls, tmpfs options, ulimits, nonroot user and three readonly input mounts before starting it. A second fresh isolated verifier authenticates the same archive and rechecks returned ranges against original UTF-8 bytes without invoking native scanners. The host accepts only the exact result digest from that verifier; verification shares the original aggregate deadline. Daemon unavailability preserves both ownership records and staged objects for recovery. Cancellation remains cancellation even when cleanup must be recovered later. Mocked controller tests establish these orchestration contracts; they do not qualify native containment.
+
+Gitleaks findings use an explicit exit code of 10, while partial-scan errors remain unsuccessful even if they contain findings. Error diagnostics remain bounded and rejected. Native tool timeouts cross the private container boundary as an enumerated exit status and become `scanner_timeout`; raw native diagnostics never cross that boundary.

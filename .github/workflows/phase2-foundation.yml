@@ -1,4 +1,4 @@
-name: Phase 2 foundation
+name: Ingestion and job authority
 on:
   push:
     branches: [main]

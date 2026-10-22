@@ -1,6 +1,6 @@
 """Run a disposable loopback CodeSPY fixture; no cloud or owner credentials.
 
-Prepare phase2_env first. This command creates a separate owned database,
+Prepare the owned test environment first. This command creates a separate owned database,
 marker-named emulator resources and fixture identity. It drops only those
 resources on exit. Never use this fixture entrypoint as a hosted deployment.
 """

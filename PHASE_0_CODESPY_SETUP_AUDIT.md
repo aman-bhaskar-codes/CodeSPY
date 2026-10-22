@@ -1,4 +1,4 @@
-# Phase 0 handoff — ready for Phase 1 on command
+# dependency setup handoff — ready for persistence on command
 
 Updated 2026-10-16. Professional setup only; no application features implemented.
 
@@ -16,7 +16,7 @@ Updated 2026-10-16. Professional setup only; no application features implemented
 - PostgreSQL, Redis, SearXNG and LocalStack stopped and containers removed with `docker compose down`; named data volumes preserved.
 - Browser automation session reset; no further Chrome access authorized.
 - Automatic setup CI triggers and Dependabot scheduling disabled. Manual setup validation remains available for later.
-- No Phase 1 implementation or automatic restart. Await the owner's explicit command.
+- No persistence implementation or automatic restart. Await the owner's explicit command.
 - All API keys and further AWS account work belong to the owner. No API keys were generated or configured. Earlier cloud resources are documented in AWS_SETUP.md; they were not accessed or removed during shutdown.
 
 ## Resume only when requested

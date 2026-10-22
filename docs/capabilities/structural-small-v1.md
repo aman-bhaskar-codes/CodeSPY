@@ -1,6 +1,6 @@
 # structural-small-v1 capability record
 
-Updated 20 October 2026. Application repair `27fbde44bfbdb493649e953cd9a4f84b68776eef`; Linux qualification passed. Release evidence belongs to [Phase 3 acceptance](../PHASE_3_ACCEPTANCE.md). The initial WP-3.00 probe below is historical, not current integrated acceptance.
+Updated 20 October 2026. Application repair `27fbde44bfbdb493649e953cd9a4f84b68776eef`; Linux qualification passed. Release evidence belongs to [structural analysis acceptance](../acceptance/structural-analysis.md). The initial toolchain qualification probe below is historical, not current integrated acceptance.
 
 ## Implemented profile
 
@@ -22,15 +22,15 @@ Report byte shaping includes actual map/excerpt overhead and whole-file omission
 
 ## Current qualification
 
-Local service-free suites: 268 passed, 3 Linux-container checks skipped. TypeScript suite: 11 passed. Frontend: 8 passed plus type/lint/build. Ruff and strict typing clean. Linux CI [39360366079](https://github.com/aman-bhaskar-codes/CodeSPY/actions/runs/39360366079) passed 225 Phase 3 tests, including five-dialect smoke, PostgreSQL publication/recovery and both maximal source cases. Phase 2 at structural head passed 44 tests, with its separate admission-image check skipped. Cleanup passed.
+Local service-free suites: 268 passed, 3 Linux-container checks skipped. TypeScript suite: 11 passed. Frontend: 8 passed plus type/lint/build. Ruff and strict typing clean. Linux CI [39360366079](https://github.com/aman-bhaskar-codes/CodeSPY/actions/runs/39360366079) passed 225 structural analysis tests, including five-dialect smoke, PostgreSQL publication/recovery and both maximal source cases. ingestion at structural head passed 44 tests, with its separate admission-image check skipped. Cleanup passed.
 
 Current measured fixtures: Python 128 files/16 MiB/384 symbols, two normalized-equal runs in 110.549 s, parent RSS 66,568 KiB, cgroup peak 73,814,016 bytes. TypeScript 128 files/16 MiB plus 32 configs/512 symbols, two normalized-equal runs in 121.292 s, parent RSS 190,692 KiB, cgroup peak 277,774,336 bytes. These are synthetic measurements under existing limits, not general performance guarantees. Qualified Linux image and toolchain digest are recorded in acceptance.
 
-For historical comparison only, the prior `632a1ba` CI run passed 203 Phase 3 tests and 44 Phase 2 integrations (one skipped). Its Python maximal fixture contained 128 files/16 MiB/384 symbols, with two normalized-equal runs in 152.704 s and cgroup peak 74,858,496 bytes. These figures predate the final review fixes and do not qualify the new TypeScript/config case or latest image.
+For historical comparison only, the prior `632a1ba` CI run passed 203 structural analysis tests and 44 ingestion integrations (one skipped). Its Python maximal fixture contained 128 files/16 MiB/384 symbols, with two normalized-equal runs in 152.704 s and cgroup peak 74,858,496 bytes. These figures predate the final review fixes and do not qualify the new TypeScript/config case or latest image.
 
 Local Docker is unavailable because its installed app lacks its executable. No local test service was started during repair. Linux CI is the container qualification environment; future platforms/images need their own results. Exact toolchain context identity is generated from the trusted build whitelist, not guessed or all-zero.
 
-## Historical WP-3.00 evidence
+## Historical toolchain qualification evidence
 
 The following record describes tiny arm64 probes on 19 October 2026 only. It predates production integration and does not establish current release readiness.
 
@@ -60,7 +60,7 @@ The following record describes tiny arm64 probes on 19 October 2026 only. It pre
 | Cancel after observed child startup                                              | Container/control cleanup completed in 0.177 s                                                                                            |
 | Probe cleanup                                                                    | Zero owned containers remaining                                                                                                           |
 
-Measured times describe these tiny trusted fixtures. Full memory/PID exhaustion, all descendants under repeated cancellation, interrupted create reconciliation, hostile parser inputs and complete structural resource capacity remain WP-3.02/13 requirements. Cgroup values and one cancellation proof do not establish hostile multi-tenant isolation.
+Measured times describe these tiny trusted fixtures. Full memory/PID exhaustion, all descendants under repeated cancellation, interrupted create reconciliation, hostile parser inputs and complete structural resource capacity remain toolchain qualification requirements. Cgroup values and one cancellation proof do not establish hostile multi-tenant isolation.
 
 The pinned Linux qualification image is `sha256:8aff85c8f00210447e7f041a88feac8717c035a964e124454f38b154982a7a71`. Python base: `python:3.12.12-slim@sha256:f3fa41d74a768c2fce8016b98c191ae8c1bacd8f1152870a3f9f87d350920b7c`. Node build stage: `node:22.23.3-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392`. Local image IDs identify this build; future builds need fresh IDs and qualification.
 
@@ -77,16 +77,16 @@ Use the documented Node22 runtime. These commands install only trusted pinned de
 ```bash
 uv sync --all-packages --all-groups --frozen
 npm --prefix tools/typescript-analyzer ci --ignore-scripts
-uv run --all-packages --all-groups pytest -c backend/pyproject.toml backend/tests/phase3/unit
+uv run --all-packages --all-groups pytest -c backend/pyproject.toml backend/tests/structural analysis/unit
 npm --prefix tools/typescript-analyzer run test:capabilities
-uv run --all-packages --all-groups python scripts/build_analysis_qualification_image.py --image-out work/phase3-probe-image.id
-uv run --all-packages --all-groups python scripts/qualify_structural_toolchain.py --image-file work/phase3-probe-image.id --output work/phase3-probe-result.json
+uv run --all-packages --all-groups python scripts/build_analysis_qualification_image.py --image-out work/structural analysis-probe-image.id
+uv run --all-packages --all-groups python scripts/qualify_structural_toolchain.py --image-file work/structural analysis-probe-image.id --output work/structural analysis-probe-result.json
 ```
 
 Choose fresh output filenames; the build/qualification scripts refuse existing output files. The build context is a generated whitelist containing parser hashes, trusted fixture code and the compiler lock. It excludes developer .env, source repositories, owner staging and node_modules. Runtime gets no network, host project bind mount, Docker socket or cloud/database/model credentials. Pending cleanup retains an exact marker/name record under the ignored output directory; never delete containers by prefix.
 
 ## Gates that remained after the historical probe
 
-WP-3.01 contracts/schema; WP-3.02 production runner and full adversarial resource checks; WP-3.03 authenticated source bytes and position mapping; subsequent syntax/binding/graph/framework/report/jobs/API/UI/evaluation packages. Structural 128-file/16-MiB/1,000-node budgets remain proposed until measured at release qualification. No LLM, scanner, AWS, live OAuth, browser automation or deployed service was involved.
+toolchain qualification contracts/schema; toolchain qualification production runner and full adversarial resource checks; toolchain qualification authenticated source bytes and position mapping; subsequent syntax/binding/graph/framework/report/jobs/API/UI/evaluation packages. Structural 128-file/16-MiB/1,000-node budgets remain proposed until measured at release qualification. No LLM, scanner, AWS, live OAuth, browser automation or deployed service was involved.
 
-See [ADR 0003](../adr/0003-structural-analysis.md), the [execution plan](../phases/PHASE_3_STRUCTURAL_ANALYSIS_EXECUTION_PLAN.md) and [REA evidence](../engineering/phase3-rea-investigation.md).
+See [ADR 0003](../adr/0003-structural-analysis.md) and [REA evidence](../engineering/rea-investigation.md).

@@ -1,6 +1,6 @@
 # ruff: noqa: E501
 
-"""Worker-bound authority; legacy Phase 1 rows keep their original semantics."""
+"""Worker-bound authority; legacy persistence rows keep their original semantics."""
 
 from alembic import op
 

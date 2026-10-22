@@ -1,4 +1,4 @@
-"""Validate untrusted drafts and materialize a complete bounded Phase 1 result."""
+"""Validate untrusted drafts and materialize a complete bounded persistence result."""
 
 import hashlib
 import zipfile

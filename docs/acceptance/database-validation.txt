@@ -11,6 +11,6 @@ ruff check/format: passed.
 pre-commit run --all-files: all hooks passed, including private key detection and Gitleaks.
 phase1_db.py cleanup: owned disposable container and network removed; developer volumes untouched.
 
-The integration count includes concurrency and demo smoke cases. It is not added again for separate verification commands. PostgreSQL 16.15; vector0.8.7; pg_trgm1.6; citext1.6; uuid-ossp1.1. Query plans and local timings: phase1-query-plans.json.
+The integration count includes concurrency and demo smoke cases. It is not added again for separate verification commands. PostgreSQL 16.15; vector0.8.7; pg_trgm1.6; citext1.6; uuid-ossp1.1. Query plans and local timings: persistence-query-plans.json.
 
 These are sanitized command outcomes, not credentials or raw SQL failure traces. Reproduce with the README commands. GitHub CI independently validates Linux behavior for the pull request head.

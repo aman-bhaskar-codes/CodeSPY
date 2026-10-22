@@ -271,7 +271,7 @@ export default function App() {
       </header>
       <main>
         <div className="intro">
-          <p className="eyebrow">Source intake / Phase 2</p>
+          <p className="eyebrow">Source intake</p>
           <h1>Source inventory</h1>
           <p>
             Inspect the files in a ZIP archive, their byte hashes, and what can
@@ -588,7 +588,7 @@ export default function App() {
                 <div className="section-heading">
                   <h2 id="structural-title">Structural Architecture</h2>
                   <span className="muted">
-                    Deterministic syntax & graph analysis · Phase 3
+                    Deterministic syntax & graph analysis
                   </span>
                 </div>
                 {analysisJob.data && !terminal.has(analysisJob.data.state) && (

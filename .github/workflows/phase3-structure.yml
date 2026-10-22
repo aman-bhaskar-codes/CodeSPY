@@ -1,7 +1,7 @@
-name: Phase 3 structural analysis
+name: Structural analysis and scanner contracts
 on:
   push:
-    branches: [main, fix/phase3-integration]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 permissions:

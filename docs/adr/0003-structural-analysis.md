@@ -1,12 +1,11 @@
 # ADR 0003: Bounded structural analysis and toolchain qualification
 
-Status: accepted architecture; integrated repair implemented, Linux qualification passed at `27fbde4` in run `39360366079`. The [acceptance record](../PHASE_3_ACCEPTANCE.md) owns release evidence. Initial WP-3.00 baseline: `736a5ef831ed4a81899916153a7d09a13a51f2d1`.
+Status: accepted architecture; integrated repair implemented, Linux qualification passed at `27fbde4` in run `39360366079`. The [acceptance record](../acceptance/structural-analysis.md) owns release evidence. Initial toolchain qualification baseline: `736a5ef831ed4a81899916153a7d09a13a51f2d1`.
 
-The owner authorized agent implementation of the [Phase 3 plan](../phases/PHASE_3_STRUCTURAL_ANALYSIS_EXECUTION_PLAN.md), beginning with WP-3.00. The plan's manual implementation language does not require Aman to type the changes. Existing AWS, real-key, deployment and browser-session restrictions remain.
 
 ## Decisions
 
-1. Retain the Python control plane, PostgreSQL time and authority, object-store boundary, outbox/SQS jobs, cancellation, immutable snapshots, persisted file identities and original Phase 1 APIs. OpenTofu remains the accepted infrastructure direction. No new cloud service or agent framework is introduced.
+1. Retain the Python control plane, PostgreSQL time and authority, object-store boundary, outbox/SQS jobs, cancellation, immutable snapshots, persisted file identities and original persistence APIs. OpenTofu remains the accepted infrastructure direction. No new cloud service or agent framework is introduced.
 2. Start with `structural-small-v1`: Python and JS/JSX/TS/TSX, at most 128 selected eligible sources and 16 MiB original bytes. Admission remains independently limited to 10,000 entries. Structural output keeps the existing 1,000-node/evidence and 2,000-edge/derivation publication caps; canonical result/report budgets are 8/2 MiB. Qualification must measure the advertised source profile; limits alone are not a throughput claim. See the capability record for measured results.
 3. Pin Tree-sitter 0.26.0 with direct Python 0.25.0, JavaScript 0.25.0 and TS/TSX 0.23.2 grammars. Keep language-pack dormant: analysis must not trigger grammar downloads. Store Python resolution in the root `uv.lock`; use a separate TypeScript 5.9.3/Node 22 package lock. No existing resolved Python package version changed during qualification.
 4. Use Tree-sitter for syntax, Python 3.12 ast/symtable for a bounded lexical supplement, and an isolated virtual-host TypeScript checker for bindings. Never execute target code/configuration, import target modules, install target dependencies, load plugins or fall back to host node_modules. Missing context produces explicit unknowns.
@@ -23,13 +22,13 @@ The owner authorized agent implementation of the [Phase 3 plan](../phases/PHASE_
 
 The implemented `JobFinalizer.inventory_batch` reports **complete byte inventory**: every admitted regular file has metadata and a digest. Its eligible/excluded counts are separate evidence payload fields; exclusions do not make byte inventory incomplete. Existing result hashes, runs and histories remain unchanged.
 
-The old Phase 2 plan incorrectly required eligible-only processed counts and partial status whenever exclusions existed. Correct that documentation to the accepted implementation. Phase 3 will have operation-specific structural coverage: inventoried files may be unsupported, excluded, out of selected scope or omitted by structural budgets. Complete byte inventory never implies complete semantic analysis or safe code.
+Structural coverage is operation-specific: inventoried files may be unsupported, excluded, out of selected scope or omitted by structural budgets. Complete byte inventory never implies complete semantic analysis or safe code.
 
 ## Qualification and consequences
 
-The [acceptance record](../PHASE_3_ACCEPTANCE.md) and [capability record](../capabilities/structural-small-v1.md) distinguish current qualification from the original WP-3.00 probes. The integrated implementation includes source authentication, offline syntax/compiler work, atomic report/graph/evidence persistence, scoped bounded APIs and React reports. The final repair passed 225 Phase 3 checks and 44 Phase 2 integrations at structural head (one separate admission-image check skipped); hosted and browser checks remain separate.
+The [acceptance record](../acceptance/structural-analysis.md) and [capability record](../capabilities/structural-small-v1.md) distinguish current qualification from the original toolchain qualification probes. The integrated implementation includes source authentication, offline syntax/compiler work, atomic report/graph/evidence persistence, scoped bounded APIs and React reports. The final repair passed 225 structural analysis checks and 44 ingestion integrations at structural head (one separate admission-image check skipped); hosted and browser checks remain separate.
 
-Coverage detail is bounded by the final 2-MiB report budget. `omitted_details_count` plus the listed omissions equals the exact omitted-file count; full inventory remains authoritative. Deterministic whole-file omissions preserve referential closure and never trim alternatives into a falsely unique candidate. This additive Phase 3 DTO change requires generated clients; historical Phase 1/2 contracts and migrations are unchanged.
+Coverage detail is bounded by the final 2-MiB report budget. `omitted_details_count` plus the listed omissions equals the exact omitted-file count; full inventory remains authoritative. Deterministic whole-file omissions preserve referential closure and never trim alternatives into a falsely unique candidate. This additive structural analysis DTO change requires generated clients; historical persistence and ingestion contracts and migrations are unchanged.
 
 Compiler transport is independently capped at 20 MiB after JSON escaping. Exceeding it retains syntax and marks resolution unavailable/partial; source/config limits are not increased. Package metadata is data, not an extra compiler project. Parser subprocesses have an external deadline and container-wide memory enforcement.
 

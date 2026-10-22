@@ -1,4 +1,4 @@
-# Phase 3 REA reference investigation
+# structural analysis REA reference investigation
 
 Date: 19 October 2026. CodeSPY baseline `736a5ef831ed4a81899916153a7d09a13a51f2d1`. This is an engineering investigation, not a product REA adapter or a completed structural-analysis feature.
 
@@ -17,7 +17,7 @@ Summary evidence: `ev_c519fa003aa5363a9b490a85cf84a317140125b1137d623b977b882dec
 
 The tool read 14,648 text bytes, parsed two files, visited 1,697 AST nodes and reported zero parse failures. It left 419 inventoried files unselected. Its semantic unknown retention reached the requested 1,000-record bound; application and semantic coverage were partial. These counts are not vulnerability findings or evidence of complete application behavior.
 
-A portable evidence bundle was exported to ignored `work/phase3/rea-reference-evidence.json`. It contains two records, about 5.2 MB. Evidence IDs are content references; the MCP server's retained views require that same live session, while the exported file supports later offline inspection. It is deliberately excluded from the source commit.
+A portable evidence bundle was exported to ignored `work/structural analysis/rea-reference-evidence.json`. It contains two records, about 5.2 MB. Evidence IDs are content references; the MCP server's retained views require that same live session, while the exported file supports later offline inspection. It is deliberately excluded from the source commit.
 
 ## Source-corroborated techniques
 
@@ -39,4 +39,4 @@ This is conceptual adaptation, not copied upstream implementation. The installed
 
 ## Limits and nonclaims
 
-REA parsed inert shipped JavaScript and did not execute its target files. Source inspection corroborated schema mechanisms; static candidate relationships are not execution observations. This was not a full REA audit, parser security review or comparative quality benchmark. No external repository was modified, and no arbitrary repository/package scripts were run. Rather than importing many tools, Phase 3 retains only the plan's justified parser/compiler choices and existing infrastructure.
+REA parsed inert shipped JavaScript and did not execute its target files. Source inspection corroborated schema mechanisms; static candidate relationships are not execution observations. This was not a full REA audit, parser security review or comparative quality benchmark. No external repository was modified, and no arbitrary repository/package scripts were run. Rather than importing many tools, structural analysis retains only the qualified parser/compiler choices and existing infrastructure.
