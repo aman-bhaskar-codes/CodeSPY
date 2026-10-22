@@ -261,6 +261,10 @@ def grant_app(values, name):
                 "GRANT INSERT, UPDATE ON embedding_reservations TO p2_api,p2_broker"
             )
             c.execute("GRANT INSERT, UPDATE ON price_schedules TO p2_api")
+        if c.execute("SELECT to_regclass('public.derived_artifacts')").fetchone()[0]:
+            c.execute(
+                "GRANT INSERT, UPDATE, DELETE ON derived_artifacts TO p2_api,p2_broker"
+            )
         c.execute("REVOKE ALL ON public.alembic_version FROM p2_api,p2_broker")
         c.execute("REVOKE CREATE ON SCHEMA public FROM p2_api,p2_broker")
 
