@@ -1462,6 +1462,279 @@
         "title": "ComponentSectionV1",
         "type": "object"
       },
+      "CreateScanRequestV1": {
+        "$defs": {
+          "DependencyFileV1": {
+            "additionalProperties": false,
+            "properties": {
+              "file_id": {
+                "format": "uuid",
+                "title": "File Id",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "package-lock-v3",
+                  "uv-v1-r3"
+                ],
+                "title": "Format",
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256",
+                "type": "string"
+              },
+              "size_bytes": {
+                "maximum": 262144,
+                "minimum": 0,
+                "title": "Size Bytes",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "file_id",
+              "sha256",
+              "size_bytes",
+              "format"
+            ],
+            "title": "DependencyFileV1",
+            "type": "object"
+          },
+          "DependencySelectionV1": {
+            "additionalProperties": false,
+            "properties": {
+              "bundle_digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Bundle Digest",
+                "type": "string"
+              },
+              "files": {
+                "items": {
+                  "$ref": "#/components/schemas/DependencyFileV1"
+                },
+                "maxItems": 32,
+                "title": "Files",
+                "type": "array"
+              },
+              "parser_profile": {
+                "const": "lockfile-offline-v1",
+                "default": "lockfile-offline-v1",
+                "title": "Parser Profile",
+                "type": "string"
+              }
+            },
+            "required": [
+              "bundle_digest",
+              "files"
+            ],
+            "title": "DependencySelectionV1",
+            "type": "object"
+          },
+          "NativeSelectionV1": {
+            "additionalProperties": false,
+            "properties": {
+              "files": {
+                "items": {
+                  "$ref": "#/components/schemas/ScannerFileV1"
+                },
+                "maxItems": 128,
+                "title": "Files",
+                "type": "array"
+              },
+              "profile": {
+                "$ref": "#/components/schemas/ScannerProfileV1"
+              }
+            },
+            "required": [
+              "profile",
+              "files"
+            ],
+            "title": "NativeSelectionV1",
+            "type": "object"
+          },
+          "ScanConfigV1": {
+            "additionalProperties": false,
+            "properties": {
+              "catalog_digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Catalog Digest",
+                "type": "string"
+              },
+              "dependency_selection": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DependencySelectionV1"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "native_selections": {
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/NativeSelectionV1"
+                },
+                "maxItems": 2,
+                "title": "Native Selections",
+                "type": "array"
+              },
+              "runtime_digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Runtime Digest",
+                "type": "string"
+              },
+              "schema_version": {
+                "const": 1,
+                "default": 1,
+                "title": "Schema Version",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "runtime_digest",
+              "catalog_digest"
+            ],
+            "title": "ScanConfigV1",
+            "type": "object"
+          },
+          "ScannerFileV1": {
+            "additionalProperties": false,
+            "properties": {
+              "file_id": {
+                "format": "uuid",
+                "title": "File Id",
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256",
+                "type": "string"
+              },
+              "size_bytes": {
+                "maximum": 2097152,
+                "minimum": 0,
+                "title": "Size Bytes",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "file_id",
+              "sha256",
+              "size_bytes"
+            ],
+            "title": "ScannerFileV1",
+            "type": "object"
+          },
+          "ScannerProfileV1": {
+            "additionalProperties": false,
+            "properties": {
+              "artifact_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Artifact Sha256",
+                "type": "string"
+              },
+              "cpu": {
+                "default": 2,
+                "maximum": 2,
+                "minimum": 1,
+                "title": "Cpu",
+                "type": "integer"
+              },
+              "deadline_seconds": {
+                "default": 180,
+                "maximum": 180,
+                "minimum": 1,
+                "title": "Deadline Seconds",
+                "type": "integer"
+              },
+              "memory_bytes": {
+                "default": 1073741824,
+                "maximum": 1073741824,
+                "minimum": 1,
+                "title": "Memory Bytes",
+                "type": "integer"
+              },
+              "output_bytes": {
+                "default": 2097152,
+                "maximum": 2097152,
+                "minimum": 1,
+                "title": "Output Bytes",
+                "type": "integer"
+              },
+              "pids": {
+                "default": 64,
+                "maximum": 64,
+                "minimum": 1,
+                "title": "Pids",
+                "type": "integer"
+              },
+              "rule_ids": {
+                "items": {
+                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$",
+                  "type": "string"
+                },
+                "maxItems": 128,
+                "minItems": 1,
+                "title": "Rule Ids",
+                "type": "array"
+              },
+              "rules_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Rules Sha256",
+                "type": "string"
+              },
+              "tool": {
+                "enum": [
+                  "semgrep",
+                  "gitleaks"
+                ],
+                "title": "Tool",
+                "type": "string"
+              }
+            },
+            "required": [
+              "tool",
+              "artifact_sha256",
+              "rules_sha256",
+              "rule_ids"
+            ],
+            "title": "ScannerProfileV1",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanConfigV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Snapshot Id"
+          }
+        },
+        "title": "CreateScanRequestV1",
+        "type": "object"
+      },
       "DiagnosticV1": {
         "additionalProperties": false,
         "properties": {
@@ -1632,6 +1905,129 @@
         "title": "EventPageV3",
         "type": "object"
       },
+      "FeatureTraceV1": {
+        "$defs": {
+          "TraceEdgeV1": {
+            "properties": {
+              "edge_kind": {
+                "title": "Edge Kind",
+                "type": "string"
+              },
+              "properties": {
+                "additionalProperties": true,
+                "title": "Properties",
+                "type": "object"
+              },
+              "source_id": {
+                "format": "uuid",
+                "title": "Source Id",
+                "type": "string"
+              },
+              "target_id": {
+                "format": "uuid",
+                "title": "Target Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_id",
+              "target_id",
+              "edge_kind"
+            ],
+            "title": "TraceEdgeV1",
+            "type": "object"
+          },
+          "TraceNodeV1": {
+            "properties": {
+              "file_path": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "File Path"
+              },
+              "id": {
+                "format": "uuid",
+                "title": "Id",
+                "type": "string"
+              },
+              "kind": {
+                "title": "Kind",
+                "type": "string"
+              },
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "line": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Line"
+              },
+              "properties": {
+                "additionalProperties": true,
+                "title": "Properties",
+                "type": "object"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "label"
+            ],
+            "title": "TraceNodeV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "budget_exceeded": {
+            "default": false,
+            "title": "Budget Exceeded",
+            "type": "boolean"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/TraceEdgeV1"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "finding_id": {
+            "format": "uuid",
+            "title": "Finding Id",
+            "type": "string"
+          },
+          "hop_count": {
+            "default": 0,
+            "title": "Hop Count",
+            "type": "integer"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/TraceNodeV1"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "finding_id"
+        ],
+        "title": "FeatureTraceV1",
+        "type": "object"
+      },
       "FileOmissionV1": {
         "additionalProperties": false,
         "properties": {
@@ -1656,6 +2052,456 @@
           "reason"
         ],
         "title": "FileOmissionV1",
+        "type": "object"
+      },
+      "FindingDetailResponseV1": {
+        "$defs": {
+          "TriageRecordV1": {
+            "properties": {
+              "current_reason": {
+                "enum": [
+                  "none",
+                  "code_refactor",
+                  "compensating_control",
+                  "business_context",
+                  "test_code",
+                  "vendor_dependency"
+                ],
+                "title": "Current Reason",
+                "type": "string"
+              },
+              "current_state": {
+                "enum": [
+                  "unreviewed",
+                  "confirmed",
+                  "false_positive",
+                  "mitigated",
+                  "accepted_risk"
+                ],
+                "title": "Current State",
+                "type": "string"
+              },
+              "finding_id": {
+                "format": "uuid",
+                "title": "Finding Id",
+                "type": "string"
+              },
+              "last_event_id": {
+                "anyOf": [
+                  {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Last Event Id"
+              },
+              "updated_at": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Updated At"
+              },
+              "updated_by": {
+                "anyOf": [
+                  {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Updated By"
+              },
+              "version": {
+                "minimum": 0,
+                "title": "Version",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "finding_id",
+              "current_state",
+              "current_reason",
+              "version"
+            ],
+            "title": "TriageRecordV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "code_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Code Excerpt"
+          },
+          "disposition": {
+            "title": "Disposition",
+            "type": "string"
+          },
+          "end_line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "End Line"
+          },
+          "evidence_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "file_path": {
+            "title": "File Path",
+            "type": "string"
+          },
+          "historical_disposition": {
+            "title": "Historical Disposition",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "line_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Line Number"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Recommendation"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "support_reason": {
+            "title": "Support Reason",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "triage": {
+            "$ref": "#/components/schemas/TriageRecordV1"
+          }
+        },
+        "required": [
+          "id",
+          "repository_id",
+          "snapshot_id",
+          "run_id",
+          "category",
+          "rule_id",
+          "severity",
+          "title",
+          "message",
+          "file_path",
+          "disposition",
+          "historical_disposition",
+          "support_reason",
+          "triage"
+        ],
+        "title": "FindingDetailResponseV1",
+        "type": "object"
+      },
+      "FindingListResponseV1": {
+        "$defs": {
+          "FindingSummaryV1": {
+            "properties": {
+              "category": {
+                "title": "Category",
+                "type": "string"
+              },
+              "disposition": {
+                "title": "Disposition",
+                "type": "string"
+              },
+              "file_path": {
+                "title": "File Path",
+                "type": "string"
+              },
+              "id": {
+                "format": "uuid",
+                "title": "Id",
+                "type": "string"
+              },
+              "line_number": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Line Number"
+              },
+              "rule_id": {
+                "title": "Rule Id",
+                "type": "string"
+              },
+              "run_id": {
+                "format": "uuid",
+                "title": "Run Id",
+                "type": "string"
+              },
+              "severity": {
+                "title": "Severity",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "triage_reason": {
+                "enum": [
+                  "none",
+                  "code_refactor",
+                  "compensating_control",
+                  "business_context",
+                  "test_code",
+                  "vendor_dependency"
+                ],
+                "title": "Triage Reason",
+                "type": "string"
+              },
+              "triage_state": {
+                "enum": [
+                  "unreviewed",
+                  "confirmed",
+                  "false_positive",
+                  "mitigated",
+                  "accepted_risk"
+                ],
+                "title": "Triage State",
+                "type": "string"
+              },
+              "triage_version": {
+                "title": "Triage Version",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "run_id",
+              "category",
+              "rule_id",
+              "severity",
+              "title",
+              "file_path",
+              "disposition",
+              "triage_state",
+              "triage_reason",
+              "triage_version"
+            ],
+            "title": "FindingSummaryV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FindingSummaryV1"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next Cursor"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total_count"
+        ],
+        "title": "FindingListResponseV1",
+        "type": "object"
+      },
+      "FindingSummaryV1": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "disposition": {
+            "title": "Disposition",
+            "type": "string"
+          },
+          "file_path": {
+            "title": "File Path",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "line_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Line Number"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "triage_reason": {
+            "enum": [
+              "none",
+              "code_refactor",
+              "compensating_control",
+              "business_context",
+              "test_code",
+              "vendor_dependency"
+            ],
+            "title": "Triage Reason",
+            "type": "string"
+          },
+          "triage_state": {
+            "enum": [
+              "unreviewed",
+              "confirmed",
+              "false_positive",
+              "mitigated",
+              "accepted_risk"
+            ],
+            "title": "Triage State",
+            "type": "string"
+          },
+          "triage_version": {
+            "title": "Triage Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "category",
+          "rule_id",
+          "severity",
+          "title",
+          "file_path",
+          "disposition",
+          "triage_state",
+          "triage_reason",
+          "triage_version"
+        ],
+        "title": "FindingSummaryV1",
         "type": "object"
       },
       "GitHubAcquisitionV1": {
@@ -3138,6 +3984,118 @@
           "run_id"
         ],
         "title": "RunRef",
+        "type": "object"
+      },
+      "ScanAcceptedV1": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "spec_id": {
+            "format": "uuid",
+            "title": "Spec Id",
+            "type": "string"
+          },
+          "status_url": {
+            "title": "Status Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "spec_id",
+          "job_id",
+          "snapshot_id",
+          "status_url"
+        ],
+        "title": "ScanAcceptedV1",
+        "type": "object"
+      },
+      "ScanSummaryResponseV1": {
+        "properties": {
+          "by_category": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Category",
+            "type": "object"
+          },
+          "by_disposition": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Disposition",
+            "type": "object"
+          },
+          "by_severity": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Severity",
+            "type": "object"
+          },
+          "by_triage": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Triage",
+            "type": "object"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created At"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "scan_id": {
+            "format": "uuid",
+            "title": "Scan Id",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "total_findings": {
+            "title": "Total Findings",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scan_id",
+          "repository_id",
+          "snapshot_id",
+          "status",
+          "total_findings",
+          "by_category",
+          "by_severity",
+          "by_disposition",
+          "by_triage"
+        ],
+        "title": "ScanSummaryResponseV1",
         "type": "object"
       },
       "SessionV1": {
@@ -5222,6 +6180,376 @@
         "title": "SymbolObservationV1",
         "type": "object"
       },
+      "TraceBudgetV1": {
+        "properties": {
+          "max_edges": {
+            "default": 200,
+            "title": "Max Edges",
+            "type": "integer"
+          },
+          "max_hops": {
+            "default": 2,
+            "title": "Max Hops",
+            "type": "integer"
+          },
+          "max_nodes": {
+            "default": 100,
+            "title": "Max Nodes",
+            "type": "integer"
+          },
+          "timeout_seconds": {
+            "default": 1.0,
+            "title": "Timeout Seconds",
+            "type": "number"
+          }
+        },
+        "title": "TraceBudgetV1",
+        "type": "object"
+      },
+      "TraceEdgeV1": {
+        "properties": {
+          "edge_kind": {
+            "title": "Edge Kind",
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": true,
+            "title": "Properties",
+            "type": "object"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "target_id": {
+            "format": "uuid",
+            "title": "Target Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "target_id",
+          "edge_kind"
+        ],
+        "title": "TraceEdgeV1",
+        "type": "object"
+      },
+      "TraceNodeV1": {
+        "properties": {
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "File Path"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Line"
+          },
+          "properties": {
+            "additionalProperties": true,
+            "title": "Properties",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label"
+        ],
+        "title": "TraceNodeV1",
+        "type": "object"
+      },
+      "TriageHistoryItemV1": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "finding_id": {
+            "format": "uuid",
+            "title": "Finding Id",
+            "type": "string"
+          },
+          "principal_id": {
+            "format": "uuid",
+            "title": "Principal Id",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "none",
+              "code_refactor",
+              "compensating_control",
+              "business_context",
+              "test_code",
+              "vendor_dependency"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "unreviewed",
+              "confirmed",
+              "false_positive",
+              "mitigated",
+              "accepted_risk"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "finding_id",
+          "principal_id",
+          "state",
+          "reason",
+          "created_at"
+        ],
+        "title": "TriageHistoryItemV1",
+        "type": "object"
+      },
+      "TriageHistoryV1": {
+        "$defs": {
+          "TriageHistoryItemV1": {
+            "properties": {
+              "created_at": {
+                "format": "date-time",
+                "title": "Created At",
+                "type": "string"
+              },
+              "event_id": {
+                "format": "uuid",
+                "title": "Event Id",
+                "type": "string"
+              },
+              "finding_id": {
+                "format": "uuid",
+                "title": "Finding Id",
+                "type": "string"
+              },
+              "principal_id": {
+                "format": "uuid",
+                "title": "Principal Id",
+                "type": "string"
+              },
+              "reason": {
+                "enum": [
+                  "none",
+                  "code_refactor",
+                  "compensating_control",
+                  "business_context",
+                  "test_code",
+                  "vendor_dependency"
+                ],
+                "title": "Reason",
+                "type": "string"
+              },
+              "state": {
+                "enum": [
+                  "unreviewed",
+                  "confirmed",
+                  "false_positive",
+                  "mitigated",
+                  "accepted_risk"
+                ],
+                "title": "State",
+                "type": "string"
+              }
+            },
+            "required": [
+              "event_id",
+              "finding_id",
+              "principal_id",
+              "state",
+              "reason",
+              "created_at"
+            ],
+            "title": "TriageHistoryItemV1",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/TriageHistoryItemV1"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "finding_id": {
+            "format": "uuid",
+            "title": "Finding Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "finding_id"
+        ],
+        "title": "TriageHistoryV1",
+        "type": "object"
+      },
+      "TriageRecordV1": {
+        "properties": {
+          "current_reason": {
+            "enum": [
+              "none",
+              "code_refactor",
+              "compensating_control",
+              "business_context",
+              "test_code",
+              "vendor_dependency"
+            ],
+            "title": "Current Reason",
+            "type": "string"
+          },
+          "current_state": {
+            "enum": [
+              "unreviewed",
+              "confirmed",
+              "false_positive",
+              "mitigated",
+              "accepted_risk"
+            ],
+            "title": "Current State",
+            "type": "string"
+          },
+          "finding_id": {
+            "format": "uuid",
+            "title": "Finding Id",
+            "type": "string"
+          },
+          "last_event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Event Id"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Updated By"
+          },
+          "version": {
+            "minimum": 0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "finding_id",
+          "current_state",
+          "current_reason",
+          "version"
+        ],
+        "title": "TriageRecordV1",
+        "type": "object"
+      },
+      "TriageTransitionV1": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "default": "none",
+            "enum": [
+              "none",
+              "code_refactor",
+              "compensating_control",
+              "business_context",
+              "test_code",
+              "vendor_dependency"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "unreviewed",
+              "confirmed",
+              "false_positive",
+              "mitigated",
+              "accepted_risk"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "expected_version"
+        ],
+        "title": "TriageTransitionV1",
+        "type": "object"
+      },
       "UploadReservationV1": {
         "additionalProperties": false,
         "properties": {
@@ -6233,6 +7561,586 @@
           }
         },
         "summary": "Bind Github"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/scans": {
+      "post": {
+        "operationId": "create_scan_api_v1_repositories__repository_id__scans_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScanRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanAcceptedV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Scan"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}": {
+      "get": {
+        "operationId": "get_finding_detail_api_v1_repositories__repository_id__snapshots__snapshot_id__findings__finding_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "finding_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Finding Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingDetailResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Finding Detail"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/trace": {
+      "post": {
+        "operationId": "trace_finding_feature_api_v1_repositories__repository_id__snapshots__snapshot_id__findings__finding_id__trace_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "finding_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Finding Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TraceBudgetV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureTraceV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trace Finding Feature"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage": {
+      "post": {
+        "operationId": "triage_finding_api_v1_repositories__repository_id__snapshots__snapshot_id__findings__finding_id__triage_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "finding_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Finding Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TriageTransitionV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriageRecordV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Triage Finding"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage/history": {
+      "get": {
+        "operationId": "get_triage_history_api_v1_repositories__repository_id__snapshots__snapshot_id__findings__finding_id__triage_history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "finding_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Finding Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriageHistoryV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Triage History"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans": {
+      "post": {
+        "operationId": "create_snapshot_scan_api_v1_repositories__repository_id__snapshots__snapshot_id__scans_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScanRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanAcceptedV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Snapshot Scan"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/findings": {
+      "get": {
+        "operationId": "list_scan_findings_api_v1_repositories__repository_id__snapshots__snapshot_id__scans__run_id__findings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "disposition",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Disposition"
+            }
+          },
+          {
+            "in": "query",
+            "name": "triage_state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Triage State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindingListResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Scan Findings"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/summary": {
+      "get": {
+        "operationId": "get_scan_summary_api_v1_repositories__repository_id__snapshots__snapshot_id__scans__run_id__summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanSummaryResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Scan Summary"
       }
     },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/structural-report": {
