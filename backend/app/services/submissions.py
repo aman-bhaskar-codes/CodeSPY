@@ -9,7 +9,13 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.contracts.ingestion import AdmissionPolicyV1, SubmissionRecordV1, UploadReservationV1
+from app.contracts.ingestion import (
+    AdmissionPolicy,
+    AdmissionPolicyV1,
+    SubmissionRecordV1,
+    UploadReservationV1,
+    resolve_admission_policy,
+)
 from app.contracts.jobs import EnqueueJobV2
 from app.db.time import database_now
 from app.db.transaction import transaction
@@ -34,11 +40,18 @@ limits = PHASE2_TABLES["org_work_limits"]
 
 
 class SubmissionService:
-    def __init__(self, factory: async_sessionmaker[AsyncSession], store: ObjectStore):
+    def __init__(
+        self,
+        factory: async_sessionmaker[AsyncSession],
+        store: ObjectStore,
+        *,
+        policy: AdmissionPolicy | None = None,
+    ):
         self.factory = factory
         self.store = store
         self.jobs = JobService(factory)
-        self.policy = AdmissionPolicyV1()
+        chosen = policy if policy is not None else AdmissionPolicyV1()
+        self.policy = resolve_admission_policy(chosen.digest(), github_strip_root=False)
 
     async def _load(
         self, s: AsyncSession, ctx: TenantContext, id: UUID, *, lock: bool = False

@@ -21,7 +21,7 @@ on:
 permissions:
   contents: read
 jobs:
-  # Preserve the required check context configured during Phase 0.
+  # Preserve the required check context configured during dependency setup.
   dependencies:
     runs-on: ubuntu-latest
     timeout-minutes: 15

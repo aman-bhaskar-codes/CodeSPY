@@ -82,6 +82,110 @@ export const api = {
       `/repositories/${repoId}/snapshots/${snapshotId}/structural-report`,
       { signal },
     ).then((value) => hydrateReport(repoId, value, signal)),
+  createScan: (
+    repoId: string,
+    snapshotId: string,
+    csrf: string,
+    key?: string,
+    config?: unknown,
+  ) =>
+    request<{ spec_id: string; job_id: string; snapshot_id: string; status_url: string }>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/scans`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf, key),
+        body: JSON.stringify({ config: config ?? null }),
+      },
+    ),
+  scanSummary: (
+    repoId: string,
+    snapshotId: string,
+    runId: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("../features/findings/types").ScanSummaryResponseV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/scans/${runId}/summary`,
+      { signal },
+    ),
+  findingsList: (
+    repoId: string,
+    snapshotId: string,
+    runId: string,
+    params: {
+      category?: string;
+      severity?: string;
+      disposition?: string;
+      triage_state?: string;
+      cursor?: string;
+      limit?: number;
+    } = {},
+    signal?: AbortSignal,
+  ) => {
+    const q = new URLSearchParams();
+    if (params.category && params.category !== "all") q.set("category", params.category);
+    if (params.severity && params.severity !== "all") q.set("severity", params.severity);
+    if (params.disposition && params.disposition !== "all") q.set("disposition", params.disposition);
+    if (params.triage_state && params.triage_state !== "all") q.set("triage_state", params.triage_state);
+    if (params.cursor) q.set("cursor", params.cursor);
+    if (params.limit) q.set("limit", String(params.limit));
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    return request<import("../features/findings/types").FindingListResponseV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/scans/${runId}/findings${qs}`,
+      { signal },
+    );
+  },
+  findingDetail: (
+    repoId: string,
+    snapshotId: string,
+    findingId: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("../features/findings/types").FindingDetailResponseV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/findings/${findingId}`,
+      { signal },
+    ),
+  triageFinding: (
+    repoId: string,
+    snapshotId: string,
+    findingId: string,
+    transition: import("../features/findings/types").TriageTransitionV1,
+    csrf: string,
+    key?: string,
+  ) =>
+    request<import("../features/findings/types").TriageRecordV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/findings/${findingId}/triage`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf, key),
+        body: JSON.stringify(transition),
+      },
+    ),
+  triageHistory: (
+    repoId: string,
+    snapshotId: string,
+    findingId: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("../features/findings/types").TriageHistoryV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/findings/${findingId}/triage/history`,
+      { signal },
+    ),
+  featureTrace: (
+    repoId: string,
+    snapshotId: string,
+    findingId: string,
+    budget?: import("../features/findings/types").TraceBudgetV1,
+    csrf?: string,
+    key?: string,
+  ) =>
+    request<import("../features/findings/types").FeatureTraceV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/findings/${findingId}/trace`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf ?? "", key),
+        body: JSON.stringify(budget ?? {}),
+      },
+    ),
 };
 export function mutationHeaders(
   csrf: string,

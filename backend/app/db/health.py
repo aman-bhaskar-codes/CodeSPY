@@ -14,7 +14,7 @@ class DatabaseCapabilities:
 async def inspect_database(engine: AsyncEngine) -> DatabaseCapabilities:
     async with engine.connect() as conn:
         version = str(await conn.scalar(text("SHOW server_version")))
-        extensions = dict(
+        extensions: dict[str, str] = dict(
             (await conn.execute(text("SELECT extname,extversion FROM pg_extension"))).tuples().all()
         )
         return DatabaseCapabilities(

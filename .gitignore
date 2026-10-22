@@ -3,7 +3,7 @@
 .env.*
 !.env.example
 .venv/
-node_modules/
+node_modules
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -65,3 +65,19 @@ backend/.venv
 .phase1-test*.env
 .phase1-test*.json
 work/
+
+# Local execution documents and owner notes
+.codex/USER_PREFERENCES.md
+docs/phases/
+docs/superpowers/plans/
+docs/*PHASE*.md
+docs/*PLAN*.md
+docs/*ROADMAP*.md
+docs/CodeSPY_Technical_Execution_Blueprint.md
+docs/SETUP_STATUS.md
+docs/CONNECTED_WORKSPACES.md
+docs/AWS_SETUP.md
+docs/GITHUB_SETUP.md
+docs/OWNER_MANAGED_SERVICES.md
+docs/DEMO_BUDGET.md
+docs/engineering/phase4-progress.md

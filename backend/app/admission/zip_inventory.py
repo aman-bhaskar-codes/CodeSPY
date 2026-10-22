@@ -7,7 +7,13 @@ import struct
 import zipfile
 from pathlib import PurePosixPath
 
-from app.contracts.ingestion import AdmissionPolicyV1, ArtifactManifestV1, ManifestEntryV1, Reason
+from app.contracts.ingestion import (
+    AdmissionPolicy,
+    AdmissionPolicyV2,
+    ArtifactManifestV1,
+    ManifestEntryV1,
+    Reason,
+)
 from app.domain.canonical_json import canonical_bytes, semantic_digest
 from app.security.archive_paths import UnsafeArchivePath, collision_key, validate_archive_path
 
@@ -33,7 +39,7 @@ LANGUAGES = {
 }
 
 
-def preflight(data: bytes, p: AdmissionPolicyV1) -> int:
+def preflight(data: bytes, p: AdmissionPolicy) -> int:
     if (
         len(data) > p.max_archive_bytes
         or len(data) < 22
@@ -108,7 +114,7 @@ def preflight(data: bytes, p: AdmissionPolicyV1) -> int:
 
 def inspect_zip_bytes(
     data: bytes,
-    policy: AdmissionPolicyV1,
+    policy: AdmissionPolicy,
     *,
     source_revision: str | None = None,
     github_repository_id: int | None = None,
@@ -197,6 +203,9 @@ def inspect_zip_bytes(
                 path = PurePosixPath(name)
                 parts = {x.casefold() for x in path.parts}
                 language = LANGUAGES.get(path.suffix.casefold())
+                lock_metadata = isinstance(policy, AdmissionPolicyV2) and path.name == "uv.lock"
+                if lock_metadata:
+                    language = "toml"
                 reason: Reason | None = None
                 if path.name.casefold() in {
                     ".env",
@@ -209,7 +218,11 @@ def inspect_zip_bytes(
                     reason = "generated_dependency"
                 elif path.suffix.casefold() in {".zip", ".tar", ".gz", ".asar", ".jar"}:
                     reason = "nested_archive"
-                elif size > policy.eligible_file_bytes:
+                elif size > policy.eligible_file_bytes or (
+                    isinstance(policy, AdmissionPolicyV2)
+                    and lock_metadata
+                    and size > policy.metadata_file_bytes
+                ):
                     reason = "oversized"
                 elif b"\0" in prefix or not text_valid:
                     reason = "binary"

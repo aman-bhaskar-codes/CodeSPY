@@ -1,4 +1,4 @@
-"""Read-only Phase 0 acceptance checks; no application implementation."""
+"""Read-only dependency setup acceptance checks; no application implementation."""
 
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ def static_checks(root: Path, check: Callable[..., None]) -> None:
         "infra/terraform/environments/dev",
         "infra/terraform/environments/prod",
         "infra/terraform/modules",
-        "docs/phases",
+        "docs/acceptance",
         "docs/architecture",
     ]
     for name in folders:

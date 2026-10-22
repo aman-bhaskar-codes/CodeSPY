@@ -6,10 +6,18 @@ import os
 import stat
 import zipfile
 from pathlib import Path
+from typing import Protocol
 
 from app.admission.zip_inventory import inspect_zip_bytes
 from app.contracts.ingestion import ArtifactManifestV1
-from app.contracts.structure import Language, SourceInputV1, SourceUnitV1
+from app.contracts.structure import (
+    Language,
+    SourceDescriptorV1,
+    SourceFileV1,
+    SourceInputV1,
+    SourcePolicyV1,
+    SourceUnitV1,
+)
 from app.domain.errors import PersistenceError
 
 
@@ -28,6 +36,71 @@ DIALECTS: dict[str, Language] = {
 }
 
 
+class AdmittedArchive(Protocol):
+    @property
+    def archive(self) -> SourceDescriptorV1: ...
+    @property
+    def manifest(self) -> SourceDescriptorV1: ...
+    @property
+    def files(self) -> tuple[SourceFileV1, ...]: ...
+    @property
+    def policy(self) -> SourcePolicyV1: ...
+
+
+def _read_input(root: Path, filename: str, maximum: int) -> bytes:
+    if filename not in {"archive.zip", "manifest.json"}:
+        raise SourceIntegrityError("source_integrity_error")
+    fd = os.open(root / filename, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(fd, "rb") as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_size > maximum:
+            raise SourceIntegrityError("source_integrity_error")
+        data = stream.read(maximum + 1)
+    if len(data) > maximum:
+        raise SourceIntegrityError("source_integrity_error")
+    return data
+
+
+def authenticate_archive(expected: AdmittedArchive, root: Path) -> bytes:
+    archive = _read_input(root, expected.archive.path, 104857600)
+    raw_manifest = _read_input(root, expected.manifest.path, 67108864)
+    for raw, descriptor in [(archive, expected.archive), (raw_manifest, expected.manifest)]:
+        if (
+            len(raw) != descriptor.size_bytes
+            or hashlib.sha256(raw).hexdigest() != descriptor.sha256
+        ):
+            raise SourceIntegrityError("source_integrity_error")
+    manifest = ArtifactManifestV1.model_validate_json(raw_manifest)
+    actual = inspect_zip_bytes(
+        archive,
+        expected.policy.admission,
+        source_revision=manifest.source_revision,
+        github_repository_id=manifest.github_repository_id,
+    )
+    if actual != manifest or actual.policy_hash != expected.policy.policy_hash:
+        raise SourceIntegrityError("source_integrity_error")
+    files = {file.path: file for file in expected.files}
+    if set(files) != {entry.path for entry in manifest.entries}:
+        raise SourceIntegrityError("source_integrity_error")
+    for entry in manifest.entries:
+        stored = files[entry.path]
+        if (
+            stored.sha256,
+            stored.size_bytes,
+            stored.eligible,
+            stored.exclusion_reason,
+            stored.language,
+        ) != (
+            entry.sha256,
+            entry.size_bytes,
+            entry.eligible,
+            entry.reason,
+            entry.language_hint,
+        ):
+            raise SourceIntegrityError("source_integrity_error")
+    return archive
+
+
 class AdmittedSourceReader:
     def __init__(self, input: SourceInputV1, root: Path):
         self.input = input
@@ -36,57 +109,10 @@ class AdmittedSourceReader:
         self.configs: list[dict[str, str]] = []
         self.requested = 0
 
-    def _read(self, filename: str, maximum: int) -> bytes:
-        if filename not in {"archive.zip", "manifest.json"}:
-            raise SourceIntegrityError("source_integrity_error")
-        fd = os.open(self.root / filename, os.O_RDONLY | os.O_NOFOLLOW)
-        with os.fdopen(fd, "rb") as stream:
-            info = os.fstat(stream.fileno())
-            if not stat.S_ISREG(info.st_mode) or info.st_size > maximum:
-                raise SourceIntegrityError("source_integrity_error")
-            data = stream.read(maximum + 1)
-        if len(data) > maximum:
-            raise SourceIntegrityError("source_integrity_error")
-        return data
-
     def read_selected(self) -> tuple[SourceUnitV1, ...]:
         expected = self.input
-        archive = self._read(expected.archive.path, 104857600)
-        raw_manifest = self._read(expected.manifest.path, 67108864)
-        for raw, descriptor in [(archive, expected.archive), (raw_manifest, expected.manifest)]:
-            if (
-                len(raw) != descriptor.size_bytes
-                or hashlib.sha256(raw).hexdigest() != descriptor.sha256
-            ):
-                raise SourceIntegrityError("source_integrity_error")
-        manifest = ArtifactManifestV1.model_validate_json(raw_manifest)
-        actual = inspect_zip_bytes(
-            archive,
-            expected.policy.admission,
-            source_revision=manifest.source_revision,
-            github_repository_id=manifest.github_repository_id,
-        )
-        if actual != manifest or actual.policy_hash != expected.policy.policy_hash:
-            raise SourceIntegrityError("source_integrity_error")
+        archive = authenticate_archive(expected, self.root)
         files = {file.path: file for file in expected.files}
-        if set(files) != {entry.path for entry in manifest.entries}:
-            raise SourceIntegrityError("source_integrity_error")
-        for entry in manifest.entries:
-            stored = files[entry.path]
-            if (
-                stored.sha256,
-                stored.size_bytes,
-                stored.eligible,
-                stored.exclusion_reason,
-                stored.language,
-            ) != (
-                entry.sha256,
-                entry.size_bytes,
-                entry.eligible,
-                entry.reason,
-                entry.language_hint,
-            ):
-                raise SourceIntegrityError("source_integrity_error")
         units: list[SourceUnitV1] = []
         total = config_bytes = 0
         with zipfile.ZipFile(io.BytesIO(archive)) as source:

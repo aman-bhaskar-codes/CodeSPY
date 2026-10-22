@@ -56,3 +56,7 @@ class RetryRejected(UploadRejected):
 
 class ProviderCapacityUnsupported(PersistenceError):
     pass
+
+
+class PermissionDenied(PersistenceError):
+    pass

@@ -84,7 +84,7 @@ def main() -> int:
             name = "probe.json"
         elif mode == "inspect":
             from app.admission.zip_inventory import inspect_zip_bytes
-            from app.contracts.ingestion import AdmissionPolicyV1
+            from app.contracts.ingestion import parse_admission_policy
             from app.domain.canonical_json import canonical_bytes
 
             fd = os.open("/input/request.json", os.O_RDONLY | os.O_NOFOLLOW)
@@ -93,7 +93,7 @@ def main() -> int:
                 if len(raw) > 4096:
                     raise ValueError("request bound")
                 metadata = json.loads(raw)
-            policy = AdmissionPolicyV1.model_validate(metadata["policy"])
+            policy = parse_admission_policy(metadata["policy"])
             fd = os.open("/input/source.zip", os.O_RDONLY | os.O_NOFOLLOW)
             with os.fdopen(fd, "rb") as source:
                 if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):

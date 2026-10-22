@@ -171,6 +171,57 @@ export type ComponentSectionV1 = {
 };
 
 /**
+ * CreateScanRequestV1
+ */
+export type CreateScanRequestV1 = {
+    config?: ScanConfigV1 | null;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id?: string | null;
+};
+
+/**
+ * DependencyFileV1
+ */
+export type DependencyFileV1 = {
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * Format
+     */
+    format: 'package-lock-v3' | 'uv-v1-r3';
+    /**
+     * Sha256
+     */
+    sha256: string;
+    /**
+     * Size Bytes
+     */
+    size_bytes: number;
+};
+
+/**
+ * DependencySelectionV1
+ */
+export type DependencySelectionV1 = {
+    /**
+     * Bundle Digest
+     */
+    bundle_digest: string;
+    /**
+     * Files
+     */
+    files: Array<DependencyFileV1>;
+    /**
+     * Parser Profile
+     */
+    parser_profile?: 'lockfile-offline-v1';
+};
+
+/**
  * DiagnosticV1
  */
 export type DiagnosticV1 = {
@@ -266,6 +317,32 @@ export type EventPageV3 = {
 };
 
 /**
+ * FeatureTraceV1
+ */
+export type FeatureTraceV1 = {
+    /**
+     * Budget Exceeded
+     */
+    budget_exceeded?: boolean;
+    /**
+     * Edges
+     */
+    edges?: Array<TraceEdgeV1>;
+    /**
+     * Finding Id
+     */
+    finding_id: string;
+    /**
+     * Hop Count
+     */
+    hop_count?: number;
+    /**
+     * Nodes
+     */
+    nodes?: Array<TraceNodeV1>;
+};
+
+/**
  * FileOmissionV1
  */
 export type FileOmissionV1 = {
@@ -281,6 +358,163 @@ export type FileOmissionV1 = {
      * Reason
      */
     reason: string;
+};
+
+/**
+ * FindingDetailResponseV1
+ */
+export type FindingDetailResponseV1 = {
+    /**
+     * Category
+     */
+    category: string;
+    /**
+     * Code Excerpt
+     */
+    code_excerpt?: string | null;
+    /**
+     * Disposition
+     */
+    disposition: string;
+    /**
+     * End Line
+     */
+    end_line?: number | null;
+    /**
+     * Evidence Ids
+     */
+    evidence_ids?: Array<string>;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * Historical Disposition
+     */
+    historical_disposition: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Limitations
+     */
+    limitations?: Array<string>;
+    /**
+     * Line Number
+     */
+    line_number?: number | null;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Recommendation
+     */
+    recommendation?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Rule Id
+     */
+    rule_id: string;
+    /**
+     * Run Id
+     */
+    run_id: string;
+    /**
+     * Severity
+     */
+    severity: string;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+    /**
+     * Support Reason
+     */
+    support_reason: string;
+    /**
+     * Title
+     */
+    title: string;
+    triage: TriageRecordV1;
+};
+
+/**
+ * FindingListResponseV1
+ */
+export type FindingListResponseV1 = {
+    /**
+     * Items
+     */
+    items: Array<FindingSummaryV1>;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: string | null;
+    /**
+     * Total Count
+     */
+    total_count: number;
+};
+
+/**
+ * FindingSummaryV1
+ */
+export type FindingSummaryV1 = {
+    /**
+     * Category
+     */
+    category: string;
+    /**
+     * Disposition
+     */
+    disposition: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Line Number
+     */
+    line_number?: number | null;
+    /**
+     * Rule Id
+     */
+    rule_id: string;
+    /**
+     * Run Id
+     */
+    run_id: string;
+    /**
+     * Severity
+     */
+    severity: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Triage Reason
+     */
+    triage_reason: 'none' | 'code_refactor' | 'compensating_control' | 'business_context' | 'test_code' | 'vendor_dependency';
+    /**
+     * Triage State
+     */
+    triage_state: 'unreviewed' | 'confirmed' | 'false_positive' | 'mitigated' | 'accepted_risk';
+    /**
+     * Triage Version
+     */
+    triage_version: number;
 };
 
 /**
@@ -727,6 +961,17 @@ export type JobRecordV3 = {
 };
 
 /**
+ * NativeSelectionV1
+ */
+export type NativeSelectionV1 = {
+    /**
+     * Files
+     */
+    files: Array<ScannerFileV1>;
+    profile: ScannerProfileV1;
+};
+
+/**
  * NodeCreateV1
  */
 export type NodeCreateV1 = {
@@ -1005,6 +1250,165 @@ export type RunRef = {
      * Snapshot Id
      */
     snapshot_id: string;
+};
+
+/**
+ * ScanAcceptedV1
+ */
+export type ScanAcceptedV1 = {
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+    /**
+     * Spec Id
+     */
+    spec_id: string;
+    /**
+     * Status Url
+     */
+    status_url: string;
+};
+
+/**
+ * ScanConfigV1
+ */
+export type ScanConfigV1 = {
+    /**
+     * Catalog Digest
+     */
+    catalog_digest: string;
+    dependency_selection?: DependencySelectionV1 | null;
+    /**
+     * Native Selections
+     */
+    native_selections?: Array<NativeSelectionV1>;
+    /**
+     * Runtime Digest
+     */
+    runtime_digest: string;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+};
+
+/**
+ * ScanSummaryResponseV1
+ */
+export type ScanSummaryResponseV1 = {
+    /**
+     * By Category
+     */
+    by_category: {
+        [key: string]: number;
+    };
+    /**
+     * By Disposition
+     */
+    by_disposition: {
+        [key: string]: number;
+    };
+    /**
+     * By Severity
+     */
+    by_severity: {
+        [key: string]: number;
+    };
+    /**
+     * By Triage
+     */
+    by_triage: {
+        [key: string]: number;
+    };
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Scan Id
+     */
+    scan_id: string;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Total Findings
+     */
+    total_findings: number;
+};
+
+/**
+ * ScannerFileV1
+ */
+export type ScannerFileV1 = {
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * Sha256
+     */
+    sha256: string;
+    /**
+     * Size Bytes
+     */
+    size_bytes: number;
+};
+
+/**
+ * ScannerProfileV1
+ */
+export type ScannerProfileV1 = {
+    /**
+     * Artifact Sha256
+     */
+    artifact_sha256: string;
+    /**
+     * Cpu
+     */
+    cpu?: number;
+    /**
+     * Deadline Seconds
+     */
+    deadline_seconds?: number;
+    /**
+     * Memory Bytes
+     */
+    memory_bytes?: number;
+    /**
+     * Output Bytes
+     */
+    output_bytes?: number;
+    /**
+     * Pids
+     */
+    pids?: number;
+    /**
+     * Rule Ids
+     */
+    rule_ids: Array<string>;
+    /**
+     * Rules Sha256
+     */
+    rules_sha256: string;
+    /**
+     * Tool
+     */
+    tool: 'semgrep' | 'gitleaks';
 };
 
 /**
@@ -1504,6 +1908,180 @@ export type SymbolObservationV1 = {
      * Type Only
      */
     type_only?: boolean;
+};
+
+/**
+ * TraceBudgetV1
+ */
+export type TraceBudgetV1 = {
+    /**
+     * Max Edges
+     */
+    max_edges?: number;
+    /**
+     * Max Hops
+     */
+    max_hops?: number;
+    /**
+     * Max Nodes
+     */
+    max_nodes?: number;
+    /**
+     * Timeout Seconds
+     */
+    timeout_seconds?: number;
+};
+
+/**
+ * TraceEdgeV1
+ */
+export type TraceEdgeV1 = {
+    /**
+     * Edge Kind
+     */
+    edge_kind: string;
+    /**
+     * Properties
+     */
+    properties?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Source Id
+     */
+    source_id: string;
+    /**
+     * Target Id
+     */
+    target_id: string;
+};
+
+/**
+ * TraceNodeV1
+ */
+export type TraceNodeV1 = {
+    /**
+     * File Path
+     */
+    file_path?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Line
+     */
+    line?: number | null;
+    /**
+     * Properties
+     */
+    properties?: {
+        [key: string]: unknown;
+    };
+};
+
+/**
+ * TriageHistoryItemV1
+ */
+export type TriageHistoryItemV1 = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Event Id
+     */
+    event_id: string;
+    /**
+     * Finding Id
+     */
+    finding_id: string;
+    /**
+     * Principal Id
+     */
+    principal_id: string;
+    /**
+     * Reason
+     */
+    reason: 'none' | 'code_refactor' | 'compensating_control' | 'business_context' | 'test_code' | 'vendor_dependency';
+    /**
+     * State
+     */
+    state: 'unreviewed' | 'confirmed' | 'false_positive' | 'mitigated' | 'accepted_risk';
+};
+
+/**
+ * TriageHistoryV1
+ */
+export type TriageHistoryV1 = {
+    /**
+     * Events
+     */
+    events?: Array<TriageHistoryItemV1>;
+    /**
+     * Finding Id
+     */
+    finding_id: string;
+};
+
+/**
+ * TriageRecordV1
+ */
+export type TriageRecordV1 = {
+    /**
+     * Current Reason
+     */
+    current_reason: 'none' | 'code_refactor' | 'compensating_control' | 'business_context' | 'test_code' | 'vendor_dependency';
+    /**
+     * Current State
+     */
+    current_state: 'unreviewed' | 'confirmed' | 'false_positive' | 'mitigated' | 'accepted_risk';
+    /**
+     * Finding Id
+     */
+    finding_id: string;
+    /**
+     * Last Event Id
+     */
+    last_event_id?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+    /**
+     * Updated By
+     */
+    updated_by?: string | null;
+    /**
+     * Version
+     */
+    version: number;
+};
+
+/**
+ * TriageTransitionV1
+ */
+export type TriageTransitionV1 = {
+    /**
+     * Expected Version
+     */
+    expected_version: number;
+    /**
+     * Reason
+     */
+    reason?: 'none' | 'code_refactor' | 'compensating_control' | 'business_context' | 'test_code' | 'vendor_dependency';
+    /**
+     * State
+     */
+    state: 'unreviewed' | 'confirmed' | 'false_positive' | 'mitigated' | 'accepted_risk';
 };
 
 /**
@@ -2131,6 +2709,323 @@ export type BindGithubApiV1RepositoriesRepositoryIdGithubBindingPostResponses = 
 };
 
 export type BindGithubApiV1RepositoriesRepositoryIdGithubBindingPostResponse = BindGithubApiV1RepositoriesRepositoryIdGithubBindingPostResponses[keyof BindGithubApiV1RepositoriesRepositoryIdGithubBindingPostResponses];
+
+export type CreateScanApiV1RepositoriesRepositoryIdScansPostData = {
+    body: CreateScanRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/scans';
+};
+
+export type CreateScanApiV1RepositoriesRepositoryIdScansPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateScanApiV1RepositoriesRepositoryIdScansPostError = CreateScanApiV1RepositoriesRepositoryIdScansPostErrors[keyof CreateScanApiV1RepositoriesRepositoryIdScansPostErrors];
+
+export type CreateScanApiV1RepositoriesRepositoryIdScansPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: ScanAcceptedV1;
+};
+
+export type CreateScanApiV1RepositoriesRepositoryIdScansPostResponse = CreateScanApiV1RepositoriesRepositoryIdScansPostResponses[keyof CreateScanApiV1RepositoriesRepositoryIdScansPostResponses];
+
+export type GetFindingDetailApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Finding Id
+         */
+        finding_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}';
+};
+
+export type GetFindingDetailApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetFindingDetailApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdGetError = GetFindingDetailApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdGetErrors[keyof GetFindingDetailApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdGetErrors];
+
+export type GetFindingDetailApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: FindingDetailResponseV1;
+};
+
+export type GetFindingDetailApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdGetResponse = GetFindingDetailApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdGetResponses[keyof GetFindingDetailApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdGetResponses];
+
+export type TraceFindingFeatureApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTracePostData = {
+    body: TraceBudgetV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Finding Id
+         */
+        finding_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/trace';
+};
+
+export type TraceFindingFeatureApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTracePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TraceFindingFeatureApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTracePostError = TraceFindingFeatureApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTracePostErrors[keyof TraceFindingFeatureApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTracePostErrors];
+
+export type TraceFindingFeatureApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTracePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: FeatureTraceV1;
+};
+
+export type TraceFindingFeatureApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTracePostResponse = TraceFindingFeatureApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTracePostResponses[keyof TraceFindingFeatureApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTracePostResponses];
+
+export type TriageFindingApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriagePostData = {
+    body: TriageTransitionV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Finding Id
+         */
+        finding_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage';
+};
+
+export type TriageFindingApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriagePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TriageFindingApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriagePostError = TriageFindingApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriagePostErrors[keyof TriageFindingApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriagePostErrors];
+
+export type TriageFindingApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriagePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: TriageRecordV1;
+};
+
+export type TriageFindingApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriagePostResponse = TriageFindingApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriagePostResponses[keyof TriageFindingApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriagePostResponses];
+
+export type GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Finding Id
+         */
+        finding_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage/history';
+};
+
+export type GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetError = GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetErrors[keyof GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetErrors];
+
+export type GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: TriageHistoryV1;
+};
+
+export type GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetResponse = GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetResponses[keyof GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetResponses];
+
+export type CreateSnapshotScanApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansPostData = {
+    body: CreateScanRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans';
+};
+
+export type CreateSnapshotScanApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateSnapshotScanApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansPostError = CreateSnapshotScanApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansPostErrors[keyof CreateSnapshotScanApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansPostErrors];
+
+export type CreateSnapshotScanApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: ScanAcceptedV1;
+};
+
+export type CreateSnapshotScanApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansPostResponse = CreateSnapshotScanApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansPostResponses[keyof CreateSnapshotScanApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansPostResponses];
+
+export type ListScanFindingsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdFindingsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: {
+        /**
+         * Category
+         */
+        category?: string | null;
+        /**
+         * Severity
+         */
+        severity?: string | null;
+        /**
+         * Disposition
+         */
+        disposition?: string | null;
+        /**
+         * Triage State
+         */
+        triage_state?: string | null;
+        /**
+         * Cursor
+         */
+        cursor?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/findings';
+};
+
+export type ListScanFindingsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdFindingsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListScanFindingsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdFindingsGetError = ListScanFindingsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdFindingsGetErrors[keyof ListScanFindingsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdFindingsGetErrors];
+
+export type ListScanFindingsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdFindingsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: FindingListResponseV1;
+};
+
+export type ListScanFindingsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdFindingsGetResponse = ListScanFindingsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdFindingsGetResponses[keyof ListScanFindingsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdFindingsGetResponses];
+
+export type GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdSummaryGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/summary';
+};
+
+export type GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdSummaryGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdSummaryGetError = GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdSummaryGetErrors[keyof GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdSummaryGetErrors];
+
+export type GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdSummaryGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ScanSummaryResponseV1;
+};
+
+export type GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdSummaryGetResponse = GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdSummaryGetResponses[keyof GetScanSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansRunIdSummaryGetResponses];
 
 export type GetSnapshotStructuralReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdStructuralReportGetData = {
     body?: never;

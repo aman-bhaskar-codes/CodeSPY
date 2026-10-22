@@ -6,7 +6,7 @@ A source inspection desk for developers reviewing what an archive contains. The 
 
 ## Register and audience
 
-Product tool, English, developers using a desktop or narrow laptop. Phase 2 exposes source admission and inventory only. No established sibling screens exist yet.
+Product tool, English, developers using a desktop or narrow laptop. The interface exposes source admission, inventory and bounded structural reports.
 
 ## Tokens and ownership
 
@@ -18,4 +18,4 @@ Header with session status; repository and upload controls above the current job
 
 ## Behavior and accessibility
 
-Visible focus, labeled native controls, stable status region, no decorative animation. Text accompanies all status colors. UI contract: UX-CONTRACT.md. No browser automation is authorized; runtime visual and browser accessibility checks remain unexecuted.
+Visible focus, labeled native controls, stable status region, no decorative animation. Text accompanies all status colors. UI contract: UX-CONTRACT.md. Runtime visual and browser accessibility acceptance remain unexecuted.

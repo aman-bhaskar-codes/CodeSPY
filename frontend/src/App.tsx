@@ -12,6 +12,7 @@ import type {
   RetryResponseV2,
 } from "./api/generated/types.gen";
 import { StructuralReportView } from "./features/structure/StructuralReportView";
+import { FindingsWorkbench } from "./features/findings/FindingsWorkbench";
 
 const terminal = new Set(["succeeded", "partial", "failed", "cancelled"]);
 function selectedId(name: string): string | null {
@@ -31,6 +32,8 @@ function problem(error: unknown): string {
     return "Access changed. Reload your session and repository list.";
   if (error instanceof ApiError && error.code === "analysis_unavailable")
     return "Structural analysis is unavailable. Start the qualified local runtime before retrying.";
+  if (error instanceof ApiError && error.code === "scan_unavailable")
+    return "Scanner analysis is unavailable. Start the qualified local runtime before retrying.";
   if (error instanceof ApiError && error.status === 409)
     return "This request conflicts with existing work. Reload its status before retrying.";
   if (error instanceof ApiError && error.status === 429)
@@ -53,6 +56,7 @@ export default function App() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [pages, setPages] = useState<(string | null)[]>([null]);
   const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
+  const [scanJobId, setScanJobId] = useState<string | null>(() => selectedId("scan"));
   const input = useRef<HTMLInputElement>(null);
   const cancelButton = useRef<HTMLButtonElement>(null);
   const uploadKey = useRef(crypto.randomUUID());
@@ -62,12 +66,13 @@ export default function App() {
     for (const [name, value] of [
       ["submission", submissionId],
       ["job", jobId],
+      ["scan", scanJobId],
     ]) {
       if (value) url.searchParams.set(name!, value);
       else url.searchParams.delete(name!);
     }
     window.history.replaceState({}, "", url);
-  }, [submissionId, jobId]);
+  }, [submissionId, jobId, scanJobId]);
   const session = useQuery({
     queryKey: ["session"],
     queryFn: ({ signal }) => api.session(signal),
@@ -188,6 +193,53 @@ export default function App() {
       setAnalysisJobId(result.retry_job_id);
     },
   });
+  const scanJob = useQuery({
+    queryKey: ["job", scanJobId],
+    queryFn: ({ signal }) => api.job(scanJobId!, signal),
+    enabled: !!scanJobId && !!session.data,
+    refetchInterval: (query) =>
+      query.state.data && terminal.has(query.state.data.state) ? false : 1500,
+  });
+  const startScan = useMutation({
+    mutationFn: async () => {
+      if (!repository || !snapshot || !session.data)
+        throw new Error("missing input");
+      const res = await api.createScan(
+        repository,
+        snapshot,
+        session.data.csrf_token,
+      );
+      setScanJobId(res.job_id);
+    },
+  });
+  const cancelScan = useMutation({
+    mutationFn: async () => {
+      if (!scanJobId || !session.data) throw new Error("missing scan");
+      await request(`/jobs/${scanJobId}/cancel`, {
+        method: "POST",
+        headers: mutationHeaders(session.data.csrf_token),
+      });
+      await client.invalidateQueries({ queryKey: ["job", scanJobId] });
+    },
+  });
+  const retryScan = useMutation({
+    mutationFn: async () => {
+      if (!scanJobId || !session.data) throw new Error("missing scan");
+      let key = retryKeys.current.get(scanJobId);
+      if (!key) {
+        key = crypto.randomUUID();
+        retryKeys.current.set(scanJobId, key);
+      }
+      const result = await request<RetryResponseV2>(
+        `/jobs/${scanJobId}/retry`,
+        {
+          method: "POST",
+          headers: mutationHeaders(session.data.csrf_token, key),
+        },
+      );
+      setScanJobId(result.retry_job_id);
+    },
+  });
   const upload = useMutation({
     mutationFn: async () => {
       if (!file || !repository || !session.data)
@@ -271,7 +323,7 @@ export default function App() {
       </header>
       <main>
         <div className="intro">
-          <p className="eyebrow">Source intake / Phase 2</p>
+          <p className="eyebrow">Source intake</p>
           <h1>Source inventory</h1>
           <p>
             Inspect the files in a ZIP archive, their byte hashes, and what can
@@ -588,7 +640,7 @@ export default function App() {
                 <div className="section-heading">
                   <h2 id="structural-title">Structural Architecture</h2>
                   <span className="muted">
-                    Deterministic syntax & graph analysis · Phase 3
+                    Deterministic syntax & graph analysis
                   </span>
                 </div>
                 {analysisJob.data && !terminal.has(analysisJob.data.state) && (
@@ -649,6 +701,78 @@ export default function App() {
                       <p role="alert">
                         Structural analysis failed:{" "}
                         {analysisJob.data.failure_code ?? "unknown error"}.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
+            {snapshot && repository && (
+              <section aria-labelledby="findings-title">
+                <div className="section-heading">
+                  <h2 id="findings-title">Deterministic Security Findings</h2>
+                  <span className="muted">
+                    Multi-scanner static analysis & human triage
+                  </span>
+                </div>
+                {scanJob.data && !terminal.has(scanJob.data.state) && (
+                  <button
+                    type="button"
+                    disabled={cancelScan.isPending}
+                    onClick={() => cancelScan.mutate()}
+                  >
+                    Cancel security scan
+                  </button>
+                )}
+                {scanJob.data &&
+                  ["failed", "cancelled"].includes(scanJob.data.state) && (
+                    <button
+                      type="button"
+                      disabled={retryScan.isPending}
+                      onClick={() => retryScan.mutate()}
+                    >
+                      Retry security scan
+                    </button>
+                  )}
+                {(cancelScan.isError || retryScan.isError) && (
+                  <p role="alert">
+                    {problem(cancelScan.error ?? retryScan.error)}
+                  </p>
+                )}
+                {scanJob.data?.state === "succeeded" || scanJobId ? (
+                  <FindingsWorkbench
+                    repositoryId={repository}
+                    snapshotId={snapshot}
+                    runId={scanJobId!}
+                    csrfToken={session.data?.csrf_token ?? ""}
+                  />
+                ) : (
+                  <div>
+                    <p>
+                      Run deterministic static analysis across SAST, Secrets, SCA, and IaC rules for this snapshot.
+                    </p>
+                    {startScan.isPending ||
+                    (scanJob.data && !terminal.has(scanJob.data.state)) ? (
+                      <p role="status">
+                        Running security scan (
+                        {scanJob.data?.state ?? "starting"})…
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busy || startScan.isPending}
+                        onClick={() => startScan.mutate()}
+                      >
+                        Scan repository
+                      </button>
+                    )}
+                    {startScan.isError && (
+                      <p role="alert">{problem(startScan.error)}</p>
+                    )}
+                    {scanJob.data?.state === "failed" && (
+                      <p role="alert">
+                        Security scan failed:{" "}
+                        {scanJob.data.failure_code ?? "unknown error"}.
                       </p>
                     )}
                   </div>

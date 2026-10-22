@@ -1,14 +1,13 @@
-# ADR 0001: setup boundaries
+# ADR 0001: Dependency and runtime boundaries
 
-- No application code, migrations, DSA implementation, agents, UI, deployment, or fine-tuning during setup.
-- Updated by the detailed Phase 0 runbook: install Arq, replacing the earlier provisional Celery choice. Queue integration remains future implementation.
-- Choose Terraform-compatible HCL with OpenTofu for future AWS IaC, not both Terraform and CDK. Cloud account access is now prohibited for the assistant; infrastructure examples are owner-managed.
-- Retain both graph UI libraries for evaluation; choose one during frontend design.
-- tsvector/GIN with ts_rank is PostgreSQL full-text search, not BM25. True BM25 needs an explicit implementation or compatible extension; RDS compatibility must be checked.
-- Gemini 2.5 Pro documentation lists a 1,048,576-token input limit. Do not assume a 2M window. Model IDs remain account-verified configuration, not hardcoded promises.
-- Firecracker requires Linux/KVM. Treat it as a separate worker-host decision, not an ordinary Fargate container capability.
-- RDS Multi-AZ and PITR reduce risk but do not guarantee zero data loss; define RPO/RTO and demonstrate restores later.
-- Recall, latency, token savings, and algorithmic complexity claims in the PDF are goals requiring measured validation.
-- Fine-tuning/GPU dependencies are deferred to a separate Linux/CUDA environment; downloading model weights onto this Mac is not required for setup.
+Installed packages do not imply an enabled integration. Source ingestion, durable jobs and structural analysis use explicitly composed adapters; optional model, search and binary-analysis packages remain separate capabilities.
 
-Sources: https://www.postgresql.org/docs/16/textsearch-controls.html ; https://ai.google.dev/gemini-api/docs/models/gemini-2.5-pro ; https://github.com/firecracker-microvm/firecracker/blob/main/docs/getting-started.md
+- The Python workspace has one root lockfile. Frontend and TypeScript compiler packages have independent npm locks.
+- Durable scheduling uses the database outbox, SQS-compatible wakeups and database leases. Dormant Redis/Arq packages do not create a second scheduler.
+- Uploaded source is data: do not import it, execute its scripts, install its packages or load its plugins.
+- PostgreSQL lexical search terminology follows the implementation; tsvector/GIN with ts_rank is not BM25.
+- Use Terraform-compatible HCL with OpenTofu for infrastructure definitions. Cloud activation and secrets require explicit owner authorization.
+- Model context limits and availability require provider-specific configuration and qualification. Package installation is not account readiness.
+- Linux/KVM capabilities are distinct from ordinary container capabilities. Container resource controls need platform-specific qualification.
+- Backups and redundant database deployment do not imply zero data loss; recovery claims require observed restore evidence.
+- Performance and accuracy claims require a declared corpus, platform, method and measured results.

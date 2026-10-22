@@ -3,13 +3,14 @@
 import json
 import secrets
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from app.analyzers.reporting import render_json, render_markdown
+from app.contracts.dependencies import DependencyFileV1
 from app.contracts.http import (
     EventPageV2,
     EventPageV3,
@@ -23,9 +24,22 @@ from app.contracts.http import (
     RepositoryPageV1,
     SessionV1,
 )
-from app.contracts.ingestion import SubmissionRecordV1, UploadReservationV1
+from app.contracts.ingestion import (
+    AdmissionPolicy,
+    AdmissionPolicyV1,
+    SubmissionRecordV1,
+    UploadReservationV1,
+)
 from app.contracts.jobs import JobRecordV2, JobRecordV3, RetryResponseV1, RetryResponseV2
 from app.contracts.persistence import GraphPage, RepositoryCreate, RepositoryRecord
+from app.contracts.scan_jobs import (
+    DependencySelectionV1,
+    NativeSelectionV1,
+    RetryScanResponseV3,
+    ScanConfigV1,
+    ScanJobRecordV4,
+)
+from app.contracts.scanners import ScannerFileV1, ScannerProfileV1
 from app.contracts.structure import (
     AnalysisAcceptedV1,
     AnalysisConfigV1,
@@ -39,12 +53,25 @@ from app.contracts.structure import (
     StructuralSummaryV1,
     stored_report,
 )
+from app.contracts.trace import (
+    FeatureTraceV1,
+    TraceBudgetV1,
+    TraceEdgeV1,
+    TraceNodeV1,
+)
+from app.contracts.triage import (
+    TriageHistoryItemV1,
+    TriageHistoryV1,
+    TriageRecordV1,
+    TriageTransitionV1,
+)
 from app.db.transaction import transaction
 from app.domain.canonical_json import canonical_bytes
 from app.domain.errors import (
     CapacityExceeded,
     DuplicateConflict,
     InvalidTransition,
+    PermissionDenied,
     PersistenceError,
     RetryRejected,
     ScopeViolation,
@@ -55,6 +82,7 @@ from app.domain.scope import TenantContext
 from app.models.phase2_tables import PHASE2_TABLES
 from app.models.tables import memberships, repositories, source_files, source_snapshots
 from app.ports.object_store import ObjectStore
+from app.ports.scan_execution import ScanCapabilities
 from app.repositories.command_repository import record_command, replay_command
 from app.repositories.identity_repository import IdentityRepository
 from app.repositories.repository_repository import RepositoryRepository
@@ -62,13 +90,23 @@ from app.security.authorization import require_repository
 from app.security.cursors import CursorCodec
 from app.security.oauth import OAuthRejected, OAuthService
 from app.security.sessions import SessionService, token_digest
+from app.services.feature_trace import FeatureTraceService
+from app.services.findings_query import (
+    FindingDetailResponseV1,
+    FindingListResponseV1,
+    FindingsQueryService,
+    FindingSummaryV1,
+    ScanSummaryResponseV1,
+)
 from app.services.github_acquisition import GitHubAcquisitionService
 from app.services.jobs import JobService
 from app.services.persistence import PersistenceService
 from app.services.retries import RetryService
+from app.services.scan_jobs import ScanJobService
 from app.services.structural_analysis import StructuralAnalysisService
 from app.services.structural_reads import report_items, summary
 from app.services.submissions import SubmissionService
+from app.services.triage import TriageService
 from app.services.webhooks import GitHubWebhookService
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -77,10 +115,25 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from sqlalchemy import and_, literal, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+
+class CreateScanRequestV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    snapshot_id: UUID | None = None
+    config: ScanConfigV1 | None = None
+
+
+class ScanAcceptedV1(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    spec_id: UUID
+    job_id: UUID
+    snapshot_id: UUID
+    status_url: str
 
 
 class ApiSettings(BaseModel):
@@ -113,6 +166,16 @@ class ApplicationPorts:
     github: GitHubAcquisitionService | None = None
     webhooks: GitHubWebhookService | None = None
     readiness: Callable[[], Awaitable[bool]] | None = None
+    admission_policy: AdmissionPolicy = field(default_factory=AdmissionPolicyV1)
+    scan_capabilities: ScanCapabilities | None = None
+
+
+def legacy_job_record(
+    value: JobRecordV2 | JobRecordV3 | ScanJobRecordV4,
+) -> JobRecordV2 | JobRecordV3:
+    if isinstance(value, ScanJobRecordV4):
+        raise HTTPException(409, detail="scan_operation_unavailable")
+    return value
 
 
 def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
@@ -155,8 +218,11 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     sessions = SessionService(ports.factory)
     jobs = JobService(ports.factory)
     retries = RetryService(ports.factory, ports.store)
-    submissions = SubmissionService(ports.factory, ports.store)
+    submissions = SubmissionService(ports.factory, ports.store, policy=ports.admission_policy)
     structural = StructuralAnalysisService(ports.factory)
+    findings_query = FindingsQueryService(ports.factory)
+    triage_service = TriageService(ports.factory)
+    trace_service = FeatureTraceService(ports.factory)
     cursors = CursorCodec(secrets.token_bytes(32))
 
     def error(status: int, code: str) -> JSONResponse:
@@ -213,6 +279,8 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         code = codes.get(exception.status_code, "invalid_state")
         if exception.status_code == 503 and exception.detail == "analysis_unavailable":
             code = "analysis_unavailable"
+        if exception.status_code == 409 and exception.detail == "scan_operation_unavailable":
+            code = "scan_operation_unavailable"
         return error(exception.status_code, code)
 
     @app.exception_handler(RequestValidationError)
@@ -282,11 +350,11 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             raise ScopeViolation("resource unavailable")
         return await repository_context(request, repo, write=write)
 
-    async def json_body(request: Request, model: type[BaseModel]) -> Any:
+    async def json_body(request: Request, model: type[BaseModel], max_size: int = 65536) -> Any:
         data = bytearray()
         async for chunk in request.stream():
             data.extend(chunk)
-            if len(data) > 4096:
+            if len(data) > max_size:
                 raise HTTPException(413)
         try:
             return model.model_validate_json(data)
@@ -667,21 +735,22 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     @app.get("/api/v1/jobs/{job_id}")
     async def get_job(request: Request, job_id: UUID) -> JobRecordV2 | JobRecordV3:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id)
-        return await jobs.get(ctx, job_id)
+        return legacy_job_record(await jobs.get(ctx, job_id))
 
     @app.post("/api/v1/jobs/{job_id}/cancel")
     async def cancel_job(
         request: Request, response: Response, job_id: UUID
     ) -> JobRecordV2 | JobRecordV3:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id, write=True)
-        result = await jobs.request_cancel(ctx, job_id)
+        legacy_job_record(await jobs.get(ctx, job_id))
+        result = legacy_job_record(await jobs.request_cancel(ctx, job_id))
         response.status_code = 202 if result.state == "cancelling" else 200
         return result
 
     @app.post("/api/v1/jobs/{job_id}/retry", status_code=202)
     async def retry_job(request: Request, job_id: UUID) -> RetryResponseV1 | RetryResponseV2:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id, write=True)
-        job = await jobs.get(ctx, job_id)
+        job = legacy_job_record(await jobs.get(ctx, job_id))
         if isinstance(job, JobRecordV3) and job.operation == "analyze_structure":
             if (
                 not settings.structural_enabled
@@ -693,7 +762,10 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             spec = await structural.get_spec(ctx, job.repository_id, job.analysis_spec_id)
             if spec is None or spec.toolchain_hash != settings.structural_toolchain_hash:
                 raise RetryRejected("retry_not_supported")
-        return await retries.retry(ctx, job_id, key(request))
+        result = await retries.retry(ctx, job_id, key(request))
+        if isinstance(result, RetryScanResponseV3):
+            raise HTTPException(409, detail="scan_operation_unavailable")
+        return result
 
     @app.get("/api/v1/jobs/{job_id}/events")
     async def job_events(
@@ -702,7 +774,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         if not 1 <= limit <= 200:
             raise HTTPException(422)
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id)
-        job = await jobs.get(ctx, job_id)
+        job = legacy_job_record(await jobs.get(ctx, job_id))
         structural_events = job.operation == "analyze_structure"
         events = PHASE2_TABLES["job_events"]
         scope = {"org": str(ctx.org_id), "job": str(job_id), "version": 2}
@@ -1129,6 +1201,148 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             "excerpt": excerpt.model_dump(mode="json") if excerpt else None,
         }
 
+    @app.post(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans",
+        status_code=202,
+    )
+    async def create_snapshot_scan(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> ScanAcceptedV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        if ports.scan_capabilities is None:
+            raise HTTPException(503, detail="scan_unavailable")
+        body = await json_body(request, CreateScanRequestV1)
+        if body.config is None:
+            raise HTTPException(422, detail="scan_config_required")
+        scan_job_service = ScanJobService(ports.factory, ports.scan_capabilities)
+        spec, job = await scan_job_service.create(
+            ctx, repository_id, snapshot_id, body.config, key(request)
+        )
+        return ScanAcceptedV1(
+            spec_id=spec.id,
+            job_id=job.id,
+            snapshot_id=snapshot_id,
+            status_url=f"/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{job.id}/summary",
+        )
+
+    @app.post("/api/v1/repositories/{repository_id}/scans", status_code=202)
+    async def create_scan(request: Request, repository_id: UUID) -> ScanAcceptedV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        if ports.scan_capabilities is None:
+            raise HTTPException(503, detail="scan_unavailable")
+        body = await json_body(request, CreateScanRequestV1)
+        if body.snapshot_id is None or body.config is None:
+            raise HTTPException(422, detail="snapshot_id_and_config_required")
+        scan_job_service = ScanJobService(ports.factory, ports.scan_capabilities)
+        spec, job = await scan_job_service.create(
+            ctx, repository_id, body.snapshot_id, body.config, key(request)
+        )
+        return ScanAcceptedV1(
+            spec_id=spec.id,
+            job_id=job.id,
+            snapshot_id=body.snapshot_id,
+            status_url=f"/api/v1/repositories/{repository_id}/snapshots/{body.snapshot_id}/scans/{job.id}/summary",
+        )
+
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/summary")
+    async def get_scan_summary(
+        request: Request, repository_id: UUID, snapshot_id: UUID, run_id: UUID
+    ) -> ScanSummaryResponseV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        try:
+            return await findings_query.get_summary(ctx, repository_id, snapshot_id, run_id)
+        except NoResultFound:
+            raise HTTPException(404, detail="scan_summary_not_found") from None
+
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/findings")
+    async def list_scan_findings(
+        request: Request,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        run_id: UUID,
+        category: str | None = None,
+        severity: str | None = None,
+        disposition: str | None = None,
+        triage_state: str | None = None,
+        cursor: str | None = None,
+        limit: int = 50,
+    ) -> FindingListResponseV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        return await findings_query.list_findings(
+            ctx,
+            repository_id,
+            snapshot_id,
+            run_id,
+            category=category,
+            severity=severity,
+            disposition=disposition,
+            triage_state=triage_state,
+            cursor=cursor,
+            limit=limit,
+        )
+
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}")
+    async def get_finding_detail(
+        request: Request, repository_id: UUID, snapshot_id: UUID, finding_id: UUID
+    ) -> FindingDetailResponseV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        try:
+            return await findings_query.get_finding_detail(
+                ctx, repository_id, snapshot_id, finding_id, store=ports.store
+            )
+        except NoResultFound:
+            raise HTTPException(404, detail="finding_not_found") from None
+
+    @app.post(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage"
+    )
+    async def triage_finding(
+        request: Request, repository_id: UUID, snapshot_id: UUID, finding_id: UUID
+    ) -> TriageRecordV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        body = await json_body(request, TriageTransitionV1)
+        try:
+            return await triage_service.transition(
+                ctx, repository_id, snapshot_id, finding_id, body
+            )
+        except NoResultFound:
+            raise HTTPException(404, detail="finding_not_found") from None
+        except DuplicateConflict as e:
+            raise HTTPException(409, detail=str(e)) from e
+        except PermissionDenied as e:
+            raise HTTPException(403, detail=str(e)) from e
+
+    @app.get(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage/history"
+    )
+    async def get_triage_history(
+        request: Request, repository_id: UUID, snapshot_id: UUID, finding_id: UUID
+    ) -> TriageHistoryV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        try:
+            return await triage_service.get_history(ctx, repository_id, snapshot_id, finding_id)
+        except NoResultFound:
+            raise HTTPException(404, detail="finding_not_found") from None
+
+    @app.post(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/trace"
+    )
+    async def trace_finding_feature(
+        request: Request, repository_id: UUID, snapshot_id: UUID, finding_id: UUID
+    ) -> FeatureTraceV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        body = None
+        try:
+            body = await json_body(request, TraceBudgetV1)
+        except Exception:
+            body = TraceBudgetV1()
+        try:
+            return await trace_service.trace(
+                ctx, repository_id, snapshot_id, finding_id, budget=body
+            )
+        except NoResultFound:
+            raise HTTPException(404, detail="finding_not_found") from None
+
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
             schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
@@ -1145,6 +1359,26 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 GraphTraversalV1,
                 StructuralSummaryV1,
                 StructuralSectionPageV1,
+                CreateScanRequestV1,
+                ScanConfigV1,
+                NativeSelectionV1,
+                DependencySelectionV1,
+                ScannerFileV1,
+                ScannerProfileV1,
+                DependencyFileV1,
+                ScanAcceptedV1,
+                ScanSummaryResponseV1,
+                FindingSummaryV1,
+                FindingListResponseV1,
+                FindingDetailResponseV1,
+                TriageTransitionV1,
+                TriageRecordV1,
+                TriageHistoryItemV1,
+                TriageHistoryV1,
+                TraceNodeV1,
+                TraceEdgeV1,
+                TraceBudgetV1,
+                FeatureTraceV1,
             )
             for model in contract_models:
                 components[model.__name__] = model.model_json_schema(
@@ -1157,16 +1391,30 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 ("/api/v1/repositories/{repository_id}/github-acquisitions", GitHubAcquisitionV1),
                 ("/api/v1/repositories/{repository_id}/analyses", StructuralAnalysisRequestV1),
                 ("/api/v1/repositories/{repository_id}/analyses/{run_id}/traversal", GraphQueryV1),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans",
+                    CreateScanRequestV1,
+                ),
+                ("/api/v1/repositories/{repository_id}/scans", CreateScanRequestV1),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage",
+                    TriageTransitionV1,
+                ),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/trace",
+                    TraceBudgetV1,
+                ),
             )
             for path, model in body_contracts:
-                schema["paths"][path]["post"]["requestBody"] = {
-                    "required": True,
-                    "content": {
-                        "application/json": {
-                            "schema": {"$ref": "#/components/schemas/" + model.__name__}
-                        }
-                    },
-                }
+                if path in schema.get("paths", {}):
+                    schema["paths"][path]["post"]["requestBody"] = {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/" + model.__name__}
+                            }
+                        },
+                    }
             app.openapi_schema = schema
         return app.openapi_schema
 

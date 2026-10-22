@@ -1,17 +1,16 @@
 """Byte inventory and admission contracts, independent of SQLAlchemy."""
 
-from typing import Literal, Self
+from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import Field, TypeAdapter, model_validator
 
 from app.domain.canonical_json import canonical_bytes, semantic_digest
 from app.domain.scope import Contract
 from app.security.archive_paths import collision_key, validate_archive_path
 
 
-class AdmissionPolicyV1(Contract):
-    version: Literal["source-zip-v1"] = "source-zip-v1"
+class _AdmissionLimits(Contract):
     max_archive_bytes: int = Field(default=104857600, gt=0, le=104857600)
     max_expanded_bytes: int = Field(default=1073741824, gt=0, le=1073741824)
     max_entries: int = Field(default=10000, gt=0, le=10000)
@@ -26,6 +25,44 @@ class AdmissionPolicyV1(Contract):
 
     def digest(self) -> str:
         return semantic_digest(self.model_dump())
+
+
+class AdmissionPolicyV1(_AdmissionLimits):
+    version: Literal["source-zip-v1"] = "source-zip-v1"
+
+
+class AdmissionPolicyV2(_AdmissionLimits):
+    """Future admissions may retain exact uv.lock as bounded TOML metadata."""
+
+    version: Literal["source-zip-v2"] = "source-zip-v2"
+    metadata_file_bytes: int = Field(default=262144, gt=0, le=262144)
+
+
+AdmissionPolicy = Annotated[AdmissionPolicyV1 | AdmissionPolicyV2, Field(discriminator="version")]
+_POLICY_ADAPTER: TypeAdapter[AdmissionPolicy] = TypeAdapter(AdmissionPolicy)
+
+
+def parse_admission_policy(value: Any) -> AdmissionPolicy:
+    # V1 historically allowed its version field to be omitted. Never infer V2
+    # from fields: absent version retains the strict original V1 contract.
+    if isinstance(value, dict) and "version" not in value:
+        return AdmissionPolicyV1.model_validate(value)
+    return _POLICY_ADAPTER.validate_python(value)
+
+
+def resolve_admission_policy(digest: str, *, github_strip_root: bool) -> AdmissionPolicy:
+    """Resolve only registered immutable default policies from durable hashes.
+
+    Never substitute today's policy for an old snapshot or guess at unknown
+    configuration. Custom reduced limits need a separately persisted registry.
+    """
+    for policy in (
+        AdmissionPolicyV1(github_strip_root=github_strip_root),
+        AdmissionPolicyV2(github_strip_root=github_strip_root),
+    ):
+        if policy.digest() == digest:
+            return policy
+    raise ValueError("unsupported admission policy")
 
 
 class UploadReservationV1(Contract):
@@ -72,7 +109,7 @@ class ManifestEntryV1(Contract):
 
 class ArtifactManifestV1(Contract):
     schema_version: Literal[1] = 1
-    policy_version: Literal["source-zip-v1"]
+    policy_version: Literal["source-zip-v1", "source-zip-v2"]
     policy_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     archive_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     archive_size: int = Field(ge=22, le=104857600)

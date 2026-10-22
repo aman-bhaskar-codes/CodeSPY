@@ -1,4 +1,4 @@
-"""Phase 2 metadata. Historical DDL is frozen independently in Alembic revisions."""
+"""ingestion metadata. Historical DDL is frozen independently in Alembic revisions."""
 
 from collections.abc import Sequence
 from typing import Any

@@ -14,7 +14,7 @@ from app.repositories.identity_repository import authorize
 
 
 def run_columns() -> tuple[ColumnElement[Any], ...]:
-    """Keep public Phase 1 reads valid after Phase 2 metadata is loaded."""
+    """Keep public persistence reads valid after ingestion metadata is loaded."""
     return tuple(analysis_runs.c[name] for name in RunRecord.model_fields)
 
 

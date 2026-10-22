@@ -6,9 +6,9 @@ from time import monotonic
 from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
-from app.contracts.ingestion import AdmissionPolicyV1
+from app.contracts.ingestion import AdmissionPolicy, AdmissionPolicyV1, parse_admission_policy
 from app.contracts.persistence import ResultBatchV1
 from app.domain.canonical_json import canonical_bytes, semantic_digest
 from app.domain.scope import Contract, RunRef
@@ -135,7 +135,12 @@ class SourceDescriptorV1(Contract):
 class SourcePolicyV1(Contract):
     strip_single_root: bool = False
     policy_hash: Hash
-    admission: AdmissionPolicyV1 = AdmissionPolicyV1()
+    admission: AdmissionPolicy = AdmissionPolicyV1()
+
+    @field_validator("admission", mode="before")
+    @classmethod
+    def legacy_admission(cls, value: Any) -> AdmissionPolicy:
+        return parse_admission_policy(value)
 
     @model_validator(mode="after")
     def coherent(self) -> Self:

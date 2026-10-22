@@ -1,4 +1,4 @@
-"""Plan-compatible command entrypoint for the owned Phase 2 test harness."""
+"""Compatibility command entrypoint for the owned ingestion test harness."""
 
 import sys
 

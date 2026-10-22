@@ -1,7 +1,7 @@
-name: Phase 3 structural analysis
+name: Structural analysis and scanner contracts
 on:
   push:
-    branches: [main, fix/phase3-integration]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -19,13 +19,16 @@ jobs:
         with:
           node-version: "22"
       - run: uv sync --all-packages --all-groups --frozen
-      - run: uv run --frozen --all-packages --all-groups ruff check backend/app backend/tests/phase3
+      - run: uv run --frozen --all-packages --all-groups ruff check backend/app backend/tests/phase3 backend/tests/phase4
       - run: uv run --frozen --all-packages --all-groups mypy --config-file backend/pyproject.toml backend/app --exclude '.* 2.py'
       - run: npm ci --prefix tools/typescript-analyzer
       - run: npm --prefix tools/typescript-analyzer test
       - run: uv run --frozen --all-packages --all-groups python scripts/build_analysis_image.py --image-out work/analysis-image.id
       - run: echo "CODESPY_ANALYSIS_IMAGE=$(cat work/analysis-image.id)" >> "$GITHUB_ENV"
       - run: uv run --frozen --all-packages --all-groups python scripts/phase3_db.py prepare --env-out work/phase3-ci.env
+      - run: uv run --frozen --all-packages --all-groups python scripts/build_admission_image.py --image-out work/admission-image.id
+      - run: echo "CODESPY_ADMISSION_IMAGE=$(cat work/admission-image.id)" >> "$GITHUB_ENV"
+      - run: uv run --frozen --all-packages --all-groups python scripts/phase3_db.py test --env-file work/phase3-ci.env --suite phase4 --schema-target 0014_finding_triage
       - run: uv run --frozen --all-packages --all-groups python scripts/phase3_db.py test --env-file work/phase3-ci.env
       - run: uv run --frozen --all-packages --all-groups python scripts/phase2_db.py test --env-file work/phase3-ci.env --suite integration --schema-target 0011_structural_authority
       - run: npm ci --prefix frontend

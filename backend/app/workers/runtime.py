@@ -60,6 +60,11 @@ class WorkerRuntime:
             asyncio.create_task(periodic(cleanup, 15)),
             asyncio.create_task(consume()),
         ]
+        scan_operation = getattr(self.consumer, "scan_operation", None)
+        if scan_operation is not None:
+            tasks.append(
+                asyncio.create_task(periodic(scan_operation.capabilities.recover_owned, 15))
+            )
         try:
             await stop.wait()
         finally:

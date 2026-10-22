@@ -39,3 +39,11 @@ The owner transferred development back to this agent, requested REA-assisted inv
 ## Phase 3 completion and delivery authorization — 19 October 2026
 
 The owner explicitly requested completing Phase 3 step by step, updating README and related records, and integrating all verified commits into main at the end. This authorizes the complete approved structural execution plan, owned local verification, GitHub PR/CI and normal protected merging. It does not authorize AWS, real-key work, browser automation or deployment. Preserve owner-staged duplicates.
+
+## Post-Phase-3 execution authorization — 20 October 2026
+
+The owner approved the post-Phase-3 master roadmap and requested step-by-step development. Use docs/CODESPY_POST_PHASE3_MASTER_EXECUTION_ROADMAP.md as the controlling future roadmap and begin P4.00 against repaired Phase 3. Development and public Chrome research are authorized; use fresh contexts for product tests. The owner approved an isolated Phase 4 worktree. Preserve historical migrations and owner files. Ask before sensitive actions, including real credential access, AWS account/resource changes, paid calls, deployment and consequential external changes. API keys remain owner-filled. No new service should remain running at handoff. Older Phase 0 restrictions on application development and public browser research are superseded by this instruction; they are not permission to access AWS sessions or credentials.
+
+## Repository wording and delivery conventions
+
+Public text describes capabilities, not internal sequencing. Use scoped Conventional Commits under 72 characters, one logical change per commit, and feature/<name> or fix/<name> branches. Keep execution documents local/ignored. Never rewrite history or force-push without explicit owner approval. The owner requested the exact cleanup subject `chore: remove planning references from docs and comments` for this cleanup only.
