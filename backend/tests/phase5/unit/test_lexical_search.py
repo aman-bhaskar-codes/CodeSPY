@@ -510,3 +510,190 @@ async def test_relevance_dataset_evaluation(session: AsyncSession) -> None:
     recall_at_5 = hits_top5 / answerable_total if answerable_total > 0 else 1.0
     # Achieve Recall@5 >= 0.85 on test benchmark
     assert recall_at_5 >= 0.85, f"Recall@5 {recall_at_5} below target threshold 0.85"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["exact", "lexical"])
+async def test_same_org_foreign_repository_snapshot_is_not_searchable(
+    session: AsyncSession, mode: str
+) -> None:
+    org_id, principal_id, allowed_repo, foreign_repo, foreign_snap = (
+        uuid4(),
+        uuid4(),
+        uuid4(),
+        uuid4(),
+        uuid4(),
+    )
+    await session.execute(
+        memberships.insert().values(org_id=org_id, principal_id=principal_id, role="member")
+    )
+    await session.execute(
+        PHASE2_TABLES["repository_grants"]
+        .insert()
+        .values(
+            org_id=org_id, repository_id=allowed_repo, principal_id=principal_id, permission="read"
+        )
+    )
+    svc = LexicalSearchService(session)
+    foreign_chunk = make_dummy_chunk(
+        org_id,
+        foreign_repo,
+        foreign_snap,
+        uuid4(),
+        "src/private.py",
+        0,
+        ChunkKind.FUNCTION,
+        "private_function",
+        "private.private_function",
+        "def private_function(): return 'private payload'",
+    )
+    await svc.index_chunks([foreign_chunk])
+    scope = SearchScopeV1(
+        org_id=org_id,
+        repository_id=allowed_repo,
+        snapshot_id=foreign_snap,
+        principal_id=principal_id,
+    )
+    if mode == "exact":
+        response = await svc.search_exact(
+            ExactSearchRequestV1(scope=scope, query="private_function")
+        )
+    else:
+        response = await svc.search_lexical(
+            LexicalSearchRequestV1(scope=scope, query="private_function")
+        )
+    assert response.hits == ()
+
+
+@pytest.mark.asyncio
+async def test_mcp_without_trusted_identity_cannot_impersonate_member(
+    session: AsyncSession,
+) -> None:
+    from app.mcp.server import ReadOnlyMcpServer
+
+    org_id, principal_id, repo_id, snap_id = uuid4(), uuid4(), uuid4(), uuid4()
+    await session.execute(
+        memberships.insert().values(org_id=org_id, principal_id=principal_id, role="member")
+    )
+    await session.execute(
+        PHASE2_TABLES["repository_grants"]
+        .insert()
+        .values(org_id=org_id, repository_id=repo_id, principal_id=principal_id, permission="read")
+    )
+    svc = LexicalSearchService(session)
+    await svc.index_chunks(
+        [
+            make_dummy_chunk(
+                org_id,
+                repo_id,
+                snap_id,
+                uuid4(),
+                "src/private.py",
+                0,
+                ChunkKind.FUNCTION,
+                "private_function",
+                "private.private_function",
+                "def private_function(): return 'private payload'",
+            )
+        ]
+    )
+    response = await ReadOnlyMcpServer(lexical_service=svc).handle_request(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "search_exact",
+                "arguments": {
+                    "org_id": str(org_id),
+                    "principal_id": str(principal_id),
+                    "repository_id": str(repo_id),
+                    "snapshot_id": str(snap_id),
+                    "query": "private_function",
+                },
+            },
+        }
+    )
+    assert response["result"]["isError"] is True
+    assert "private payload" not in str(response)
+
+
+@pytest.mark.asyncio
+async def test_trusted_mcp_identity_uses_current_repository_grant(
+    session: AsyncSession,
+) -> None:
+    from app.domain.scope import OrgRole, TenantContext
+    from app.mcp.server import ReadOnlyMcpServer
+    from sqlalchemy import update
+
+    org_id, principal_id, repo_id, snap_id = uuid4(), uuid4(), uuid4(), uuid4()
+    await session.execute(
+        memberships.insert().values(org_id=org_id, principal_id=principal_id, role="member")
+    )
+    grants = PHASE2_TABLES["repository_grants"]
+    await session.execute(
+        grants.insert().values(
+            org_id=org_id, repository_id=repo_id, principal_id=principal_id, permission="read"
+        )
+    )
+    svc = LexicalSearchService(session)
+    await svc.index_chunks(
+        [
+            make_dummy_chunk(
+                org_id,
+                repo_id,
+                snap_id,
+                uuid4(),
+                "src/private.py",
+                0,
+                ChunkKind.FUNCTION,
+                "private_function",
+                "private.private_function",
+                "def private_function(): return 'private payload'",
+            )
+        ]
+    )
+    server = ReadOnlyMcpServer(
+        identity=TenantContext(org_id=org_id, principal_id=principal_id, role=OrgRole.MEMBER),
+        lexical_service=svc,
+    )
+    arguments = {
+        "repository_id": str(repo_id),
+        "snapshot_id": str(snap_id),
+        "query": "private_function",
+    }
+    request = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {"name": "search_exact", "arguments": arguments},
+    }
+    response = await server.handle_request(request)
+    assert response["result"]["isError"] is False
+    payload = json.loads(response["result"]["content"][0]["text"])
+    assert payload["hits"][0]["file_path"] == "src/private.py"
+    assert payload["scope"]["principal_id"] == str(principal_id)
+
+    for field in ("principal_id", "org_id"):
+        spoof = {
+            **request,
+            "params": {"name": "search_exact", "arguments": {**arguments, field: str(uuid4())}},
+        }
+        denied = await server.handle_request(spoof)
+        assert denied["result"]["isError"] is True
+        assert "private payload" not in str(denied)
+
+    from datetime import UTC, datetime
+
+    await session.execute(
+        update(grants)
+        .where(
+            grants.c.org_id == org_id,
+            grants.c.repository_id == repo_id,
+            grants.c.principal_id == principal_id,
+        )
+        .values(revoked_at=datetime.now(UTC))
+    )
+    denied = await server.handle_request(request)
+    assert denied["result"]["isError"] is True
+    assert "private payload" not in str(denied)

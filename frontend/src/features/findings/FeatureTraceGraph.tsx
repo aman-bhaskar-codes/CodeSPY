@@ -8,7 +8,7 @@ interface Props {
 export function FeatureTraceGraph({ trace }: Props) {
   const [selectedNode, setSelectedNode] = useState<TraceNodeV1 | null>(null);
 
-  if (!trace.nodes || trace.nodes.length === 0) {
+  if (!trace.nodes?.length) {
     return (
       <div
         style={{
@@ -28,11 +28,11 @@ export function FeatureTraceGraph({ trace }: Props) {
 
   // Layout calculation for simple DAG presentation
   // Group nodes by approximate depth / type
-  const rootNode = trace.nodes.find((n) => n.id === trace.finding_id) ?? trace.nodes[0];
-  const routeNodes = trace.nodes.filter(
-    (n) => n.kind === "route" || trace.route_endpoints.includes(n.label),
+  const rootNode = (trace.nodes ?? []).find((n) => n.id === trace.finding_id) ?? (trace.nodes ?? [])[0];
+  const routeNodes = (trace.nodes ?? []).filter(
+    (n) => n.kind === "route",
   );
-  const intermediateNodes = trace.nodes.filter(
+  const intermediateNodes = (trace.nodes ?? []).filter(
     (n) => n.id !== rootNode?.id && !routeNodes.some((r) => r.id === n.id),
   );
 
@@ -57,13 +57,13 @@ export function FeatureTraceGraph({ trace }: Props) {
         }}
       >
         <div style={{ fontSize: "14px", fontWeight: 650, color: "var(--ink)" }}>
-          2-Hop Structural CPG Feature Trace
+          Bounded structural trace
         </div>
         <div style={{ display: "flex", gap: "8px", fontSize: "12px" }}>
           <span className="muted">
-            {trace.nodes.length} nodes · {trace.edges.length} edges
+            {(trace.nodes ?? []).length} nodes · {(trace.edges ?? []).length} edges
           </span>
-          {trace.truncated && (
+          {trace.budget_exceeded && (
             <span
               style={{
                 color: "#a55307",
@@ -79,7 +79,15 @@ export function FeatureTraceGraph({ trace }: Props) {
         </div>
       </div>
 
-      {trace.route_endpoints.length > 0 && (
+      {trace.structural_run_id && (
+        <p className="muted">Structural report: <code>{trace.structural_run_id}</code></p>
+      )}
+      {!!trace.omission_reasons?.length && (
+        <p role="status" className="muted">
+          Trace coverage: {trace.omission_reasons.map((reason) => reason.replaceAll("_", " ")).join(", ")}.
+        </p>
+      )}
+      {routeNodes.length > 0 && (
         <div
           style={{
             padding: "8px 12px",
@@ -92,7 +100,7 @@ export function FeatureTraceGraph({ trace }: Props) {
           }}
         >
           <strong>Connected Route Endpoints:</strong>{" "}
-          {trace.route_endpoints.join(", ")}
+          {routeNodes.map((node) => node.label).join(", ")}
         </div>
       )}
 
@@ -127,7 +135,7 @@ export function FeatureTraceGraph({ trace }: Props) {
                 marginBottom: "8px",
               }}
             >
-              Finding Source (Hop 0)
+              Finding location
             </div>
             {rootNode && (
               <div
@@ -153,7 +161,7 @@ export function FeatureTraceGraph({ trace }: Props) {
                   style={{ fontSize: "11px", marginTop: "4px" }}
                 >
                   {rootNode.file_path}
-                  {rootNode.line_number ? `:${rootNode.line_number}` : ""}
+                  {rootNode.line ? `:${rootNode.line}` : ""}
                 </div>
               </div>
             )}
@@ -170,7 +178,7 @@ export function FeatureTraceGraph({ trace }: Props) {
                 marginBottom: "8px",
               }}
             >
-              Connected Nodes (Hop 1-2)
+              Related symbols
             </div>
             <div style={{ display: "grid", gap: "8px" }}>
               {intermediateNodes.slice(0, 8).map((node) => (
@@ -218,7 +226,7 @@ export function FeatureTraceGraph({ trace }: Props) {
                 marginBottom: "8px",
               }}
             >
-              Exposed Routes / Sinks
+              Supported routes
             </div>
             <div style={{ display: "grid", gap: "8px" }}>
               {routeNodes.length === 0 ? (
@@ -226,7 +234,7 @@ export function FeatureTraceGraph({ trace }: Props) {
                   className="muted"
                   style={{ fontSize: "12px", fontStyle: "italic" }}
                 >
-                  No external routes reached within 2 hops.
+                  No supported route relationship in this trace.
                 </div>
               ) : (
                 routeNodes.map((node) => (
@@ -305,7 +313,7 @@ export function FeatureTraceGraph({ trace }: Props) {
               <div>
                 <span className="muted">File:</span>{" "}
                 <code>{selectedNode.file_path}</code>
-                {selectedNode.line_number ? `:${selectedNode.line_number}` : ""}
+                {selectedNode.line ? `:${selectedNode.line}` : ""}
               </div>
             )}
             <div>

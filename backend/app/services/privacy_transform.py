@@ -81,7 +81,7 @@ def _compute_char_to_byte_offsets(text: str) -> list[int]:
     offsets = [0]
     total_bytes = 0
     for ch in text:
-        total_bytes += len(ch.encode("utf-8"))
+        total_bytes += len(ch.encode("utf-8", errors="surrogateescape"))
         offsets.append(total_bytes)
     return offsets
 
@@ -175,8 +175,9 @@ def transform_model_safe(
         text = raw_bytes.decode("utf-8")
         is_valid_utf8 = True
     except UnicodeDecodeError:
-        # Fallback for binary / mixed encoding: decode with replace for detection
-        text = raw_bytes.decode("utf-8", errors="replace")
+        # Preserve each undecodable byte while computing offsets into the original.
+        # Replacement decoding would change byte widths before recognized secrets.
+        text = raw_bytes.decode("utf-8", errors="surrogateescape")
         is_valid_utf8 = False
 
     spans = _find_secret_byte_spans(text)

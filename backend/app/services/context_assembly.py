@@ -69,16 +69,33 @@ class ContextAssemblyService:
 
         # Step 2: Fetch full chunk content and metadata for candidates
         chunk_ids = [h.chunk_id for h in request.candidate_hits]
-        stmt = select(
-            source_chunks.c.id,
-            source_chunks.c.safe_content,
-            source_chunks.c.estimated_tokens,
-            source_chunks.c.byte_count,
-        ).where(
+        if len(set(chunk_ids)) != len(chunk_ids):
+            raise ScopeViolation("Duplicate context candidate")
+        stmt = select(source_chunks).where(
             source_chunks.c.org_id == request.scope.org_id,
+            source_chunks.c.repository_id == request.scope.repository_id,
+            source_chunks.c.snapshot_id == request.scope.snapshot_id,
             source_chunks.c.id.in_(chunk_ids),
         )
         chunk_map = {row["id"]: row for row in (await self.session.execute(stmt)).mappings().all()}
+        identity_fields = (
+            "file_id",
+            "file_path",
+            "chunk_kind",
+            "symbol_name",
+            "qualified_name",
+            "start_line",
+            "end_line",
+            "start_byte",
+            "end_byte",
+            "content_sha256",
+        )
+        for hit in request.candidate_hits:
+            stored = chunk_map.get(hit.chunk_id)
+            if stored is None or any(
+                getattr(hit, name) != stored[name] for name in identity_fields
+            ):
+                raise ScopeViolation("Context candidate does not match authorized source")
 
         # Step 3: Knapsack packing with token and byte budget limits
         budget = request.budget
@@ -94,8 +111,7 @@ class ContextAssemblyService:
         for hit in request.candidate_hits:
             chunk_row = chunk_map.get(hit.chunk_id)
             if not chunk_row:
-                omitted_count += 1
-                continue
+                raise ScopeViolation("Context candidate is unavailable")
 
             content = str(chunk_row["safe_content"] or "")
             tokens = int(chunk_row["estimated_tokens"])

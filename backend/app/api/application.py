@@ -1392,11 +1392,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         request: Request, repository_id: UUID, snapshot_id: UUID, finding_id: UUID
     ) -> FeatureTraceV1:
         ctx = await repository_context(request, repository_id, write=False)
-        body = None
-        try:
-            body = await json_body(request, TraceBudgetV1)
-        except Exception:
-            body = TraceBudgetV1()
+        body = await json_body(request, TraceBudgetV1)
         try:
             return await trace_service.trace(
                 ctx, repository_id, snapshot_id, finding_id, budget=body
@@ -1915,9 +1911,9 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 InvestigationListResponseV1,
             )
             for model in contract_models:
-                components[model.__name__] = model.model_json_schema(
-                    ref_template="#/components/schemas/{model}"
-                )
+                model_schema = model.model_json_schema(ref_template="#/components/schemas/{model}")
+                components.update(model_schema.pop("$defs", {}))
+                components[model.__name__] = model_schema
             body_contracts: tuple[tuple[str, type[BaseModel]], ...] = (
                 ("/api/v1/repositories", RepositoryCreate),
                 ("/api/v1/repositories/{repository_id}/github-binding", GitHubBindingV1),

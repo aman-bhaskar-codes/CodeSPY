@@ -216,7 +216,7 @@ export type ComponentSectionV1 = {
  * ContextAssemblyRequestV1
  */
 export type ContextAssemblyRequestV1 = {
-    budget?: unknown;
+    budget?: ContextBudgetV1;
     /**
      * Candidate Hits
      */
@@ -234,6 +234,28 @@ export type ContextAssemblyRequestV1 = {
      * System Preamble
      */
     system_preamble?: string | null;
+};
+
+/**
+ * ContextBudgetV1
+ */
+export type ContextBudgetV1 = {
+    /**
+     * Max Bytes
+     */
+    max_bytes?: number;
+    /**
+     * Max Tokens
+     */
+    max_tokens?: number;
+    /**
+     * Reserved Overhead Tokens
+     */
+    reserved_overhead_tokens?: number;
+    /**
+     * Tokenizer Name
+     */
+    tokenizer_name?: string;
 };
 
 /**
@@ -652,8 +674,13 @@ export type ExactSearchRequestV1 = {
      */
     query: string;
     scope?: SearchScopeV1 | null;
-    search_type?: unknown | null;
+    search_type?: ExactSearchType | null;
 };
+
+/**
+ * ExactSearchType
+ */
+export type ExactSearchType = 'file_path' | 'path_segment' | 'symbol' | 'qualified_name';
 
 /**
  * FeatureTraceV1
@@ -679,6 +706,14 @@ export type FeatureTraceV1 = {
      * Nodes
      */
     nodes?: Array<TraceNodeV1>;
+    /**
+     * Omission Reasons
+     */
+    omission_reasons?: Array<string>;
+    /**
+     * Structural Run Id
+     */
+    structural_run_id?: string | null;
 };
 
 /**
@@ -1296,7 +1331,7 @@ export type InvestigationCreateRequestV1 = {
      * Budget Limit Micros
      */
     budget_limit_micros?: number;
-    depth?: unknown;
+    depth?: InvestigationDepth;
     /**
      * Finding Id
      */
@@ -1305,7 +1340,7 @@ export type InvestigationCreateRequestV1 = {
      * Max Steps
      */
     max_steps?: number;
-    mode?: unknown;
+    mode?: InvestigationMode;
     /**
      * Query
      */
@@ -1314,8 +1349,13 @@ export type InvestigationCreateRequestV1 = {
      * Repository Id
      */
     repository_id: string;
-    target_type?: unknown;
+    target_type?: InvestigationTargetType;
 };
+
+/**
+ * InvestigationDepth
+ */
+export type InvestigationDepth = 'quick' | 'standard' | 'deep';
 
 /**
  * InvestigationDetailResponseV1
@@ -1410,6 +1450,11 @@ export type InvestigationListResponseV1 = {
      */
     total_count: number;
 };
+
+/**
+ * InvestigationMode
+ */
+export type InvestigationMode = 'short_path' | 'two_specialist';
 
 /**
  * InvestigationStateV1
@@ -1586,6 +1631,11 @@ export type InvestigationSummaryV1 = {
      */
     worker_id?: string | null;
 };
+
+/**
+ * InvestigationTargetType
+ */
+export type InvestigationTargetType = 'finding' | 'repository' | 'commit' | 'diff';
 
 /**
  * JobEventV2

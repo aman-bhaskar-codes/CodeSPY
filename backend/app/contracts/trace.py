@@ -27,18 +27,20 @@ class TraceEdgeV1(BaseModel):
 
 
 class TraceBudgetV1(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid", allow_inf_nan=False)
 
-    max_hops: int = 2
-    max_nodes: int = 100
-    max_edges: int = 200
-    timeout_seconds: float = 1.0
+    max_hops: int = Field(default=2, ge=0, le=2)
+    max_nodes: int = Field(default=100, ge=1, le=100)
+    max_edges: int = Field(default=200, ge=0, le=200)
+    timeout_seconds: float = Field(default=1.0, gt=0, le=1.0)
 
 
 class FeatureTraceV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     finding_id: UUID
+    structural_run_id: UUID | None = None
+    omission_reasons: list[str] = Field(default_factory=list)
     nodes: list[TraceNodeV1] = Field(default_factory=list)
     edges: list[TraceEdgeV1] = Field(default_factory=list)
     hop_count: int = 0
