@@ -246,3 +246,52 @@ async def test_context_assembly_unauthorized_scope(session: AsyncSession) -> Non
                 candidate_hits=(),
             )
         )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "change",
+    ["repository", "snapshot", "file_path", "file_id", "start_line", "content_sha256", "duplicate"],
+)
+async def test_context_rejects_untrusted_chunk_identity(session: AsyncSession, change: str) -> None:
+    org_id, principal_id, repo_id, snap_id = uuid4(), uuid4(), uuid4(), uuid4()
+    await session.execute(
+        memberships.insert().values(org_id=org_id, principal_id=principal_id, role="member")
+    )
+    await session.execute(
+        PHASE2_TABLES["repository_grants"]
+        .insert()
+        .values(org_id=org_id, repository_id=repo_id, principal_id=principal_id, permission="read")
+    )
+    chunk, hit = make_chunk_and_hit(
+        org_id,
+        uuid4() if change == "repository" else repo_id,
+        uuid4() if change == "snapshot" else snap_id,
+        "src/private.py",
+        "private_function",
+        "def private_function(): pass",
+        1.0,
+    )
+    await LexicalSearchService(session).index_chunks([chunk])
+    overrides: dict[str, object] = {
+        "file_path": "src/forged.py",
+        "file_id": uuid4(),
+        "start_line": 2,
+        "content_sha256": "forged",
+    }
+    if change in overrides:
+        hit = hit.model_copy(update={change: overrides[change]})
+    hits = (hit, hit) if change == "duplicate" else (hit,)
+    with pytest.raises(ScopeViolation):
+        await ContextAssemblyService(session).assemble_context(
+            ContextAssemblyRequestV1(
+                scope=SearchScopeV1(
+                    org_id=org_id,
+                    repository_id=repo_id,
+                    snapshot_id=snap_id,
+                    principal_id=principal_id,
+                ),
+                query="private_function",
+                candidate_hits=hits,
+            )
+        )

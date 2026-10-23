@@ -41,1109 +41,6 @@
         "type": "object"
       },
       "ArchitectureReportV1": {
-        "$defs": {
-          "BoundaryLinkV1": {
-            "additionalProperties": false,
-            "properties": {
-              "evidence_keys": {
-                "default": [],
-                "items": {
-                  "pattern": "^[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "title": "Evidence Keys",
-                "type": "array"
-              },
-              "limitations": {
-                "default": [],
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "title": "Limitations",
-                "type": "array"
-              },
-              "reason": {
-                "maxLength": 128,
-                "title": "Reason",
-                "type": "string"
-              },
-              "request_key": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Request Key",
-                "type": "string"
-              },
-              "route_keys": {
-                "default": [],
-                "items": {
-                  "pattern": "^[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "maxItems": 16,
-                "title": "Route Keys",
-                "type": "array"
-              },
-              "state": {
-                "enum": [
-                  "candidate",
-                  "ambiguous",
-                  "unmatched"
-                ],
-                "title": "State",
-                "type": "string"
-              }
-            },
-            "required": [
-              "request_key",
-              "state",
-              "reason"
-            ],
-            "title": "BoundaryLinkV1",
-            "type": "object"
-          },
-          "ComponentSectionV1": {
-            "additionalProperties": false,
-            "properties": {
-              "components": {
-                "default": [],
-                "items": {
-                  "items": {
-                    "pattern": "^[0-9a-f]{64}$",
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                "maxItems": 1000,
-                "title": "Components",
-                "type": "array"
-              },
-              "edges": {
-                "default": [],
-                "items": {
-                  "maxItems": 2,
-                  "minItems": 2,
-                  "prefixItems": [
-                    {
-                      "type": "integer"
-                    },
-                    {
-                      "type": "integer"
-                    }
-                  ],
-                  "type": "array"
-                },
-                "maxItems": 2000,
-                "title": "Edges",
-                "type": "array"
-              },
-              "reason": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Reason"
-              },
-              "relation": {
-                "enum": [
-                  "imports",
-                  "candidate_calls"
-                ],
-                "title": "Relation",
-                "type": "string"
-              },
-              "scanned_edges": {
-                "default": 0,
-                "maximum": 20000,
-                "minimum": 0,
-                "title": "Scanned Edges",
-                "type": "integer"
-              },
-              "state": {
-                "enum": [
-                  "complete",
-                  "partial",
-                  "unavailable",
-                  "not_requested"
-                ],
-                "title": "State",
-                "type": "string"
-              }
-            },
-            "required": [
-              "relation",
-              "state"
-            ],
-            "title": "ComponentSectionV1",
-            "type": "object"
-          },
-          "DiagnosticV1": {
-            "additionalProperties": false,
-            "properties": {
-              "affected_count": {
-                "default": 1,
-                "minimum": 0,
-                "title": "Affected Count",
-                "type": "integer"
-              },
-              "code": {
-                "maxLength": 128,
-                "minLength": 1,
-                "title": "Code",
-                "type": "string"
-              },
-              "location": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/SourceLocationV1"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null
-              },
-              "message": {
-                "maxLength": 256,
-                "title": "Message",
-                "type": "string"
-              },
-              "severity": {
-                "default": "warning",
-                "enum": [
-                  "info",
-                  "warning",
-                  "error"
-                ],
-                "title": "Severity",
-                "type": "string"
-              },
-              "stage": {
-                "maxLength": 64,
-                "title": "Stage",
-                "type": "string"
-              }
-            },
-            "required": [
-              "code",
-              "message",
-              "stage"
-            ],
-            "title": "DiagnosticV1",
-            "type": "object"
-          },
-          "FileOmissionV1": {
-            "additionalProperties": false,
-            "properties": {
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "path": {
-                "title": "Path",
-                "type": "string"
-              },
-              "reason": {
-                "maxLength": 128,
-                "title": "Reason",
-                "type": "string"
-              }
-            },
-            "required": [
-              "file_id",
-              "path",
-              "reason"
-            ],
-            "title": "FileOmissionV1",
-            "type": "object"
-          },
-          "HttpRequestObservationV1": {
-            "additionalProperties": false,
-            "properties": {
-              "base_url": {
-                "anyOf": [
-                  {
-                    "maxLength": 2048,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Base Url"
-              },
-              "client": {
-                "enum": [
-                  "fetch",
-                  "axios"
-                ],
-                "title": "Client",
-                "type": "string"
-              },
-              "evidence_keys": {
-                "default": [],
-                "items": {
-                  "pattern": "^[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "title": "Evidence Keys",
-                "type": "array"
-              },
-              "key": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Key",
-                "type": "string"
-              },
-              "limitations": {
-                "default": [],
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "title": "Limitations",
-                "type": "array"
-              },
-              "location": {
-                "$ref": "#/components/schemas/SourceLocationV1"
-              },
-              "method": {
-                "default": "UNKNOWN",
-                "enum": [
-                  "GET",
-                  "POST",
-                  "PUT",
-                  "PATCH",
-                  "DELETE",
-                  "HEAD",
-                  "OPTIONS",
-                  "ANY",
-                  "UNKNOWN"
-                ],
-                "title": "Method",
-                "type": "string"
-              },
-              "origin_state": {
-                "default": "unknown",
-                "enum": [
-                  "known",
-                  "relative",
-                  "unknown"
-                ],
-                "title": "Origin State",
-                "type": "string"
-              },
-              "path": {
-                "anyOf": [
-                  {
-                    "maxLength": 2048,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Path"
-              },
-              "template_segments": {
-                "default": [],
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 128,
-                "title": "Template Segments",
-                "type": "array"
-              }
-            },
-            "required": [
-              "key",
-              "location",
-              "client"
-            ],
-            "title": "HttpRequestObservationV1",
-            "type": "object"
-          },
-          "IdentityMapV1": {
-            "additionalProperties": false,
-            "properties": {
-              "physical_id": {
-                "format": "uuid",
-                "title": "Physical Id",
-                "type": "string"
-              },
-              "semantic_key": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Semantic Key",
-                "type": "string"
-              }
-            },
-            "required": [
-              "semantic_key",
-              "physical_id"
-            ],
-            "title": "IdentityMapV1",
-            "type": "object"
-          },
-          "ResolutionV1": {
-            "additionalProperties": false,
-            "properties": {
-              "basis": {
-                "default": "unsupported",
-                "enum": [
-                  "lexical",
-                  "import_alias",
-                  "compiler_symbol",
-                  "static_member",
-                  "unsupported"
-                ],
-                "title": "Basis",
-                "type": "string"
-              },
-              "candidate_keys": {
-                "default": [],
-                "items": {
-                  "pattern": "^[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "maxItems": 16,
-                "title": "Candidate Keys",
-                "type": "array"
-              },
-              "external_reference": {
-                "anyOf": [
-                  {
-                    "maxLength": 2048,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "External Reference"
-              },
-              "namespace": {
-                "default": "value",
-                "enum": [
-                  "value",
-                  "type"
-                ],
-                "title": "Namespace",
-                "type": "string"
-              },
-              "reason": {
-                "default": "unknown",
-                "maxLength": 128,
-                "title": "Reason",
-                "type": "string"
-              },
-              "resolution_kind": {
-                "enum": [
-                  "binding",
-                  "call_target",
-                  "import"
-                ],
-                "title": "Resolution Kind",
-                "type": "string"
-              },
-              "site_key": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Site Key",
-                "type": "string"
-              },
-              "status": {
-                "enum": [
-                  "resolved",
-                  "ambiguous",
-                  "unresolved"
-                ],
-                "title": "Status",
-                "type": "string"
-              }
-            },
-            "required": [
-              "site_key",
-              "resolution_kind",
-              "status"
-            ],
-            "title": "ResolutionV1",
-            "type": "object"
-          },
-          "RouteObservationV1": {
-            "additionalProperties": false,
-            "properties": {
-              "evidence_keys": {
-                "default": [],
-                "items": {
-                  "pattern": "^[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "title": "Evidence Keys",
-                "type": "array"
-              },
-              "framework": {
-                "enum": [
-                  "fastapi",
-                  "express"
-                ],
-                "title": "Framework",
-                "type": "string"
-              },
-              "handler": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/SourceLocationV1"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null
-              },
-              "handler_key": {
-                "anyOf": [
-                  {
-                    "pattern": "^[0-9a-f]{64}$",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Handler Key"
-              },
-              "includes": {
-                "default": [],
-                "items": {
-                  "$ref": "#/components/schemas/SourceLocationV1"
-                },
-                "maxItems": 16,
-                "title": "Includes",
-                "type": "array"
-              },
-              "key": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Key",
-                "type": "string"
-              },
-              "limitations": {
-                "default": [],
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "title": "Limitations",
-                "type": "array"
-              },
-              "method": {
-                "default": "UNKNOWN",
-                "enum": [
-                  "GET",
-                  "POST",
-                  "PUT",
-                  "PATCH",
-                  "DELETE",
-                  "HEAD",
-                  "OPTIONS",
-                  "ANY",
-                  "UNKNOWN"
-                ],
-                "title": "Method",
-                "type": "string"
-              },
-              "raw_path": {
-                "anyOf": [
-                  {
-                    "maxLength": 2048,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Raw Path"
-              },
-              "registration": {
-                "$ref": "#/components/schemas/SourceLocationV1"
-              },
-              "service_key": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Service Key"
-              },
-              "state": {
-                "default": "unresolved",
-                "enum": [
-                  "resolved",
-                  "ambiguous",
-                  "unresolved"
-                ],
-                "title": "State",
-                "type": "string"
-              },
-              "template_path": {
-                "anyOf": [
-                  {
-                    "maxLength": 2048,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Template Path"
-              }
-            },
-            "required": [
-              "key",
-              "framework",
-              "registration"
-            ],
-            "title": "RouteObservationV1",
-            "type": "object"
-          },
-          "RunRef": {
-            "additionalProperties": false,
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "run_id": {
-                "format": "uuid",
-                "title": "Run Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "snapshot_id",
-              "run_id"
-            ],
-            "title": "RunRef",
-            "type": "object"
-          },
-          "SourceExcerptV1": {
-            "additionalProperties": false,
-            "properties": {
-              "location": {
-                "$ref": "#/components/schemas/SourceLocationV1"
-              },
-              "sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Sha256",
-                "type": "string"
-              },
-              "text": {
-                "maxLength": 2048,
-                "title": "Text",
-                "type": "string"
-              }
-            },
-            "required": [
-              "location",
-              "text",
-              "sha256"
-            ],
-            "title": "SourceExcerptV1",
-            "type": "object"
-          },
-          "SourceLocationV1": {
-            "additionalProperties": false,
-            "properties": {
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "range": {
-                "$ref": "#/components/schemas/SourceRangeV1"
-              },
-              "sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Sha256",
-                "type": "string"
-              }
-            },
-            "required": [
-              "file_id",
-              "sha256",
-              "range"
-            ],
-            "title": "SourceLocationV1",
-            "type": "object"
-          },
-          "SourceRangeV1": {
-            "additionalProperties": false,
-            "description": "Half-open UTF-8 bytes; one-based lines, zero-based byte columns.",
-            "properties": {
-              "end_byte": {
-                "minimum": 0,
-                "title": "End Byte",
-                "type": "integer"
-              },
-              "end_col": {
-                "minimum": 0,
-                "title": "End Col",
-                "type": "integer"
-              },
-              "end_line": {
-                "minimum": 1,
-                "title": "End Line",
-                "type": "integer"
-              },
-              "start_byte": {
-                "minimum": 0,
-                "title": "Start Byte",
-                "type": "integer"
-              },
-              "start_col": {
-                "minimum": 0,
-                "title": "Start Col",
-                "type": "integer"
-              },
-              "start_line": {
-                "minimum": 1,
-                "title": "Start Line",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "start_byte",
-              "end_byte",
-              "start_line",
-              "end_line",
-              "start_col",
-              "end_col"
-            ],
-            "title": "SourceRangeV1",
-            "type": "object"
-          },
-          "StructuralCoverageV1": {
-            "additionalProperties": false,
-            "properties": {
-              "ambiguous": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Ambiguous",
-                "type": "integer"
-              },
-              "distinct_resolution_sites": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Distinct Resolution Sites",
-                "type": "integer"
-              },
-              "eligible_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Eligible Files",
-                "type": "integer"
-              },
-              "excluded_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Excluded Files",
-                "type": "integer"
-              },
-              "framework": {
-                "default": "complete",
-                "enum": [
-                  "complete",
-                  "partial",
-                  "unavailable",
-                  "not_requested"
-                ],
-                "title": "Framework",
-                "type": "string"
-              },
-              "graph": {
-                "default": "complete",
-                "enum": [
-                  "complete",
-                  "partial",
-                  "unavailable",
-                  "not_requested"
-                ],
-                "title": "Graph",
-                "type": "string"
-              },
-              "inventoried_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Inventoried Files",
-                "type": "integer"
-              },
-              "omissions": {
-                "default": [],
-                "items": {
-                  "$ref": "#/components/schemas/FileOmissionV1"
-                },
-                "maxItems": 10000,
-                "title": "Omissions",
-                "type": "array"
-              },
-              "omitted_details_count": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Omitted Details Count",
-                "type": "integer"
-              },
-              "omitted_diagnostics": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Omitted Diagnostics",
-                "type": "integer"
-              },
-              "omitted_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Omitted Files",
-                "type": "integer"
-              },
-              "out_of_scope_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Out Of Scope Files",
-                "type": "integer"
-              },
-              "processed_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Processed Files",
-                "type": "integer"
-              },
-              "requested_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Requested Files",
-                "type": "integer"
-              },
-              "resolution": {
-                "default": "complete",
-                "enum": [
-                  "complete",
-                  "partial",
-                  "unavailable",
-                  "not_requested"
-                ],
-                "title": "Resolution",
-                "type": "string"
-              },
-              "resolution_records": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Resolution Records",
-                "type": "integer"
-              },
-              "resolved": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Resolved",
-                "type": "integer"
-              },
-              "syntax": {
-                "default": "complete",
-                "enum": [
-                  "complete",
-                  "partial",
-                  "unavailable",
-                  "not_requested"
-                ],
-                "title": "Syntax",
-                "type": "string"
-              },
-              "unresolved": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Unresolved",
-                "type": "integer"
-              },
-              "unsupported_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Unsupported Files",
-                "type": "integer"
-              }
-            },
-            "title": "StructuralCoverageV1",
-            "type": "object"
-          },
-          "StructuralLimitsV1": {
-            "additionalProperties": false,
-            "properties": {
-              "analysis_seconds": {
-                "default": 180,
-                "maximum": 180,
-                "minimum": 1,
-                "title": "Analysis Seconds",
-                "type": "integer"
-              },
-              "candidates_per_site": {
-                "default": 16,
-                "maximum": 16,
-                "minimum": 1,
-                "title": "Candidates Per Site",
-                "type": "integer"
-              },
-              "config_bytes": {
-                "default": 1048576,
-                "maximum": 1048576,
-                "minimum": 1,
-                "title": "Config Bytes",
-                "type": "integer"
-              },
-              "config_file_bytes": {
-                "default": 262144,
-                "maximum": 262144,
-                "minimum": 1,
-                "title": "Config File Bytes",
-                "type": "integer"
-              },
-              "config_files": {
-                "default": 32,
-                "maximum": 32,
-                "minimum": 0,
-                "title": "Config Files",
-                "type": "integer"
-              },
-              "derivations": {
-                "default": 2000,
-                "maximum": 2000,
-                "minimum": 0,
-                "title": "Derivations",
-                "type": "integer"
-              },
-              "diagnostics": {
-                "default": 500,
-                "maximum": 500,
-                "minimum": 0,
-                "title": "Diagnostics",
-                "type": "integer"
-              },
-              "edges": {
-                "default": 2000,
-                "maximum": 2000,
-                "minimum": 0,
-                "title": "Edges",
-                "type": "integer"
-              },
-              "evidence": {
-                "default": 1000,
-                "maximum": 1000,
-                "minimum": 1,
-                "title": "Evidence",
-                "type": "integer"
-              },
-              "file_bytes": {
-                "default": 2097152,
-                "maximum": 2097152,
-                "minimum": 1,
-                "title": "File Bytes",
-                "type": "integer"
-              },
-              "import_depth": {
-                "default": 16,
-                "maximum": 16,
-                "minimum": 1,
-                "title": "Import Depth",
-                "type": "integer"
-              },
-              "module_lookups": {
-                "default": 4096,
-                "maximum": 4096,
-                "minimum": 1,
-                "title": "Module Lookups",
-                "type": "integer"
-              },
-              "nodes": {
-                "default": 1000,
-                "maximum": 1000,
-                "minimum": 1,
-                "title": "Nodes",
-                "type": "integer"
-              },
-              "operation_seconds": {
-                "default": 20,
-                "maximum": 20,
-                "minimum": 1,
-                "title": "Operation Seconds",
-                "type": "integer"
-              },
-              "report_bytes": {
-                "default": 2097152,
-                "maximum": 2097152,
-                "minimum": 1,
-                "title": "Report Bytes",
-                "type": "integer"
-              },
-              "resolution_sites": {
-                "default": 2000,
-                "maximum": 2000,
-                "minimum": 1,
-                "title": "Resolution Sites",
-                "type": "integer"
-              },
-              "result_bytes": {
-                "default": 8388608,
-                "maximum": 8388608,
-                "minimum": 1,
-                "title": "Result Bytes",
-                "type": "integer"
-              },
-              "source_bytes": {
-                "default": 16777216,
-                "maximum": 16777216,
-                "minimum": 1,
-                "title": "Source Bytes",
-                "type": "integer"
-              },
-              "source_files": {
-                "default": 128,
-                "maximum": 128,
-                "minimum": 1,
-                "title": "Source Files",
-                "type": "integer"
-              },
-              "syntax_nodes": {
-                "default": 1000000,
-                "maximum": 1000000,
-                "minimum": 1,
-                "title": "Syntax Nodes",
-                "type": "integer"
-              },
-              "syntax_nodes_per_file": {
-                "default": 200000,
-                "maximum": 200000,
-                "minimum": 1,
-                "title": "Syntax Nodes Per File",
-                "type": "integer"
-              }
-            },
-            "title": "StructuralLimitsV1",
-            "type": "object"
-          },
-          "SymbolObservationV1": {
-            "additionalProperties": false,
-            "properties": {
-              "container_key": {
-                "anyOf": [
-                  {
-                    "pattern": "^[0-9a-f]{64}$",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Container Key"
-              },
-              "exported": {
-                "default": false,
-                "title": "Exported",
-                "type": "boolean"
-              },
-              "is_async": {
-                "default": false,
-                "title": "Is Async",
-                "type": "boolean"
-              },
-              "kind": {
-                "enum": [
-                  "module",
-                  "class",
-                  "function",
-                  "method",
-                  "call",
-                  "import"
-                ],
-                "title": "Kind",
-                "type": "string"
-              },
-              "location": {
-                "$ref": "#/components/schemas/SourceLocationV1"
-              },
-              "name": {
-                "maxLength": 2048,
-                "title": "Name",
-                "type": "string"
-              },
-              "path": {
-                "maxLength": 1024,
-                "minLength": 1,
-                "title": "Path",
-                "type": "string"
-              },
-              "qualified_name": {
-                "maxLength": 2048,
-                "title": "Qualified Name",
-                "type": "string"
-              },
-              "role": {
-                "enum": [
-                  "declaration",
-                  "call",
-                  "import"
-                ],
-                "title": "Role",
-                "type": "string"
-              },
-              "semantic_key": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Semantic Key",
-                "type": "string"
-              },
-              "sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Sha256",
-                "type": "string"
-              },
-              "type_only": {
-                "default": false,
-                "title": "Type Only",
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "semantic_key",
-              "kind",
-              "path",
-              "sha256",
-              "location",
-              "name",
-              "qualified_name",
-              "role"
-            ],
-            "title": "SymbolObservationV1",
-            "type": "object"
-          }
-        },
         "additionalProperties": false,
         "properties": {
           "archive_sha256": {
@@ -1387,13 +284,13 @@
         "properties": {
           "end_byte": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "End Byte",
             "type": "integer"
           },
           "start_byte": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Start Byte",
             "type": "integer"
           }
@@ -1418,6 +315,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Name"
           },
           "role": {
@@ -1432,6 +330,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Tool Call Id"
           },
           "tool_calls": {
@@ -1505,6 +404,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Reason"
           },
           "relation": {
@@ -1517,8 +417,8 @@
           },
           "scanned_edges": {
             "default": 0,
-            "maximum": 20000.0,
-            "minimum": 0.0,
+            "maximum": 20000,
+            "minimum": 0,
             "title": "Scanned Edges",
             "type": "integer"
           },
@@ -1541,192 +441,6 @@
         "type": "object"
       },
       "ContextAssemblyRequestV1": {
-        "$defs": {
-          "ChunkKind": {
-            "enum": [
-              "module",
-              "class",
-              "function",
-              "method",
-              "window",
-              "file"
-            ],
-            "title": "ChunkKind",
-            "type": "string"
-          },
-          "ContextBudgetV1": {
-            "properties": {
-              "max_bytes": {
-                "default": 32768,
-                "maximum": 262144,
-                "minimum": 512,
-                "title": "Max Bytes",
-                "type": "integer"
-              },
-              "max_tokens": {
-                "default": 4096,
-                "maximum": 32768,
-                "minimum": 128,
-                "title": "Max Tokens",
-                "type": "integer"
-              },
-              "reserved_overhead_tokens": {
-                "default": 256,
-                "minimum": 0,
-                "title": "Reserved Overhead Tokens",
-                "type": "integer"
-              },
-              "tokenizer_name": {
-                "default": "cl100k_base",
-                "title": "Tokenizer Name",
-                "type": "string"
-              }
-            },
-            "title": "ContextBudgetV1",
-            "type": "object"
-          },
-          "HybridSearchHitV1": {
-            "properties": {
-              "chunk_id": {
-                "format": "uuid",
-                "title": "Chunk Id",
-                "type": "string"
-              },
-              "chunk_kind": {
-                "$ref": "#/components/schemas/ChunkKind"
-              },
-              "content_sha256": {
-                "title": "Content Sha256",
-                "type": "string"
-              },
-              "end_byte": {
-                "minimum": 0,
-                "title": "End Byte",
-                "type": "integer"
-              },
-              "end_line": {
-                "minimum": 1,
-                "title": "End Line",
-                "type": "integer"
-              },
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "file_path": {
-                "title": "File Path",
-                "type": "string"
-              },
-              "match_modalities": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Match Modalities",
-                "type": "array"
-              },
-              "modality_ranks": {
-                "additionalProperties": {
-                  "type": "integer"
-                },
-                "title": "Modality Ranks",
-                "type": "object"
-              },
-              "qualified_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Qualified Name"
-              },
-              "score": {
-                "minimum": 0.0,
-                "title": "Score",
-                "type": "number"
-              },
-              "snippet": {
-                "title": "Snippet",
-                "type": "string"
-              },
-              "start_byte": {
-                "minimum": 0,
-                "title": "Start Byte",
-                "type": "integer"
-              },
-              "start_line": {
-                "minimum": 1,
-                "title": "Start Line",
-                "type": "integer"
-              },
-              "symbol_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Symbol Name"
-              }
-            },
-            "required": [
-              "chunk_id",
-              "file_id",
-              "file_path",
-              "chunk_kind",
-              "start_byte",
-              "end_byte",
-              "start_line",
-              "end_line",
-              "score",
-              "snippet",
-              "content_sha256",
-              "match_modalities",
-              "modality_ranks"
-            ],
-            "title": "HybridSearchHitV1",
-            "type": "object"
-          },
-          "SearchScopeV1": {
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "principal_id": {
-                "format": "uuid",
-                "title": "Principal Id",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "repository_id",
-              "snapshot_id",
-              "principal_id"
-            ],
-            "title": "SearchScopeV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "budget": {
             "$ref": "#/components/schemas/ContextBudgetV1"
@@ -1778,21 +492,38 @@
         "title": "ContextAssemblyRequestV1",
         "type": "object"
       },
-      "ContextItemV1": {
-        "$defs": {
-          "ChunkKind": {
-            "enum": [
-              "module",
-              "class",
-              "function",
-              "method",
-              "window",
-              "file"
-            ],
-            "title": "ChunkKind",
+      "ContextBudgetV1": {
+        "properties": {
+          "max_bytes": {
+            "default": 32768,
+            "maximum": 262144,
+            "minimum": 512,
+            "title": "Max Bytes",
+            "type": "integer"
+          },
+          "max_tokens": {
+            "default": 4096,
+            "maximum": 32768,
+            "minimum": 128,
+            "title": "Max Tokens",
+            "type": "integer"
+          },
+          "reserved_overhead_tokens": {
+            "default": 256,
+            "minimum": 0,
+            "title": "Reserved Overhead Tokens",
+            "type": "integer"
+          },
+          "tokenizer_name": {
+            "default": "cl100k_base",
+            "title": "Tokenizer Name",
             "type": "string"
           }
         },
+        "title": "ContextBudgetV1",
+        "type": "object"
+      },
+      "ContextItemV1": {
         "properties": {
           "byte_count": {
             "minimum": 0,
@@ -1906,165 +637,6 @@
         "type": "object"
       },
       "ContextPacketV1": {
-        "$defs": {
-          "ChunkKind": {
-            "enum": [
-              "module",
-              "class",
-              "function",
-              "method",
-              "window",
-              "file"
-            ],
-            "title": "ChunkKind",
-            "type": "string"
-          },
-          "ContextItemV1": {
-            "properties": {
-              "byte_count": {
-                "minimum": 0,
-                "title": "Byte Count",
-                "type": "integer"
-              },
-              "chunk_id": {
-                "format": "uuid",
-                "title": "Chunk Id",
-                "type": "string"
-              },
-              "chunk_kind": {
-                "$ref": "#/components/schemas/ChunkKind"
-              },
-              "citation_key": {
-                "title": "Citation Key",
-                "type": "string"
-              },
-              "end_byte": {
-                "minimum": 0,
-                "title": "End Byte",
-                "type": "integer"
-              },
-              "end_line": {
-                "minimum": 1,
-                "title": "End Line",
-                "type": "integer"
-              },
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "file_path": {
-                "title": "File Path",
-                "type": "string"
-              },
-              "match_modalities": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Match Modalities",
-                "type": "array"
-              },
-              "qualified_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Qualified Name"
-              },
-              "relevance_score": {
-                "minimum": 0.0,
-                "title": "Relevance Score",
-                "type": "number"
-              },
-              "safe_content": {
-                "title": "Safe Content",
-                "type": "string"
-              },
-              "start_byte": {
-                "minimum": 0,
-                "title": "Start Byte",
-                "type": "integer"
-              },
-              "start_line": {
-                "minimum": 1,
-                "title": "Start Line",
-                "type": "integer"
-              },
-              "symbol_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Symbol Name"
-              },
-              "token_count": {
-                "minimum": 0,
-                "title": "Token Count",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "chunk_id",
-              "file_id",
-              "file_path",
-              "chunk_kind",
-              "start_line",
-              "end_line",
-              "start_byte",
-              "end_byte",
-              "token_count",
-              "byte_count",
-              "safe_content",
-              "citation_key",
-              "relevance_score",
-              "match_modalities"
-            ],
-            "title": "ContextItemV1",
-            "type": "object"
-          },
-          "SearchScopeV1": {
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "principal_id": {
-                "format": "uuid",
-                "title": "Principal Id",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "repository_id",
-              "snapshot_id",
-              "principal_id"
-            ],
-            "title": "SearchScopeV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "created_at": {
             "format": "date-time",
@@ -2143,248 +715,6 @@
         "type": "object"
       },
       "CreateScanRequestV1": {
-        "$defs": {
-          "DependencyFileV1": {
-            "additionalProperties": false,
-            "properties": {
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "format": {
-                "enum": [
-                  "package-lock-v3",
-                  "uv-v1-r3"
-                ],
-                "title": "Format",
-                "type": "string"
-              },
-              "sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Sha256",
-                "type": "string"
-              },
-              "size_bytes": {
-                "maximum": 262144,
-                "minimum": 0,
-                "title": "Size Bytes",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "file_id",
-              "sha256",
-              "size_bytes",
-              "format"
-            ],
-            "title": "DependencyFileV1",
-            "type": "object"
-          },
-          "DependencySelectionV1": {
-            "additionalProperties": false,
-            "properties": {
-              "bundle_digest": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Bundle Digest",
-                "type": "string"
-              },
-              "files": {
-                "items": {
-                  "$ref": "#/components/schemas/DependencyFileV1"
-                },
-                "maxItems": 32,
-                "title": "Files",
-                "type": "array"
-              },
-              "parser_profile": {
-                "const": "lockfile-offline-v1",
-                "default": "lockfile-offline-v1",
-                "title": "Parser Profile",
-                "type": "string"
-              }
-            },
-            "required": [
-              "bundle_digest",
-              "files"
-            ],
-            "title": "DependencySelectionV1",
-            "type": "object"
-          },
-          "NativeSelectionV1": {
-            "additionalProperties": false,
-            "properties": {
-              "files": {
-                "items": {
-                  "$ref": "#/components/schemas/ScannerFileV1"
-                },
-                "maxItems": 128,
-                "title": "Files",
-                "type": "array"
-              },
-              "profile": {
-                "$ref": "#/components/schemas/ScannerProfileV1"
-              }
-            },
-            "required": [
-              "profile",
-              "files"
-            ],
-            "title": "NativeSelectionV1",
-            "type": "object"
-          },
-          "ScanConfigV1": {
-            "additionalProperties": false,
-            "properties": {
-              "catalog_digest": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Catalog Digest",
-                "type": "string"
-              },
-              "dependency_selection": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/DependencySelectionV1"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null
-              },
-              "native_selections": {
-                "default": [],
-                "items": {
-                  "$ref": "#/components/schemas/NativeSelectionV1"
-                },
-                "maxItems": 2,
-                "title": "Native Selections",
-                "type": "array"
-              },
-              "runtime_digest": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Runtime Digest",
-                "type": "string"
-              },
-              "schema_version": {
-                "const": 1,
-                "default": 1,
-                "title": "Schema Version",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "runtime_digest",
-              "catalog_digest"
-            ],
-            "title": "ScanConfigV1",
-            "type": "object"
-          },
-          "ScannerFileV1": {
-            "additionalProperties": false,
-            "properties": {
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Sha256",
-                "type": "string"
-              },
-              "size_bytes": {
-                "maximum": 2097152,
-                "minimum": 0,
-                "title": "Size Bytes",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "file_id",
-              "sha256",
-              "size_bytes"
-            ],
-            "title": "ScannerFileV1",
-            "type": "object"
-          },
-          "ScannerProfileV1": {
-            "additionalProperties": false,
-            "properties": {
-              "artifact_sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Artifact Sha256",
-                "type": "string"
-              },
-              "cpu": {
-                "default": 2,
-                "maximum": 2,
-                "minimum": 1,
-                "title": "Cpu",
-                "type": "integer"
-              },
-              "deadline_seconds": {
-                "default": 180,
-                "maximum": 180,
-                "minimum": 1,
-                "title": "Deadline Seconds",
-                "type": "integer"
-              },
-              "memory_bytes": {
-                "default": 1073741824,
-                "maximum": 1073741824,
-                "minimum": 1,
-                "title": "Memory Bytes",
-                "type": "integer"
-              },
-              "output_bytes": {
-                "default": 2097152,
-                "maximum": 2097152,
-                "minimum": 1,
-                "title": "Output Bytes",
-                "type": "integer"
-              },
-              "pids": {
-                "default": 64,
-                "maximum": 64,
-                "minimum": 1,
-                "title": "Pids",
-                "type": "integer"
-              },
-              "rule_ids": {
-                "items": {
-                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$",
-                  "type": "string"
-                },
-                "maxItems": 128,
-                "minItems": 1,
-                "title": "Rule Ids",
-                "type": "array"
-              },
-              "rules_sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Rules Sha256",
-                "type": "string"
-              },
-              "tool": {
-                "enum": [
-                  "semgrep",
-                  "gitleaks"
-                ],
-                "title": "Tool",
-                "type": "string"
-              }
-            },
-            "required": [
-              "tool",
-              "artifact_sha256",
-              "rules_sha256",
-              "rule_ids"
-            ],
-            "title": "ScannerProfileV1",
-            "type": "object"
-          }
-        },
         "additionalProperties": false,
         "properties": {
           "config": {
@@ -2430,12 +760,12 @@
             "type": "string"
           },
           "end_byte": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "End Byte",
             "type": "integer"
           },
           "end_line": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "End Line",
             "type": "integer"
           },
@@ -2457,6 +787,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Qualified Name"
           },
           "score": {
@@ -2470,12 +801,12 @@
             "type": "string"
           },
           "start_byte": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Start Byte",
             "type": "integer"
           },
           "start_line": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Start Line",
             "type": "integer"
           },
@@ -2488,6 +819,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Symbol Name"
           }
         },
@@ -2508,40 +840,6 @@
         "type": "object"
       },
       "DenseSearchRequestV1": {
-        "$defs": {
-          "SearchScopeV1": {
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "principal_id": {
-                "format": "uuid",
-                "title": "Principal Id",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "repository_id",
-              "snapshot_id",
-              "principal_id"
-            ],
-            "title": "SearchScopeV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "index_id": {
             "anyOf": [
@@ -2595,146 +893,6 @@
         "type": "object"
       },
       "DenseSearchResponseV1": {
-        "$defs": {
-          "ChunkKind": {
-            "enum": [
-              "module",
-              "class",
-              "function",
-              "method",
-              "window",
-              "file"
-            ],
-            "title": "ChunkKind",
-            "type": "string"
-          },
-          "DenseSearchHitV1": {
-            "properties": {
-              "chunk_id": {
-                "format": "uuid",
-                "title": "Chunk Id",
-                "type": "string"
-              },
-              "chunk_kind": {
-                "$ref": "#/components/schemas/ChunkKind"
-              },
-              "content_sha256": {
-                "title": "Content Sha256",
-                "type": "string"
-              },
-              "end_byte": {
-                "minimum": 0,
-                "title": "End Byte",
-                "type": "integer"
-              },
-              "end_line": {
-                "minimum": 1,
-                "title": "End Line",
-                "type": "integer"
-              },
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "file_path": {
-                "title": "File Path",
-                "type": "string"
-              },
-              "qualified_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Qualified Name"
-              },
-              "score": {
-                "maximum": 1.0,
-                "minimum": 0.0,
-                "title": "Score",
-                "type": "number"
-              },
-              "snippet": {
-                "title": "Snippet",
-                "type": "string"
-              },
-              "start_byte": {
-                "minimum": 0,
-                "title": "Start Byte",
-                "type": "integer"
-              },
-              "start_line": {
-                "minimum": 1,
-                "title": "Start Line",
-                "type": "integer"
-              },
-              "symbol_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Symbol Name"
-              }
-            },
-            "required": [
-              "chunk_id",
-              "file_id",
-              "file_path",
-              "chunk_kind",
-              "start_byte",
-              "end_byte",
-              "start_line",
-              "end_line",
-              "score",
-              "snippet",
-              "content_sha256"
-            ],
-            "title": "DenseSearchHitV1",
-            "type": "object"
-          },
-          "SearchScopeV1": {
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "principal_id": {
-                "format": "uuid",
-                "title": "Principal Id",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "repository_id",
-              "snapshot_id",
-              "principal_id"
-            ],
-            "title": "SearchScopeV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "embedding_model": {
             "title": "Embedding Model",
@@ -2820,45 +978,6 @@
         "type": "object"
       },
       "DependencySelectionV1": {
-        "$defs": {
-          "DependencyFileV1": {
-            "additionalProperties": false,
-            "properties": {
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "format": {
-                "enum": [
-                  "package-lock-v3",
-                  "uv-v1-r3"
-                ],
-                "title": "Format",
-                "type": "string"
-              },
-              "sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Sha256",
-                "type": "string"
-              },
-              "size_bytes": {
-                "maximum": 262144,
-                "minimum": 0,
-                "title": "Size Bytes",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "file_id",
-              "sha256",
-              "size_bytes",
-              "format"
-            ],
-            "title": "DependencyFileV1",
-            "type": "object"
-          }
-        },
         "additionalProperties": false,
         "properties": {
           "bundle_digest": {
@@ -2893,7 +1012,7 @@
         "properties": {
           "affected_count": {
             "default": 1,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Affected Count",
             "type": "integer"
           },
@@ -2911,7 +1030,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "message": {
             "maxLength": 256,
@@ -3070,10 +1190,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Chunk Id"
           },
           "end_line": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "End Line",
             "type": "integer"
           },
@@ -3091,6 +1212,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Finding Id"
           },
           "sha256": {
@@ -3102,10 +1224,11 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Sha256"
           },
           "start_line": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Start Line",
             "type": "integer"
           },
@@ -3118,6 +1241,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Symbol Name"
           }
         },
@@ -3130,50 +1254,6 @@
         "type": "object"
       },
       "ExactSearchRequestV1": {
-        "$defs": {
-          "ExactSearchType": {
-            "enum": [
-              "file_path",
-              "path_segment",
-              "symbol",
-              "qualified_name"
-            ],
-            "title": "ExactSearchType",
-            "type": "string"
-          },
-          "SearchScopeV1": {
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "principal_id": {
-                "format": "uuid",
-                "title": "Principal Id",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "repository_id",
-              "snapshot_id",
-              "principal_id"
-            ],
-            "title": "SearchScopeV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "limit": {
             "default": 20,
@@ -3217,92 +1297,17 @@
         "title": "ExactSearchRequestV1",
         "type": "object"
       },
+      "ExactSearchType": {
+        "enum": [
+          "file_path",
+          "path_segment",
+          "symbol",
+          "qualified_name"
+        ],
+        "title": "ExactSearchType",
+        "type": "string"
+      },
       "FeatureTraceV1": {
-        "$defs": {
-          "TraceEdgeV1": {
-            "properties": {
-              "edge_kind": {
-                "title": "Edge Kind",
-                "type": "string"
-              },
-              "properties": {
-                "additionalProperties": true,
-                "title": "Properties",
-                "type": "object"
-              },
-              "source_id": {
-                "format": "uuid",
-                "title": "Source Id",
-                "type": "string"
-              },
-              "target_id": {
-                "format": "uuid",
-                "title": "Target Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "source_id",
-              "target_id",
-              "edge_kind"
-            ],
-            "title": "TraceEdgeV1",
-            "type": "object"
-          },
-          "TraceNodeV1": {
-            "properties": {
-              "file_path": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "File Path"
-              },
-              "id": {
-                "format": "uuid",
-                "title": "Id",
-                "type": "string"
-              },
-              "kind": {
-                "title": "Kind",
-                "type": "string"
-              },
-              "label": {
-                "title": "Label",
-                "type": "string"
-              },
-              "line": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Line"
-              },
-              "properties": {
-                "additionalProperties": true,
-                "title": "Properties",
-                "type": "object"
-              }
-            },
-            "required": [
-              "id",
-              "kind",
-              "label"
-            ],
-            "title": "TraceNodeV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "budget_exceeded": {
             "default": false,
@@ -3332,6 +1337,26 @@
             },
             "title": "Nodes",
             "type": "array"
+          },
+          "omission_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Omission Reasons",
+            "type": "array"
+          },
+          "structural_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Structural Run Id"
           }
         },
         "required": [
@@ -3367,92 +1392,6 @@
         "type": "object"
       },
       "FindingDetailResponseV1": {
-        "$defs": {
-          "TriageRecordV1": {
-            "properties": {
-              "current_reason": {
-                "enum": [
-                  "none",
-                  "code_refactor",
-                  "compensating_control",
-                  "business_context",
-                  "test_code",
-                  "vendor_dependency"
-                ],
-                "title": "Current Reason",
-                "type": "string"
-              },
-              "current_state": {
-                "enum": [
-                  "unreviewed",
-                  "confirmed",
-                  "false_positive",
-                  "mitigated",
-                  "accepted_risk"
-                ],
-                "title": "Current State",
-                "type": "string"
-              },
-              "finding_id": {
-                "format": "uuid",
-                "title": "Finding Id",
-                "type": "string"
-              },
-              "last_event_id": {
-                "anyOf": [
-                  {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Last Event Id"
-              },
-              "updated_at": {
-                "anyOf": [
-                  {
-                    "format": "date-time",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Updated At"
-              },
-              "updated_by": {
-                "anyOf": [
-                  {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Updated By"
-              },
-              "version": {
-                "minimum": 0,
-                "title": "Version",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "finding_id",
-              "current_state",
-              "current_reason",
-              "version"
-            ],
-            "title": "TriageRecordV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "category": {
             "title": "Category",
@@ -3598,100 +1537,6 @@
         "type": "object"
       },
       "FindingListResponseV1": {
-        "$defs": {
-          "FindingSummaryV1": {
-            "properties": {
-              "category": {
-                "title": "Category",
-                "type": "string"
-              },
-              "disposition": {
-                "title": "Disposition",
-                "type": "string"
-              },
-              "file_path": {
-                "title": "File Path",
-                "type": "string"
-              },
-              "id": {
-                "format": "uuid",
-                "title": "Id",
-                "type": "string"
-              },
-              "line_number": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Line Number"
-              },
-              "rule_id": {
-                "title": "Rule Id",
-                "type": "string"
-              },
-              "run_id": {
-                "format": "uuid",
-                "title": "Run Id",
-                "type": "string"
-              },
-              "severity": {
-                "title": "Severity",
-                "type": "string"
-              },
-              "title": {
-                "title": "Title",
-                "type": "string"
-              },
-              "triage_reason": {
-                "enum": [
-                  "none",
-                  "code_refactor",
-                  "compensating_control",
-                  "business_context",
-                  "test_code",
-                  "vendor_dependency"
-                ],
-                "title": "Triage Reason",
-                "type": "string"
-              },
-              "triage_state": {
-                "enum": [
-                  "unreviewed",
-                  "confirmed",
-                  "false_positive",
-                  "mitigated",
-                  "accepted_risk"
-                ],
-                "title": "Triage State",
-                "type": "string"
-              },
-              "triage_version": {
-                "title": "Triage Version",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "id",
-              "run_id",
-              "category",
-              "rule_id",
-              "severity",
-              "title",
-              "file_path",
-              "disposition",
-              "triage_state",
-              "triage_reason",
-              "triage_version"
-            ],
-            "title": "FindingSummaryV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "items": {
             "items": {
@@ -3976,35 +1821,6 @@
         "type": "object"
       },
       "GraphTraversalV1": {
-        "$defs": {
-          "RunRef": {
-            "additionalProperties": false,
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "run_id": {
-                "format": "uuid",
-                "title": "Run Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "snapshot_id",
-              "run_id"
-            ],
-            "title": "RunRef",
-            "type": "object"
-          }
-        },
         "additionalProperties": false,
         "properties": {
           "edges": {
@@ -4085,6 +1901,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Base Url"
           },
           "client": {
@@ -4158,6 +1975,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Path"
           },
           "template_segments": {
@@ -4193,12 +2011,12 @@
             "type": "string"
           },
           "end_byte": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "End Byte",
             "type": "integer"
           },
           "end_line": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "End Line",
             "type": "integer"
           },
@@ -4234,6 +2052,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Qualified Name"
           },
           "score": {
@@ -4246,12 +2065,12 @@
             "type": "string"
           },
           "start_byte": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Start Byte",
             "type": "integer"
           },
           "start_line": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Start Line",
             "type": "integer"
           },
@@ -4264,6 +2083,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Symbol Name"
           }
         },
@@ -4286,40 +2106,6 @@
         "type": "object"
       },
       "HybridSearchRequestV1": {
-        "$defs": {
-          "SearchScopeV1": {
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "principal_id": {
-                "format": "uuid",
-                "title": "Principal Id",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "repository_id",
-              "snapshot_id",
-              "principal_id"
-            ],
-            "title": "SearchScopeV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "dense_index_id": {
             "anyOf": [
@@ -4401,161 +2187,6 @@
         "type": "object"
       },
       "HybridSearchResponseV1": {
-        "$defs": {
-          "ChunkKind": {
-            "enum": [
-              "module",
-              "class",
-              "function",
-              "method",
-              "window",
-              "file"
-            ],
-            "title": "ChunkKind",
-            "type": "string"
-          },
-          "HybridSearchHitV1": {
-            "properties": {
-              "chunk_id": {
-                "format": "uuid",
-                "title": "Chunk Id",
-                "type": "string"
-              },
-              "chunk_kind": {
-                "$ref": "#/components/schemas/ChunkKind"
-              },
-              "content_sha256": {
-                "title": "Content Sha256",
-                "type": "string"
-              },
-              "end_byte": {
-                "minimum": 0,
-                "title": "End Byte",
-                "type": "integer"
-              },
-              "end_line": {
-                "minimum": 1,
-                "title": "End Line",
-                "type": "integer"
-              },
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "file_path": {
-                "title": "File Path",
-                "type": "string"
-              },
-              "match_modalities": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Match Modalities",
-                "type": "array"
-              },
-              "modality_ranks": {
-                "additionalProperties": {
-                  "type": "integer"
-                },
-                "title": "Modality Ranks",
-                "type": "object"
-              },
-              "qualified_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Qualified Name"
-              },
-              "score": {
-                "minimum": 0.0,
-                "title": "Score",
-                "type": "number"
-              },
-              "snippet": {
-                "title": "Snippet",
-                "type": "string"
-              },
-              "start_byte": {
-                "minimum": 0,
-                "title": "Start Byte",
-                "type": "integer"
-              },
-              "start_line": {
-                "minimum": 1,
-                "title": "Start Line",
-                "type": "integer"
-              },
-              "symbol_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Symbol Name"
-              }
-            },
-            "required": [
-              "chunk_id",
-              "file_id",
-              "file_path",
-              "chunk_kind",
-              "start_byte",
-              "end_byte",
-              "start_line",
-              "end_line",
-              "score",
-              "snippet",
-              "content_sha256",
-              "match_modalities",
-              "modality_ranks"
-            ],
-            "title": "HybridSearchHitV1",
-            "type": "object"
-          },
-          "SearchScopeV1": {
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "principal_id": {
-                "format": "uuid",
-                "title": "Principal Id",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "repository_id",
-              "snapshot_id",
-              "principal_id"
-            ],
-            "title": "SearchScopeV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "execution_ms": {
             "default": 0.0,
@@ -4621,12 +2252,12 @@
             "type": "boolean"
           },
           "original_end_byte": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Original End Byte",
             "type": "integer"
           },
           "original_start_byte": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Original Start Byte",
             "type": "integer"
           },
@@ -4639,15 +2270,16 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Redaction Type"
           },
           "safe_end_byte": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Safe End Byte",
             "type": "integer"
           },
           "safe_start_byte": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Safe Start Byte",
             "type": "integer"
           }
@@ -4776,6 +2408,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "File Path"
           },
           "line_end": {
@@ -4787,6 +2420,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Line End"
           },
           "line_start": {
@@ -4798,6 +2432,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Line Start"
           },
           "quoted_source": {
@@ -4809,6 +2444,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Quoted Source"
           },
           "statement": {
@@ -4829,6 +2465,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Verification Notes"
           }
         },
@@ -4840,35 +2477,6 @@
         "type": "object"
       },
       "InvestigationCreateRequestV1": {
-        "$defs": {
-          "InvestigationDepth": {
-            "enum": [
-              "quick",
-              "standard",
-              "deep"
-            ],
-            "title": "InvestigationDepth",
-            "type": "string"
-          },
-          "InvestigationMode": {
-            "enum": [
-              "short_path",
-              "two_specialist"
-            ],
-            "title": "InvestigationMode",
-            "type": "string"
-          },
-          "InvestigationTargetType": {
-            "enum": [
-              "finding",
-              "repository",
-              "commit",
-              "diff"
-            ],
-            "title": "InvestigationTargetType",
-            "type": "string"
-          }
-        },
         "additionalProperties": false,
         "properties": {
           "budget_limit_micros": {
@@ -4928,500 +2536,16 @@
         "title": "InvestigationCreateRequestV1",
         "type": "object"
       },
+      "InvestigationDepth": {
+        "enum": [
+          "quick",
+          "standard",
+          "deep"
+        ],
+        "title": "InvestigationDepth",
+        "type": "string"
+      },
       "InvestigationDetailResponseV1": {
-        "$defs": {
-          "ChatMessageV1": {
-            "additionalProperties": false,
-            "properties": {
-              "content": {
-                "default": "",
-                "title": "Content",
-                "type": "string"
-              },
-              "name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Name"
-              },
-              "role": {
-                "$ref": "#/components/schemas/ModelRole"
-              },
-              "tool_call_id": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Tool Call Id"
-              },
-              "tool_calls": {
-                "default": [],
-                "items": {
-                  "$ref": "#/components/schemas/ToolCallV1"
-                },
-                "title": "Tool Calls",
-                "type": "array"
-              }
-            },
-            "required": [
-              "role"
-            ],
-            "title": "ChatMessageV1",
-            "type": "object"
-          },
-          "InvestigationClaimV1": {
-            "additionalProperties": false,
-            "properties": {
-              "claim_id": {
-                "title": "Claim Id",
-                "type": "string"
-              },
-              "file_path": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "File Path"
-              },
-              "line_end": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Line End"
-              },
-              "line_start": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Line Start"
-              },
-              "quoted_source": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Quoted Source"
-              },
-              "statement": {
-                "title": "Statement",
-                "type": "string"
-              },
-              "status": {
-                "default": "pending",
-                "title": "Status",
-                "type": "string"
-              },
-              "verification_notes": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Verification Notes"
-              }
-            },
-            "required": [
-              "claim_id",
-              "statement"
-            ],
-            "title": "InvestigationClaimV1",
-            "type": "object"
-          },
-          "InvestigationStateV1": {
-            "additionalProperties": false,
-            "properties": {
-              "claims": {
-                "default": [],
-                "items": {
-                  "$ref": "#/components/schemas/InvestigationClaimV1"
-                },
-                "title": "Claims",
-                "type": "array"
-              },
-              "collected_evidence": {
-                "default": [],
-                "items": {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                "title": "Collected Evidence",
-                "type": "array"
-              },
-              "current_step": {
-                "default": 0,
-                "title": "Current Step",
-                "type": "integer"
-              },
-              "depth": {
-                "default": "standard",
-                "title": "Depth",
-                "type": "string"
-              },
-              "finding_id": {
-                "anyOf": [
-                  {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Finding Id"
-              },
-              "history": {
-                "default": [],
-                "items": {
-                  "$ref": "#/components/schemas/ChatMessageV1"
-                },
-                "title": "History",
-                "type": "array"
-              },
-              "human_guidance": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Human Guidance"
-              },
-              "investigation_id": {
-                "format": "uuid",
-                "title": "Investigation Id",
-                "type": "string"
-              },
-              "max_steps": {
-                "default": 10,
-                "title": "Max Steps",
-                "type": "integer"
-              },
-              "mode": {
-                "default": "short_path",
-                "title": "Mode",
-                "type": "string"
-              },
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "query": {
-                "title": "Query",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "summary": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Summary"
-              },
-              "target_type": {
-                "title": "Target Type",
-                "type": "string"
-              },
-              "tool_history": {
-                "default": [],
-                "items": {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                "title": "Tool History",
-                "type": "array"
-              },
-              "total_spent_micros": {
-                "default": 0,
-                "title": "Total Spent Micros",
-                "type": "integer"
-              },
-              "verdict": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Verdict"
-              },
-              "verdict_confidence": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Verdict Confidence"
-              }
-            },
-            "required": [
-              "investigation_id",
-              "org_id",
-              "repository_id",
-              "target_type",
-              "query"
-            ],
-            "title": "InvestigationStateV1",
-            "type": "object"
-          },
-          "InvestigationSummaryV1": {
-            "additionalProperties": false,
-            "properties": {
-              "budget_limit_micros": {
-                "title": "Budget Limit Micros",
-                "type": "integer"
-              },
-              "created_at": {
-                "format": "date-time",
-                "title": "Created At",
-                "type": "string"
-              },
-              "current_step": {
-                "title": "Current Step",
-                "type": "integer"
-              },
-              "depth": {
-                "title": "Depth",
-                "type": "string"
-              },
-              "failure_reason": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Failure Reason"
-              },
-              "fencing_token": {
-                "title": "Fencing Token",
-                "type": "integer"
-              },
-              "finding_id": {
-                "anyOf": [
-                  {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Finding Id"
-              },
-              "id": {
-                "format": "uuid",
-                "title": "Id",
-                "type": "string"
-              },
-              "max_steps": {
-                "title": "Max Steps",
-                "type": "integer"
-              },
-              "mode": {
-                "title": "Mode",
-                "type": "string"
-              },
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "query": {
-                "title": "Query",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "spent_micros": {
-                "title": "Spent Micros",
-                "type": "integer"
-              },
-              "status": {
-                "title": "Status",
-                "type": "string"
-              },
-              "summary": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Summary"
-              },
-              "target_type": {
-                "title": "Target Type",
-                "type": "string"
-              },
-              "updated_at": {
-                "format": "date-time",
-                "title": "Updated At",
-                "type": "string"
-              },
-              "verdict": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Verdict"
-              },
-              "verdict_confidence": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Verdict Confidence"
-              },
-              "worker_id": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Worker Id"
-              }
-            },
-            "required": [
-              "id",
-              "org_id",
-              "repository_id",
-              "target_type",
-              "query",
-              "status",
-              "mode",
-              "depth",
-              "current_step",
-              "max_steps",
-              "fencing_token",
-              "budget_limit_micros",
-              "spent_micros",
-              "created_at",
-              "updated_at"
-            ],
-            "title": "InvestigationSummaryV1",
-            "type": "object"
-          },
-          "ModelRole": {
-            "enum": [
-              "system",
-              "user",
-              "assistant",
-              "tool"
-            ],
-            "title": "ModelRole",
-            "type": "string"
-          },
-          "ToolCallV1": {
-            "additionalProperties": false,
-            "properties": {
-              "arguments_json": {
-                "default": "{}",
-                "title": "Arguments Json",
-                "type": "string"
-              },
-              "id": {
-                "maxLength": 64,
-                "minLength": 1,
-                "title": "Id",
-                "type": "string"
-              },
-              "name": {
-                "maxLength": 64,
-                "minLength": 1,
-                "title": "Name",
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ],
-            "title": "ToolCallV1",
-            "type": "object"
-          }
-        },
         "additionalProperties": false,
         "properties": {
           "claims": {
@@ -5552,170 +2676,6 @@
         "type": "object"
       },
       "InvestigationListResponseV1": {
-        "$defs": {
-          "InvestigationSummaryV1": {
-            "additionalProperties": false,
-            "properties": {
-              "budget_limit_micros": {
-                "title": "Budget Limit Micros",
-                "type": "integer"
-              },
-              "created_at": {
-                "format": "date-time",
-                "title": "Created At",
-                "type": "string"
-              },
-              "current_step": {
-                "title": "Current Step",
-                "type": "integer"
-              },
-              "depth": {
-                "title": "Depth",
-                "type": "string"
-              },
-              "failure_reason": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Failure Reason"
-              },
-              "fencing_token": {
-                "title": "Fencing Token",
-                "type": "integer"
-              },
-              "finding_id": {
-                "anyOf": [
-                  {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Finding Id"
-              },
-              "id": {
-                "format": "uuid",
-                "title": "Id",
-                "type": "string"
-              },
-              "max_steps": {
-                "title": "Max Steps",
-                "type": "integer"
-              },
-              "mode": {
-                "title": "Mode",
-                "type": "string"
-              },
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "query": {
-                "title": "Query",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "spent_micros": {
-                "title": "Spent Micros",
-                "type": "integer"
-              },
-              "status": {
-                "title": "Status",
-                "type": "string"
-              },
-              "summary": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Summary"
-              },
-              "target_type": {
-                "title": "Target Type",
-                "type": "string"
-              },
-              "updated_at": {
-                "format": "date-time",
-                "title": "Updated At",
-                "type": "string"
-              },
-              "verdict": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Verdict"
-              },
-              "verdict_confidence": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Verdict Confidence"
-              },
-              "worker_id": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Worker Id"
-              }
-            },
-            "required": [
-              "id",
-              "org_id",
-              "repository_id",
-              "target_type",
-              "query",
-              "status",
-              "mode",
-              "depth",
-              "current_step",
-              "max_steps",
-              "fencing_token",
-              "budget_limit_micros",
-              "spent_micros",
-              "created_at",
-              "updated_at"
-            ],
-            "title": "InvestigationSummaryV1",
-            "type": "object"
-          }
-        },
         "additionalProperties": false,
         "properties": {
           "items": {
@@ -5736,6 +2696,14 @@
         ],
         "title": "InvestigationListResponseV1",
         "type": "object"
+      },
+      "InvestigationMode": {
+        "enum": [
+          "short_path",
+          "two_specialist"
+        ],
+        "title": "InvestigationMode",
+        "type": "string"
       },
       "InvestigationStateV1": {
         "additionalProperties": false,
@@ -5777,6 +2745,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Finding Id"
           },
           "history": {
@@ -5796,6 +2765,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Human Guidance"
           },
           "investigation_id": {
@@ -5836,6 +2806,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Summary"
           },
           "target_type": {
@@ -5865,6 +2836,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Verdict"
           },
           "verdict_confidence": {
@@ -5876,6 +2848,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Verdict Confidence"
           }
         },
@@ -6050,6 +3023,16 @@
         ],
         "title": "InvestigationSummaryV1",
         "type": "object"
+      },
+      "InvestigationTargetType": {
+        "enum": [
+          "finding",
+          "repository",
+          "commit",
+          "diff"
+        ],
+        "title": "InvestigationTargetType",
+        "type": "string"
       },
       "JobEventV2": {
         "additionalProperties": false,
@@ -6497,40 +3480,6 @@
         "type": "object"
       },
       "LexicalSearchRequestV1": {
-        "$defs": {
-          "SearchScopeV1": {
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "principal_id": {
-                "format": "uuid",
-                "title": "Principal Id",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "repository_id",
-              "snapshot_id",
-              "principal_id"
-            ],
-            "title": "SearchScopeV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "limit": {
             "default": 40,
@@ -6564,92 +3513,6 @@
         "type": "object"
       },
       "MemoryCreateRequestV1": {
-        "$defs": {
-          "EvidencePointerV1": {
-            "properties": {
-              "chunk_id": {
-                "anyOf": [
-                  {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Chunk Id"
-              },
-              "end_line": {
-                "minimum": 1,
-                "title": "End Line",
-                "type": "integer"
-              },
-              "file_path": {
-                "title": "File Path",
-                "type": "string"
-              },
-              "finding_id": {
-                "anyOf": [
-                  {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Finding Id"
-              },
-              "sha256": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Sha256"
-              },
-              "start_line": {
-                "minimum": 1,
-                "title": "Start Line",
-                "type": "integer"
-              },
-              "symbol_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Symbol Name"
-              }
-            },
-            "required": [
-              "file_path",
-              "start_line",
-              "end_line"
-            ],
-            "title": "EvidencePointerV1",
-            "type": "object"
-          },
-          "MemoryKind": {
-            "enum": [
-              "triage_resolution",
-              "security_finding_evidence",
-              "architecture_fact"
-            ],
-            "title": "MemoryKind",
-            "type": "string"
-          }
-        },
         "properties": {
           "evidence_pointers": {
             "default": [],
@@ -6736,92 +3599,6 @@
         "type": "object"
       },
       "MemoryEntryV1": {
-        "$defs": {
-          "EvidencePointerV1": {
-            "properties": {
-              "chunk_id": {
-                "anyOf": [
-                  {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Chunk Id"
-              },
-              "end_line": {
-                "minimum": 1,
-                "title": "End Line",
-                "type": "integer"
-              },
-              "file_path": {
-                "title": "File Path",
-                "type": "string"
-              },
-              "finding_id": {
-                "anyOf": [
-                  {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Finding Id"
-              },
-              "sha256": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Sha256"
-              },
-              "start_line": {
-                "minimum": 1,
-                "title": "Start Line",
-                "type": "integer"
-              },
-              "symbol_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Symbol Name"
-              }
-            },
-            "required": [
-              "file_path",
-              "start_line",
-              "end_line"
-            ],
-            "title": "EvidencePointerV1",
-            "type": "object"
-          },
-          "MemoryKind": {
-            "enum": [
-              "triage_resolution",
-              "security_finding_evidence",
-              "architecture_fact"
-            ],
-            "title": "MemoryKind",
-            "type": "string"
-          }
-        },
         "properties": {
           "created_at": {
             "format": "date-time",
@@ -6897,158 +3674,6 @@
         "type": "string"
       },
       "MemoryQueryResponseV1": {
-        "$defs": {
-          "EvidencePointerV1": {
-            "properties": {
-              "chunk_id": {
-                "anyOf": [
-                  {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Chunk Id"
-              },
-              "end_line": {
-                "minimum": 1,
-                "title": "End Line",
-                "type": "integer"
-              },
-              "file_path": {
-                "title": "File Path",
-                "type": "string"
-              },
-              "finding_id": {
-                "anyOf": [
-                  {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Finding Id"
-              },
-              "sha256": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Sha256"
-              },
-              "start_line": {
-                "minimum": 1,
-                "title": "Start Line",
-                "type": "integer"
-              },
-              "symbol_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Symbol Name"
-              }
-            },
-            "required": [
-              "file_path",
-              "start_line",
-              "end_line"
-            ],
-            "title": "EvidencePointerV1",
-            "type": "object"
-          },
-          "MemoryEntryV1": {
-            "properties": {
-              "created_at": {
-                "format": "date-time",
-                "title": "Created At",
-                "type": "string"
-              },
-              "evidence_pointers": {
-                "default": [],
-                "items": {
-                  "$ref": "#/components/schemas/EvidencePointerV1"
-                },
-                "title": "Evidence Pointers",
-                "type": "array"
-              },
-              "memory_id": {
-                "format": "uuid",
-                "title": "Memory Id",
-                "type": "string"
-              },
-              "memory_kind": {
-                "$ref": "#/components/schemas/MemoryKind"
-              },
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              },
-              "summary": {
-                "title": "Summary",
-                "type": "string"
-              },
-              "topic": {
-                "title": "Topic",
-                "type": "string"
-              },
-              "updated_at": {
-                "format": "date-time",
-                "title": "Updated At",
-                "type": "string"
-              }
-            },
-            "required": [
-              "memory_id",
-              "org_id",
-              "repository_id",
-              "snapshot_id",
-              "memory_kind",
-              "topic",
-              "summary",
-              "created_at",
-              "updated_at"
-            ],
-            "title": "MemoryEntryV1",
-            "type": "object"
-          },
-          "MemoryKind": {
-            "enum": [
-              "triage_resolution",
-              "security_finding_evidence",
-              "architecture_fact"
-            ],
-            "title": "MemoryKind",
-            "type": "string"
-          }
-        },
         "properties": {
           "items": {
             "items": {
@@ -7098,112 +3723,6 @@
         "type": "string"
       },
       "NativeSelectionV1": {
-        "$defs": {
-          "ScannerFileV1": {
-            "additionalProperties": false,
-            "properties": {
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Sha256",
-                "type": "string"
-              },
-              "size_bytes": {
-                "maximum": 2097152,
-                "minimum": 0,
-                "title": "Size Bytes",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "file_id",
-              "sha256",
-              "size_bytes"
-            ],
-            "title": "ScannerFileV1",
-            "type": "object"
-          },
-          "ScannerProfileV1": {
-            "additionalProperties": false,
-            "properties": {
-              "artifact_sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Artifact Sha256",
-                "type": "string"
-              },
-              "cpu": {
-                "default": 2,
-                "maximum": 2,
-                "minimum": 1,
-                "title": "Cpu",
-                "type": "integer"
-              },
-              "deadline_seconds": {
-                "default": 180,
-                "maximum": 180,
-                "minimum": 1,
-                "title": "Deadline Seconds",
-                "type": "integer"
-              },
-              "memory_bytes": {
-                "default": 1073741824,
-                "maximum": 1073741824,
-                "minimum": 1,
-                "title": "Memory Bytes",
-                "type": "integer"
-              },
-              "output_bytes": {
-                "default": 2097152,
-                "maximum": 2097152,
-                "minimum": 1,
-                "title": "Output Bytes",
-                "type": "integer"
-              },
-              "pids": {
-                "default": 64,
-                "maximum": 64,
-                "minimum": 1,
-                "title": "Pids",
-                "type": "integer"
-              },
-              "rule_ids": {
-                "items": {
-                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$",
-                  "type": "string"
-                },
-                "maxItems": 128,
-                "minItems": 1,
-                "title": "Rule Ids",
-                "type": "array"
-              },
-              "rules_sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Rules Sha256",
-                "type": "string"
-              },
-              "tool": {
-                "enum": [
-                  "semgrep",
-                  "gitleaks"
-                ],
-                "title": "Tool",
-                "type": "string"
-              }
-            },
-            "required": [
-              "tool",
-              "artifact_sha256",
-              "rules_sha256",
-              "rule_ids"
-            ],
-            "title": "ScannerProfileV1",
-            "type": "object"
-          }
-        },
         "additionalProperties": false,
         "properties": {
           "files": {
@@ -7463,6 +3982,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "External Reference"
           },
           "namespace": {
@@ -7643,7 +4163,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "default": null
           },
           "handler_key": {
             "anyOf": [
@@ -7655,6 +4176,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Handler Key"
           },
           "includes": {
@@ -7706,6 +4228,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Raw Path"
           },
           "registration": {
@@ -7720,6 +4243,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Service Key"
           },
           "state": {
@@ -7742,6 +4266,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Template Path"
           }
         },
@@ -7812,201 +4337,6 @@
         "type": "object"
       },
       "ScanConfigV1": {
-        "$defs": {
-          "DependencyFileV1": {
-            "additionalProperties": false,
-            "properties": {
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "format": {
-                "enum": [
-                  "package-lock-v3",
-                  "uv-v1-r3"
-                ],
-                "title": "Format",
-                "type": "string"
-              },
-              "sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Sha256",
-                "type": "string"
-              },
-              "size_bytes": {
-                "maximum": 262144,
-                "minimum": 0,
-                "title": "Size Bytes",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "file_id",
-              "sha256",
-              "size_bytes",
-              "format"
-            ],
-            "title": "DependencyFileV1",
-            "type": "object"
-          },
-          "DependencySelectionV1": {
-            "additionalProperties": false,
-            "properties": {
-              "bundle_digest": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Bundle Digest",
-                "type": "string"
-              },
-              "files": {
-                "items": {
-                  "$ref": "#/components/schemas/DependencyFileV1"
-                },
-                "maxItems": 32,
-                "title": "Files",
-                "type": "array"
-              },
-              "parser_profile": {
-                "const": "lockfile-offline-v1",
-                "default": "lockfile-offline-v1",
-                "title": "Parser Profile",
-                "type": "string"
-              }
-            },
-            "required": [
-              "bundle_digest",
-              "files"
-            ],
-            "title": "DependencySelectionV1",
-            "type": "object"
-          },
-          "NativeSelectionV1": {
-            "additionalProperties": false,
-            "properties": {
-              "files": {
-                "items": {
-                  "$ref": "#/components/schemas/ScannerFileV1"
-                },
-                "maxItems": 128,
-                "title": "Files",
-                "type": "array"
-              },
-              "profile": {
-                "$ref": "#/components/schemas/ScannerProfileV1"
-              }
-            },
-            "required": [
-              "profile",
-              "files"
-            ],
-            "title": "NativeSelectionV1",
-            "type": "object"
-          },
-          "ScannerFileV1": {
-            "additionalProperties": false,
-            "properties": {
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Sha256",
-                "type": "string"
-              },
-              "size_bytes": {
-                "maximum": 2097152,
-                "minimum": 0,
-                "title": "Size Bytes",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "file_id",
-              "sha256",
-              "size_bytes"
-            ],
-            "title": "ScannerFileV1",
-            "type": "object"
-          },
-          "ScannerProfileV1": {
-            "additionalProperties": false,
-            "properties": {
-              "artifact_sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Artifact Sha256",
-                "type": "string"
-              },
-              "cpu": {
-                "default": 2,
-                "maximum": 2,
-                "minimum": 1,
-                "title": "Cpu",
-                "type": "integer"
-              },
-              "deadline_seconds": {
-                "default": 180,
-                "maximum": 180,
-                "minimum": 1,
-                "title": "Deadline Seconds",
-                "type": "integer"
-              },
-              "memory_bytes": {
-                "default": 1073741824,
-                "maximum": 1073741824,
-                "minimum": 1,
-                "title": "Memory Bytes",
-                "type": "integer"
-              },
-              "output_bytes": {
-                "default": 2097152,
-                "maximum": 2097152,
-                "minimum": 1,
-                "title": "Output Bytes",
-                "type": "integer"
-              },
-              "pids": {
-                "default": 64,
-                "maximum": 64,
-                "minimum": 1,
-                "title": "Pids",
-                "type": "integer"
-              },
-              "rule_ids": {
-                "items": {
-                  "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$",
-                  "type": "string"
-                },
-                "maxItems": 128,
-                "minItems": 1,
-                "title": "Rule Ids",
-                "type": "array"
-              },
-              "rules_sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Rules Sha256",
-                "type": "string"
-              },
-              "tool": {
-                "enum": [
-                  "semgrep",
-                  "gitleaks"
-                ],
-                "title": "Tool",
-                "type": "string"
-              }
-            },
-            "required": [
-              "tool",
-              "artifact_sha256",
-              "rules_sha256",
-              "rule_ids"
-            ],
-            "title": "ScannerProfileV1",
-            "type": "object"
-          }
-        },
         "additionalProperties": false,
         "properties": {
           "catalog_digest": {
@@ -8253,12 +4583,12 @@
             "type": "string"
           },
           "end_byte": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "End Byte",
             "type": "integer"
           },
           "end_line": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "End Line",
             "type": "integer"
           },
@@ -8288,6 +4618,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Qualified Name"
           },
           "score": {
@@ -8300,12 +4631,12 @@
             "type": "string"
           },
           "start_byte": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Start Byte",
             "type": "integer"
           },
           "start_line": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Start Line",
             "type": "integer"
           },
@@ -8318,6 +4649,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Symbol Name"
           }
         },
@@ -8348,163 +4680,6 @@
         "type": "string"
       },
       "SearchResponseV1": {
-        "$defs": {
-          "ChunkKind": {
-            "enum": [
-              "module",
-              "class",
-              "function",
-              "method",
-              "window",
-              "file"
-            ],
-            "title": "ChunkKind",
-            "type": "string"
-          },
-          "SearchHitV1": {
-            "properties": {
-              "chunk_id": {
-                "format": "uuid",
-                "title": "Chunk Id",
-                "type": "string"
-              },
-              "chunk_kind": {
-                "$ref": "#/components/schemas/ChunkKind"
-              },
-              "content_sha256": {
-                "title": "Content Sha256",
-                "type": "string"
-              },
-              "end_byte": {
-                "minimum": 0,
-                "title": "End Byte",
-                "type": "integer"
-              },
-              "end_line": {
-                "minimum": 1,
-                "title": "End Line",
-                "type": "integer"
-              },
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "file_path": {
-                "title": "File Path",
-                "type": "string"
-              },
-              "match_reasons": {
-                "default": [],
-                "items": {
-                  "type": "string"
-                },
-                "title": "Match Reasons",
-                "type": "array"
-              },
-              "qualified_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Qualified Name"
-              },
-              "score": {
-                "minimum": 0.0,
-                "title": "Score",
-                "type": "number"
-              },
-              "snippet": {
-                "title": "Snippet",
-                "type": "string"
-              },
-              "start_byte": {
-                "minimum": 0,
-                "title": "Start Byte",
-                "type": "integer"
-              },
-              "start_line": {
-                "minimum": 1,
-                "title": "Start Line",
-                "type": "integer"
-              },
-              "symbol_name": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Symbol Name"
-              }
-            },
-            "required": [
-              "chunk_id",
-              "file_id",
-              "file_path",
-              "chunk_kind",
-              "start_byte",
-              "end_byte",
-              "start_line",
-              "end_line",
-              "score",
-              "snippet",
-              "content_sha256"
-            ],
-            "title": "SearchHitV1",
-            "type": "object"
-          },
-          "SearchMode": {
-            "enum": [
-              "exact",
-              "lexical",
-              "dense",
-              "hybrid"
-            ],
-            "title": "SearchMode",
-            "type": "string"
-          },
-          "SearchScopeV1": {
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "principal_id": {
-                "format": "uuid",
-                "title": "Principal Id",
-                "type": "string"
-              },
-              "repository_id": {
-                "format": "uuid",
-                "title": "Repository Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "repository_id",
-              "snapshot_id",
-              "principal_id"
-            ],
-            "title": "SearchScopeV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "coverage_status": {
             "default": "complete",
@@ -8679,32 +4854,32 @@
         "description": "Half-open UTF-8 bytes; one-based lines, zero-based byte columns.",
         "properties": {
           "end_byte": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "End Byte",
             "type": "integer"
           },
           "end_col": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "End Col",
             "type": "integer"
           },
           "end_line": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "End Line",
             "type": "integer"
           },
           "start_byte": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Start Byte",
             "type": "integer"
           },
           "start_col": {
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Start Col",
             "type": "integer"
           },
           "start_line": {
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Start Line",
             "type": "integer"
           }
@@ -8729,83 +4904,6 @@
         "type": "string"
       },
       "SourceViewResultV1": {
-        "$defs": {
-          "ByteRangeV1": {
-            "properties": {
-              "end_byte": {
-                "default": 0,
-                "minimum": 0,
-                "title": "End Byte",
-                "type": "integer"
-              },
-              "start_byte": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Start Byte",
-                "type": "integer"
-              }
-            },
-            "title": "ByteRangeV1",
-            "type": "object"
-          },
-          "IntervalMappingV1": {
-            "properties": {
-              "is_redacted": {
-                "default": false,
-                "title": "Is Redacted",
-                "type": "boolean"
-              },
-              "original_end_byte": {
-                "minimum": 0,
-                "title": "Original End Byte",
-                "type": "integer"
-              },
-              "original_start_byte": {
-                "minimum": 0,
-                "title": "Original Start Byte",
-                "type": "integer"
-              },
-              "redaction_type": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Redaction Type"
-              },
-              "safe_end_byte": {
-                "minimum": 0,
-                "title": "Safe End Byte",
-                "type": "integer"
-              },
-              "safe_start_byte": {
-                "minimum": 0,
-                "title": "Safe Start Byte",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "safe_start_byte",
-              "safe_end_byte",
-              "original_start_byte",
-              "original_end_byte"
-            ],
-            "title": "IntervalMappingV1",
-            "type": "object"
-          },
-          "SourceRepresentation": {
-            "enum": [
-              "original",
-              "model_safe"
-            ],
-            "title": "SourceRepresentation",
-            "type": "string"
-          }
-        },
         "properties": {
           "actual_range": {
             "$ref": "#/components/schemas/ByteRangeV1"
@@ -8966,25 +5064,25 @@
         "properties": {
           "ambiguous": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Ambiguous",
             "type": "integer"
           },
           "distinct_resolution_sites": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Distinct Resolution Sites",
             "type": "integer"
           },
           "eligible_files": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Eligible Files",
             "type": "integer"
           },
           "excluded_files": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Excluded Files",
             "type": "integer"
           },
@@ -9012,7 +5110,7 @@
           },
           "inventoried_files": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Inventoried Files",
             "type": "integer"
           },
@@ -9027,37 +5125,37 @@
           },
           "omitted_details_count": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Omitted Details Count",
             "type": "integer"
           },
           "omitted_diagnostics": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Omitted Diagnostics",
             "type": "integer"
           },
           "omitted_files": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Omitted Files",
             "type": "integer"
           },
           "out_of_scope_files": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Out Of Scope Files",
             "type": "integer"
           },
           "processed_files": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Processed Files",
             "type": "integer"
           },
           "requested_files": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Requested Files",
             "type": "integer"
           },
@@ -9074,13 +5172,13 @@
           },
           "resolution_records": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Resolution Records",
             "type": "integer"
           },
           "resolved": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Resolved",
             "type": "integer"
           },
@@ -9097,13 +5195,13 @@
           },
           "unresolved": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Unresolved",
             "type": "integer"
           },
           "unsupported_files": {
             "default": 0,
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Unsupported Files",
             "type": "integer"
           }
@@ -9116,148 +5214,148 @@
         "properties": {
           "analysis_seconds": {
             "default": 180,
-            "maximum": 180.0,
-            "minimum": 1.0,
+            "maximum": 180,
+            "minimum": 1,
             "title": "Analysis Seconds",
             "type": "integer"
           },
           "candidates_per_site": {
             "default": 16,
-            "maximum": 16.0,
-            "minimum": 1.0,
+            "maximum": 16,
+            "minimum": 1,
             "title": "Candidates Per Site",
             "type": "integer"
           },
           "config_bytes": {
             "default": 1048576,
-            "maximum": 1048576.0,
-            "minimum": 1.0,
+            "maximum": 1048576,
+            "minimum": 1,
             "title": "Config Bytes",
             "type": "integer"
           },
           "config_file_bytes": {
             "default": 262144,
-            "maximum": 262144.0,
-            "minimum": 1.0,
+            "maximum": 262144,
+            "minimum": 1,
             "title": "Config File Bytes",
             "type": "integer"
           },
           "config_files": {
             "default": 32,
-            "maximum": 32.0,
-            "minimum": 0.0,
+            "maximum": 32,
+            "minimum": 0,
             "title": "Config Files",
             "type": "integer"
           },
           "derivations": {
             "default": 2000,
-            "maximum": 2000.0,
-            "minimum": 0.0,
+            "maximum": 2000,
+            "minimum": 0,
             "title": "Derivations",
             "type": "integer"
           },
           "diagnostics": {
             "default": 500,
-            "maximum": 500.0,
-            "minimum": 0.0,
+            "maximum": 500,
+            "minimum": 0,
             "title": "Diagnostics",
             "type": "integer"
           },
           "edges": {
             "default": 2000,
-            "maximum": 2000.0,
-            "minimum": 0.0,
+            "maximum": 2000,
+            "minimum": 0,
             "title": "Edges",
             "type": "integer"
           },
           "evidence": {
             "default": 1000,
-            "maximum": 1000.0,
-            "minimum": 1.0,
+            "maximum": 1000,
+            "minimum": 1,
             "title": "Evidence",
             "type": "integer"
           },
           "file_bytes": {
             "default": 2097152,
-            "maximum": 2097152.0,
-            "minimum": 1.0,
+            "maximum": 2097152,
+            "minimum": 1,
             "title": "File Bytes",
             "type": "integer"
           },
           "import_depth": {
             "default": 16,
-            "maximum": 16.0,
-            "minimum": 1.0,
+            "maximum": 16,
+            "minimum": 1,
             "title": "Import Depth",
             "type": "integer"
           },
           "module_lookups": {
             "default": 4096,
-            "maximum": 4096.0,
-            "minimum": 1.0,
+            "maximum": 4096,
+            "minimum": 1,
             "title": "Module Lookups",
             "type": "integer"
           },
           "nodes": {
             "default": 1000,
-            "maximum": 1000.0,
-            "minimum": 1.0,
+            "maximum": 1000,
+            "minimum": 1,
             "title": "Nodes",
             "type": "integer"
           },
           "operation_seconds": {
             "default": 20,
-            "maximum": 20.0,
-            "minimum": 1.0,
+            "maximum": 20,
+            "minimum": 1,
             "title": "Operation Seconds",
             "type": "integer"
           },
           "report_bytes": {
             "default": 2097152,
-            "maximum": 2097152.0,
-            "minimum": 1.0,
+            "maximum": 2097152,
+            "minimum": 1,
             "title": "Report Bytes",
             "type": "integer"
           },
           "resolution_sites": {
             "default": 2000,
-            "maximum": 2000.0,
-            "minimum": 1.0,
+            "maximum": 2000,
+            "minimum": 1,
             "title": "Resolution Sites",
             "type": "integer"
           },
           "result_bytes": {
             "default": 8388608,
-            "maximum": 8388608.0,
-            "minimum": 1.0,
+            "maximum": 8388608,
+            "minimum": 1,
             "title": "Result Bytes",
             "type": "integer"
           },
           "source_bytes": {
             "default": 16777216,
-            "maximum": 16777216.0,
-            "minimum": 1.0,
+            "maximum": 16777216,
+            "minimum": 1,
             "title": "Source Bytes",
             "type": "integer"
           },
           "source_files": {
             "default": 128,
-            "maximum": 128.0,
-            "minimum": 1.0,
+            "maximum": 128,
+            "minimum": 1,
             "title": "Source Files",
             "type": "integer"
           },
           "syntax_nodes": {
             "default": 1000000,
-            "maximum": 1000000.0,
-            "minimum": 1.0,
+            "maximum": 1000000,
+            "minimum": 1,
             "title": "Syntax Nodes",
             "type": "integer"
           },
           "syntax_nodes_per_file": {
             "default": 200000,
-            "maximum": 200000.0,
-            "minimum": 1.0,
+            "maximum": 200000,
+            "minimum": 1,
             "title": "Syntax Nodes Per File",
             "type": "integer"
           }
@@ -9266,35 +5364,6 @@
         "type": "object"
       },
       "StructuralSectionPageV1": {
-        "$defs": {
-          "RunRef": {
-            "additionalProperties": false,
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "run_id": {
-                "format": "uuid",
-                "title": "Run Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "snapshot_id",
-              "run_id"
-            ],
-            "title": "RunRef",
-            "type": "object"
-          }
-        },
         "additionalProperties": false,
         "properties": {
           "items": {
@@ -9348,1109 +5417,6 @@
         "type": "object"
       },
       "StructuralSummaryV1": {
-        "$defs": {
-          "BoundaryLinkV1": {
-            "additionalProperties": false,
-            "properties": {
-              "evidence_keys": {
-                "default": [],
-                "items": {
-                  "pattern": "^[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "title": "Evidence Keys",
-                "type": "array"
-              },
-              "limitations": {
-                "default": [],
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "title": "Limitations",
-                "type": "array"
-              },
-              "reason": {
-                "maxLength": 128,
-                "title": "Reason",
-                "type": "string"
-              },
-              "request_key": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Request Key",
-                "type": "string"
-              },
-              "route_keys": {
-                "default": [],
-                "items": {
-                  "pattern": "^[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "maxItems": 16,
-                "title": "Route Keys",
-                "type": "array"
-              },
-              "state": {
-                "enum": [
-                  "candidate",
-                  "ambiguous",
-                  "unmatched"
-                ],
-                "title": "State",
-                "type": "string"
-              }
-            },
-            "required": [
-              "request_key",
-              "state",
-              "reason"
-            ],
-            "title": "BoundaryLinkV1",
-            "type": "object"
-          },
-          "ComponentSectionV1": {
-            "additionalProperties": false,
-            "properties": {
-              "components": {
-                "default": [],
-                "items": {
-                  "items": {
-                    "pattern": "^[0-9a-f]{64}$",
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                "maxItems": 1000,
-                "title": "Components",
-                "type": "array"
-              },
-              "edges": {
-                "default": [],
-                "items": {
-                  "maxItems": 2,
-                  "minItems": 2,
-                  "prefixItems": [
-                    {
-                      "type": "integer"
-                    },
-                    {
-                      "type": "integer"
-                    }
-                  ],
-                  "type": "array"
-                },
-                "maxItems": 2000,
-                "title": "Edges",
-                "type": "array"
-              },
-              "reason": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Reason"
-              },
-              "relation": {
-                "enum": [
-                  "imports",
-                  "candidate_calls"
-                ],
-                "title": "Relation",
-                "type": "string"
-              },
-              "scanned_edges": {
-                "default": 0,
-                "maximum": 20000,
-                "minimum": 0,
-                "title": "Scanned Edges",
-                "type": "integer"
-              },
-              "state": {
-                "enum": [
-                  "complete",
-                  "partial",
-                  "unavailable",
-                  "not_requested"
-                ],
-                "title": "State",
-                "type": "string"
-              }
-            },
-            "required": [
-              "relation",
-              "state"
-            ],
-            "title": "ComponentSectionV1",
-            "type": "object"
-          },
-          "DiagnosticV1": {
-            "additionalProperties": false,
-            "properties": {
-              "affected_count": {
-                "default": 1,
-                "minimum": 0,
-                "title": "Affected Count",
-                "type": "integer"
-              },
-              "code": {
-                "maxLength": 128,
-                "minLength": 1,
-                "title": "Code",
-                "type": "string"
-              },
-              "location": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/SourceLocationV1"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null
-              },
-              "message": {
-                "maxLength": 256,
-                "title": "Message",
-                "type": "string"
-              },
-              "severity": {
-                "default": "warning",
-                "enum": [
-                  "info",
-                  "warning",
-                  "error"
-                ],
-                "title": "Severity",
-                "type": "string"
-              },
-              "stage": {
-                "maxLength": 64,
-                "title": "Stage",
-                "type": "string"
-              }
-            },
-            "required": [
-              "code",
-              "message",
-              "stage"
-            ],
-            "title": "DiagnosticV1",
-            "type": "object"
-          },
-          "FileOmissionV1": {
-            "additionalProperties": false,
-            "properties": {
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "path": {
-                "title": "Path",
-                "type": "string"
-              },
-              "reason": {
-                "maxLength": 128,
-                "title": "Reason",
-                "type": "string"
-              }
-            },
-            "required": [
-              "file_id",
-              "path",
-              "reason"
-            ],
-            "title": "FileOmissionV1",
-            "type": "object"
-          },
-          "HttpRequestObservationV1": {
-            "additionalProperties": false,
-            "properties": {
-              "base_url": {
-                "anyOf": [
-                  {
-                    "maxLength": 2048,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Base Url"
-              },
-              "client": {
-                "enum": [
-                  "fetch",
-                  "axios"
-                ],
-                "title": "Client",
-                "type": "string"
-              },
-              "evidence_keys": {
-                "default": [],
-                "items": {
-                  "pattern": "^[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "title": "Evidence Keys",
-                "type": "array"
-              },
-              "key": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Key",
-                "type": "string"
-              },
-              "limitations": {
-                "default": [],
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "title": "Limitations",
-                "type": "array"
-              },
-              "location": {
-                "$ref": "#/components/schemas/SourceLocationV1"
-              },
-              "method": {
-                "default": "UNKNOWN",
-                "enum": [
-                  "GET",
-                  "POST",
-                  "PUT",
-                  "PATCH",
-                  "DELETE",
-                  "HEAD",
-                  "OPTIONS",
-                  "ANY",
-                  "UNKNOWN"
-                ],
-                "title": "Method",
-                "type": "string"
-              },
-              "origin_state": {
-                "default": "unknown",
-                "enum": [
-                  "known",
-                  "relative",
-                  "unknown"
-                ],
-                "title": "Origin State",
-                "type": "string"
-              },
-              "path": {
-                "anyOf": [
-                  {
-                    "maxLength": 2048,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Path"
-              },
-              "template_segments": {
-                "default": [],
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 128,
-                "title": "Template Segments",
-                "type": "array"
-              }
-            },
-            "required": [
-              "key",
-              "location",
-              "client"
-            ],
-            "title": "HttpRequestObservationV1",
-            "type": "object"
-          },
-          "IdentityMapV1": {
-            "additionalProperties": false,
-            "properties": {
-              "physical_id": {
-                "format": "uuid",
-                "title": "Physical Id",
-                "type": "string"
-              },
-              "semantic_key": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Semantic Key",
-                "type": "string"
-              }
-            },
-            "required": [
-              "semantic_key",
-              "physical_id"
-            ],
-            "title": "IdentityMapV1",
-            "type": "object"
-          },
-          "ResolutionV1": {
-            "additionalProperties": false,
-            "properties": {
-              "basis": {
-                "default": "unsupported",
-                "enum": [
-                  "lexical",
-                  "import_alias",
-                  "compiler_symbol",
-                  "static_member",
-                  "unsupported"
-                ],
-                "title": "Basis",
-                "type": "string"
-              },
-              "candidate_keys": {
-                "default": [],
-                "items": {
-                  "pattern": "^[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "maxItems": 16,
-                "title": "Candidate Keys",
-                "type": "array"
-              },
-              "external_reference": {
-                "anyOf": [
-                  {
-                    "maxLength": 2048,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "External Reference"
-              },
-              "namespace": {
-                "default": "value",
-                "enum": [
-                  "value",
-                  "type"
-                ],
-                "title": "Namespace",
-                "type": "string"
-              },
-              "reason": {
-                "default": "unknown",
-                "maxLength": 128,
-                "title": "Reason",
-                "type": "string"
-              },
-              "resolution_kind": {
-                "enum": [
-                  "binding",
-                  "call_target",
-                  "import"
-                ],
-                "title": "Resolution Kind",
-                "type": "string"
-              },
-              "site_key": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Site Key",
-                "type": "string"
-              },
-              "status": {
-                "enum": [
-                  "resolved",
-                  "ambiguous",
-                  "unresolved"
-                ],
-                "title": "Status",
-                "type": "string"
-              }
-            },
-            "required": [
-              "site_key",
-              "resolution_kind",
-              "status"
-            ],
-            "title": "ResolutionV1",
-            "type": "object"
-          },
-          "RouteObservationV1": {
-            "additionalProperties": false,
-            "properties": {
-              "evidence_keys": {
-                "default": [],
-                "items": {
-                  "pattern": "^[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "title": "Evidence Keys",
-                "type": "array"
-              },
-              "framework": {
-                "enum": [
-                  "fastapi",
-                  "express"
-                ],
-                "title": "Framework",
-                "type": "string"
-              },
-              "handler": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/SourceLocationV1"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null
-              },
-              "handler_key": {
-                "anyOf": [
-                  {
-                    "pattern": "^[0-9a-f]{64}$",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Handler Key"
-              },
-              "includes": {
-                "default": [],
-                "items": {
-                  "$ref": "#/components/schemas/SourceLocationV1"
-                },
-                "maxItems": 16,
-                "title": "Includes",
-                "type": "array"
-              },
-              "key": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Key",
-                "type": "string"
-              },
-              "limitations": {
-                "default": [],
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 32,
-                "title": "Limitations",
-                "type": "array"
-              },
-              "method": {
-                "default": "UNKNOWN",
-                "enum": [
-                  "GET",
-                  "POST",
-                  "PUT",
-                  "PATCH",
-                  "DELETE",
-                  "HEAD",
-                  "OPTIONS",
-                  "ANY",
-                  "UNKNOWN"
-                ],
-                "title": "Method",
-                "type": "string"
-              },
-              "raw_path": {
-                "anyOf": [
-                  {
-                    "maxLength": 2048,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Raw Path"
-              },
-              "registration": {
-                "$ref": "#/components/schemas/SourceLocationV1"
-              },
-              "service_key": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Service Key"
-              },
-              "state": {
-                "default": "unresolved",
-                "enum": [
-                  "resolved",
-                  "ambiguous",
-                  "unresolved"
-                ],
-                "title": "State",
-                "type": "string"
-              },
-              "template_path": {
-                "anyOf": [
-                  {
-                    "maxLength": 2048,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Template Path"
-              }
-            },
-            "required": [
-              "key",
-              "framework",
-              "registration"
-            ],
-            "title": "RouteObservationV1",
-            "type": "object"
-          },
-          "RunRef": {
-            "additionalProperties": false,
-            "properties": {
-              "org_id": {
-                "format": "uuid",
-                "title": "Org Id",
-                "type": "string"
-              },
-              "run_id": {
-                "format": "uuid",
-                "title": "Run Id",
-                "type": "string"
-              },
-              "snapshot_id": {
-                "format": "uuid",
-                "title": "Snapshot Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "org_id",
-              "snapshot_id",
-              "run_id"
-            ],
-            "title": "RunRef",
-            "type": "object"
-          },
-          "SourceExcerptV1": {
-            "additionalProperties": false,
-            "properties": {
-              "location": {
-                "$ref": "#/components/schemas/SourceLocationV1"
-              },
-              "sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Sha256",
-                "type": "string"
-              },
-              "text": {
-                "maxLength": 2048,
-                "title": "Text",
-                "type": "string"
-              }
-            },
-            "required": [
-              "location",
-              "text",
-              "sha256"
-            ],
-            "title": "SourceExcerptV1",
-            "type": "object"
-          },
-          "SourceLocationV1": {
-            "additionalProperties": false,
-            "properties": {
-              "file_id": {
-                "format": "uuid",
-                "title": "File Id",
-                "type": "string"
-              },
-              "range": {
-                "$ref": "#/components/schemas/SourceRangeV1"
-              },
-              "sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Sha256",
-                "type": "string"
-              }
-            },
-            "required": [
-              "file_id",
-              "sha256",
-              "range"
-            ],
-            "title": "SourceLocationV1",
-            "type": "object"
-          },
-          "SourceRangeV1": {
-            "additionalProperties": false,
-            "description": "Half-open UTF-8 bytes; one-based lines, zero-based byte columns.",
-            "properties": {
-              "end_byte": {
-                "minimum": 0,
-                "title": "End Byte",
-                "type": "integer"
-              },
-              "end_col": {
-                "minimum": 0,
-                "title": "End Col",
-                "type": "integer"
-              },
-              "end_line": {
-                "minimum": 1,
-                "title": "End Line",
-                "type": "integer"
-              },
-              "start_byte": {
-                "minimum": 0,
-                "title": "Start Byte",
-                "type": "integer"
-              },
-              "start_col": {
-                "minimum": 0,
-                "title": "Start Col",
-                "type": "integer"
-              },
-              "start_line": {
-                "minimum": 1,
-                "title": "Start Line",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "start_byte",
-              "end_byte",
-              "start_line",
-              "end_line",
-              "start_col",
-              "end_col"
-            ],
-            "title": "SourceRangeV1",
-            "type": "object"
-          },
-          "StructuralCoverageV1": {
-            "additionalProperties": false,
-            "properties": {
-              "ambiguous": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Ambiguous",
-                "type": "integer"
-              },
-              "distinct_resolution_sites": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Distinct Resolution Sites",
-                "type": "integer"
-              },
-              "eligible_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Eligible Files",
-                "type": "integer"
-              },
-              "excluded_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Excluded Files",
-                "type": "integer"
-              },
-              "framework": {
-                "default": "complete",
-                "enum": [
-                  "complete",
-                  "partial",
-                  "unavailable",
-                  "not_requested"
-                ],
-                "title": "Framework",
-                "type": "string"
-              },
-              "graph": {
-                "default": "complete",
-                "enum": [
-                  "complete",
-                  "partial",
-                  "unavailable",
-                  "not_requested"
-                ],
-                "title": "Graph",
-                "type": "string"
-              },
-              "inventoried_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Inventoried Files",
-                "type": "integer"
-              },
-              "omissions": {
-                "default": [],
-                "items": {
-                  "$ref": "#/components/schemas/FileOmissionV1"
-                },
-                "maxItems": 10000,
-                "title": "Omissions",
-                "type": "array"
-              },
-              "omitted_details_count": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Omitted Details Count",
-                "type": "integer"
-              },
-              "omitted_diagnostics": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Omitted Diagnostics",
-                "type": "integer"
-              },
-              "omitted_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Omitted Files",
-                "type": "integer"
-              },
-              "out_of_scope_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Out Of Scope Files",
-                "type": "integer"
-              },
-              "processed_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Processed Files",
-                "type": "integer"
-              },
-              "requested_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Requested Files",
-                "type": "integer"
-              },
-              "resolution": {
-                "default": "complete",
-                "enum": [
-                  "complete",
-                  "partial",
-                  "unavailable",
-                  "not_requested"
-                ],
-                "title": "Resolution",
-                "type": "string"
-              },
-              "resolution_records": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Resolution Records",
-                "type": "integer"
-              },
-              "resolved": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Resolved",
-                "type": "integer"
-              },
-              "syntax": {
-                "default": "complete",
-                "enum": [
-                  "complete",
-                  "partial",
-                  "unavailable",
-                  "not_requested"
-                ],
-                "title": "Syntax",
-                "type": "string"
-              },
-              "unresolved": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Unresolved",
-                "type": "integer"
-              },
-              "unsupported_files": {
-                "default": 0,
-                "minimum": 0,
-                "title": "Unsupported Files",
-                "type": "integer"
-              }
-            },
-            "title": "StructuralCoverageV1",
-            "type": "object"
-          },
-          "StructuralLimitsV1": {
-            "additionalProperties": false,
-            "properties": {
-              "analysis_seconds": {
-                "default": 180,
-                "maximum": 180,
-                "minimum": 1,
-                "title": "Analysis Seconds",
-                "type": "integer"
-              },
-              "candidates_per_site": {
-                "default": 16,
-                "maximum": 16,
-                "minimum": 1,
-                "title": "Candidates Per Site",
-                "type": "integer"
-              },
-              "config_bytes": {
-                "default": 1048576,
-                "maximum": 1048576,
-                "minimum": 1,
-                "title": "Config Bytes",
-                "type": "integer"
-              },
-              "config_file_bytes": {
-                "default": 262144,
-                "maximum": 262144,
-                "minimum": 1,
-                "title": "Config File Bytes",
-                "type": "integer"
-              },
-              "config_files": {
-                "default": 32,
-                "maximum": 32,
-                "minimum": 0,
-                "title": "Config Files",
-                "type": "integer"
-              },
-              "derivations": {
-                "default": 2000,
-                "maximum": 2000,
-                "minimum": 0,
-                "title": "Derivations",
-                "type": "integer"
-              },
-              "diagnostics": {
-                "default": 500,
-                "maximum": 500,
-                "minimum": 0,
-                "title": "Diagnostics",
-                "type": "integer"
-              },
-              "edges": {
-                "default": 2000,
-                "maximum": 2000,
-                "minimum": 0,
-                "title": "Edges",
-                "type": "integer"
-              },
-              "evidence": {
-                "default": 1000,
-                "maximum": 1000,
-                "minimum": 1,
-                "title": "Evidence",
-                "type": "integer"
-              },
-              "file_bytes": {
-                "default": 2097152,
-                "maximum": 2097152,
-                "minimum": 1,
-                "title": "File Bytes",
-                "type": "integer"
-              },
-              "import_depth": {
-                "default": 16,
-                "maximum": 16,
-                "minimum": 1,
-                "title": "Import Depth",
-                "type": "integer"
-              },
-              "module_lookups": {
-                "default": 4096,
-                "maximum": 4096,
-                "minimum": 1,
-                "title": "Module Lookups",
-                "type": "integer"
-              },
-              "nodes": {
-                "default": 1000,
-                "maximum": 1000,
-                "minimum": 1,
-                "title": "Nodes",
-                "type": "integer"
-              },
-              "operation_seconds": {
-                "default": 20,
-                "maximum": 20,
-                "minimum": 1,
-                "title": "Operation Seconds",
-                "type": "integer"
-              },
-              "report_bytes": {
-                "default": 2097152,
-                "maximum": 2097152,
-                "minimum": 1,
-                "title": "Report Bytes",
-                "type": "integer"
-              },
-              "resolution_sites": {
-                "default": 2000,
-                "maximum": 2000,
-                "minimum": 1,
-                "title": "Resolution Sites",
-                "type": "integer"
-              },
-              "result_bytes": {
-                "default": 8388608,
-                "maximum": 8388608,
-                "minimum": 1,
-                "title": "Result Bytes",
-                "type": "integer"
-              },
-              "source_bytes": {
-                "default": 16777216,
-                "maximum": 16777216,
-                "minimum": 1,
-                "title": "Source Bytes",
-                "type": "integer"
-              },
-              "source_files": {
-                "default": 128,
-                "maximum": 128,
-                "minimum": 1,
-                "title": "Source Files",
-                "type": "integer"
-              },
-              "syntax_nodes": {
-                "default": 1000000,
-                "maximum": 1000000,
-                "minimum": 1,
-                "title": "Syntax Nodes",
-                "type": "integer"
-              },
-              "syntax_nodes_per_file": {
-                "default": 200000,
-                "maximum": 200000,
-                "minimum": 1,
-                "title": "Syntax Nodes Per File",
-                "type": "integer"
-              }
-            },
-            "title": "StructuralLimitsV1",
-            "type": "object"
-          },
-          "SymbolObservationV1": {
-            "additionalProperties": false,
-            "properties": {
-              "container_key": {
-                "anyOf": [
-                  {
-                    "pattern": "^[0-9a-f]{64}$",
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Container Key"
-              },
-              "exported": {
-                "default": false,
-                "title": "Exported",
-                "type": "boolean"
-              },
-              "is_async": {
-                "default": false,
-                "title": "Is Async",
-                "type": "boolean"
-              },
-              "kind": {
-                "enum": [
-                  "module",
-                  "class",
-                  "function",
-                  "method",
-                  "call",
-                  "import"
-                ],
-                "title": "Kind",
-                "type": "string"
-              },
-              "location": {
-                "$ref": "#/components/schemas/SourceLocationV1"
-              },
-              "name": {
-                "maxLength": 2048,
-                "title": "Name",
-                "type": "string"
-              },
-              "path": {
-                "maxLength": 1024,
-                "minLength": 1,
-                "title": "Path",
-                "type": "string"
-              },
-              "qualified_name": {
-                "maxLength": 2048,
-                "title": "Qualified Name",
-                "type": "string"
-              },
-              "role": {
-                "enum": [
-                  "declaration",
-                  "call",
-                  "import"
-                ],
-                "title": "Role",
-                "type": "string"
-              },
-              "semantic_key": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Semantic Key",
-                "type": "string"
-              },
-              "sha256": {
-                "pattern": "^[0-9a-f]{64}$",
-                "title": "Sha256",
-                "type": "string"
-              },
-              "type_only": {
-                "default": false,
-                "title": "Type Only",
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "semantic_key",
-              "kind",
-              "path",
-              "sha256",
-              "location",
-              "name",
-              "qualified_name",
-              "role"
-            ],
-            "title": "SymbolObservationV1",
-            "type": "object"
-          }
-        },
         "additionalProperties": false,
         "properties": {
           "archive_sha256": {
@@ -10795,6 +5761,7 @@
                 "type": "null"
               }
             ],
+            "default": null,
             "title": "Container Key"
           },
           "exported": {
@@ -10905,24 +5872,33 @@
         "type": "object"
       },
       "TraceBudgetV1": {
+        "additionalProperties": false,
         "properties": {
           "max_edges": {
             "default": 200,
+            "maximum": 200,
+            "minimum": 0,
             "title": "Max Edges",
             "type": "integer"
           },
           "max_hops": {
             "default": 2,
+            "maximum": 2,
+            "minimum": 0,
             "title": "Max Hops",
             "type": "integer"
           },
           "max_nodes": {
             "default": 100,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Max Nodes",
             "type": "integer"
           },
           "timeout_seconds": {
             "default": 1.0,
+            "exclusiveMinimum": 0,
+            "maximum": 1.0,
             "title": "Timeout Seconds",
             "type": "number"
           }
@@ -11071,65 +6047,6 @@
         "type": "object"
       },
       "TriageHistoryV1": {
-        "$defs": {
-          "TriageHistoryItemV1": {
-            "properties": {
-              "created_at": {
-                "format": "date-time",
-                "title": "Created At",
-                "type": "string"
-              },
-              "event_id": {
-                "format": "uuid",
-                "title": "Event Id",
-                "type": "string"
-              },
-              "finding_id": {
-                "format": "uuid",
-                "title": "Finding Id",
-                "type": "string"
-              },
-              "principal_id": {
-                "format": "uuid",
-                "title": "Principal Id",
-                "type": "string"
-              },
-              "reason": {
-                "enum": [
-                  "none",
-                  "code_refactor",
-                  "compensating_control",
-                  "business_context",
-                  "test_code",
-                  "vendor_dependency"
-                ],
-                "title": "Reason",
-                "type": "string"
-              },
-              "state": {
-                "enum": [
-                  "unreviewed",
-                  "confirmed",
-                  "false_positive",
-                  "mitigated",
-                  "accepted_risk"
-                ],
-                "title": "State",
-                "type": "string"
-              }
-            },
-            "required": [
-              "event_id",
-              "finding_id",
-              "principal_id",
-              "state",
-              "reason",
-              "created_at"
-            ],
-            "title": "TriageHistoryItemV1",
-            "type": "object"
-          }
-        },
         "properties": {
           "events": {
             "items": {

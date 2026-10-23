@@ -15,13 +15,14 @@ from app.contracts.triage import (
 )
 from app.db.time import database_now
 from app.db.transaction import transaction
-from app.domain.errors import DuplicateConflict, PermissionDenied
+from app.domain.errors import DuplicateConflict
 from app.domain.scope import TenantContext
 from app.models.scan_tables import (
     finding_occurrences,
     finding_triage_events,
     finding_triage_projections,
 )
+from app.security.authorization import require_snapshot
 
 
 class TriageService:
@@ -36,7 +37,7 @@ class TriageService:
         finding_id: UUID,
     ) -> TriageRecordV1:
         async with transaction(self.factory) as session:
-            await self._verify_finding_exists(session, ctx, snapshot_id, finding_id)
+            await self._verify_finding_exists(session, ctx, repository_id, snapshot_id, finding_id)
             row = (
                 (
                     await session.execute(
@@ -75,7 +76,7 @@ class TriageService:
         finding_id: UUID,
     ) -> TriageHistoryV1:
         async with transaction(self.factory) as session:
-            await self._verify_finding_exists(session, ctx, snapshot_id, finding_id)
+            await self._verify_finding_exists(session, ctx, repository_id, snapshot_id, finding_id)
             rows = (
                 (
                     await session.execute(
@@ -115,11 +116,10 @@ class TriageService:
         finding_id: UUID,
         transition: TriageTransitionV1,
     ) -> TriageRecordV1:
-        if ctx.role not in {"owner", "admin", "member"}:
-            raise PermissionDenied("triage_requires_member_role")
-
         async with transaction(self.factory) as session:
-            finding = await self._verify_finding_exists(session, ctx, snapshot_id, finding_id)
+            finding = await self._verify_finding_exists(
+                session, ctx, repository_id, snapshot_id, finding_id, write=True
+            )
             run_id = finding["run_id"]
 
             projection = (
@@ -231,21 +231,22 @@ class TriageService:
             )
 
     async def _verify_finding_exists(
-        self, session: AsyncSession, ctx: TenantContext, snapshot_id: UUID, finding_id: UUID
+        self,
+        session: AsyncSession,
+        ctx: TenantContext,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        finding_id: UUID,
+        *,
+        write: bool = False,
     ) -> dict[str, Any]:
-        row = (
-            (
-                await session.execute(
-                    select(finding_occurrences).where(
-                        finding_occurrences.c.org_id == ctx.org_id,
-                        finding_occurrences.c.snapshot_id == snapshot_id,
-                        finding_occurrences.c.id == finding_id,
-                    )
-                )
-            )
-            .mappings()
-            .one_or_none()
+        await require_snapshot(session, ctx, repository_id, snapshot_id, write=write, lock=write)
+        query = select(finding_occurrences).where(
+            finding_occurrences.c.org_id == ctx.org_id,
+            finding_occurrences.c.snapshot_id == snapshot_id,
+            finding_occurrences.c.id == finding_id,
         )
+        row = (await session.execute(query)).mappings().one_or_none()
         if row is None:
             raise NoResultFound("finding_not_found")
         return dict(row)

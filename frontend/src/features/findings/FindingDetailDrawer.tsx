@@ -54,8 +54,18 @@ export function FindingDetailDrawer({
 
   if (!isOpen) return null;
 
-  const finding: FindingSummaryV1 | undefined = detailQuery.data?.finding;
+  const finding = detailQuery.data;
   const detail: FindingDetailResponseV1 | undefined = detailQuery.data;
+
+  const triageFinding: FindingSummaryV1 | undefined = finding ? {
+    id: finding.id, run_id: finding.run_id, rule_id: finding.rule_id,
+    category: finding.category, severity: finding.severity, title: finding.title,
+    file_path: finding.file_path, line_number: finding.line_number,
+    disposition: finding.disposition, triage_state: finding.triage.current_state,
+    triage_reason: finding.triage.current_reason, triage_version: finding.triage.version,
+  } : undefined;
+  const recommendation = typeof detail?.recommendation?.action === "string"
+    ? detail.recommendation.action : null;
 
   const handleTriageSubmit = async (transition: TriageTransitionV1) => {
     await api.triageFinding(
@@ -251,11 +261,11 @@ export function FindingDetailDrawer({
               </div>
 
               {/* Verified Code Excerpt */}
-              {detail?.excerpt && (
+              {detail?.code_excerpt && (
                 <div>
                   <h4 style={{ margin: "0 0 8px", fontSize: "14px" }}>
-                    Code Excerpt (Lines {detail.excerpt.start_line} -{" "}
-                    {detail.excerpt.end_line})
+                    Code Excerpt (Lines {detail.line_number ?? "?"} -{" "}
+                    {detail.end_line ?? detail.line_number ?? "?"})
                   </h4>
                   <pre
                     style={{
@@ -270,9 +280,9 @@ export function FindingDetailDrawer({
                       margin: 0,
                     }}
                   >
-                    <code>{detail.excerpt.content}</code>
+                    <code>{detail.code_excerpt}</code>
                   </pre>
-                  {finding.category === "secrets" && (
+                  {finding.category === "secret_format" && (
                     <span
                       className="muted"
                       style={{ fontSize: "11px", marginTop: "4px", display: "block" }}
@@ -284,7 +294,7 @@ export function FindingDetailDrawer({
               )}
 
               {/* Remediation */}
-              {detail?.remediation && (
+              {recommendation && (
                 <div>
                   <h4 style={{ margin: "0 0 8px", fontSize: "14px" }}>Remediation Guidance</h4>
                   <div
@@ -297,40 +307,18 @@ export function FindingDetailDrawer({
                       color: "#166534",
                     }}
                   >
-                    {detail.remediation}
+                    {recommendation}
                   </div>
                 </div>
               )}
 
-              {/* Supporting Evidence */}
-              {detail?.support && detail.support.length > 0 && (
+              {detail && (
                 <div>
-                  <h4 style={{ margin: "0 0 8px", fontSize: "14px" }}>
-                    Supporting Observations ({detail.support.length})
-                  </h4>
-                  <div style={{ display: "grid", gap: "8px" }}>
-                    {detail.support.map((sup, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          padding: "10px 12px",
-                          background: "var(--surface)",
-                          border: "1px solid var(--border)",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                        }}
-                      >
-                        <div style={{ fontWeight: 600 }}>{sup.rule_id}</div>
-                        <div className="muted" style={{ margin: "2px 0" }}>
-                          {sup.message}
-                        </div>
-                        <div style={{ fontSize: "11px", color: "var(--muted)" }}>
-                          Evidence: <code>{sup.evidence_id.slice(0, 12)}…</code> ·{" "}
-                          <span>{sup.disposition}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <h4>Evidence support</h4>
+                  <p>Current support: {detail.support_reason}</p>
+                  <p>Historical disposition: {detail.historical_disposition}</p>
+                  <ul>{detail.evidence_ids?.map((id) => <li key={id}><code>{id}</code></li>)}</ul>
+                  {detail.limitations?.map((text, index) => <p key={index}>{text}</p>)}
                 </div>
               )}
 
@@ -357,14 +345,14 @@ export function FindingDetailDrawer({
                       Human Triage State
                     </h4>
                     <div style={{ fontSize: "13px" }}>
-                      Current: <strong>{finding.triage_state}</strong>
-                      {finding.triage_reason !== "none" && (
+                      Current: <strong>{finding.triage.current_state}</strong>
+                      {finding.triage.current_reason !== "none" && (
                         <span>
                           {" "}
-                          · reason: <em>{finding.triage_reason}</em>
+                          · reason: <em>{finding.triage.current_reason}</em>
                         </span>
                       )}
-                      <span className="muted"> (v{finding.triage_version})</span>
+                      <span className="muted"> (v{finding.triage.version})</span>
                     </div>
                   </div>
                   <button
@@ -464,7 +452,7 @@ export function FindingDetailDrawer({
                           fontSize: "13px",
                         }}
                       >
-                        Traversing CPG graph seeds and framework routes...
+                        Loading supported structural relationships...
                       </div>
                     )}
                     {traceQuery.isError && (
@@ -494,9 +482,9 @@ export function FindingDetailDrawer({
       </div>
 
       {/* Triage Action Modal */}
-      {finding && (
+      {triageFinding && (
         <TriageModal
-          finding={finding}
+          finding={triageFinding}
           isOpen={isTriageOpen}
           onClose={() => setIsTriageOpen(false)}
           onSubmit={handleTriageSubmit}

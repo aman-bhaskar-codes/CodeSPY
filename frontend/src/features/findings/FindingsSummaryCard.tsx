@@ -39,10 +39,10 @@ export function FindingsSummaryCard({ summary }: Props) {
             Findings Summary
           </h3>
           <span className="muted" style={{ fontSize: "13px" }}>
-            Scan completed:{" "}
-            {summary.completed_at
-              ? new Date(summary.completed_at).toLocaleString()
-              : "In progress"}
+            Report published:{" "}
+            {summary.created_at
+              ? new Date(summary.created_at).toLocaleString()
+              : "Publication time unavailable"}
           </span>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -88,7 +88,7 @@ export function FindingsSummaryCard({ summary }: Props) {
         }}
       >
         {severities.map((sev) => {
-          const count = summary.counts_by_severity?.[sev] ?? 0;
+          const count = summary.by_severity?.[sev] ?? 0;
           const colors: Record<string, { bg: string; text: string }> = {
             critical: { bg: "#fde8e8", text: "#9c2929" },
             high: { bg: "#feeedb", text: "#a55307" },
@@ -145,7 +145,7 @@ export function FindingsSummaryCard({ summary }: Props) {
         <span style={{ fontWeight: 600 }}>Dispositions:</span>
         {dispositions.map((disp) => (
           <span key={disp}>
-            {disp}: <strong>{summary.counts_by_disposition?.[disp] ?? 0}</strong>
+            {disp}: <strong>{summary.by_disposition?.[disp] ?? 0}</strong>
           </span>
         ))}
       </div>

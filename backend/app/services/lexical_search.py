@@ -120,6 +120,7 @@ class LexicalSearchService:
         sc = source_chunks.c
         filters = [
             sc.org_id == request.scope.org_id,
+            sc.repository_id == request.scope.repository_id,
             sc.snapshot_id == request.scope.snapshot_id,
         ]
 
@@ -227,6 +228,7 @@ class LexicalSearchService:
         sc = source_chunks.c
         scope_filters = [
             sc.org_id == request.scope.org_id,
+            sc.repository_id == request.scope.repository_id,
             sc.snapshot_id == request.scope.snapshot_id,
         ]
 

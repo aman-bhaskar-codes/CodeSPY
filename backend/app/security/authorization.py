@@ -77,6 +77,38 @@ async def require_repository(
     return TenantContext(org_id=org_id, principal_id=principal_id, role=OrgRole(role))
 
 
+async def require_snapshot(
+    session: AsyncSession,
+    ctx: TenantContext,
+    repository_id: UUID,
+    snapshot_id: UUID,
+    *,
+    write: bool = False,
+    lock: bool = False,
+) -> TenantContext:
+    """Bind sealed snapshot access to current repository authority in this transaction."""
+    current = await require_repository(
+        session, ctx.org_id, ctx.principal_id, repository_id, write=write, lock=lock
+    )
+    if lock:
+        # Serialize first triage writes on an existing, API-lockable authority row.
+        # Immutable snapshot/finding tables do not grant UPDATE to the API role.
+        await session.scalar(
+            select(repositories.c.id)
+            .where(repositories.c.org_id == ctx.org_id, repositories.c.id == repository_id)
+            .with_for_update()
+        )
+    query = select(source_snapshots.c.id).where(
+        source_snapshots.c.org_id == ctx.org_id,
+        source_snapshots.c.repository_id == repository_id,
+        source_snapshots.c.id == snapshot_id,
+        source_snapshots.c.state == "sealed",
+    )
+    if await session.scalar(query) is None:
+        raise ScopeViolation("snapshot unavailable")
+    return current
+
+
 async def lock_scope(
     session: AsyncSession,
     org_id: UUID,

@@ -26,6 +26,7 @@ from app.contracts.source_view import (
     SourceViewResultV1,
 )
 from app.domain.errors import ScopeViolation
+from app.domain.scope import OrgRole, TenantContext
 from app.mcp.server import ReadOnlyMcpServer
 
 
@@ -77,12 +78,13 @@ async def test_mcp_protocol_handshake_and_tools_list() -> None:
 @pytest.mark.asyncio
 async def test_mcp_tool_call_get_source_view() -> None:
     mock_source_view = AsyncMock()
-    server = ReadOnlyMcpServer(source_view_service=mock_source_view)
 
     org_id = uuid4()
     repo_id = uuid4()
     snap_id = uuid4()
     principal_id = uuid4()
+    identity = TenantContext(org_id=org_id, principal_id=principal_id, role=OrgRole.MEMBER)
+    server = ReadOnlyMcpServer(identity=identity, source_view_service=mock_source_view)
     file_id = uuid4()
 
     mock_result = SourceViewResultV1(
@@ -106,10 +108,8 @@ async def test_mcp_tool_call_get_source_view() -> None:
         "params": {
             "name": "get_source_view",
             "arguments": {
-                "org_id": str(org_id),
                 "repository_id": str(repo_id),
                 "snapshot_id": str(snap_id),
-                "principal_id": str(principal_id),
                 "file_id": str(file_id),
                 "start_byte": 0,
                 "end_byte": 100,
@@ -129,12 +129,13 @@ async def test_mcp_tool_call_get_source_view() -> None:
 @pytest.mark.asyncio
 async def test_mcp_tool_call_search_exact() -> None:
     mock_lexical = AsyncMock()
-    server = ReadOnlyMcpServer(lexical_service=mock_lexical)
 
     org_id = uuid4()
     repo_id = uuid4()
     snap_id = uuid4()
     principal_id = uuid4()
+    identity = TenantContext(org_id=org_id, principal_id=principal_id, role=OrgRole.MEMBER)
+    server = ReadOnlyMcpServer(identity=identity, lexical_service=mock_lexical)
 
     scope = SearchScopeV1(
         org_id=org_id,
@@ -157,10 +158,8 @@ async def test_mcp_tool_call_search_exact() -> None:
         "params": {
             "name": "search_exact",
             "arguments": {
-                "org_id": str(org_id),
                 "repository_id": str(repo_id),
                 "snapshot_id": str(snap_id),
-                "principal_id": str(principal_id),
                 "query": "authenticate",
             },
         },
@@ -178,12 +177,15 @@ async def test_mcp_tool_call_search_exact() -> None:
 async def test_mcp_tool_call_hybrid_and_context_assembly() -> None:
     mock_hybrid = AsyncMock()
     mock_context = AsyncMock()
-    server = ReadOnlyMcpServer(hybrid_service=mock_hybrid, context_service=mock_context)
 
     org_id = uuid4()
     repo_id = uuid4()
     snap_id = uuid4()
     principal_id = uuid4()
+    identity = TenantContext(org_id=org_id, principal_id=principal_id, role=OrgRole.MEMBER)
+    server = ReadOnlyMcpServer(
+        identity=identity, hybrid_service=mock_hybrid, context_service=mock_context
+    )
     scope = SearchScopeV1(
         org_id=org_id,
         repository_id=repo_id,
@@ -253,10 +255,8 @@ async def test_mcp_tool_call_hybrid_and_context_assembly() -> None:
         "params": {
             "name": "assemble_context",
             "arguments": {
-                "org_id": str(org_id),
                 "repository_id": str(repo_id),
                 "snapshot_id": str(snap_id),
-                "principal_id": str(principal_id),
                 "query": "login",
                 "max_tokens": 2048,
             },
@@ -274,11 +274,12 @@ async def test_mcp_tool_call_hybrid_and_context_assembly() -> None:
 @pytest.mark.asyncio
 async def test_mcp_tool_call_query_memory() -> None:
     mock_memory = AsyncMock()
-    server = ReadOnlyMcpServer(memory_service=mock_memory)
 
     org_id = uuid4()
     repo_id = uuid4()
     principal_id = uuid4()
+    identity = TenantContext(org_id=org_id, principal_id=principal_id, role=OrgRole.MEMBER)
+    server = ReadOnlyMcpServer(identity=identity, memory_service=mock_memory)
 
     empty_items: tuple[MemoryEntryV1, ...] = ()
     mock_memory.query_memory.return_value = MemoryQueryResponseV1(
@@ -296,9 +297,7 @@ async def test_mcp_tool_call_query_memory() -> None:
         "params": {
             "name": "query_memory",
             "arguments": {
-                "org_id": str(org_id),
                 "repository_id": str(repo_id),
-                "principal_id": str(principal_id),
                 "query": "csrf",
             },
         },
@@ -315,7 +314,8 @@ async def test_mcp_tool_call_query_memory() -> None:
 async def test_mcp_security_scope_rejection_and_mutating_tool_forbiddance() -> None:
     mock_memory = AsyncMock()
     mock_memory.query_memory.side_effect = ScopeViolation("Principal not authorized for repo")
-    server = ReadOnlyMcpServer(memory_service=mock_memory)
+    identity = TenantContext(org_id=uuid4(), principal_id=uuid4(), role=OrgRole.MEMBER)
+    server = ReadOnlyMcpServer(identity=identity, memory_service=mock_memory)
 
     # 1. ScopeViolation wrapped as isError: True
     req = {
@@ -325,9 +325,7 @@ async def test_mcp_security_scope_rejection_and_mutating_tool_forbiddance() -> N
         "params": {
             "name": "query_memory",
             "arguments": {
-                "org_id": str(uuid4()),
                 "repository_id": str(uuid4()),
-                "principal_id": str(uuid4()),
                 "query": "unauthorized",
             },
         },
@@ -356,9 +354,7 @@ async def test_mcp_security_scope_rejection_and_mutating_tool_forbiddance() -> N
         "params": {
             "name": "query_memory",
             "arguments": {
-                "org_id": "not-a-valid-uuid",
-                "repository_id": str(uuid4()),
-                "principal_id": str(uuid4()),
+                "repository_id": "not-a-valid-uuid",
                 "query": "test",
             },
         },

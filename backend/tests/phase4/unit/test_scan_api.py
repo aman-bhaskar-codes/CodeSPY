@@ -149,3 +149,28 @@ def test_scan_request_contracts_validation() -> None:
     data = req.model_dump_json()
     parsed = CreateScanRequestV1.model_validate_json(data)
     assert parsed.config is None
+
+
+def test_openapi_component_references_resolve() -> None:
+    """Generated clients must retain nested request schemas and enum constraints."""
+    ctx = TenantContext(org_id=uuid4(), principal_id=uuid4(), role=OrgRole.OWNER)
+    schema = create_app(
+        ApiSettings(environment="test", auth_mode="local_fixture", origin="http://testserver"),
+        ApplicationPorts(factory=None, store=DummyStore(), fixture_context=ctx),  # type: ignore
+    ).openapi()
+    pending = [schema]
+    missing = set()
+    while pending:
+        value = pending.pop()
+        if isinstance(value, dict):
+            ref = value.get("$ref")
+            if (
+                isinstance(ref, str)
+                and ref.startswith("#/components/schemas/")
+                and ref.rsplit("/", 1)[1] not in schema["components"]["schemas"]
+            ):
+                missing.add(ref)
+            pending.extend(value.values())
+        elif isinstance(value, list):
+            pending.extend(value)
+    assert missing == set()

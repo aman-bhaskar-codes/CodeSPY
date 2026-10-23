@@ -49,10 +49,9 @@ export function FindingsTable({
 
   const categories: Array<FindingCategory | "all"> = [
     "all",
-    "sast",
-    "secrets",
-    "sca",
-    "iac",
+    "source_pattern",
+    "secret_format",
+    "dependency_advisory",
   ];
   const severities: Array<FindingSeverity | "all"> = [
     "all",
@@ -272,8 +271,8 @@ export function FindingsTable({
                   <td style={{ padding: "10px 14px", fontWeight: 600 }}>
                     <code>{item.rule_id}</code>
                     <div className="muted" style={{ fontSize: "12px", fontWeight: 400, marginTop: "2px" }}>
-                      {item.message.slice(0, 80)}
-                      {item.message.length > 80 ? "…" : ""}
+                      {item.title.slice(0, 80)}
+                      {item.title.length > 80 ? "…" : ""}
                     </div>
                   </td>
                   <td style={{ padding: "10px 14px" }}>

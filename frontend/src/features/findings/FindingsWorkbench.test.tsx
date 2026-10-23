@@ -13,16 +13,15 @@ afterEach(() => {
 describe("FindingsSummaryCard", () => {
   it("never renders a false-safe badge when 0 findings are present", () => {
     const zeroSummary: ScanSummaryResponseV1 = {
-      schema_version: 1,
-      run_id: "00000000-0000-0000-0000-000000000001",
+      scan_id: "00000000-0000-0000-0000-000000000001",
+      repository_id: "repo",
       snapshot_id: "00000000-0000-0000-0000-000000000002",
       status: "succeeded",
       created_at: new Date().toISOString(),
-      completed_at: new Date().toISOString(),
-      counts_by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
-      counts_by_category: { sast: 0, secrets: 0, sca: 0, iac: 0 },
-      counts_by_disposition: { proposed: 0, "supported-static": 0, contradicted: 0, unresolved: 0 },
-      counts_by_triage_state: { unreviewed: 0, confirmed: 0, false_positive: 0, mitigated: 0, accepted_risk: 0 },
+      by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      by_category: { sast: 0, secrets: 0, sca: 0, iac: 0 },
+      by_disposition: { proposed: 0, "supported-static": 0, contradicted: 0, unresolved: 0 },
+      by_triage: { unreviewed: 0, confirmed: 0, false_positive: 0, mitigated: 0, accepted_risk: 0 },
       total_findings: 0,
     };
 
@@ -43,16 +42,15 @@ describe("FindingsSummaryCard", () => {
 
   it("renders accurate counts by severity", () => {
     const summary: ScanSummaryResponseV1 = {
-      schema_version: 1,
-      run_id: "00000000-0000-0000-0000-000000000001",
+      scan_id: "00000000-0000-0000-0000-000000000001",
+      repository_id: "repo",
       snapshot_id: "00000000-0000-0000-0000-000000000002",
       status: "succeeded",
       created_at: new Date().toISOString(),
-      completed_at: new Date().toISOString(),
-      counts_by_severity: { critical: 2, high: 5, medium: 8, low: 1, info: 0 },
-      counts_by_category: { sast: 10, secrets: 4, sca: 2, iac: 0 },
-      counts_by_disposition: { proposed: 6, "supported-static": 10, contradicted: 0, unresolved: 0 },
-      counts_by_triage_state: { unreviewed: 14, confirmed: 2, false_positive: 0, mitigated: 0, accepted_risk: 0 },
+      by_severity: { critical: 2, high: 5, medium: 8, low: 1, info: 0 },
+      by_category: { sast: 10, secrets: 4, sca: 2, iac: 0 },
+      by_disposition: { proposed: 6, "supported-static": 10, contradicted: 0, unresolved: 0 },
+      by_triage: { unreviewed: 14, confirmed: 2, false_positive: 0, mitigated: 0, accepted_risk: 0 },
       total_findings: 16,
     };
 
@@ -68,16 +66,16 @@ describe("FindingsSummaryCard", () => {
 describe("TriageModal", () => {
   const dummyFinding: FindingSummaryV1 = {
     id: "00000000-0000-0000-0000-000000000010",
+    run_id: "run",
     rule_id: "CS-SEC-001",
-    category: "secrets",
+    category: "secret_format",
     severity: "critical",
     disposition: "supported-static",
     file_path: "src/config.py",
     line_number: 42,
-    message: "Hardcoded API secret token detected",
+    title: "Hardcoded API secret token detected",
     triage_state: "unreviewed",
     triage_reason: "none",
-    triage_updated_at: null,
     triage_version: 1,
   };
 

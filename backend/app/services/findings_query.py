@@ -24,6 +24,7 @@ from app.models.scan_tables import (
 )
 from app.models.tables import source_files
 from app.ports.object_store import ObjectStore
+from app.security.authorization import require_snapshot
 from app.services.analysis_sources import locate_source
 
 
@@ -104,6 +105,7 @@ class FindingsQueryService:
         run_id: UUID,
     ) -> ScanSummaryResponseV1:
         async with transaction(self.factory) as session:
+            await require_snapshot(session, ctx, repository_id, snapshot_id)
             report_row = (
                 (
                     await session.execute(
@@ -197,6 +199,7 @@ class FindingsQueryService:
     ) -> FindingListResponseV1:
         limit = min(max(1, limit), 100)
         async with transaction(self.factory) as session:
+            await require_snapshot(session, ctx, repository_id, snapshot_id)
             base_query = (
                 select(
                     finding_occurrences.c.id,
@@ -316,6 +319,7 @@ class FindingsQueryService:
         store: ObjectStore | None = None,
     ) -> FindingDetailResponseV1:
         async with transaction(self.factory) as session:
+            await require_snapshot(session, ctx, repository_id, snapshot_id)
             query = (
                 select(
                     finding_occurrences.c.id,

@@ -214,3 +214,22 @@ def test_slice_mappings_for_safe_range() -> None:
     assert len(sliced) == 2
     assert sliced[0].safe_start_byte == 0
     assert sliced[1].safe_start_byte == 20
+
+
+def test_malformed_utf8_preserves_secret_byte_spans() -> None:
+    secret = b"abcdefghABCDEFGH123456"
+    for prefix in (b"\xff ", b"\xe2\x82 ", "日本語".encode() + b"\xff "):
+        raw = prefix + b'api_key="' + secret + b'"; suffix\xff'
+        result = transform_model_safe(raw, PrivacyPolicyV1())
+        assert result.safe_bytes == (
+            prefix + b'api_key="[REDACTED_SECRET:hardcoded_credential]"; suffix\xff'
+        )
+        assert result.redaction_count == 1
+        redacted = next(m for m in result.mappings if m.is_redacted)
+        assert raw[redacted.original_start_byte : redacted.original_end_byte] == secret
+        for mapping in result.mappings:
+            if not mapping.is_redacted:
+                assert (
+                    raw[mapping.original_start_byte : mapping.original_end_byte]
+                    == (result.safe_bytes[mapping.safe_start_byte : mapping.safe_end_byte])
+                )
