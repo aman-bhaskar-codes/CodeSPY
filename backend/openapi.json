@@ -1401,6 +1401,54 @@
         "title": "ByteRangeV1",
         "type": "object"
       },
+      "ChatMessageV1": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ModelRole"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id"
+          },
+          "tool_calls": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ToolCallV1"
+            },
+            "title": "Tool Calls",
+            "type": "array"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "ChatMessageV1",
+        "type": "object"
+      },
       "ChunkKind": {
         "enum": [
           "module",
@@ -4712,6 +4760,1297 @@
         "title": "InventoryPageV1",
         "type": "object"
       },
+      "InvestigationClaimV1": {
+        "additionalProperties": false,
+        "properties": {
+          "claim_id": {
+            "title": "Claim Id",
+            "type": "string"
+          },
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Path"
+          },
+          "line_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line End"
+          },
+          "line_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Start"
+          },
+          "quoted_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quoted Source"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": "string"
+          },
+          "status": {
+            "default": "pending",
+            "title": "Status",
+            "type": "string"
+          },
+          "verification_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Notes"
+          }
+        },
+        "required": [
+          "claim_id",
+          "statement"
+        ],
+        "title": "InvestigationClaimV1",
+        "type": "object"
+      },
+      "InvestigationCreateRequestV1": {
+        "$defs": {
+          "InvestigationDepth": {
+            "enum": [
+              "quick",
+              "standard",
+              "deep"
+            ],
+            "title": "InvestigationDepth",
+            "type": "string"
+          },
+          "InvestigationMode": {
+            "enum": [
+              "short_path",
+              "two_specialist"
+            ],
+            "title": "InvestigationMode",
+            "type": "string"
+          },
+          "InvestigationTargetType": {
+            "enum": [
+              "finding",
+              "repository",
+              "commit",
+              "diff"
+            ],
+            "title": "InvestigationTargetType",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "budget_limit_micros": {
+            "default": 5000000,
+            "exclusiveMinimum": 0,
+            "title": "Budget Limit Micros",
+            "type": "integer"
+          },
+          "depth": {
+            "$ref": "#/components/schemas/InvestigationDepth",
+            "default": "standard"
+          },
+          "finding_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finding Id"
+          },
+          "max_steps": {
+            "default": 10,
+            "maximum": 25,
+            "minimum": 1,
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/InvestigationMode",
+            "default": "short_path"
+          },
+          "query": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/InvestigationTargetType",
+            "default": "finding"
+          }
+        },
+        "required": [
+          "repository_id",
+          "query"
+        ],
+        "title": "InvestigationCreateRequestV1",
+        "type": "object"
+      },
+      "InvestigationDetailResponseV1": {
+        "$defs": {
+          "ChatMessageV1": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "default": "",
+                "title": "Content",
+                "type": "string"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "role": {
+                "$ref": "#/components/schemas/ModelRole"
+              },
+              "tool_call_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Tool Call Id"
+              },
+              "tool_calls": {
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/ToolCallV1"
+                },
+                "title": "Tool Calls",
+                "type": "array"
+              }
+            },
+            "required": [
+              "role"
+            ],
+            "title": "ChatMessageV1",
+            "type": "object"
+          },
+          "InvestigationClaimV1": {
+            "additionalProperties": false,
+            "properties": {
+              "claim_id": {
+                "title": "Claim Id",
+                "type": "string"
+              },
+              "file_path": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "File Path"
+              },
+              "line_end": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Line End"
+              },
+              "line_start": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Line Start"
+              },
+              "quoted_source": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Quoted Source"
+              },
+              "statement": {
+                "title": "Statement",
+                "type": "string"
+              },
+              "status": {
+                "default": "pending",
+                "title": "Status",
+                "type": "string"
+              },
+              "verification_notes": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Verification Notes"
+              }
+            },
+            "required": [
+              "claim_id",
+              "statement"
+            ],
+            "title": "InvestigationClaimV1",
+            "type": "object"
+          },
+          "InvestigationStateV1": {
+            "additionalProperties": false,
+            "properties": {
+              "claims": {
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/InvestigationClaimV1"
+                },
+                "title": "Claims",
+                "type": "array"
+              },
+              "collected_evidence": {
+                "default": [],
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "title": "Collected Evidence",
+                "type": "array"
+              },
+              "current_step": {
+                "default": 0,
+                "title": "Current Step",
+                "type": "integer"
+              },
+              "depth": {
+                "default": "standard",
+                "title": "Depth",
+                "type": "string"
+              },
+              "finding_id": {
+                "anyOf": [
+                  {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Finding Id"
+              },
+              "history": {
+                "default": [],
+                "items": {
+                  "$ref": "#/components/schemas/ChatMessageV1"
+                },
+                "title": "History",
+                "type": "array"
+              },
+              "human_guidance": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Human Guidance"
+              },
+              "investigation_id": {
+                "format": "uuid",
+                "title": "Investigation Id",
+                "type": "string"
+              },
+              "max_steps": {
+                "default": 10,
+                "title": "Max Steps",
+                "type": "integer"
+              },
+              "mode": {
+                "default": "short_path",
+                "title": "Mode",
+                "type": "string"
+              },
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "query": {
+                "title": "Query",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "summary": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Summary"
+              },
+              "target_type": {
+                "title": "Target Type",
+                "type": "string"
+              },
+              "tool_history": {
+                "default": [],
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "title": "Tool History",
+                "type": "array"
+              },
+              "total_spent_micros": {
+                "default": 0,
+                "title": "Total Spent Micros",
+                "type": "integer"
+              },
+              "verdict": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Verdict"
+              },
+              "verdict_confidence": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Verdict Confidence"
+              }
+            },
+            "required": [
+              "investigation_id",
+              "org_id",
+              "repository_id",
+              "target_type",
+              "query"
+            ],
+            "title": "InvestigationStateV1",
+            "type": "object"
+          },
+          "InvestigationSummaryV1": {
+            "additionalProperties": false,
+            "properties": {
+              "budget_limit_micros": {
+                "title": "Budget Limit Micros",
+                "type": "integer"
+              },
+              "created_at": {
+                "format": "date-time",
+                "title": "Created At",
+                "type": "string"
+              },
+              "current_step": {
+                "title": "Current Step",
+                "type": "integer"
+              },
+              "depth": {
+                "title": "Depth",
+                "type": "string"
+              },
+              "failure_reason": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Failure Reason"
+              },
+              "fencing_token": {
+                "title": "Fencing Token",
+                "type": "integer"
+              },
+              "finding_id": {
+                "anyOf": [
+                  {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Finding Id"
+              },
+              "id": {
+                "format": "uuid",
+                "title": "Id",
+                "type": "string"
+              },
+              "max_steps": {
+                "title": "Max Steps",
+                "type": "integer"
+              },
+              "mode": {
+                "title": "Mode",
+                "type": "string"
+              },
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "query": {
+                "title": "Query",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "spent_micros": {
+                "title": "Spent Micros",
+                "type": "integer"
+              },
+              "status": {
+                "title": "Status",
+                "type": "string"
+              },
+              "summary": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Summary"
+              },
+              "target_type": {
+                "title": "Target Type",
+                "type": "string"
+              },
+              "updated_at": {
+                "format": "date-time",
+                "title": "Updated At",
+                "type": "string"
+              },
+              "verdict": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Verdict"
+              },
+              "verdict_confidence": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Verdict Confidence"
+              },
+              "worker_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Worker Id"
+              }
+            },
+            "required": [
+              "id",
+              "org_id",
+              "repository_id",
+              "target_type",
+              "query",
+              "status",
+              "mode",
+              "depth",
+              "current_step",
+              "max_steps",
+              "fencing_token",
+              "budget_limit_micros",
+              "spent_micros",
+              "created_at",
+              "updated_at"
+            ],
+            "title": "InvestigationSummaryV1",
+            "type": "object"
+          },
+          "ModelRole": {
+            "enum": [
+              "system",
+              "user",
+              "assistant",
+              "tool"
+            ],
+            "title": "ModelRole",
+            "type": "string"
+          },
+          "ToolCallV1": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments_json": {
+                "default": "{}",
+                "title": "Arguments Json",
+                "type": "string"
+              },
+              "id": {
+                "maxLength": 64,
+                "minLength": 1,
+                "title": "Id",
+                "type": "string"
+              },
+              "name": {
+                "maxLength": 64,
+                "minLength": 1,
+                "title": "Name",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "title": "ToolCallV1",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "claims": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/InvestigationClaimV1"
+            },
+            "title": "Claims",
+            "type": "array"
+          },
+          "events_count": {
+            "default": 0,
+            "title": "Events Count",
+            "type": "integer"
+          },
+          "latest_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestigationStateV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "summary": {
+            "$ref": "#/components/schemas/InvestigationSummaryV1"
+          }
+        },
+        "required": [
+          "summary"
+        ],
+        "title": "InvestigationDetailResponseV1",
+        "type": "object"
+      },
+      "InvestigationEventV1": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "investigation_id": {
+            "format": "uuid",
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "node_name": {
+            "title": "Node Name",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "step_index": {
+            "title": "Step Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "org_id",
+          "investigation_id",
+          "step_index",
+          "event_type",
+          "node_name",
+          "payload",
+          "created_at"
+        ],
+        "title": "InvestigationEventV1",
+        "type": "object"
+      },
+      "InvestigationFeedbackRequestV1": {
+        "additionalProperties": false,
+        "properties": {
+          "feedback_type": {
+            "description": "'agree', 'disagree', 'needs_review', or 'comment'",
+            "title": "Feedback Type",
+            "type": "string"
+          },
+          "memory_topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Memory Topic"
+          },
+          "notes": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Notes",
+            "type": "string"
+          },
+          "save_to_memory": {
+            "default": false,
+            "title": "Save To Memory",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "feedback_type",
+          "notes"
+        ],
+        "title": "InvestigationFeedbackRequestV1",
+        "type": "object"
+      },
+      "InvestigationListResponseV1": {
+        "$defs": {
+          "InvestigationSummaryV1": {
+            "additionalProperties": false,
+            "properties": {
+              "budget_limit_micros": {
+                "title": "Budget Limit Micros",
+                "type": "integer"
+              },
+              "created_at": {
+                "format": "date-time",
+                "title": "Created At",
+                "type": "string"
+              },
+              "current_step": {
+                "title": "Current Step",
+                "type": "integer"
+              },
+              "depth": {
+                "title": "Depth",
+                "type": "string"
+              },
+              "failure_reason": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Failure Reason"
+              },
+              "fencing_token": {
+                "title": "Fencing Token",
+                "type": "integer"
+              },
+              "finding_id": {
+                "anyOf": [
+                  {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Finding Id"
+              },
+              "id": {
+                "format": "uuid",
+                "title": "Id",
+                "type": "string"
+              },
+              "max_steps": {
+                "title": "Max Steps",
+                "type": "integer"
+              },
+              "mode": {
+                "title": "Mode",
+                "type": "string"
+              },
+              "org_id": {
+                "format": "uuid",
+                "title": "Org Id",
+                "type": "string"
+              },
+              "query": {
+                "title": "Query",
+                "type": "string"
+              },
+              "repository_id": {
+                "format": "uuid",
+                "title": "Repository Id",
+                "type": "string"
+              },
+              "spent_micros": {
+                "title": "Spent Micros",
+                "type": "integer"
+              },
+              "status": {
+                "title": "Status",
+                "type": "string"
+              },
+              "summary": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Summary"
+              },
+              "target_type": {
+                "title": "Target Type",
+                "type": "string"
+              },
+              "updated_at": {
+                "format": "date-time",
+                "title": "Updated At",
+                "type": "string"
+              },
+              "verdict": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Verdict"
+              },
+              "verdict_confidence": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Verdict Confidence"
+              },
+              "worker_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Worker Id"
+              }
+            },
+            "required": [
+              "id",
+              "org_id",
+              "repository_id",
+              "target_type",
+              "query",
+              "status",
+              "mode",
+              "depth",
+              "current_step",
+              "max_steps",
+              "fencing_token",
+              "budget_limit_micros",
+              "spent_micros",
+              "created_at",
+              "updated_at"
+            ],
+            "title": "InvestigationSummaryV1",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InvestigationSummaryV1"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total_count"
+        ],
+        "title": "InvestigationListResponseV1",
+        "type": "object"
+      },
+      "InvestigationStateV1": {
+        "additionalProperties": false,
+        "properties": {
+          "claims": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/InvestigationClaimV1"
+            },
+            "title": "Claims",
+            "type": "array"
+          },
+          "collected_evidence": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Collected Evidence",
+            "type": "array"
+          },
+          "current_step": {
+            "default": 0,
+            "title": "Current Step",
+            "type": "integer"
+          },
+          "depth": {
+            "default": "standard",
+            "title": "Depth",
+            "type": "string"
+          },
+          "finding_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finding Id"
+          },
+          "history": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageV1"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "human_guidance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Human Guidance"
+          },
+          "investigation_id": {
+            "format": "uuid",
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "max_steps": {
+            "default": 10,
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "mode": {
+            "default": "short_path",
+            "title": "Mode",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "target_type": {
+            "title": "Target Type",
+            "type": "string"
+          },
+          "tool_history": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Tool History",
+            "type": "array"
+          },
+          "total_spent_micros": {
+            "default": 0,
+            "title": "Total Spent Micros",
+            "type": "integer"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict"
+          },
+          "verdict_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict Confidence"
+          }
+        },
+        "required": [
+          "investigation_id",
+          "org_id",
+          "repository_id",
+          "target_type",
+          "query"
+        ],
+        "title": "InvestigationStateV1",
+        "type": "object"
+      },
+      "InvestigationSummaryV1": {
+        "additionalProperties": false,
+        "properties": {
+          "budget_limit_micros": {
+            "title": "Budget Limit Micros",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_step": {
+            "title": "Current Step",
+            "type": "integer"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "string"
+          },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Failure Reason"
+          },
+          "fencing_token": {
+            "title": "Fencing Token",
+            "type": "integer"
+          },
+          "finding_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finding Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "max_steps": {
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "spent_micros": {
+            "title": "Spent Micros",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Summary"
+          },
+          "target_type": {
+            "title": "Target Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Verdict"
+          },
+          "verdict_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Verdict Confidence"
+          },
+          "worker_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Worker Id"
+          }
+        },
+        "required": [
+          "id",
+          "org_id",
+          "repository_id",
+          "target_type",
+          "query",
+          "status",
+          "mode",
+          "depth",
+          "current_step",
+          "max_steps",
+          "fencing_token",
+          "budget_limit_micros",
+          "spent_micros",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "InvestigationSummaryV1",
+        "type": "object"
+      },
       "JobEventV2": {
         "additionalProperties": false,
         "properties": {
@@ -5747,6 +7086,16 @@
         ],
         "title": "MemoryQueryResponseV1",
         "type": "object"
+      },
+      "ModelRole": {
+        "enum": [
+          "system",
+          "user",
+          "assistant",
+          "tool"
+        ],
+        "title": "ModelRole",
+        "type": "string"
       },
       "NativeSelectionV1": {
         "$defs": {
@@ -9527,6 +10876,34 @@
         "title": "SymbolObservationV1",
         "type": "object"
       },
+      "ToolCallV1": {
+        "additionalProperties": false,
+        "properties": {
+          "arguments_json": {
+            "default": "{}",
+            "title": "Arguments Json",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ToolCallV1",
+        "type": "object"
+      },
       "TraceBudgetV1": {
         "properties": {
           "max_edges": {
@@ -10908,6 +12285,417 @@
           }
         },
         "summary": "Bind Github"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/investigations": {
+      "get": {
+        "operationId": "list_investigations_endpoint_api_v1_repositories__repository_id__investigations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "finding_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Finding Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationListResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Investigations Endpoint"
+      },
+      "post": {
+        "operationId": "create_investigation_endpoint_api_v1_repositories__repository_id__investigations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestigationCreateRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationSummaryV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Investigation Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/investigations/{investigation_id}": {
+      "get": {
+        "operationId": "get_investigation_detail_endpoint_api_v1_repositories__repository_id__investigations__investigation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationDetailResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Investigation Detail Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/investigations/{investigation_id}/events": {
+      "get": {
+        "operationId": "list_investigation_events_endpoint_api_v1_repositories__repository_id__investigations__investigation_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after_step",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After Step"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InvestigationEventV1"
+                  },
+                  "title": "Response List Investigation Events Endpoint Api V1 Repositories  Repository Id  Investigations  Investigation Id  Events Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Investigation Events Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/investigations/{investigation_id}/execute": {
+      "post": {
+        "operationId": "execute_investigation_endpoint_api_v1_repositories__repository_id__investigations__investigation_id__execute_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationDetailResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Execute Investigation Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/investigations/{investigation_id}/feedback": {
+      "post": {
+        "operationId": "record_investigation_feedback_endpoint_api_v1_repositories__repository_id__investigations__investigation_id__feedback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestigationFeedbackRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Record Investigation Feedback Endpoint Api V1 Repositories  Repository Id  Investigations  Investigation Id  Feedback Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Investigation Feedback Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/investigations/{investigation_id}/stream": {
+      "get": {
+        "operationId": "stream_investigation_events_endpoint_api_v1_repositories__repository_id__investigations__investigation_id__stream_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after_step",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After Step"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Investigation Events Endpoint"
       }
     },
     "/api/v1/repositories/{repository_id}/scans": {
