@@ -42,6 +42,7 @@ from app.contracts.investigation import (
     InvestigationEventV1,
     InvestigationFeedbackRequestV1,
     InvestigationListResponseV1,
+    InvestigationMode,
     InvestigationSummaryV1,
 )
 from app.contracts.jobs import JobRecordV2, JobRecordV3, RetryResponseV1, RetryResponseV2
@@ -163,6 +164,7 @@ from app.services.structural_analysis import StructuralAnalysisService
 from app.services.structural_reads import report_items, summary
 from app.services.submissions import SubmissionService
 from app.services.triage import TriageService
+from app.services.two_specialist_investigator import TwoSpecialistInvestigator
 from app.services.webhooks import GitHubWebhookService
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -1711,22 +1713,32 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             gateway = ModelGatewayService(
                 router=router, budget_service=budget_svc, adapters={"fake": adapter}
             )
-            investigator = ShortPathInvestigator(gateway, checkpointer)
-
             exec_ctx = ToolExecutionContext(
                 org_id=ctx.org_id,
                 repository_id=repository_id,
                 principal_id=ctx.principal_id,
             )
 
-            state = await investigator.run_investigation(
-                org_id=ctx.org_id,
-                investigation_id=investigation_id,
-                worker_id=worker_id,
-                fencing_token=fence,
-                disclosure_policy=DisclosurePolicyV1(allow_external_disclosure=False),
-                context=exec_ctx,
-            )
+            if inv_summary.mode == InvestigationMode.TWO_SPECIALIST:
+                two_specialist = TwoSpecialistInvestigator(gateway, checkpointer)
+                state = await two_specialist.run_investigation(
+                    org_id=ctx.org_id,
+                    investigation_id=investigation_id,
+                    worker_id=worker_id,
+                    fencing_token=fence,
+                    disclosure_policy=DisclosurePolicyV1(allow_external_disclosure=False),
+                    context=exec_ctx,
+                )
+            else:
+                investigator = ShortPathInvestigator(gateway, checkpointer)
+                state = await investigator.run_investigation(
+                    org_id=ctx.org_id,
+                    investigation_id=investigation_id,
+                    worker_id=worker_id,
+                    fencing_token=fence,
+                    disclosure_policy=DisclosurePolicyV1(allow_external_disclosure=False),
+                    context=exec_ctx,
+                )
 
             final_summary = await checkpointer.get_investigation_summary(
                 ctx.org_id, investigation_id
