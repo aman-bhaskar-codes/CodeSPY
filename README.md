@@ -1,237 +1,264 @@
+<div align="center">
+
 # CodeSPY
 
-CodeSPY is an enterprise-grade source intake, deterministic structural analysis, multi-scanner static security analysis, secure code retrieval, and reliable agentic investigation platform.
+**Inspect source. Follow structure. Review evidence.**
 
-It operates under a strict principle of **evidence-grounded analysis**: zero hallucinated security findings, deterministic syntax and call-graph verification, multi-tenant database isolation, integer-microdollar budget controls, and anti-hallucination claim verification backed by exact source line quotations.
+A source-code inspection workbench for Python, JavaScript and TypeScript repositories.
 
----
+[Architecture](#architecture) · [Capabilities](#capabilities) · [Local development](#local-development) · [Verification](#verification) · [Technical records](#technical-records)
 
-## Capabilities and Limits
-
-### 1. Source Intake & Byte-Level Inventory Authority
-- **Immutable Snapshots**: Tenant-isolated source archive admission with cryptographically verified SHA-256 digests.
-- **Archive Ingestion Bounds**: ZIP uploads capped at 100 MiB compressed, 10,000 files, and expansion ratio limits to protect against decompression bombs.
-- **Deterministic Inventory**: Comprehensive byte accounting, path sanitization, and automatic classification of source, asset, and sensitive exclusion paths.
-- **Durable Job Execution**: Transactional outbox pattern, monotonic fencing leases, and resilient retry/cancellation recovery.
-
-### 2. Structural Architecture & Framework Boundary Analysis
-- **Isolated Syntax Analyzers**: Sandboxed analysis engines for Python, JavaScript, and TypeScript without executing target repository code.
-- **Syntax Graph Construction**: Extraction of symbol definitions, import resolutions, call graphs, and framework boundaries (such as FastAPI, Express, and React).
-- **Resource Constraints**: Default structural selection capped at 128 eligible files and 16 MiB of source, with an independent 32-file/1-MiB budget for configuration.
-- **Bounded Structural Reports**: Published structural graphs are bounded at 1,000 nodes, 2,000 edges, and 2 MiB of JSON, with explicit omission reporting for untracked segments.
-
-### 3. Static Security Analysis & Human Triage
-- **Multi-Scanner Offline Adapters**: Verification pipelines for secrets detection (Gitleaks), syntactic security rules (Semgrep), software composition analysis (OSV advisory matching), and infrastructure-as-code rules.
-- **Durable Findings Materialization**: Verifiable scanner occurrences mapped to exact file byte-ranges, persistent finding fingerprints, and immutable evidence envelopes.
-- **Human Triage Workflow**: Audited vulnerability suppression, severity override, and state management (open, confirmed, false positive, resolved).
-- **Offline Dependency Assessment**: Evaluates lockfile metadata (`uv.lock`, `package-lock.json`) against frozen offline vulnerability databases without external network egress or dependency installation.
-
-### 4. Secure Source Retrieval & Hybrid Search
-- **Multi-Modal Retrieval Engine**: Reciprocal Rank Fusion (RRF) combining dense vector embeddings (pgvector cosine distance), BM25 lexical keyword ranking, and exact AST/symbol path matching.
-- **Syntax-Aware Chunking**: Bounded code chunking aligned with structural language constructs (functions, classes, interfaces).
-- **Privacy Transformation**: Context-sensitive redaction and token masking to prevent secrets and sensitive identifiers from entering retrieval contexts.
-- **Local Model Context Protocol (MCP) Server**: Exposes standard tools (`search_code`, `read_source_slice`, `inspect_symbol_boundary`, `list_findings`) and `codespy://` resources directly to AI engineering agents and IDEs.
-
-### 5. Reliable Agentic Investigations & Model Orchestration
-- **Dual Investigation Engines**:
-  - *Default Short-Path Investigator*: Direct hypothesis validation using targeted code search, bounded file range reading, and verified repository memory inspection.
-  - *Two-Specialist Adversarial Engine*: Parallel exploration by a Hypothesis Specialist (building exploitation paths) and an Adversarial Defender (identifying sanitizers and mitigations), synthesized by an Arbiter.
-- **Anti-Hallucination Claim Verifier**: Every claim made by model reasoning must cite exact file paths, line ranges, and character-accurate quotes verified against disk snapshots. Unverified claims trigger automatic confidence downgrades.
-- **Integer Microdollar Accounting**: Strict pre-call budget reservations and post-call settlements ($1.00 = 1,000,000 µ$). Zero model invocation proceeds without an active balance reservation.
-- **Durable Leased Checkpointing**: Step-by-step state preservation with monotonic fencing tokens and append-only audit event streams.
-- **Real-Time Streaming**: Server-Sent Events (SSE) channel streaming tool calls, verification results, and reasoning traces to the client.
-- **Triage Memory Store**: Verified investigator insights and human triage feedback persisted to repository memory for subsequent investigation grounding.
-
-### 6. Unified Source Desk & Security Workbench
-- **Modern React Interface**: Built with React 19, TypeScript, TanStack Query, and Tailwind CSS.
-- **Interactive Workbenches**:
-  - *Source Desk*: Archive intake, byte inventory pagination, and ingestion job tracking.
-  - *Architecture Viewer*: Framework boundaries, module relationships, and structural graphs.
-  - *Findings Workbench*: Filterable multi-scanner security occurrences, evidence drawer, and triage modal.
-  - *Retrieval Workbench*: Multi-channel search testing, context window assembly calculator, and repository memory manager.
-  - *Investigation Workbench*: Live hypothesis submission, real-time reasoning replay, interactive claim verification cards, budget meter, and human review forms.
+</div>
 
 ---
 
-## System Limitations
+CodeSPY turns a source archive into an immutable snapshot, a file inventory and bounded structural reports. Scanner results are stored with source-linked evidence and human triage records. A React workbench brings these records together with code search, context assembly and investigation views.
 
-- **Static Scope**: Static candidate findings and structural relationships reflect code syntax and static control flow; they do not establish runtime exploitability or complete functional safety.
-- **Offline Safety**: CodeSPY never executes uploaded untrusted source code or installs uploaded dependencies.
-- **Provider Spend**: Zero automated external LLM spend occurs without configured credentials and explicit budget allocations. A deterministic offline test adapter is included for testing and qualification.
-- **Structural Coverage**: Byte inventory completion confirms exact physical intake; it does not imply 100% structural or type coverage across dynamic languages.
+The central distinction is **what the source establishes, what analysis infers, and what remains unknown**. Static call candidates are not observed execution paths. A matching quotation does not prove a security claim. An empty findings list does not establish that a repository is secure.
 
----
+> **Development status:** a local prototype with an established intake and structural-analysis foundation. Public scan wiring, durable indexing and provider-backed investigations still need integration and qualification. The repository is not a hosted production release.
 
-## Development Setup
+## Capabilities
+
+| Area                      | Implemented                                                                                                                             | Current boundary                                                                                           |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Source intake             | ZIP admission, path and expansion checks, immutable snapshots, file hashes and inventory                                                | Inventory coverage is separate from analysis coverage                                                      |
+| Structural analysis       | Python, JS, JSX, TS and TSX parsing; symbols, imports, call candidates and framework-boundary reports                                   | Bounded static analysis; dynamic behavior can remain unresolved                                            |
+| Security scanning         | Isolated Semgrep and Gitleaks adapters; offline npm/uv advisory assessment; durable result storage                                      | Public scan startup and job-to-result tracking are not fully connected                                     |
+| Findings and review       | Scoped list/detail services, evidence references, append-only triage events and optimistic projections                                  | Request replay, filtering and current-support presentation need further work                               |
+| Feature tracing           | Deterministic, bounded neighborhoods from one published structural run, with actual file locations and omission reasons                 | Follows retained graph edges; does not invent route-handler links or prove exploitability                  |
+| Retrieval                 | Verified source-view services, recognized-secret redaction, chunking, exact search, PostgreSQL full-text search and rank-fusion helpers | Durable indexing and publication visibility are incomplete; dense retrieval is not live-qualified          |
+| Memory and investigations | Memory services, typed model contracts, budget/checkpoint records, investigator loops and workbench screens                             | Investigation tools/providers are not fully connected; the API currently uses a deterministic test adapter |
+| MCP                       | Read-only dispatcher with a trusted server-supplied identity and scoped service calls                                                   | Standalone stdio startup and client interoperability remain unqualified                                    |
+
+### Interface
+
+The workbench contains archive intake and inventory, structural reports, findings and triage, retrieval/context tools, repository memory and investigation views. Findings views consume generated API types so their fields match backend responses.
+
+Some screens expose components whose complete runtime workflow is still being integrated. Their presence is not evidence that every backend capability is enabled.
+
+## Architecture
+
+CodeSPY uses a **modular Python backend**, a **React frontend** and **PostgreSQL as the authority for persisted state**. Storage, queues, scanners and model interfaces sit behind typed ports and adapters.
+
+```mermaid
+flowchart TB
+    Developer[Developer] --> UI[React workbench]
+    UI -->|Generated API contracts| API[FastAPI]
+    API --> Auth[Session, CSRF and repository authority]
+    Auth --> Services[Application services]
+
+    Services --> DB[(PostgreSQL)]
+    Services --> Objects[Object storage adapter]
+    DB --> Outbox[Transactional outbox]
+    Outbox --> Queue[Queue adapter]
+    Queue --> Workers[Leased workers and recovery]
+    Workers --> DB
+    Workers --> Objects
+
+    Workers --> Sandbox[Isolated Linux analysis processes]
+    Sandbox --> Parsers[Python and TypeScript analyzers]
+    Sandbox --> Scanners[Semgrep and Gitleaks]
+    Workers --> Publication[Validation and fenced publication]
+    Publication --> DB
+
+    Services --> Reads[Findings, triage and structural trace]
+    Services -.-> Retrieval[Retrieval, context and memory services]
+    Services -.-> Investigation[Investigation and model gateway prototype]
+    MCP[Read-only MCP dispatcher] -.-> Retrieval
+```
+
+Solid arrows describe the established service boundaries and durable analysis path. Dashed arrows identify components whose complete runtime integration is still in progress. Individual worker operations require explicit application wiring and qualified runtimes.
+
+### How source becomes a report
+
+1. **Admit:** validate the archive, record its identity and inventory its contents.
+2. **Schedule:** persist work and outbox delivery together; a queue message carries notification rather than publication authority.
+3. **Analyze:** a leased worker authenticates its inputs and passes bounded source to isolated trusted analyzers or scanners.
+4. **Validate:** check result identities, source ranges, references, coverage and output limits.
+5. **Publish:** commit the result and terminal lifecycle under database lease and fencing guards.
+6. **Inspect:** read source-linked findings and reports under current repository permissions.
+
+PostgreSQL time governs worker leases. Retries, cancellation and ambiguous commit recovery use durable state. The newer investigation execution path does not yet provide the same recovery guarantees as the established analysis jobs.
+
+### Responsibilities
+
+| Component                        | Responsibility                                                                                        |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| FastAPI and application services | HTTP contracts, authorization, transactions and lifecycle operations                                  |
+| PostgreSQL                       | Source identities, jobs, outbox, reports, graphs, evidence and review records                         |
+| Object storage                   | Admitted archive bytes through local or S3-compatible adapters                                        |
+| Queue adapter and worker runtime | Delivery, claims, recovery and cleanup; in-memory and SQS adapters exist                              |
+| Isolated analyzers               | Parse bounded source without executing uploaded application code                                      |
+| React and TanStack Query         | Scoped reads, job status and review interactions through generated contracts                          |
+| Retrieval/model ports            | Replaceable interfaces for search, context, embeddings and generation; live qualification is separate |
+
+Redis, search-service containers and installed SDKs do not imply that those services participate in every application workflow. The complete source-analysis design is described in the [architecture notes](docs/architecture/README.md).
+
+## Limits and evidence boundaries
+
+| Resource                                    | Current bound                                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Compressed ZIP                              | 100 MiB                                                                                     |
+| Expanded archive                            | 1 GiB                                                                                       |
+| Archive entries                             | 10,000                                                                                      |
+| Archive nesting depth                       | 32                                                                                          |
+| Expansion ratio                             | 100:1                                                                                       |
+| Structural source selection                 | 128 eligible files / 16 MiB total / 2 MiB per file                                          |
+| Separate structural configuration selection | 32 files / 1 MiB total / 256 KiB per file                                                   |
+| Structural report                           | 1,000 graph nodes / 2,000 edges / 2 MiB JSON                                                |
+| Findings publication                        | 1,000 findings, with explicit omission accounting                                           |
+| Feature trace                               | Up to 2 graph hops, 100 nodes and 200 edges, including its finding node and attachment edge |
+| Feature-trace deadline                      | 1 second for the asynchronous service operation                                             |
+
+These are admitted resource limits, not throughput or latency benchmarks. Timeouts and isolation behavior require qualification on the actual worker platform.
+
+Source is untrusted. CodeSPY does not execute uploaded application code or install its dependencies. Analysis is limited to supported languages, detector profiles and selected files. Omitted, unavailable and unresolved results must remain visible.
+
+Recognized-secret redaction is heuristic. Unusual, encoded or split secrets may remain undetected. A model-safe representation is a derived view, not permission to disclose it to an external provider.
+
+## Local development
 
 ### Prerequisites
-- **Python**: 3.12+
-- **Package Manager**: [uv](https://docs.astral.sh/uv/) (workspace package management)
-- **Node.js**: 22+ and npm
-- **Docker**: Docker Engine 24+ with Compose v2 (for database and container qualification)
 
-### Quickstart
+- **Python 3.12** — the workspace currently requires `>=3.12,<3.13`.
+- **uv** — use the root `uv.lock` for the Python workspace.
+- **Node.js 22** — frontend and analyzer manifests require `>=22.12,<23`; `.nvmrc` selects 22.
+- **npm** — each JavaScript workspace has its own lockfile.
+- **Docker with Compose v2** — required for disposable database and Linux-container qualification.
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/aman-bhaskar-codes/CodeSPY.git
-   cd CodeSPY
-   ```
+### Install trusted development dependencies
 
-2. **Install dependencies**:
-   ```bash
-   # Python workspace dependencies
-   uv sync --all-packages --all-groups --frozen
-
-   # TypeScript analyzer dependencies & build
-   npm ci --prefix tools/typescript-analyzer
-   npm --prefix tools/typescript-analyzer run build
-
-   # Frontend application dependencies
-   npm ci --prefix frontend
-   ```
-
-3. **Validate codebase**:
-   ```bash
-   # Run backend unit test suite
-   uv run pytest backend/tests/phase4/unit backend/tests/phase5/unit backend/tests/phase6/unit
-
-   # Validate frontend types, linting, and production bundle
-   npm --prefix frontend run typecheck
-   npm --prefix frontend run lint
-   npm --prefix frontend run build
-   ```
-
----
-
-## Running the Application Locally
-
-### 1. Start the Database Services
-Launch the PostgreSQL (with pgvector) and local storage services:
 ```bash
-docker compose up -d --wait
+git clone https://github.com/aman-bhaskar-codes/CodeSPY.git
+cd CodeSPY
+
+uv sync --all-packages --all-groups --frozen
+npm ci
+npm --prefix tools/typescript-analyzer ci
+npm --prefix tools/typescript-analyzer run build
+npm --prefix frontend ci
 ```
 
-### 2. Prepare Local Database & Run Migrations
+Use a Node version manager to select the version in `.nvmrc` before running npm commands. These dependencies belong to CodeSPY itself; never install packages from an uploaded target repository.
+
+### Check the code
+
 ```bash
-make database-prepare
-make database-test
+make unit
+uv run --frozen --all-packages --all-groups ruff check backend/app
+uv run --frozen --all-packages --all-groups mypy --config-file backend/pyproject.toml backend/app --exclude '.* 2.py'
+
+npm --prefix tools/typescript-analyzer test
+npm --prefix frontend run typecheck
+npm --prefix frontend run lint
+npm --prefix frontend test
+npm --prefix frontend run build
 ```
 
-### 3. Launch Backend API Server
+The `unit` target currently collects the core intake, structural and scanner suites. Retrieval and investigation test coverage is present in the repository but is not yet included in that target or all CI gates.
+
+### Run the local intake and structure demo
+
+With Docker running, build the trusted images and prepare an owned disposable test environment:
+
 ```bash
-cd backend
-PYTHONPATH=. uv run uvicorn app.api.application:create_app --factory --host 127.0.0.1 --port 8000 --reload
+make admission-image structural-image
+make source-prepare
+make structural-test
+make local-demo
 ```
 
-### 4. Launch Frontend Workbench
-In a separate terminal:
+In another terminal:
+
 ```bash
-cd frontend
-npm run dev
+npm --prefix frontend run dev
 ```
-Access the application at `http://127.0.0.1:5173`.
+
+The demo API listens on **`http://127.0.0.1:8000`** and the workbench on **`http://127.0.0.1:5173`**. It uses synthetic local identity and local service emulators. It does not activate every findings, retrieval or investigation workflow.
+
+The application factory requires explicit settings and injected ports. Use the demo launcher rather than invoking it as a zero-argument Uvicorn factory.
+
+After stopping the demo API and worker, remove only the environment owned by that harness:
+
+```bash
+make source-cleanup
+```
+
+Keep ownership files if cleanup fails. Do not remove unrelated containers or developer database volumes. See [database operations](docs/database.md) for the separate persistence test harness.
+
+### Configuration and provider access
+
+Use [.env.example](.env.example) as a reference. Local secrets, source archives and analyzed artifacts are excluded from version control.
+
+Provider credentials remain owner-managed. Model identifiers, allowed regions, disclosure policy, price schedules and spend limits require explicit configuration and qualification. Dependencies or credentials alone do not make an integration operational.
+
+No hosted deployment is included in the local demo. Cloud accounts, IAM, provider activation and hosting are managed separately by the owner.
+
+## MCP integration
+
+The current implementation is a read-only dispatcher in [`backend/app/mcp/server.py`](backend/app/mcp/server.py). Its tool catalog contains:
+
+| Tool               | Purpose                                                   |
+| ------------------ | --------------------------------------------------------- |
+| `get_source_view`  | Request a model-safe view of an authorized source file    |
+| `search_exact`     | Search indexed symbols and paths                          |
+| `search_hybrid`    | Combine available retrieval channels                      |
+| `assemble_context` | Package authorized search results within a context budget |
+| `query_memory`     | Query the repository memory service                       |
+
+The application supplies a trusted tenant/principal identity. Tool arguments cannot choose or override it, and underlying services still enforce repository access.
+
+This dispatcher is not yet a qualified standalone MCP server. There is no supported one-command IDE registration or advertised `codespy://` resource catalog to document at present.
+
+## Verification
+
+| Check                                      | Current evidence                                                                                                  |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Backend service-level regressions          | Passed locally, including cross-repository denial, revoked permissions, context identity checks and trace budgets |
+| Strict backend typing and lint             | Passed locally                                                                                                    |
+| API contract generation                    | Nested references resolve; generated frontend types are synchronized                                              |
+| Frontend typing, lint and production build | Passed locally                                                                                                    |
+| Findings rendering                         | Standalone server-rendering smoke cases passed; these are not browser acceptance tests                            |
+| Frontend test suite                        | Worker-startup failures remain unresolved in the current local environment                                        |
+| PostgreSQL and native containers           | Historical qualification records exist; latest repairs still need real database/container verification            |
+| Live models and hosted operation           | Not qualified                                                                                                     |
+
+SQLite service tests do not establish PostgreSQL locking or publication guarantees. Mocked models and embeddings do not qualify real provider behavior. Historical acceptance records describe the commands and revisions they tested; they are not blanket guarantees for later changes.
+
+## Repository layout
+
+```text
+backend/
+  app/
+    api/            HTTP application and contracts
+    contracts/      Typed requests, results and versioned records
+    security/       Sessions, CSRF and repository authority
+    services/       Application behavior and publication
+    repositories/   Scoped persistence operations
+    workers/        Delivery, leased operations and recovery
+    analyzers/      Structural extraction and reporting
+    scanners/       Offline scanner execution and normalization
+    ports/          Storage, queue, scanner and provider interfaces
+    adapters/       Concrete integrations
+    mcp/            Read-only tool dispatcher
+  alembic/          Database migration history
+  tests/            Unit, integration, concurrency and evaluation fixtures
+  openapi.json      Exported API schema
+frontend/           React workbench and generated API types
+tools/              Trusted TypeScript analyzer and engineering utilities
+infra/              Container definitions and infrastructure configuration
+scripts/            Local launchers and owned-resource test harnesses
+docs/               Architecture, capability limits and qualification records
+```
+
+## Technical records
+
+- **Architecture:** [System boundaries](docs/architecture/README.md), [persistence decisions](docs/adr/0002-persistence.md), [structural analysis decisions](docs/adr/0003-structural-analysis.md).
+- **Capabilities:** [Supported structural profile](docs/capabilities/structural-small-v1.md), [toolchain](docs/TOOLCHAIN.md), [service setup](docs/SERVICES.md).
+- **Qualification:** [Persistence](docs/acceptance/persistence.md), [ingestion](docs/acceptance/ingestion.md), [structural analysis](docs/acceptance/structural-analysis.md), [offline scanners](docs/acceptance/offline-scanner.md), [dependency assessment](docs/acceptance/offline-dependencies.md), [durable findings](docs/acceptance/durable-findings.md).
+- **Engineering references:** [Scanner qualification](docs/engineering/scanner-qualification.md), [REA investigation](docs/engineering/rea-investigation.md).
 
 ---
 
-## Model Context Protocol (MCP) Server
-
-CodeSPY provides an embedded Model Context Protocol (MCP) server allowing local coding assistants (such as Antigravity, Claude Desktop, or Cursor) to securely query indexed codebases and deterministic findings.
-
-### Configuration
-
-Add the following to your MCP client configuration (e.g. `claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "codespy": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "/path/to/CodeSPY/backend",
-        "python",
-        "-m",
-        "app.services.mcp_server",
-        "--repository-id",
-        "<REPOSITORY_UUID>",
-        "--snapshot-id",
-        "<SNAPSHOT_UUID>"
-      ]
-    }
-  }
-}
-```
-
-### Available MCP Tools & Resources
-- **`codespy://snapshot`**: Structural metadata, file counts, and language distribution.
-- **`codespy://findings`**: List of materialized security findings and severities.
-- **`codespy://memory`**: Verified repository security rules and architectural notes.
-- **`search_code`**: Multi-modal code search with configurable retrieval modes (hybrid, lexical, dense, exact).
-- **`read_source_slice`**: Bounded, line-numbered file reader with maximum character bounds.
-- **`inspect_symbol_boundary`**: Looks up syntax definitions, callers, and framework entrypoints.
-- **`list_findings`**: Filters materialized security findings by scanner, severity, or rule ID.
-
----
-
-## Repository Layout
-
-```
-CodeSPY/
-├── backend/
-│   ├── alembic/              # Database migration versions and environment
-│   ├── app/
-│   │   ├── api/              # FastAPI application, route handlers, and middleware
-│   │   ├── contracts/        # Versioned Pydantic schemas and domain contracts
-│   │   ├── db/               # Async database connection and session management
-│   │   ├── domain/           # Core domain models, roles, and admission policies
-│   │   ├── models/           # SQLAlchemy table definitions and schema metadata
-│   │   ├── ports/            # Port interfaces for storage, auth, and model adapters
-│   │   └── services/         # Domain services (intake, search, verifier, investigation)
-│   ├── openapi.json          # Synchronized OpenAPI specification
-│   └── tests/                # Unit, integration, evaluation, and storage test suites
-├── frontend/
-│   ├── src/
-│   │   ├── api/              # Generated TypeScript API client bindings
-│   │   └── features/
-│   │       ├── findings/     # Deterministic findings workbench & triage modal
-│   │       ├── investigations/# Agentic investigation workbench & replay stream
-│   │       ├── retrieval/    # Hybrid search, context calculator & memory UI
-│   │       └── structure/    # Structural architecture report viewer
-├── infra/
-│   ├── docker-compose.yml    # Local multi-service infrastructure
-│   └── scanner/              # Offline containerized scanner definitions
-├── tools/
-│   └── typescript-analyzer/  # Node/TypeScript AST and symbol extraction tool
-├── scripts/                  # Owned disposable test harnesses and database utilities
-└── docs/                     # Architectural decision records, acceptance reports, specs
-```
-
----
-
-## Technical Records & Documentation
-
-- **Architecture Decisions**:
-  - [ADR 0001: Boundary Isolation & Setup](docs/adr/0001-setup-boundaries.md)
-  - [ADR 0002: Persistence & Leased Authority](docs/adr/0002-persistence.md)
-  - [ADR 0003: Structural Analysis & Sandboxing](docs/adr/0003-structural-analysis.md)
-- **Acceptance & Qualification Evidence**:
-  - [Persistence Qualification](docs/acceptance/persistence.md)
-  - [Ingestion & Admission Qualification](docs/acceptance/ingestion.md)
-  - [Structural Analysis Qualification](docs/acceptance/structural-analysis.md)
-  - [Offline Scanner Integration](docs/acceptance/offline-scanner.md)
-  - [Offline Dependency Assessment](docs/acceptance/offline-dependencies.md)
-  - [Findings Materialization Evidence](docs/acceptance/findings-materialization.md)
-  - [Durable Findings Qualification](docs/acceptance/durable-findings.md)
-- **Operational Specifications**:
-  - [Database Operations & Revisions](docs/database.md)
-  - [Offline Scanner Qualification Research](docs/engineering/scanner-qualification.md)
-
----
-
-## Contributing & Security
-
-- **Security Disclosures**: Please consult [SECURITY.md](SECURITY.md) for vulnerability reporting procedures.
-- **Contributions**: Review [CONTRIBUTING.md](CONTRIBUTING.md) for coding conventions, commit guidelines, and qualification standards.
-- **License**: Distributed under the [MIT License](LICENSE).
+[Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [MIT license](LICENSE)
