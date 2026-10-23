@@ -4383,6 +4383,137 @@
         "title": "ScanConfigV1",
         "type": "object"
       },
+      "ScanJobRecordV4": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deadline": {
+            "format": "date-time",
+            "title": "Deadline",
+            "type": "string"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "operation": {
+            "const": "scan_snapshot",
+            "default": "scan_snapshot",
+            "title": "Operation",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "report_available": {
+            "default": false,
+            "title": "Report Available",
+            "type": "boolean"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "result_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Run Id"
+          },
+          "scan_spec_id": {
+            "format": "uuid",
+            "title": "Scan Spec Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 4,
+            "default": 4,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "retry_wait",
+              "cancelling",
+              "succeeded",
+              "partial",
+              "failed",
+              "cancelled"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_id",
+          "id",
+          "repository_id",
+          "snapshot_id",
+          "scan_spec_id",
+          "state",
+          "attempt_count",
+          "max_attempts",
+          "deadline",
+          "failure_code",
+          "result_run_id",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "ScanJobRecordV4",
+        "type": "object"
+      },
       "ScanSummaryResponseV1": {
         "properties": {
           "by_category": {
@@ -6059,6 +6190,18 @@
             "format": "uuid",
             "title": "Finding Id",
             "type": "string"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next Cursor"
           }
         },
         "required": [
@@ -8059,6 +8202,32 @@
               "title": "Finding Id",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -8244,6 +8413,66 @@
           }
         },
         "summary": "Record Memory Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-jobs/{job_id}": {
+      "get": {
+        "operationId": "get_scan_job_api_v1_repositories__repository_id__snapshots__snapshot_id__scan_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanJobRecordV4"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Scan Job"
       }
     },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans": {

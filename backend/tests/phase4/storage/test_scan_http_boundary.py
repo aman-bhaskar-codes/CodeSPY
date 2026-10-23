@@ -27,6 +27,13 @@ async def test_legacy_routes_reject_scan_before_cancel_or_retry(
         base_url="http://testserver",
         cookies={"codespy_dev": issued.token, "codespy_dev_csrf": issued.csrf},
     ) as client:
+        status = await client.get(
+            f"/api/v1/repositories/{repo}/snapshots/{snapshot}/scan-jobs/{job.id}"
+        )
+        assert status.status_code == 200, status.text
+        assert status.json()["id"] == str(job.id)
+        assert status.json()["state"] == "queued"
+        assert status.json()["result_run_id"] is None
         headers = {
             "origin": "http://testserver",
             "x-csrf-token": issued.csrf,

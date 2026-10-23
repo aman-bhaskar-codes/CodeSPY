@@ -8,6 +8,17 @@ from tests.phase4.dependency_fixtures import NOW
 from tests.phase4.unit.test_findings import dependency_case, matched_bundle
 
 
+def test_current_dependency_support_requires_retained_bundle_registry(tmp_path):
+    from app.services.scan_reads import effective_decisions
+
+    _, catalog, spec, receipt, bundle = dependency_case(tmp_path)
+    draft = FindingMaterializer(catalog).materialize(spec, (), dependency=receipt, bundle=bundle)
+    decision = effective_decisions(draft, True, None, NOW)[0]
+    assert decision.historical_disposition == "supported-static"
+    assert decision.effective_disposition == "unresolved"
+    assert decision.reason == "bundle_unavailable"
+
+
 def test_expiry_can_precede_seven_days_after_publication(tmp_path):
     from app.services import scan_reads
 

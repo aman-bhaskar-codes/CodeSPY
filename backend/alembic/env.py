@@ -1,6 +1,7 @@
 from alembic import context
 from app.core.database_config import DatabaseSettings
 from app.db.base import Base
+from app.db.migration_version import ensure_revision_capacity
 from app.models import phase2_tables, phase3_tables, scan_tables, tables  # noqa: F401
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
@@ -24,7 +25,13 @@ with engine.connect() as connection:
         or not {"vector", "pg_trgm", "citext", "uuid-ossp"} <= extensions
     ):
         raise RuntimeError("PostgreSQL 16 and provisioned extensions required")
-    context.configure(connection=connection, target_metadata=Base.metadata, compare_type=True)
+    context.configure(
+        connection=connection,
+        target_metadata=Base.metadata,
+        compare_type=True,
+        version_table_schema="public",
+    )
     with context.begin_transaction():
+        ensure_revision_capacity(connection)
         context.run_migrations()
 engine.dispose()

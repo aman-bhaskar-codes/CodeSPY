@@ -1,10 +1,9 @@
 """Findings query reads, safe bounded excerpts, and scan summary metrics."""
 
-import io
-import zipfile
+import secrets
 from collections import Counter
 from datetime import datetime
-from typing import Any
+from typing import Any, get_args
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -12,9 +11,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.contracts.findings import Category
 from app.contracts.triage import TriageReason, TriageRecordV1, TriageState
 from app.db.transaction import transaction
-from app.domain.scope import TenantContext
+from app.domain.errors import DuplicateConflict
+from app.domain.scope import RunRef, TenantContext
 from app.models.scan_tables import (
     finding_occurrences,
     finding_support,
@@ -24,8 +25,10 @@ from app.models.scan_tables import (
 )
 from app.models.tables import source_files
 from app.ports.object_store import ObjectStore
+from app.ports.scan_execution import ScanCapabilities
 from app.security.authorization import require_snapshot
-from app.services.analysis_sources import locate_source
+from app.security.cursors import CursorCodec
+from app.services.scan_reads import ScanReadService
 
 
 class FindingSummaryV1(BaseModel):
@@ -94,8 +97,15 @@ class ScanSummaryResponseV1(BaseModel):
 
 
 class FindingsQueryService:
-    def __init__(self, factory: async_sessionmaker[AsyncSession]):
+    def __init__(
+        self,
+        factory: async_sessionmaker[AsyncSession],
+        capabilities: ScanCapabilities | None = None,
+        cursors: CursorCodec | None = None,
+    ):
         self.factory = factory
+        self.scan_reads = ScanReadService(factory, capabilities)
+        self.cursors = cursors or CursorCodec(secrets.token_bytes(32))
 
     async def get_summary(
         self,
@@ -197,7 +207,28 @@ class FindingsQueryService:
         cursor: str | None = None,
         limit: int = 50,
     ) -> FindingListResponseV1:
-        limit = min(max(1, limit), 100)
+        if not 1 <= limit <= 100:
+            raise ValueError("findings limit must be between 1 and 100")
+        for value, allowed in (
+            (category, get_args(Category)),
+            (severity, ("info", "low", "medium", "high", "critical")),
+            (disposition, ("proposed", "supported-static", "contradicted", "unresolved")),
+            (triage_state, get_args(TriageState)),
+        ):
+            if value is not None and value not in allowed:
+                raise ValueError("invalid findings filter")
+        scope = {
+            "kind": "findings",
+            "org": str(ctx.org_id),
+            "principal": str(ctx.principal_id),
+            "repository": str(repository_id),
+            "snapshot": str(snapshot_id),
+            "run": str(run_id),
+            "category": category,
+            "severity": severity,
+            "disposition": disposition,
+            "triage_state": triage_state,
+        }
         async with transaction(self.factory) as session:
             await require_snapshot(session, ctx, repository_id, snapshot_id)
             base_query = (
@@ -245,8 +276,17 @@ class FindingsQueryService:
 
             if category:
                 base_query = base_query.where(finding_occurrences.c.category == category)
+            if severity:
+                base_query = base_query.where(
+                    func.coalesce(
+                        finding_occurrences.c.payload_json["severity"].as_string(), "info"
+                    )
+                    == severity
+                )
             if disposition:
-                base_query = base_query.where(verification_decisions.c.disposition == disposition)
+                base_query = base_query.where(
+                    func.coalesce(verification_decisions.c.disposition, "unresolved") == disposition
+                )
             if triage_state:
                 if triage_state == "unreviewed":
                     base_query = base_query.where(
@@ -261,12 +301,12 @@ class FindingsQueryService:
             count_query = select(func.count()).select_from(base_query.subquery())
             total_count = (await session.scalar(count_query)) or 0
 
-            if cursor:
+            if cursor is not None:
                 try:
-                    cursor_id = UUID(cursor)
-                    base_query = base_query.where(finding_occurrences.c.id > cursor_id)
+                    cursor_id = UUID(self.cursors.decode(cursor, scope))
                 except ValueError:
-                    pass
+                    raise ValueError("invalid findings cursor") from None
+                base_query = base_query.where(finding_occurrences.c.id > cursor_id)
 
             base_query = base_query.order_by(finding_occurrences.c.id.asc()).limit(limit + 1)
             rows = (await session.execute(base_query)).mappings().all()
@@ -283,8 +323,6 @@ class FindingsQueryService:
                     line_no = entity["range"].get("start_line")
 
                 sev = payload.get("severity", "info")
-                if severity and sev != severity:
-                    continue
 
                 items.append(
                     FindingSummaryV1(
@@ -303,7 +341,11 @@ class FindingsQueryService:
                     )
                 )
 
-            next_cursor = str(result_rows[-1]["id"]) if (has_more and result_rows) else None
+            next_cursor = (
+                self.cursors.encode(scope, str(result_rows[-1]["id"]))
+                if (has_more and result_rows)
+                else None
+            )
             return FindingListResponseV1(
                 items=items,
                 next_cursor=next_cursor,
@@ -391,23 +433,30 @@ class FindingsQueryService:
                 start_line = entity["range"].get("start_line")
                 end_line = entity["range"].get("end_line")
 
-            # Safe bounded code excerpt read
-            code_excerpt = None
-            if store is not None and start_line is not None:
+            historical = r["disposition"] or "unresolved"
+            effective = historical
+            support_reason = "current_support"
+            if historical == "supported-static":
+                effective, support_reason = "unresolved", "source_unavailable"
                 try:
-                    code_excerpt = await self._read_safe_excerpt(
+                    current = await self.scan_reads.read_in_session(
                         session,
-                        ctx.org_id,
-                        repository_id,
-                        snapshot_id,
-                        r["file_path"],
-                        start_line,
-                        end_line or start_line,
-                        store,
-                        redact_secrets=(r["category"] == "secret_format"),
+                        ctx,
+                        RunRef(org_id=ctx.org_id, snapshot_id=snapshot_id, run_id=r["run_id"]),
                     )
-                except Exception:
-                    code_excerpt = None
+                except (DuplicateConflict, NoResultFound, ValueError):
+                    current = None
+                decision = (
+                    next(
+                        (d for d in current.effective_decisions if d.finding_id == finding_id),
+                        None,
+                    )
+                    if current is not None
+                    else None
+                )
+                if decision is not None and decision.historical_disposition == historical:
+                    effective = decision.effective_disposition
+                    support_reason = decision.reason
 
             triage_record = TriageRecordV1(
                 finding_id=finding_id,
@@ -432,57 +481,12 @@ class FindingsQueryService:
                 file_path=r["file_path"],
                 line_number=start_line,
                 end_line=end_line,
-                code_excerpt=code_excerpt,
-                disposition=r["disposition"] or "unresolved",
-                historical_disposition=r["disposition"] or "unresolved",
-                support_reason="current_support",
+                code_excerpt=None,
+                disposition=effective,
+                historical_disposition=historical,
+                support_reason=support_reason,
                 recommendation=payload.get("recommendation"),
                 limitations=payload.get("limitations", []),
                 triage=triage_record,
                 evidence_ids=list(evidence_rows),
             )
-
-    async def _read_safe_excerpt(
-        self,
-        session: AsyncSession,
-        org_id: UUID,
-        repository_id: UUID,
-        snapshot_id: UUID,
-        file_path: str,
-        start_line: int,
-        end_line: int,
-        store: ObjectStore,
-        *,
-        redact_secrets: bool = False,
-    ) -> str | None:
-        located = await locate_source(session, org_id, repository_id, snapshot_id)
-        raw_archive = b""
-        async for chunk in store.open_verified(located.archive):
-            raw_archive += chunk
-            if len(raw_archive) > 104857600:
-                return None
-
-        with zipfile.ZipFile(io.BytesIO(raw_archive)) as zf:
-            try:
-                content = zf.read(file_path).decode("utf-8", errors="replace")
-            except KeyError:
-                return None
-
-        lines = content.splitlines()
-        first = max(1, start_line - 3)
-        last = min(len(lines), end_line + 3)
-        if last - first > 80:
-            last = first + 80
-
-        selected = []
-        for i in range(first, last + 1):
-            line_idx = i - 1
-            if 0 <= line_idx < len(lines):
-                line_text = lines[line_idx]
-                if redact_secrets and i >= start_line and i <= end_line:
-                    # Redact potential secret literals while preserving line structure
-                    line_text = "[REDACTED_SECRET]"
-                selected.append(f"{i:4d} | {line_text}")
-
-        excerpt = "\n".join(selected)
-        return excerpt[:32768]

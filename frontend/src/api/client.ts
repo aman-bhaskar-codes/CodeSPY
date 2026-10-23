@@ -89,14 +89,16 @@ export const api = {
     key?: string,
     config?: unknown,
   ) =>
-    request<{ spec_id: string; job_id: string; snapshot_id: string; status_url: string }>(
-      `/repositories/${repoId}/snapshots/${snapshotId}/scans`,
-      {
-        method: "POST",
-        headers: mutationHeaders(csrf, key),
-        body: JSON.stringify({ config: config ?? null }),
-      },
-    ),
+    request<{
+      spec_id: string;
+      job_id: string;
+      snapshot_id: string;
+      status_url: string;
+    }>(`/repositories/${repoId}/snapshots/${snapshotId}/scans`, {
+      method: "POST",
+      headers: mutationHeaders(csrf, key),
+      body: JSON.stringify({ config: config ?? null }),
+    }),
   scanSummary: (
     repoId: string,
     snapshotId: string,
@@ -122,10 +124,14 @@ export const api = {
     signal?: AbortSignal,
   ) => {
     const q = new URLSearchParams();
-    if (params.category && params.category !== "all") q.set("category", params.category);
-    if (params.severity && params.severity !== "all") q.set("severity", params.severity);
-    if (params.disposition && params.disposition !== "all") q.set("disposition", params.disposition);
-    if (params.triage_state && params.triage_state !== "all") q.set("triage_state", params.triage_state);
+    if (params.category && params.category !== "all")
+      q.set("category", params.category);
+    if (params.severity && params.severity !== "all")
+      q.set("severity", params.severity);
+    if (params.disposition && params.disposition !== "all")
+      q.set("disposition", params.disposition);
+    if (params.triage_state && params.triage_state !== "all")
+      q.set("triage_state", params.triage_state);
     if (params.cursor) q.set("cursor", params.cursor);
     if (params.limit) q.set("limit", String(params.limit));
     const qs = q.toString() ? `?${q.toString()}` : "";
@@ -165,11 +171,16 @@ export const api = {
     snapshotId: string,
     findingId: string,
     signal?: AbortSignal,
-  ) =>
-    request<import("../features/findings/types").TriageHistoryV1>(
-      `/repositories/${repoId}/snapshots/${snapshotId}/findings/${findingId}/triage/history`,
+    cursor?: string,
+    limit: number = 50,
+  ) => {
+    const query = new URLSearchParams({ limit: String(limit) });
+    if (cursor) query.set("cursor", cursor);
+    return request<import("../features/findings/types").TriageHistoryV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/findings/${findingId}/triage/history?${query}`,
       { signal },
-    ),
+    );
+  },
   featureTrace: (
     repoId: string,
     snapshotId: string,
@@ -316,7 +327,11 @@ export const api = {
     repoId: string,
     snapshotId: string,
     fileId: string,
-    params: { start_line?: number; end_line?: number; representation?: string } = {},
+    params: {
+      start_line?: number;
+      end_line?: number;
+      representation?: string;
+    } = {},
     signal?: AbortSignal,
   ) => {
     const q = new URLSearchParams();
@@ -349,33 +364,30 @@ export const api = {
     signal?: AbortSignal,
   ) => {
     const qs = findingId ? `?finding_id=${encodeURIComponent(findingId)}` : "";
-    return request<import("../features/investigations/types").InvestigationListResponseV1>(
-      `/repositories/${repoId}/investigations${qs}`,
-      { signal },
-    );
+    return request<
+      import("../features/investigations/types").InvestigationListResponseV1
+    >(`/repositories/${repoId}/investigations${qs}`, { signal });
   },
   getInvestigation: (
     repoId: string,
     investigationId: string,
     signal?: AbortSignal,
   ) =>
-    request<import("../features/investigations/types").InvestigationDetailResponseV1>(
-      `/repositories/${repoId}/investigations/${investigationId}`,
-      { signal },
-    ),
+    request<
+      import("../features/investigations/types").InvestigationDetailResponseV1
+    >(`/repositories/${repoId}/investigations/${investigationId}`, { signal }),
   executeInvestigation: (
     repoId: string,
     investigationId: string,
     csrf: string,
     key?: string,
   ) =>
-    request<import("../features/investigations/types").InvestigationDetailResponseV1>(
-      `/repositories/${repoId}/investigations/${investigationId}/execute`,
-      {
-        method: "POST",
-        headers: mutationHeaders(csrf, key),
-      },
-    ),
+    request<
+      import("../features/investigations/types").InvestigationDetailResponseV1
+    >(`/repositories/${repoId}/investigations/${investigationId}/execute`, {
+      method: "POST",
+      headers: mutationHeaders(csrf, key),
+    }),
   listInvestigationEvents: (
     repoId: string,
     investigationId: string,
@@ -383,10 +395,11 @@ export const api = {
     signal?: AbortSignal,
   ) => {
     const qs = afterStep !== undefined ? `?after_step=${afterStep}` : "";
-    return request<import("../features/investigations/types").InvestigationEventV1[]>(
-      `/repositories/${repoId}/investigations/${investigationId}/events${qs}`,
-      { signal },
-    );
+    return request<
+      import("../features/investigations/types").InvestigationEventV1[]
+    >(`/repositories/${repoId}/investigations/${investigationId}/events${qs}`, {
+      signal,
+    });
   },
   submitInvestigationFeedback: (
     repoId: string,
@@ -395,14 +408,15 @@ export const api = {
     csrf: string,
     key?: string,
   ) =>
-    request<{ status: string; feedback_type: string; memory_entry_id?: string | null }>(
-      `/repositories/${repoId}/investigations/${investigationId}/feedback`,
-      {
-        method: "POST",
-        headers: mutationHeaders(csrf, key),
-        body: JSON.stringify(feedback),
-      },
-    ),
+    request<{
+      status: string;
+      feedback_type: string;
+      memory_entry_id?: string | null;
+    }>(`/repositories/${repoId}/investigations/${investigationId}/feedback`, {
+      method: "POST",
+      headers: mutationHeaders(csrf, key),
+      body: JSON.stringify(feedback),
+    }),
 };
 export function mutationHeaders(
   csrf: string,

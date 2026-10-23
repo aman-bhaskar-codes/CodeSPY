@@ -19,7 +19,9 @@ export function FindingsWorkbench({
   runId,
   csrfToken,
 }: Props) {
-  const [selectedFindingId, setSelectedFindingId] = useState<string | null>(null);
+  const [selectedFindingId, setSelectedFindingId] = useState<string | null>(
+    null,
+  );
   const [cursor, setCursor] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     category: "all",
@@ -65,6 +67,7 @@ export function FindingsWorkbench({
   const handleTriageSubmit = async (
     findingId: string,
     transition: TriageTransitionV1,
+    requestKey: string,
   ) => {
     await api.triageFinding(
       repositoryId,
@@ -72,7 +75,9 @@ export function FindingsWorkbench({
       findingId,
       transition,
       csrfToken,
+      requestKey,
     );
+    setCursor(null);
     await findingsQuery.refetch();
     await summaryQuery.refetch();
   };
@@ -106,7 +111,13 @@ export function FindingsWorkbench({
       </div>
 
       {summaryQuery.isLoading && (
-        <div style={{ textAlign: "center", padding: "30px", color: "var(--muted)" }}>
+        <div
+          style={{
+            textAlign: "center",
+            padding: "30px",
+            color: "var(--muted)",
+          }}
+        >
           Loading scan findings summary...
         </div>
       )}
@@ -123,13 +134,12 @@ export function FindingsWorkbench({
             marginBottom: "20px",
           }}
         >
-          Failed to load scan findings summary. Check repository permissions and scan run state.
+          Failed to load scan findings summary. Check repository permissions and
+          scan run state.
         </div>
       )}
 
-      {summaryQuery.data && (
-        <FindingsSummaryCard summary={summaryQuery.data} />
-      )}
+      {summaryQuery.data && <FindingsSummaryCard summary={summaryQuery.data} />}
 
       {findingsQuery.data && (
         <FindingsTable
