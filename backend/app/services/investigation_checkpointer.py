@@ -140,6 +140,88 @@ class FencedCheckpointer:
             raise InvestigationNotFoundError(f"Investigation {investigation_id} not found")
         return dict(row)
 
+    async def get_investigation_summary(
+        self, org_id: UUID, investigation_id: UUID
+    ) -> InvestigationSummaryV1:
+        row = await self.get_investigation(org_id, investigation_id)
+        return self._row_to_summary(row)
+
+    async def list_investigations(
+        self,
+        org_id: UUID,
+        repository_id: UUID | None = None,
+        finding_id: UUID | None = None,
+        limit: int = 50,
+    ) -> list[InvestigationSummaryV1]:
+        stmt = select(investigations).where(investigations.c.org_id == org_id)
+        if repository_id is not None:
+            stmt = stmt.where(investigations.c.repository_id == repository_id)
+        if finding_id is not None:
+            stmt = stmt.where(investigations.c.finding_id == finding_id)
+        stmt = stmt.order_by(desc(investigations.c.created_at)).limit(limit)
+        rows = (await self.s.execute(stmt)).mappings().all()
+        return [self._row_to_summary(dict(r)) for r in rows]
+
+    async def record_feedback(
+        self,
+        org_id: UUID,
+        investigation_id: UUID,
+        feedback_type: str,
+        notes: str,
+    ) -> None:
+        row = await self.get_investigation(org_id, investigation_id)
+        now = datetime.now(UTC)
+        guidance_text = f"[{feedback_type.upper()}] {notes}"
+        stmt = (
+            update(investigations)
+            .where(
+                investigations.c.org_id == org_id,
+                investigations.c.id == investigation_id,
+            )
+            .values(
+                updated_at=now,
+            )
+        )
+        await self.s.execute(stmt)
+        await self.append_event(
+            org_id=org_id,
+            investigation_id=investigation_id,
+            step_index=row["current_step"],
+            event_type="human_feedback",
+            node_name="human_triage",
+            payload={
+                "feedback_type": feedback_type,
+                "notes": notes,
+                "guidance": guidance_text,
+            },
+        )
+
+    @staticmethod
+    def _row_to_summary(row: dict[str, Any]) -> InvestigationSummaryV1:
+        return InvestigationSummaryV1(
+            id=UUID(str(row["id"])),
+            org_id=UUID(str(row["org_id"])),
+            repository_id=UUID(str(row["repository_id"])),
+            finding_id=UUID(str(row["finding_id"])) if row["finding_id"] else None,
+            target_type=row["target_type"],
+            query=row["query"],
+            status=row["status"],
+            mode=row["mode"],
+            depth=row["depth"],
+            current_step=row["current_step"],
+            max_steps=row["max_steps"],
+            fencing_token=row["fencing_token"],
+            worker_id=row["worker_id"],
+            budget_limit_micros=row["budget_limit_micros"],
+            spent_micros=row["spent_micros"],
+            verdict=row["verdict"],
+            verdict_confidence=row["verdict_confidence"],
+            summary=row["summary"],
+            failure_reason=row["failure_reason"],
+            created_at=_as_utc(row["created_at"]) or datetime.now(UTC),
+            updated_at=_as_utc(row["updated_at"]) or datetime.now(UTC),
+        )
+
     async def acquire_lease(
         self,
         org_id: UUID,

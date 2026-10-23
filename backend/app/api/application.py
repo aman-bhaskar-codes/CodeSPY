@@ -2,13 +2,14 @@
 
 import json
 import secrets
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
+from app.adapters.model.fake import FakeModelAdapter
 from app.analyzers.reporting import render_json, render_markdown
 from app.contracts.context import (
     ContextAssemblyRequestV1,
@@ -35,6 +36,14 @@ from app.contracts.ingestion import (
     SubmissionRecordV1,
     UploadReservationV1,
 )
+from app.contracts.investigation import (
+    InvestigationCreateRequestV1,
+    InvestigationDetailResponseV1,
+    InvestigationEventV1,
+    InvestigationFeedbackRequestV1,
+    InvestigationListResponseV1,
+    InvestigationSummaryV1,
+)
 from app.contracts.jobs import JobRecordV2, JobRecordV3, RetryResponseV1, RetryResponseV2
 from app.contracts.memory import (
     MemoryCreateRequestV1,
@@ -44,6 +53,7 @@ from app.contracts.memory import (
     MemoryQueryResponseV1,
 )
 from app.contracts.persistence import GraphPage, RepositoryCreate, RepositoryRecord
+from app.contracts.provider_budget import DisclosurePolicyV1
 from app.contracts.scan_jobs import (
     DependencySelectionV1,
     NativeSelectionV1,
@@ -110,6 +120,7 @@ from app.domain.errors import (
 from app.domain.scope import TenantContext
 from app.models.phase2_tables import PHASE2_TABLES
 from app.models.tables import memberships, repositories, source_files, source_snapshots
+from app.ports.model import ModelPort
 from app.ports.object_store import ObjectStore
 from app.ports.scan_execution import ScanCapabilities
 from app.repositories.command_repository import record_command, replay_command
@@ -131,13 +142,23 @@ from app.services.findings_query import (
 )
 from app.services.github_acquisition import GitHubAcquisitionService
 from app.services.hybrid_search import HybridSearchService
+from app.services.investigation_checkpointer import (
+    FencedCheckpointer,
+    InvestigationNotFoundError,
+)
+from app.services.investigator_tools import ToolExecutionContext
 from app.services.jobs import JobService
 from app.services.lexical_search import LexicalSearchService
 from app.services.memory_service import MemoryService
+from app.services.model_budget import ModelBudgetService
+from app.services.model_gateway import ModelGatewayService
+from app.services.model_router import ModelRouter
 from app.services.persistence import PersistenceService
 from app.services.retries import RetryService
 from app.services.scan_jobs import ScanJobService
+from app.services.short_path_investigator import ShortPathInvestigator
 from app.services.source_view import SourceViewService
+from app.services.stream_buffer import InvestigationStreamBuffer
 from app.services.structural_analysis import StructuralAnalysisService
 from app.services.structural_reads import report_items, summary
 from app.services.submissions import SubmissionService
@@ -146,7 +167,7 @@ from app.services.webhooks import GitHubWebhookService
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from sqlalchemy import and_, literal, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -203,6 +224,8 @@ class ApplicationPorts:
     readiness: Callable[[], Awaitable[bool]] | None = None
     admission_policy: AdmissionPolicy = field(default_factory=AdmissionPolicyV1)
     scan_capabilities: ScanCapabilities | None = None
+    stream_buffer: InvestigationStreamBuffer | None = None
+    model_adapter: ModelPort | None = None
 
 
 def legacy_job_record(
@@ -259,6 +282,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     triage_service = TriageService(ports.factory)
     trace_service = FeatureTraceService(ports.factory)
     cursors = CursorCodec(secrets.token_bytes(32))
+    app_stream_buffer = ports.stream_buffer or InvestigationStreamBuffer()
 
     def error(status: int, code: str) -> JSONResponse:
         return JSONResponse(
@@ -1579,6 +1603,248 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             except ScopeViolation as e:
                 raise HTTPException(403, detail=str(e)) from e
 
+    @app.post("/api/v1/repositories/{repository_id}/investigations", status_code=201)
+    async def create_investigation_endpoint(
+        request: Request,
+        repository_id: UUID,
+    ) -> InvestigationSummaryV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        body = await json_body(request, InvestigationCreateRequestV1)
+        if body.repository_id != repository_id:
+            raise HTTPException(400, detail="repository_id_mismatch")
+        async with transaction(ports.factory) as s:
+            checkpointer = FencedCheckpointer(s, event_sink=app_stream_buffer)
+            return await checkpointer.create_investigation(
+                org_id=ctx.org_id,
+                principal_id=ctx.principal_id,
+                req=body,
+            )
+
+    @app.get("/api/v1/repositories/{repository_id}/investigations")
+    async def list_investigations_endpoint(
+        request: Request,
+        repository_id: UUID,
+        finding_id: UUID | None = None,
+        limit: int = 50,
+    ) -> InvestigationListResponseV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as s:
+            checkpointer = FencedCheckpointer(s, event_sink=app_stream_buffer)
+            items = await checkpointer.list_investigations(
+                org_id=ctx.org_id,
+                repository_id=repository_id,
+                finding_id=finding_id,
+                limit=limit,
+            )
+            return InvestigationListResponseV1(items=tuple(items), total_count=len(items))
+
+    @app.get("/api/v1/repositories/{repository_id}/investigations/{investigation_id}")
+    async def get_investigation_detail_endpoint(
+        request: Request,
+        repository_id: UUID,
+        investigation_id: UUID,
+    ) -> InvestigationDetailResponseV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as s:
+            checkpointer = FencedCheckpointer(s, event_sink=app_stream_buffer)
+            try:
+                summary_data = await checkpointer.get_investigation_summary(
+                    ctx.org_id, investigation_id
+                )
+            except InvestigationNotFoundError:
+                raise HTTPException(404, detail="investigation_not_found") from None
+
+            if summary_data.repository_id != repository_id:
+                raise HTTPException(404, detail="investigation_not_found")
+
+            recovered = await checkpointer.load_latest_checkpoint(ctx.org_id, investigation_id)
+            latest_state = recovered[1] if recovered else None
+            claims = latest_state.claims if latest_state else ()
+            events = await checkpointer.list_events(ctx.org_id, investigation_id)
+
+            return InvestigationDetailResponseV1(
+                summary=summary_data,
+                latest_state=latest_state,
+                claims=claims,
+                events_count=len(events),
+            )
+
+    @app.post("/api/v1/repositories/{repository_id}/investigations/{investigation_id}/execute")
+    async def execute_investigation_endpoint(
+        request: Request,
+        repository_id: UUID,
+        investigation_id: UUID,
+    ) -> InvestigationDetailResponseV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        worker_id = f"worker-{ctx.principal_id}"
+        async with transaction(ports.factory) as s:
+            checkpointer = FencedCheckpointer(s, event_sink=app_stream_buffer)
+            try:
+                inv_summary = await checkpointer.get_investigation_summary(
+                    ctx.org_id, investigation_id
+                )
+            except InvestigationNotFoundError:
+                raise HTTPException(404, detail="investigation_not_found") from None
+
+            if inv_summary.repository_id != repository_id:
+                raise HTTPException(404, detail="investigation_not_found")
+
+            fence = await checkpointer.acquire_lease(
+                ctx.org_id, investigation_id, worker_id=worker_id
+            )
+
+            budget_svc = ModelBudgetService(s)
+            await budget_svc.ensure_default_generation_pricing()
+            await budget_svc.ensure_budget(
+                ctx.org_id, repository_id, initial_balance_micros=10_000_000
+            )
+            router = ModelRouter(budget_svc)
+            default_resp = json.dumps(
+                {
+                    "verdict": "indeterminate",
+                    "confidence": 0.5,
+                    "summary": "Automated verification completed with indeterminate findings.",
+                    "claims": [],
+                }
+            )
+            adapter = ports.model_adapter or FakeModelAdapter(default_content=default_resp)
+            gateway = ModelGatewayService(
+                router=router, budget_service=budget_svc, adapters={"fake": adapter}
+            )
+            investigator = ShortPathInvestigator(gateway, checkpointer)
+
+            exec_ctx = ToolExecutionContext(
+                org_id=ctx.org_id,
+                repository_id=repository_id,
+                principal_id=ctx.principal_id,
+            )
+
+            state = await investigator.run_investigation(
+                org_id=ctx.org_id,
+                investigation_id=investigation_id,
+                worker_id=worker_id,
+                fencing_token=fence,
+                disclosure_policy=DisclosurePolicyV1(allow_external_disclosure=False),
+                context=exec_ctx,
+            )
+
+            final_summary = await checkpointer.get_investigation_summary(
+                ctx.org_id, investigation_id
+            )
+            events = await checkpointer.list_events(ctx.org_id, investigation_id)
+            return InvestigationDetailResponseV1(
+                summary=final_summary,
+                latest_state=state,
+                claims=state.claims,
+                events_count=len(events),
+            )
+
+    @app.get("/api/v1/repositories/{repository_id}/investigations/{investigation_id}/events")
+    async def list_investigation_events_endpoint(
+        request: Request,
+        repository_id: UUID,
+        investigation_id: UUID,
+        after_step: int | None = None,
+    ) -> list[InvestigationEventV1]:
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as s:
+            checkpointer = FencedCheckpointer(s, event_sink=app_stream_buffer)
+            try:
+                inv = await checkpointer.get_investigation(ctx.org_id, investigation_id)
+            except InvestigationNotFoundError:
+                raise HTTPException(404, detail="investigation_not_found") from None
+            if UUID(str(inv["repository_id"])) != repository_id:
+                raise HTTPException(404, detail="investigation_not_found")
+            return await checkpointer.list_events(
+                ctx.org_id, investigation_id, after_step=after_step
+            )
+
+    @app.get("/api/v1/repositories/{repository_id}/investigations/{investigation_id}/stream")
+    async def stream_investigation_events_endpoint(
+        request: Request,
+        repository_id: UUID,
+        investigation_id: UUID,
+        after_step: int | None = None,
+    ) -> StreamingResponse:
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as s:
+            checkpointer = FencedCheckpointer(s, event_sink=app_stream_buffer)
+            try:
+                inv = await checkpointer.get_investigation(ctx.org_id, investigation_id)
+            except InvestigationNotFoundError:
+                raise HTTPException(404, detail="investigation_not_found") from None
+            if UUID(str(inv["repository_id"])) != repository_id:
+                raise HTTPException(404, detail="investigation_not_found")
+
+        async def event_generator() -> AsyncIterator[str]:
+            async with transaction(ports.factory) as s_stream:
+                stream_checkpointer = FencedCheckpointer(s_stream, event_sink=app_stream_buffer)
+                async for event in app_stream_buffer.subscribe(
+                    org_id=ctx.org_id,
+                    investigation_id=investigation_id,
+                    checkpointer=stream_checkpointer,
+                    after_step=after_step,
+                    timeout_seconds=60.0,
+                ):
+                    yield InvestigationStreamBuffer.format_sse(event)
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    @app.post("/api/v1/repositories/{repository_id}/investigations/{investigation_id}/feedback")
+    async def record_investigation_feedback_endpoint(
+        request: Request,
+        repository_id: UUID,
+        investigation_id: UUID,
+    ) -> dict[str, Any]:
+        ctx = await repository_context(request, repository_id, write=True)
+        body = await json_body(request, InvestigationFeedbackRequestV1)
+        async with transaction(ports.factory) as s:
+            checkpointer = FencedCheckpointer(s, event_sink=app_stream_buffer)
+            try:
+                inv = await checkpointer.get_investigation(ctx.org_id, investigation_id)
+            except InvestigationNotFoundError:
+                raise HTTPException(404, detail="investigation_not_found") from None
+            if UUID(str(inv["repository_id"])) != repository_id:
+                raise HTTPException(404, detail="investigation_not_found")
+
+            await checkpointer.record_feedback(
+                org_id=ctx.org_id,
+                investigation_id=investigation_id,
+                feedback_type=body.feedback_type,
+                notes=body.notes,
+            )
+
+            memory_entry_id = None
+            if body.save_to_memory:
+                mem_svc = MemoryService(s)
+                mem_req = MemoryCreateRequestV1(
+                    org_id=ctx.org_id,
+                    repository_id=repository_id,
+                    snapshot_id=repository_id,
+                    principal_id=ctx.principal_id,
+                    memory_kind=MemoryKind.TRIAGE_RESOLUTION,
+                    topic=body.memory_topic
+                    or f"Triage feedback for investigation {investigation_id}",
+                    summary=f"[{body.feedback_type.upper()}] {body.notes}",
+                    evidence_pointers=(),
+                )
+                mem = await mem_svc.record_memory(mem_req)
+                memory_entry_id = str(mem.memory_id)
+
+            return {
+                "status": "ok",
+                "feedback_type": body.feedback_type,
+                "memory_entry_id": memory_entry_id,
+            }
+
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
             schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
@@ -1629,6 +1895,12 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 MemoryQueryResponseV1,
                 MemoryEntryV1,
                 SourceViewResultV1,
+                InvestigationCreateRequestV1,
+                InvestigationSummaryV1,
+                InvestigationDetailResponseV1,
+                InvestigationEventV1,
+                InvestigationFeedbackRequestV1,
+                InvestigationListResponseV1,
             )
             for model in contract_models:
                 components[model.__name__] = model.model_json_schema(
@@ -1677,6 +1949,14 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 (
                     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/memories",
                     MemoryCreateRequestV1,
+                ),
+                (
+                    "/api/v1/repositories/{repository_id}/investigations",
+                    InvestigationCreateRequestV1,
+                ),
+                (
+                    "/api/v1/repositories/{repository_id}/investigations/{investigation_id}/feedback",
+                    InvestigationFeedbackRequestV1,
                 ),
             )
             for path, model in body_contracts:

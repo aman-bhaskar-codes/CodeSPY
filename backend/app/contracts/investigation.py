@@ -158,3 +158,28 @@ class InvestigationSummaryV1(BaseModel):
     failure_reason: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class InvestigationDetailResponseV1(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    summary: InvestigationSummaryV1
+    latest_state: InvestigationStateV1 | None = None
+    claims: tuple[InvestigationClaimV1, ...] = ()
+    events_count: int = 0
+
+
+class InvestigationFeedbackRequestV1(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    feedback_type: str = Field(description="'agree', 'disagree', 'needs_review', or 'comment'")
+    notes: str = Field(min_length=1, max_length=4000)
+    save_to_memory: bool = False
+    memory_topic: str | None = None
+
+
+class InvestigationListResponseV1(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    items: tuple[InvestigationSummaryV1, ...]
+    total_count: int

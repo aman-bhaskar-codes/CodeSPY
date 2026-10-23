@@ -1,6 +1,6 @@
 """Transaction-safe model gateway budget reservations, price schedules, and financial ledger."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -126,6 +126,24 @@ class ModelBudgetService:
                     price_schedules.c.version == schedule.version,
                 )
                 .values(**vals)
+            )
+
+    async def ensure_default_generation_pricing(self) -> None:
+        """Ensures a baseline active price schedule exists for local deterministic fake models."""
+        try:
+            await self.get_generation_price_schedule("fake", "codespy-fake-investigator-v1")
+        except Exception:
+            now = datetime.now(UTC)
+            await self.set_generation_price_schedule(
+                GenerationPriceScheduleV1(
+                    provider="fake",
+                    model_id="codespy-fake-investigator-v1",
+                    version="2026-10-22.1",
+                    input_micros_per_1k=500,
+                    output_micros_per_1k=1000,
+                    effective_at=now - timedelta(days=1),
+                    expires_at=now + timedelta(days=365),
+                )
             )
 
     async def get_generation_price_schedule(

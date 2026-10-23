@@ -14,6 +14,7 @@ import type {
 import { StructuralReportView } from "./features/structure/StructuralReportView";
 import { FindingsWorkbench } from "./features/findings/FindingsWorkbench";
 import { RetrievalWorkbench } from "./features/retrieval/RetrievalWorkbench";
+import { InvestigationsWorkbench } from "./features/investigations/InvestigationsWorkbench";
 
 const terminal = new Set(["succeeded", "partial", "failed", "cancelled"]);
 function selectedId(name: string): string | null {
@@ -57,7 +58,9 @@ export default function App() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [pages, setPages] = useState<(string | null)[]>([null]);
   const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
-  const [scanJobId, setScanJobId] = useState<string | null>(() => selectedId("scan"));
+  const [scanJobId, setScanJobId] = useState<string | null>(() =>
+    selectedId("scan"),
+  );
   const input = useRef<HTMLInputElement>(null);
   const cancelButton = useRef<HTMLButtonElement>(null);
   const uploadKey = useRef(crypto.randomUUID());
@@ -750,7 +753,8 @@ export default function App() {
                 ) : (
                   <div>
                     <p>
-                      Run deterministic static analysis across SAST, Secrets, SCA, and IaC rules for this snapshot.
+                      Run deterministic static analysis across SAST, Secrets,
+                      SCA, and IaC rules for this snapshot.
                     </p>
                     {startScan.isPending ||
                     (scanJob.data && !terminal.has(scanJob.data.state)) ? (
@@ -782,6 +786,13 @@ export default function App() {
             )}
             {snapshot && repository && (
               <RetrievalWorkbench
+                repositoryId={repository}
+                snapshotId={snapshot}
+                csrfToken={session.data?.csrf_token ?? ""}
+              />
+            )}
+            {snapshot && repository && (
+              <InvestigationsWorkbench
                 repositoryId={repository}
                 snapshotId={snapshot}
                 csrfToken={session.data?.csrf_token ?? ""}

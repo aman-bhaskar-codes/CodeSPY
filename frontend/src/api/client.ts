@@ -329,6 +329,80 @@ export const api = {
       { signal },
     );
   },
+  createInvestigation: (
+    repoId: string,
+    req: import("../features/investigations/types").InvestigationCreateRequestV1,
+    csrf: string,
+    key?: string,
+  ) =>
+    request<import("../features/investigations/types").InvestigationSummaryV1>(
+      `/repositories/${repoId}/investigations`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf, key),
+        body: JSON.stringify(req),
+      },
+    ),
+  listInvestigations: (
+    repoId: string,
+    findingId?: string,
+    signal?: AbortSignal,
+  ) => {
+    const qs = findingId ? `?finding_id=${encodeURIComponent(findingId)}` : "";
+    return request<import("../features/investigations/types").InvestigationListResponseV1>(
+      `/repositories/${repoId}/investigations${qs}`,
+      { signal },
+    );
+  },
+  getInvestigation: (
+    repoId: string,
+    investigationId: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("../features/investigations/types").InvestigationDetailResponseV1>(
+      `/repositories/${repoId}/investigations/${investigationId}`,
+      { signal },
+    ),
+  executeInvestigation: (
+    repoId: string,
+    investigationId: string,
+    csrf: string,
+    key?: string,
+  ) =>
+    request<import("../features/investigations/types").InvestigationDetailResponseV1>(
+      `/repositories/${repoId}/investigations/${investigationId}/execute`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf, key),
+      },
+    ),
+  listInvestigationEvents: (
+    repoId: string,
+    investigationId: string,
+    afterStep?: number,
+    signal?: AbortSignal,
+  ) => {
+    const qs = afterStep !== undefined ? `?after_step=${afterStep}` : "";
+    return request<import("../features/investigations/types").InvestigationEventV1[]>(
+      `/repositories/${repoId}/investigations/${investigationId}/events${qs}`,
+      { signal },
+    );
+  },
+  submitInvestigationFeedback: (
+    repoId: string,
+    investigationId: string,
+    feedback: import("../features/investigations/types").InvestigationFeedbackRequestV1,
+    csrf: string,
+    key?: string,
+  ) =>
+    request<{ status: string; feedback_type: string; memory_entry_id?: string | null }>(
+      `/repositories/${repoId}/investigations/${investigationId}/feedback`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf, key),
+        body: JSON.stringify(feedback),
+      },
+    ),
 };
 export function mutationHeaders(
   csrf: string,
