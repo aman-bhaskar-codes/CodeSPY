@@ -15,7 +15,7 @@ it("renders severity totals from the backend summary contract", () => {
     by_disposition: { unresolved: 5 }, by_triage: { unreviewed: 5 }, created_at: null,
   };
   const html = renderToString(<FindingsSummaryCard summary={summary} />);
-  expect(html).toContain("5 total findings");
+  expect(html).toMatch(/5(?:<!-- -->)?\s*total findings/);
   expect(html).toMatch(/>5<\/div>/);
   expect(html).not.toContain("In progress");
 });
