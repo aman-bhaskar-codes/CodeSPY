@@ -16,29 +16,41 @@ from app.services.analysis_sources import locate_source
 
 
 class ScanReadService:
-    def __init__(self, factory: async_sessionmaker[AsyncSession], capabilities: ScanCapabilities):
+    def __init__(
+        self,
+        factory: async_sessionmaker[AsyncSession],
+        capabilities: ScanCapabilities | None = None,
+    ):
         self.factory, self.capabilities = factory, capabilities
 
     async def read(self, ctx: TenantContext, ref: RunRef) -> ScanReadResultV1 | None:
         async with self.factory() as session, session.begin():
-            draft = await ScanRepository(session).read(ctx, ref)
-            if draft is None:
-                return None
-            now = await database_now(session)
-            try:
-                await locate_source(session, ref.org_id, draft.spec.repository_id, ref.snapshot_id)
-                available = True
-            except (NoResultFound, DuplicateConflict):
-                available = False
-            return ScanReadResultV1(
-                historical=draft,
-                checked_at=now,
-                effective_decisions=effective_decisions(draft, available, self.capabilities, now),
-            )
+            return await self.read_in_session(session, ctx, ref)
+
+    async def read_in_session(
+        self, session: AsyncSession, ctx: TenantContext, ref: RunRef
+    ) -> ScanReadResultV1 | None:
+        draft = await ScanRepository(session).read(ctx, ref)
+        if draft is None:
+            return None
+        now = await database_now(session)
+        try:
+            await locate_source(session, ref.org_id, draft.spec.repository_id, ref.snapshot_id)
+            available = True
+        except (NoResultFound, DuplicateConflict):
+            available = False
+        return ScanReadResultV1(
+            historical=draft,
+            checked_at=now,
+            effective_decisions=effective_decisions(draft, available, self.capabilities, now),
+        )
 
 
 def effective_decisions(
-    draft: ScanPublicationDraftV1, available: bool, capabilities: ScanCapabilities, now: datetime
+    draft: ScanPublicationDraftV1,
+    available: bool,
+    capabilities: ScanCapabilities | None,
+    now: datetime,
 ) -> tuple[EffectiveVerificationV1, ...]:
     findings = {f.id: f for f in draft.findings}
     decisions = []
@@ -54,6 +66,8 @@ def effective_decisions(
                 request = draft.spec.dependency_request
                 assert request is not None
                 try:
+                    if capabilities is None:
+                        raise ValueError("retained bundle unavailable")
                     bundle = capabilities.bundle(request.bundle_digest)
                     if bundle.digest() != request.bundle_digest:
                         raise ValueError("retained bundle differs")

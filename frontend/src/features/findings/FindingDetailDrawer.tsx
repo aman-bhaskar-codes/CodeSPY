@@ -30,6 +30,13 @@ export function FindingDetailDrawer({
 }: Props) {
   const [isTriageOpen, setIsTriageOpen] = useState(false);
   const [showTrace, setShowTrace] = useState(false);
+  const historyScope = `${repositoryId}:${snapshotId}:${findingId}`;
+  const [historyPage, setHistoryPage] = useState<{
+    scope: string;
+    cursor: string | null;
+  }>({ scope: historyScope, cursor: null });
+  const historyCursor =
+    historyPage.scope === historyScope ? historyPage.cursor : null;
 
   const detailQuery = useQuery({
     queryKey: ["finding", repositoryId, snapshotId, findingId],
@@ -39,16 +46,34 @@ export function FindingDetailDrawer({
   });
 
   const historyQuery = useQuery({
-    queryKey: ["finding-history", repositoryId, snapshotId, findingId],
+    queryKey: [
+      "finding-history",
+      repositoryId,
+      snapshotId,
+      findingId,
+      historyCursor,
+    ],
     queryFn: ({ signal }) =>
-      api.triageHistory(repositoryId, snapshotId, findingId, signal),
+      api.triageHistory(
+        repositoryId,
+        snapshotId,
+        findingId,
+        signal,
+        historyCursor ?? undefined,
+      ),
     enabled: isOpen && !!findingId,
   });
 
   const traceQuery = useQuery({
     queryKey: ["finding-trace", repositoryId, snapshotId, findingId],
     queryFn: () =>
-      api.featureTrace(repositoryId, snapshotId, findingId, undefined, csrfToken),
+      api.featureTrace(
+        repositoryId,
+        snapshotId,
+        findingId,
+        undefined,
+        csrfToken,
+      ),
     enabled: isOpen && showTrace && !!findingId,
   });
 
@@ -57,25 +82,41 @@ export function FindingDetailDrawer({
   const finding = detailQuery.data;
   const detail: FindingDetailResponseV1 | undefined = detailQuery.data;
 
-  const triageFinding: FindingSummaryV1 | undefined = finding ? {
-    id: finding.id, run_id: finding.run_id, rule_id: finding.rule_id,
-    category: finding.category, severity: finding.severity, title: finding.title,
-    file_path: finding.file_path, line_number: finding.line_number,
-    disposition: finding.disposition, triage_state: finding.triage.current_state,
-    triage_reason: finding.triage.current_reason, triage_version: finding.triage.version,
-  } : undefined;
-  const recommendation = typeof detail?.recommendation?.action === "string"
-    ? detail.recommendation.action : null;
+  const triageFinding: FindingSummaryV1 | undefined = finding
+    ? {
+        id: finding.id,
+        run_id: finding.run_id,
+        rule_id: finding.rule_id,
+        category: finding.category,
+        severity: finding.severity,
+        title: finding.title,
+        file_path: finding.file_path,
+        line_number: finding.line_number,
+        disposition: finding.disposition,
+        triage_state: finding.triage.current_state,
+        triage_reason: finding.triage.current_reason,
+        triage_version: finding.triage.version,
+      }
+    : undefined;
+  const recommendation =
+    typeof detail?.recommendation?.action === "string"
+      ? detail.recommendation.action
+      : null;
 
-  const handleTriageSubmit = async (transition: TriageTransitionV1) => {
+  const handleTriageSubmit = async (
+    transition: TriageTransitionV1,
+    requestKey: string,
+  ) => {
     await api.triageFinding(
       repositoryId,
       snapshotId,
       findingId,
       transition,
       csrfToken,
+      requestKey,
     );
     await detailQuery.refetch();
+    setHistoryPage({ scope: historyScope, cursor: null });
     await historyQuery.refetch();
     onTriageUpdated();
   };
@@ -213,7 +254,13 @@ export function FindingDetailDrawer({
         {/* Content */}
         <div style={{ padding: "24px", flex: 1, display: "grid", gap: "24px" }}>
           {detailQuery.isLoading && (
-            <div style={{ textAlign: "center", padding: "40px", color: "var(--muted)" }}>
+            <div
+              style={{
+                textAlign: "center",
+                padding: "40px",
+                color: "var(--muted)",
+              }}
+            >
               Loading finding details and verified code excerpts...
             </div>
           )}
@@ -229,7 +276,8 @@ export function FindingDetailDrawer({
                 color: "var(--danger)",
               }}
             >
-              Failed to load finding details. Reload or verify resource permissions.
+              Failed to load finding details. Reload or verify resource
+              permissions.
             </div>
           )}
 
@@ -237,7 +285,9 @@ export function FindingDetailDrawer({
             <>
               {/* Location & Message */}
               <div>
-                <h4 style={{ margin: "0 0 8px", fontSize: "14px" }}>Location & Message</h4>
+                <h4 style={{ margin: "0 0 8px", fontSize: "14px" }}>
+                  Location & Message
+                </h4>
                 <div
                   style={{
                     padding: "12px",
@@ -285,9 +335,14 @@ export function FindingDetailDrawer({
                   {finding.category === "secret_format" && (
                     <span
                       className="muted"
-                      style={{ fontSize: "11px", marginTop: "4px", display: "block" }}
+                      style={{
+                        fontSize: "11px",
+                        marginTop: "4px",
+                        display: "block",
+                      }}
                     >
-                      Sensitive tokens and API secrets are automatically redacted from preview excerpts.
+                      Sensitive tokens and API secrets are automatically
+                      redacted from preview excerpts.
                     </span>
                   )}
                 </div>
@@ -296,7 +351,9 @@ export function FindingDetailDrawer({
               {/* Remediation */}
               {recommendation && (
                 <div>
-                  <h4 style={{ margin: "0 0 8px", fontSize: "14px" }}>Remediation Guidance</h4>
+                  <h4 style={{ margin: "0 0 8px", fontSize: "14px" }}>
+                    Remediation Guidance
+                  </h4>
                   <div
                     style={{
                       padding: "12px",
@@ -317,8 +374,16 @@ export function FindingDetailDrawer({
                   <h4>Evidence support</h4>
                   <p>Current support: {detail.support_reason}</p>
                   <p>Historical disposition: {detail.historical_disposition}</p>
-                  <ul>{detail.evidence_ids?.map((id) => <li key={id}><code>{id}</code></li>)}</ul>
-                  {detail.limitations?.map((text, index) => <p key={index}>{text}</p>)}
+                  <ul>
+                    {detail.evidence_ids?.map((id) => (
+                      <li key={id}>
+                        <code>{id}</code>
+                      </li>
+                    ))}
+                  </ul>
+                  {detail.limitations?.map((text, index) => (
+                    <p key={index}>{text}</p>
+                  ))}
                 </div>
               )}
 
@@ -352,7 +417,10 @@ export function FindingDetailDrawer({
                           · reason: <em>{finding.triage.current_reason}</em>
                         </span>
                       )}
-                      <span className="muted"> (v{finding.triage.version})</span>
+                      <span className="muted">
+                        {" "}
+                        (v{finding.triage.version})
+                      </span>
                     </div>
                   </div>
                   <button
@@ -373,43 +441,83 @@ export function FindingDetailDrawer({
                 </div>
 
                 {/* Triage History Trail */}
-                {historyQuery.data?.events && historyQuery.data.events.length > 0 && (
-                  <div style={{ marginTop: "16px" }}>
-                    <h5
-                      style={{
-                        margin: "0 0 8px",
-                        fontSize: "12px",
-                        textTransform: "uppercase",
-                        color: "var(--muted)",
-                      }}
-                    >
-                      Audit Trail ({historyQuery.data.events.length} decisions)
-                    </h5>
-                    <div style={{ display: "grid", gap: "6px", fontSize: "12px" }}>
-                      {historyQuery.data.events.map((ev) => (
-                        <div
-                          key={ev.event_id}
-                          style={{
-                            padding: "6px 10px",
-                            background: "var(--surface)",
-                            border: "1px solid var(--border)",
-                            borderRadius: "4px",
-                            display: "flex",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <div>
-                            <strong>{ev.state}</strong>
-                            {ev.reason !== "none" && <span> ({ev.reason})</span>}
+                {historyQuery.data?.events &&
+                  historyQuery.data.events.length > 0 && (
+                    <div style={{ marginTop: "16px" }}>
+                      <h5
+                        style={{
+                          margin: "0 0 8px",
+                          fontSize: "12px",
+                          textTransform: "uppercase",
+                          color: "var(--muted)",
+                        }}
+                      >
+                        Audit Trail ({historyQuery.data.events.length} decisions
+                        on this page)
+                      </h5>
+                      <div
+                        style={{
+                          display: "grid",
+                          gap: "6px",
+                          fontSize: "12px",
+                        }}
+                      >
+                        {historyQuery.data.events.map((ev) => (
+                          <div
+                            key={ev.event_id}
+                            style={{
+                              padding: "6px 10px",
+                              background: "var(--surface)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "4px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <div>
+                              <strong>{ev.state}</strong>
+                              {ev.reason !== "none" && (
+                                <span> ({ev.reason})</span>
+                              )}
+                            </div>
+                            <span
+                              className="muted"
+                              style={{ fontSize: "11px" }}
+                            >
+                              {new Date(ev.created_at).toLocaleString()}
+                            </span>
                           </div>
-                          <span className="muted" style={{ fontSize: "11px" }}>
-                            {new Date(ev.created_at).toLocaleString()}
-                          </span>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                      {historyQuery.data.next_cursor && (
+                        <button
+                          type="button"
+                          disabled={historyQuery.isFetching}
+                          onClick={() =>
+                            setHistoryPage({
+                              scope: historyScope,
+                              cursor: historyQuery.data!.next_cursor!,
+                            })
+                          }
+                        >
+                          Older decisions
+                        </button>
+                      )}
+                      {historyCursor && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setHistoryPage({
+                              scope: historyScope,
+                              cursor: null,
+                            })
+                          }
+                        >
+                          Newest decisions
+                        </button>
+                      )}
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
 
               {/* Feature Trace Section */}

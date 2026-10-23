@@ -2312,6 +2312,76 @@ export type ScanConfigV1 = {
 };
 
 /**
+ * ScanJobRecordV4
+ */
+export type ScanJobRecordV4 = {
+    /**
+     * Attempt Count
+     */
+    attempt_count: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Deadline
+     */
+    deadline: string;
+    /**
+     * Failure Code
+     */
+    failure_code: string | null;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Max Attempts
+     */
+    max_attempts: number;
+    /**
+     * Operation
+     */
+    operation?: 'scan_snapshot';
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Report Available
+     */
+    report_available?: boolean;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Result Run Id
+     */
+    result_run_id: string | null;
+    /**
+     * Scan Spec Id
+     */
+    scan_spec_id: string;
+    /**
+     * Schema Version
+     */
+    schema_version?: 4;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+    /**
+     * State
+     */
+    state: 'queued' | 'running' | 'retry_wait' | 'cancelling' | 'succeeded' | 'partial' | 'failed' | 'cancelled';
+};
+
+/**
  * ScanSummaryResponseV1
  */
 export type ScanSummaryResponseV1 = {
@@ -3246,6 +3316,10 @@ export type TriageHistoryV1 = {
      * Finding Id
      */
     finding_id: string;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: string | null;
 };
 
 /**
@@ -4421,7 +4495,16 @@ export type GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFind
          */
         finding_id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Cursor
+         */
+        cursor?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
     url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage/history';
 };
 
@@ -4527,6 +4610,44 @@ export type RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotId
 };
 
 export type RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostResponse = RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostResponses[keyof RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostResponses];
+
+export type GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-jobs/{job_id}';
+};
+
+export type GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetError = GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetErrors[keyof GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetErrors];
+
+export type GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ScanJobRecordV4;
+};
+
+export type GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetResponse = GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetResponses[keyof GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetResponses];
 
 export type CreateSnapshotScanApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansPostData = {
     body: CreateScanRequestV1;

@@ -1,0 +1,43 @@
+{
+  "base": "6f131562182268e333463d52c33c3af38a50bc83",
+  "overlays": {
+    "backend/alembic/env.py": "d4c39e5af465c337d9ee19ac222a70f9d470fb97e4e68f01dfcb8d617ed2fedd",
+    "backend/alembic/versions/0022_triage_commands.py": "7bd95020a6e114c334c24a18f6ff5424f76f35d6f70ae7fe5364287bb5903f3f",
+    "backend/app/api/application.py": "6ac56ca30df72fba124a7ba5e4006d7a5af28e5ac078e7b9bf1893c5e2d3e8ae",
+    "backend/app/contracts/triage.py": "a37e33d493715db2723dd5f65855b6f299038d1a0c84cc9af56609e106751a88",
+    "backend/app/db/migration_version.py": "e2e5264a8a17449da4ba0a4933c0e27545e7be229dcee9fd637d763419cb7a42",
+    "backend/app/models/phase2_tables.py": "efbc95ff7f6d832838e6b99462a42683b8f551ab2b0b1ad2da5533e131ea5f48",
+    "backend/app/services/findings_query.py": "f78d6b1d08f2213629cff261104cead1af2783849d6b687baebb73e3b8602949",
+    "backend/app/services/scan_reads.py": "dafccc0e9735939fc5dbf2f0f9eabf0dd0c5c4f297cc6abb3c69b3645b0d3fc2",
+    "backend/app/services/triage.py": "b2a8e971e232ca0a205ed48146961672090bb7a587c3ef84bdd09fdb90e36806",
+    "backend/openapi.json": "274df5ed4e4e7910bba544beadcbc5845bf9b0a3bbaa718810f7d0f183690c33",
+    "backend/tests/phase4/storage/test_migration_compatibility.py": "6a2975cba7cd1bb679ff3e786e10e81250f18ad5ee34c2c075df045c30f38a4e",
+    "backend/tests/phase4/storage/test_scan_http_boundary.py": "649fd0aafa24aa74805ebfd4711264082ac556859211b07147745293e861b4fa",
+    "backend/tests/phase4/storage/test_scan_reads.py": "5cc6e21de430623e0ce68ecee49f179779e74e6319c5250d6953afabcb020b0a",
+    "backend/tests/phase4/storage/test_triage_commands_postgres.py": "990d5393f34dbc6f56ffb0458dee571836dca0146e141543a9d6f4da855f092e",
+    "backend/tests/phase4/unit/test_finding_current_support.py": "77187313dca83b0e7b3b2554899b8470969b41460547eecc36a70c1e24a40337",
+    "backend/tests/phase4/unit/test_scan_freshness.py": "327797c211ff22d1e544065b2fd94cc18d62358a3afade5da93e96cec2526e31",
+    "backend/tests/phase4/unit/test_scan_status_api.py": "ebf82d291c513bab4db32d24f976d3f7117b9e7dfa03ddea7195521f57657408",
+    "backend/tests/phase4/unit/test_triage_replay_pagination.py": "0287281eff136b859f3b6360b5d22c340c1d6996d9e7a7a5271101d70a6719f0",
+    "frontend/src/api/client.ts": "76020e84f32ffe99f99ce6f0814faf3bb004e2faf9657ed78f077e8e0fbae732",
+    "frontend/src/api/generated/index.ts": "bfcebd0335c7947f410f273b9752d4206a18c21bcc41d2266701f60e245a818a",
+    "frontend/src/api/generated/sdk.gen.ts": "e93ca6f5ea03b1c9d70c35808f2a291ae11b1d71ec8e3c4d37c180bd4c36e840",
+    "frontend/src/api/generated/types.gen.ts": "5571339fd75a59ed08b29edb51a46099f088c2b206c814ad2a3b655bab6731a9",
+    "frontend/src/features/findings/FindingDetailDrawer.tsx": "b75d2bd1394218650c4432e24a8df6224f5da37139c969819931ec809362a714",
+    "frontend/src/features/findings/FindingsTable.tsx": "3c49c2560925f784862a7d092669e7ac0247de0cfbf09596ef5da1e33beba818",
+    "frontend/src/features/findings/FindingsWorkbench.tsx": "16e430277cd8a26e3afd0e5a9c14e790d7c8e84c58929f0355d32a787381f89b",
+    "frontend/src/features/findings/TriageModal.test.tsx": "276a15ebb3f20b6d2b5e8646c222db81d4e879301ec6d01fddcc7d345a86816c",
+    "frontend/src/features/findings/TriageModal.tsx": "c796a7b99ee592c9aff92771185bf63cb8f7067a41cde943b587cf4b371df97f",
+    "scripts/phase2_db.py": "1efbfeabab6eefe3acfe0a400e9fee496d6476ab536d132d19d30b431be04a48"
+  },
+  "qualification": {
+    "python": "3.12.12",
+    "node": "22.23.3",
+    "postgresql_major": 16,
+    "backend_unit_tests": 729,
+    "frontend_tests": 22,
+    "typescript_tests": 11,
+    "postgresql_tests": 8,
+    "application_files_typed": 197
+  }
+}

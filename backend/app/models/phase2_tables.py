@@ -617,7 +617,10 @@ table(
         memberfk("fk_command_membership"),
         ck("ck_command_key", "octet_length(request_key) BETWEEN 1 AND 128"),
         ck("ck_command_hash", "request_hash ~ '^[0-9a-f]{64}$'"),
-        ck("ck_command_operation", "operation IN ('repository_create','github_bind')"),
+        ck(
+            "ck_command_operation",
+            "operation IN ('repository_create','github_bind','finding_triage')",
+        ),
         ck(
             "ck_command_response",
             "jsonb_typeof(response)='object' AND octet_length(response::text)<=65536",

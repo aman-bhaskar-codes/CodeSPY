@@ -280,10 +280,10 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     retries = RetryService(ports.factory, ports.store)
     submissions = SubmissionService(ports.factory, ports.store, policy=ports.admission_policy)
     structural = StructuralAnalysisService(ports.factory)
-    findings_query = FindingsQueryService(ports.factory)
-    triage_service = TriageService(ports.factory)
-    trace_service = FeatureTraceService(ports.factory)
     cursors = CursorCodec(secrets.token_bytes(32))
+    findings_query = FindingsQueryService(ports.factory, ports.scan_capabilities, cursors)
+    triage_service = TriageService(ports.factory, cursors)
+    trace_service = FeatureTraceService(ports.factory)
     app_stream_buffer = ports.stream_buffer or InvestigationStreamBuffer()
 
     def error(status: int, code: str) -> JSONResponse:
@@ -1283,7 +1283,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             spec_id=spec.id,
             job_id=job.id,
             snapshot_id=snapshot_id,
-            status_url=f"/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{job.id}/summary",
+            status_url=f"/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-jobs/{job.id}",
         )
 
     @app.post("/api/v1/repositories/{repository_id}/scans", status_code=202)
@@ -1302,8 +1302,23 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             spec_id=spec.id,
             job_id=job.id,
             snapshot_id=body.snapshot_id,
-            status_url=f"/api/v1/repositories/{repository_id}/snapshots/{body.snapshot_id}/scans/{job.id}/summary",
+            status_url=f"/api/v1/repositories/{repository_id}/snapshots/{body.snapshot_id}/scan-jobs/{job.id}",
         )
+
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-jobs/{job_id}")
+    async def get_scan_job(
+        request: Request, repository_id: UUID, snapshot_id: UUID, job_id: UUID
+    ) -> ScanJobRecordV4:
+        ctx = await repository_context(request, repository_id, write=False)
+        job = await jobs.get(ctx, job_id)
+        if (
+            not isinstance(job, ScanJobRecordV4)
+            or job.org_id != ctx.org_id
+            or job.repository_id != repository_id
+            or job.snapshot_id != snapshot_id
+        ):
+            raise HTTPException(404, detail="scan_job_not_found")
+        return job
 
     @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/summary")
     async def get_scan_summary(
@@ -1329,18 +1344,21 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         limit: int = 50,
     ) -> FindingListResponseV1:
         ctx = await repository_context(request, repository_id, write=False)
-        return await findings_query.list_findings(
-            ctx,
-            repository_id,
-            snapshot_id,
-            run_id,
-            category=category,
-            severity=severity,
-            disposition=disposition,
-            triage_state=triage_state,
-            cursor=cursor,
-            limit=limit,
-        )
+        try:
+            return await findings_query.list_findings(
+                ctx,
+                repository_id,
+                snapshot_id,
+                run_id,
+                category=category,
+                severity=severity,
+                disposition=disposition,
+                triage_state=triage_state,
+                cursor=cursor,
+                limit=limit,
+            )
+        except ValueError:
+            raise HTTPException(422, detail="invalid_findings_query") from None
 
     @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}")
     async def get_finding_detail(
@@ -1364,7 +1382,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         body = await json_body(request, TriageTransitionV1)
         try:
             return await triage_service.transition(
-                ctx, repository_id, snapshot_id, finding_id, body
+                ctx, repository_id, snapshot_id, finding_id, body, request_key=key(request)
             )
         except NoResultFound:
             raise HTTPException(404, detail="finding_not_found") from None
@@ -1377,11 +1395,20 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/findings/{finding_id}/triage/history"
     )
     async def get_triage_history(
-        request: Request, repository_id: UUID, snapshot_id: UUID, finding_id: UUID
+        request: Request,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        finding_id: UUID,
+        cursor: str | None = None,
+        limit: int = 50,
     ) -> TriageHistoryV1:
         ctx = await repository_context(request, repository_id, write=False)
         try:
-            return await triage_service.get_history(ctx, repository_id, snapshot_id, finding_id)
+            return await triage_service.get_history(
+                ctx, repository_id, snapshot_id, finding_id, cursor=cursor, limit=limit
+            )
+        except ValueError:
+            raise HTTPException(422, detail="invalid_history_query") from None
         except NoResultFound:
             raise HTTPException(404, detail="finding_not_found") from None
 

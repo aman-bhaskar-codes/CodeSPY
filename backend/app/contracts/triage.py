@@ -66,3 +66,4 @@ class TriageHistoryV1(BaseModel):
 
     finding_id: UUID
     events: list[TriageHistoryItemV1] = Field(default_factory=list)
+    next_cursor: str | None = None

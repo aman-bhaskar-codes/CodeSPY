@@ -25,7 +25,11 @@ interface Props {
     triage_state: string;
   }) => void;
   onSelectFinding: (findingId: string) => void;
-  onTriageFinding: (findingId: string, transition: TriageTransitionV1) => Promise<void>;
+  onTriageFinding: (
+    findingId: string,
+    transition: TriageTransitionV1,
+    requestKey: string,
+  ) => Promise<void>;
   hasNextPage: boolean;
   onNextPage: () => void;
   onResetPagination: () => void;
@@ -43,9 +47,8 @@ export function FindingsTable({
   onResetPagination,
   isLoading,
 }: Props) {
-  const [triageFindingTarget, setTriageFindingTarget] = useState<FindingSummaryV1 | null>(
-    null,
-  );
+  const [triageFindingTarget, setTriageFindingTarget] =
+    useState<FindingSummaryV1 | null>(null);
 
   const categories: Array<FindingCategory | "all"> = [
     "all",
@@ -102,7 +105,14 @@ export function FindingsTable({
         <div>
           <label
             htmlFor="filter-category"
-            style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", display: "block", color: "var(--muted)", marginBottom: "4px" }}
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              display: "block",
+              color: "var(--muted)",
+              marginBottom: "4px",
+            }}
           >
             Category
           </label>
@@ -126,7 +136,14 @@ export function FindingsTable({
         <div>
           <label
             htmlFor="filter-severity"
-            style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", display: "block", color: "var(--muted)", marginBottom: "4px" }}
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              display: "block",
+              color: "var(--muted)",
+              marginBottom: "4px",
+            }}
           >
             Severity
           </label>
@@ -150,7 +167,14 @@ export function FindingsTable({
         <div>
           <label
             htmlFor="filter-disposition"
-            style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", display: "block", color: "var(--muted)", marginBottom: "4px" }}
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              display: "block",
+              color: "var(--muted)",
+              marginBottom: "4px",
+            }}
           >
             Disposition
           </label>
@@ -174,7 +198,14 @@ export function FindingsTable({
         <div>
           <label
             htmlFor="filter-triage"
-            style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", display: "block", color: "var(--muted)", marginBottom: "4px" }}
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              display: "block",
+              color: "var(--muted)",
+              marginBottom: "4px",
+            }}
           >
             Triage State
           </label>
@@ -195,35 +226,78 @@ export function FindingsTable({
           </select>
         </div>
 
-        <div style={{ marginLeft: "auto", fontSize: "13px", color: "var(--muted)" }}>
-          Showing <strong>{data.items.length}</strong> of <strong>{data.total_count}</strong> findings
+        <div
+          style={{
+            marginLeft: "auto",
+            fontSize: "13px",
+            color: "var(--muted)",
+          }}
+        >
+          Showing <strong>{data.items.length}</strong> of{" "}
+          <strong>{data.total_count}</strong> findings
         </div>
       </div>
 
       {/* Table */}
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            fontSize: "13px",
+          }}
+        >
           <thead>
-            <tr style={{ background: "#f1f5f9", textAlign: "left", borderBottom: "1px solid var(--border)" }}>
+            <tr
+              style={{
+                background: "#f1f5f9",
+                textAlign: "left",
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
               <th style={{ padding: "10px 14px", width: "90px" }}>Severity</th>
               <th style={{ padding: "10px 14px", width: "80px" }}>Category</th>
               <th style={{ padding: "10px 14px" }}>Rule ID / Title</th>
               <th style={{ padding: "10px 14px" }}>File & Line</th>
-              <th style={{ padding: "10px 14px", width: "110px" }}>Disposition</th>
+              <th style={{ padding: "10px 14px", width: "110px" }}>
+                Disposition
+              </th>
               <th style={{ padding: "10px 14px", width: "110px" }}>Triage</th>
-              <th style={{ padding: "10px 14px", width: "110px", textAlign: "right" }}>Actions</th>
+              <th
+                style={{
+                  padding: "10px 14px",
+                  width: "110px",
+                  textAlign: "right",
+                }}
+              >
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: "32px", color: "var(--muted)" }}>
+                <td
+                  colSpan={7}
+                  style={{
+                    textAlign: "center",
+                    padding: "32px",
+                    color: "var(--muted)",
+                  }}
+                >
                   Loading findings...
                 </td>
               </tr>
             ) : data.items.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: "32px", color: "var(--muted)" }}>
+                <td
+                  colSpan={7}
+                  style={{
+                    textAlign: "center",
+                    padding: "32px",
+                    color: "var(--muted)",
+                  }}
+                >
                   No findings match the selected filters.
                 </td>
               </tr>
@@ -236,8 +310,12 @@ export function FindingsTable({
                     cursor: "pointer",
                     transition: "background 0.15s ease",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "#f8fafc")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "transparent")
+                  }
                   onClick={() => onSelectFinding(item.id)}
                 >
                   <td style={{ padding: "10px 14px" }}>
@@ -265,12 +343,26 @@ export function FindingsTable({
                       {item.severity}
                     </span>
                   </td>
-                  <td style={{ padding: "10px 14px", textTransform: "uppercase", fontSize: "11px", fontWeight: 600 }}>
+                  <td
+                    style={{
+                      padding: "10px 14px",
+                      textTransform: "uppercase",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                    }}
+                  >
                     {item.category}
                   </td>
                   <td style={{ padding: "10px 14px", fontWeight: 600 }}>
                     <code>{item.rule_id}</code>
-                    <div className="muted" style={{ fontSize: "12px", fontWeight: 400, marginTop: "2px" }}>
+                    <div
+                      className="muted"
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: 400,
+                        marginTop: "2px",
+                      }}
+                    >
                       {item.title.slice(0, 80)}
                       {item.title.length > 80 ? "…" : ""}
                     </div>
@@ -281,7 +373,13 @@ export function FindingsTable({
                       {item.line_number ? `:${item.line_number}` : ""}
                     </code>
                   </td>
-                  <td style={{ padding: "10px 14px", fontSize: "12px", color: "var(--muted)" }}>
+                  <td
+                    style={{
+                      padding: "10px 14px",
+                      fontSize: "12px",
+                      color: "var(--muted)",
+                    }}
+                  >
                     {item.disposition}
                   </td>
                   <td style={{ padding: "10px 14px" }}>
@@ -308,7 +406,10 @@ export function FindingsTable({
                       {item.triage_state.replaceAll("_", " ")}
                     </span>
                   </td>
-                  <td style={{ padding: "10px 14px", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                  <td
+                    style={{ padding: "10px 14px", textAlign: "right" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       type="button"
                       onClick={() => setTriageFindingTarget(item)}
@@ -372,8 +473,12 @@ export function FindingsTable({
           finding={triageFindingTarget}
           isOpen={true}
           onClose={() => setTriageFindingTarget(null)}
-          onSubmit={async (transition) => {
-            await onTriageFinding(triageFindingTarget.id, transition);
+          onSubmit={async (transition, requestKey) => {
+            await onTriageFinding(
+              triageFindingTarget.id,
+              transition,
+              requestKey,
+            );
             setTriageFindingTarget(null);
           }}
         />

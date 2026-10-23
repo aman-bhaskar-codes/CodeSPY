@@ -1,9 +1,11 @@
 """Append-only triage event stream and optimistic projections service."""
 
+import secrets
+from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import desc, insert, select, update
+from sqlalchemy import and_, desc, insert, or_, select, update
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -22,12 +24,17 @@ from app.models.scan_tables import (
     finding_triage_events,
     finding_triage_projections,
 )
+from app.repositories.command_repository import record_command, replay_command
 from app.security.authorization import require_snapshot
+from app.security.cursors import CursorCodec
 
 
 class TriageService:
-    def __init__(self, factory: async_sessionmaker[AsyncSession]):
+    def __init__(
+        self, factory: async_sessionmaker[AsyncSession], cursors: CursorCodec | None = None
+    ):
         self.factory = factory
+        self.cursors = cursors or CursorCodec(secrets.token_bytes(32))
 
     async def get_record(
         self,
@@ -74,27 +81,59 @@ class TriageService:
         repository_id: UUID,
         snapshot_id: UUID,
         finding_id: UUID,
+        *,
+        cursor: str | None = None,
+        limit: int = 50,
     ) -> TriageHistoryV1:
+        if not 1 <= limit <= 100:
+            raise ValueError("history limit must be between 1 and 100")
         async with transaction(self.factory) as session:
-            await self._verify_finding_exists(session, ctx, repository_id, snapshot_id, finding_id)
+            finding = await self._verify_finding_exists(
+                session, ctx, repository_id, snapshot_id, finding_id
+            )
+            scope = {
+                "kind": "triage_history",
+                "org": str(ctx.org_id),
+                "principal": str(ctx.principal_id),
+                "repository": str(repository_id),
+                "snapshot": str(snapshot_id),
+                "run": str(finding["run_id"]),
+                "finding": str(finding_id),
+            }
+            query = select(finding_triage_events).where(
+                finding_triage_events.c.org_id == ctx.org_id,
+                finding_triage_events.c.snapshot_id == snapshot_id,
+                finding_triage_events.c.run_id == finding["run_id"],
+                finding_triage_events.c.finding_id == finding_id,
+            )
+            if cursor is not None:
+                try:
+                    timestamp, event_id = self.cursors.decode(cursor, scope).split("|", 1)
+                    position_time, position_id = datetime.fromisoformat(timestamp), UUID(event_id)
+                except (ValueError, TypeError):
+                    raise ValueError("invalid history cursor") from None
+                query = query.where(
+                    or_(
+                        finding_triage_events.c.created_at < position_time,
+                        and_(
+                            finding_triage_events.c.created_at == position_time,
+                            finding_triage_events.c.event_id < position_id,
+                        ),
+                    )
+                )
             rows = (
                 (
                     await session.execute(
-                        select(finding_triage_events)
-                        .where(
-                            finding_triage_events.c.org_id == ctx.org_id,
-                            finding_triage_events.c.snapshot_id == snapshot_id,
-                            finding_triage_events.c.finding_id == finding_id,
-                        )
-                        .order_by(
+                        query.order_by(
                             desc(finding_triage_events.c.created_at),
                             desc(finding_triage_events.c.event_id),
-                        )
+                        ).limit(limit + 1)
                     )
                 )
                 .mappings()
                 .all()
             )
+            selected = rows[:limit]
             events = [
                 TriageHistoryItemV1(
                     event_id=r["event_id"],
@@ -104,9 +143,15 @@ class TriageService:
                     reason=r["reason"],
                     created_at=r["created_at"],
                 )
-                for r in rows
+                for r in selected
             ]
-            return TriageHistoryV1(finding_id=finding_id, events=events)
+            next_cursor = None
+            if len(rows) > limit:
+                last = selected[-1]
+                next_cursor = self.cursors.encode(
+                    scope, f"{last['created_at'].isoformat()}|{last['event_id']}"
+                )
+            return TriageHistoryV1(finding_id=finding_id, events=events, next_cursor=next_cursor)
 
     async def transition(
         self,
@@ -115,12 +160,27 @@ class TriageService:
         snapshot_id: UUID,
         finding_id: UUID,
         transition: TriageTransitionV1,
+        *,
+        request_key: str | None = None,
     ) -> TriageRecordV1:
+        transition = TriageTransitionV1.model_validate(transition.model_dump())
+        if request_key is not None and not 1 <= len(request_key.encode()) <= 128:
+            raise ValueError("bounded command key required")
+        command = {
+            "repository_id": str(repository_id),
+            "snapshot_id": str(snapshot_id),
+            "finding_id": str(finding_id),
+            "transition": transition.model_dump(mode="json"),
+        }
         async with transaction(self.factory) as session:
             finding = await self._verify_finding_exists(
                 session, ctx, repository_id, snapshot_id, finding_id, write=True
             )
             run_id = finding["run_id"]
+            if request_key is not None:
+                replay = await replay_command(session, ctx, request_key, "finding_triage", command)
+                if replay is not None:
+                    return TriageRecordV1.model_validate(replay)
 
             projection = (
                 (
@@ -149,9 +209,9 @@ class TriageService:
                     f"current {current_version}"
                 )
 
-            # Idempotent replay: if state and reason match exactly, return existing record
+            # A no-op command still retains its original response for later replay.
             if transition.state == current_state and transition.reason == current_reason:
-                return TriageRecordV1(
+                record = TriageRecordV1(
                     finding_id=finding_id,
                     current_state=current_state,
                     current_reason=current_reason,
@@ -160,6 +220,7 @@ class TriageService:
                     updated_at=projection["updated_at"] if projection else None,
                     version=current_version,
                 )
+                return await self._remember(session, ctx, request_key, command, record)
 
             event_id = uuid4()
             now = await database_now(session)
@@ -220,7 +281,7 @@ class TriageService:
                     raise DuplicateConflict("concurrent triage modification")
                 new_version = current_version + 1
 
-            return TriageRecordV1(
+            record = TriageRecordV1(
                 finding_id=finding_id,
                 current_state=transition.state,
                 current_reason=transition.reason,
@@ -229,6 +290,21 @@ class TriageService:
                 updated_at=now,
                 version=new_version,
             )
+            return await self._remember(session, ctx, request_key, command, record)
+
+    async def _remember(
+        self,
+        session: AsyncSession,
+        ctx: TenantContext,
+        request_key: str | None,
+        command: dict[str, Any],
+        record: TriageRecordV1,
+    ) -> TriageRecordV1:
+        if request_key is not None:
+            await record_command(
+                session, ctx, request_key, "finding_triage", command, record.model_dump(mode="json")
+            )
+        return record
 
     async def _verify_finding_exists(
         self,

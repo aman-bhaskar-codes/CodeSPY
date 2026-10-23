@@ -285,6 +285,30 @@ def grant_app(values, name):
         c.execute("REVOKE CREATE ON SCHEMA public FROM p2_api,p2_broker")
 
 
+def provision_compatibility_role(values):
+    """Retain historical grant targets as inert roles in an owned test cluster."""
+    assert_container(values)
+    with connect(values) as c:
+        row = c.execute(
+            "SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolbypassrls "
+            "FROM pg_roles WHERE rolname='codespy_app'"
+        ).fetchone()
+        if row is None:
+            c.execute(
+                "CREATE ROLE codespy_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE "
+                "NOINHERIT NOBYPASSRLS"
+            )
+        elif row != (False, False, False, False, False, False):
+            raise ValueError("historical grant role must be inert")
+        linked = c.execute(
+            "SELECT EXISTS(SELECT 1 FROM pg_auth_members WHERE "
+            "roleid=(SELECT oid FROM pg_roles WHERE rolname='codespy_app') OR "
+            "member=(SELECT oid FROM pg_roles WHERE rolname='codespy_app'))"
+        ).fetchone()[0]
+        if linked:
+            raise ValueError("historical grant role must have no memberships")
+
+
 def prepare(path, *, services=("postgres", "localstack")):
     if (
         not services
@@ -333,6 +357,7 @@ def prepare(path, *, services=("postgres", "localstack")):
                 sql.Identifier(values["CODESPY_TEST_DATABASE"])
             )
         )
+    provision_compatibility_role(values)
     provision(values, values["CODESPY_TEST_DATABASE"])
     print(
         "Disposable PostgreSQL prepared; credentials retained only in ignored owner file."

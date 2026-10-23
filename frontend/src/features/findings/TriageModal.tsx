@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type {
   FindingSummaryV1,
   TriageReason,
@@ -10,46 +10,66 @@ interface Props {
   finding: FindingSummaryV1;
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (transition: TriageTransitionV1) => Promise<void>;
+  onSubmit: (
+    transition: TriageTransitionV1,
+    requestKey: string,
+  ) => Promise<void>;
 }
 
 export function TriageModal({ finding, isOpen, onClose, onSubmit }: Props) {
   const [state, setState] = useState<TriageState>(finding.triage_state);
   const [reason, setReason] = useState<TriageReason>(
     finding.triage_reason === "none" &&
-      ["false_positive", "mitigated", "accepted_risk"].includes(finding.triage_state)
+      ["false_positive", "mitigated", "accepted_risk"].includes(
+        finding.triage_state,
+      )
       ? "code_refactor"
       : finding.triage_reason,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const pendingRequest = useRef<{ signature: string; key: string } | null>(
+    null,
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const requiresReason = ["false_positive", "mitigated", "accepted_risk"].includes(
-    state,
-  );
+  const requiresReason = [
+    "false_positive",
+    "mitigated",
+    "accepted_risk",
+  ].includes(state);
   const isReasonInvalid = requiresReason && reason === "none";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isReasonInvalid) {
-      setErrorMessage("A structured justification reason is required for this state.");
+      setErrorMessage(
+        "A structured justification reason is required for this state.",
+      );
       return;
     }
 
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
-      await onSubmit({
+      const transition: TriageTransitionV1 = {
         state,
         reason: requiresReason ? reason : "none",
         expected_version: finding.triage_version,
-      });
+      };
+      const signature = JSON.stringify([finding.id, transition]);
+      if (pendingRequest.current?.signature !== signature) {
+        pendingRequest.current = { signature, key: crypto.randomUUID() };
+      }
+      await onSubmit(transition, pendingRequest.current.key);
+      pendingRequest.current = null;
       onClose();
     } catch (err: unknown) {
       const msg =
-        err instanceof Error ? err.message : "Failed to record triage decision.";
+        err instanceof Error
+          ? err.message
+          : "Failed to record triage decision.";
       if (msg.includes("409") || msg.includes("conflict")) {
         setErrorMessage(
           "Conflict: This finding was modified concurrently by another reviewer. Please refresh to view the latest version.",
@@ -101,10 +121,7 @@ export function TriageModal({ finding, isOpen, onClose, onSubmit }: Props) {
         >
           Triage Finding
         </h3>
-        <p
-          className="muted"
-          style={{ margin: "0 0 16px", fontSize: "13px" }}
-        >
+        <p className="muted" style={{ margin: "0 0 16px", fontSize: "13px" }}>
           <code>{finding.rule_id}</code> at{" "}
           <code>
             {finding.file_path}
@@ -133,7 +150,11 @@ export function TriageModal({ finding, isOpen, onClose, onSubmit }: Props) {
           <div>
             <label
               htmlFor="triage-state-select"
-              style={{ display: "block", marginBottom: "6px", fontSize: "13px" }}
+              style={{
+                display: "block",
+                marginBottom: "6px",
+                fontSize: "13px",
+              }}
             >
               Disposition State *
             </label>
@@ -158,7 +179,9 @@ export function TriageModal({ finding, isOpen, onClose, onSubmit }: Props) {
               <option value="unreviewed">Unreviewed</option>
               <option value="confirmed">Confirmed (Actionable Bug/Flaw)</option>
               <option value="false_positive">False Positive</option>
-              <option value="mitigated">Mitigated (Compensating Control)</option>
+              <option value="mitigated">
+                Mitigated (Compensating Control)
+              </option>
               <option value="accepted_risk">Accepted Risk</option>
             </select>
           </div>
