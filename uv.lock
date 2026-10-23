@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.12.*"
 
 [manifest]
@@ -649,7 +649,7 @@ requires-dist = [
     { name = "gitpython", specifier = ">=3.1.43" },
     { name = "google-genai", specifier = ">=1.0.0" },
     { name = "httpx", specifier = ">=0.28.0" },
-    { name = "langfuse", specifier = ">=2.55.0" },
+    { name = "langfuse", specifier = ">=5.0.3" },
     { name = "lxml", specifier = ">=5.3.0" },
     { name = "mcp", specifier = ">=1.1.0" },
     { name = "networkx", specifier = ">=3.4.2" },
@@ -1400,7 +1400,7 @@ wheels = [
 
 [[package]]
 name = "langfuse"
-version = "5.0.2"
+version = "5.0.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "backoff" },
@@ -1413,9 +1413,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/05/02/1da2d1753ded73faecf445e3944ecd13703e71ce7af6a136acc8ddfc7d17/langfuse-5.0.2.tar.gz", hash = "sha256:8ca53a2c49d99ad5dc3c1d356e3802f00765c0bf155da5d078978cb467a5a474", size = 365828, upload-time = "2026-10-16T10:01:37.759Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/68/48/094864abdbe7ac18fc87ccd780c85300ad34d0b2df2c22da3fc82e27ba54/langfuse-5.0.3.tar.gz", hash = "sha256:89daf48bff381a9245fbc2e5b3a21b74f0f6bd59de807ee9c4c75ae59a3c94ed", size = 367375, upload-time = "2026-10-20T08:56:12.322Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ef/93/18acd320f902453a8c8d82d9a583b473c7c1f762ce0b8f1a9c0ecc2c0498/langfuse-5.0.2-py3-none-any.whl", hash = "sha256:fee8184e88a7310fdae521d6abf1e4ba5f4d3d8ce67055fa641d2aab94e50380", size = 636051, upload-time = "2026-10-16T10:01:39.329Z" },
+    { url = "https://files.pythonhosted.org/packages/93/28/b1ee65915d2f31545c522c7d5c79c0b6291b044c7f03bb31055724152286/langfuse-5.0.3-py3-none-any.whl", hash = "sha256:dfaafd90eed7ebda89b570ed1df95afba8cbb98884303e6bb95755fc7335cb11", size = 637548, upload-time = "2026-10-20T08:56:14.054Z" },
 ]
 
 [[package]]

@@ -125,7 +125,7 @@ dependencies = [
 
     "opentelemetry-instrumentation-httpx>=0.49b0",
 
-    "langfuse>=2.55.0",
+    "langfuse>=5.0.3",
 
 ]
 
