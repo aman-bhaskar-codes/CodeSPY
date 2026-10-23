@@ -43,6 +43,7 @@ def test_current_head_round_trip_preserves_revision_ids_and_inert_role(db_values
             "pg_has_role('p2_broker','codespy_app','MEMBER')"
         ).fetchone() == (False, False)
     name = db_values["CODESPY_TEST_DATABASE"]
+    harness.migrate(db_values, name, "0022_triage_commands")
     harness.migrate(db_values, name, "0021_investigations_and_checkpoints", downgrade=True)
     harness.migrate(db_values, name, "0022_triage_commands")
     with harness.connect(db_values, name) as connection:

@@ -1,8 +1,6 @@
 """Owned PostgreSQL qualification for atomic replay using the real API role."""
 
 import asyncio
-import runpy
-from pathlib import Path
 
 import pytest
 from app.contracts.triage import TriageTransitionV1
@@ -11,7 +9,7 @@ from app.models.scan_tables import finding_triage_events
 from app.services.scan_publication import FindingFinalizer
 from app.services.triage import TriageService
 from scripts import phase2_db as harness
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from tests.phase4.storage.test_scan_publication import publication_case
 
@@ -24,12 +22,9 @@ async def test_concurrent_duplicate_commands_commit_one_response_and_event(
     )
     await FindingFinalizer(broker_factory).finish(lease, draft)
     # Apply the additive operation constraint to this marker-owned compatibility database.
-    migration = Path(__file__).parents[3] / "alembic/versions/0022_triage_commands.py"
-    sql = runpy.run_path(str(migration))["UPGRADE_SQL"]
-    async with migration_factory() as session, session.begin():
-        for statement in sql.split(";"):
-            if statement.strip():
-                await session.execute(text(statement))
+    name = db_values["CODESPY_TEST_DATABASE"]
+    harness.migrate(db_values, name, "0022_triage_commands")
+    harness.grant_app(db_values, name)
     service = TriageService(api_factory)
     gate = asyncio.Event()
 
