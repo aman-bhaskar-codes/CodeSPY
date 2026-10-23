@@ -152,6 +152,29 @@ export type ByteRangeV1 = {
 };
 
 /**
+ * ChatMessageV1
+ */
+export type ChatMessageV1 = {
+    /**
+     * Content
+     */
+    content?: string;
+    /**
+     * Name
+     */
+    name?: string | null;
+    role: ModelRole;
+    /**
+     * Tool Call Id
+     */
+    tool_call_id?: string | null;
+    /**
+     * Tool Calls
+     */
+    tool_calls?: Array<ToolCallV1>;
+};
+
+/**
  * ChunkKind
  */
 export type ChunkKind = 'module' | 'class' | 'function' | 'method' | 'window' | 'file';
@@ -1228,6 +1251,343 @@ export type InventoryPageV1 = {
 };
 
 /**
+ * InvestigationClaimV1
+ */
+export type InvestigationClaimV1 = {
+    /**
+     * Claim Id
+     */
+    claim_id: string;
+    /**
+     * File Path
+     */
+    file_path?: string | null;
+    /**
+     * Line End
+     */
+    line_end?: number | null;
+    /**
+     * Line Start
+     */
+    line_start?: number | null;
+    /**
+     * Quoted Source
+     */
+    quoted_source?: string | null;
+    /**
+     * Statement
+     */
+    statement: string;
+    /**
+     * Status
+     */
+    status?: string;
+    /**
+     * Verification Notes
+     */
+    verification_notes?: string | null;
+};
+
+/**
+ * InvestigationCreateRequestV1
+ */
+export type InvestigationCreateRequestV1 = {
+    /**
+     * Budget Limit Micros
+     */
+    budget_limit_micros?: number;
+    depth?: unknown;
+    /**
+     * Finding Id
+     */
+    finding_id?: string | null;
+    /**
+     * Max Steps
+     */
+    max_steps?: number;
+    mode?: unknown;
+    /**
+     * Query
+     */
+    query: string;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    target_type?: unknown;
+};
+
+/**
+ * InvestigationDetailResponseV1
+ */
+export type InvestigationDetailResponseV1 = {
+    /**
+     * Claims
+     */
+    claims?: Array<InvestigationClaimV1>;
+    /**
+     * Events Count
+     */
+    events_count?: number;
+    latest_state?: InvestigationStateV1 | null;
+    summary: InvestigationSummaryV1;
+};
+
+/**
+ * InvestigationEventV1
+ */
+export type InvestigationEventV1 = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Event Type
+     */
+    event_type: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Investigation Id
+     */
+    investigation_id: string;
+    /**
+     * Node Name
+     */
+    node_name: string;
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Payload
+     */
+    payload: {
+        [key: string]: unknown;
+    };
+    /**
+     * Step Index
+     */
+    step_index: number;
+};
+
+/**
+ * InvestigationFeedbackRequestV1
+ */
+export type InvestigationFeedbackRequestV1 = {
+    /**
+     * Feedback Type
+     *
+     * 'agree', 'disagree', 'needs_review', or 'comment'
+     */
+    feedback_type: string;
+    /**
+     * Memory Topic
+     */
+    memory_topic?: string | null;
+    /**
+     * Notes
+     */
+    notes: string;
+    /**
+     * Save To Memory
+     */
+    save_to_memory?: boolean;
+};
+
+/**
+ * InvestigationListResponseV1
+ */
+export type InvestigationListResponseV1 = {
+    /**
+     * Items
+     */
+    items: Array<InvestigationSummaryV1>;
+    /**
+     * Total Count
+     */
+    total_count: number;
+};
+
+/**
+ * InvestigationStateV1
+ */
+export type InvestigationStateV1 = {
+    /**
+     * Claims
+     */
+    claims?: Array<InvestigationClaimV1>;
+    /**
+     * Collected Evidence
+     */
+    collected_evidence?: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Current Step
+     */
+    current_step?: number;
+    /**
+     * Depth
+     */
+    depth?: string;
+    /**
+     * Finding Id
+     */
+    finding_id?: string | null;
+    /**
+     * History
+     */
+    history?: Array<ChatMessageV1>;
+    /**
+     * Human Guidance
+     */
+    human_guidance?: string | null;
+    /**
+     * Investigation Id
+     */
+    investigation_id: string;
+    /**
+     * Max Steps
+     */
+    max_steps?: number;
+    /**
+     * Mode
+     */
+    mode?: string;
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Query
+     */
+    query: string;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Summary
+     */
+    summary?: string | null;
+    /**
+     * Target Type
+     */
+    target_type: string;
+    /**
+     * Tool History
+     */
+    tool_history?: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Total Spent Micros
+     */
+    total_spent_micros?: number;
+    /**
+     * Verdict
+     */
+    verdict?: string | null;
+    /**
+     * Verdict Confidence
+     */
+    verdict_confidence?: number | null;
+};
+
+/**
+ * InvestigationSummaryV1
+ */
+export type InvestigationSummaryV1 = {
+    /**
+     * Budget Limit Micros
+     */
+    budget_limit_micros: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Current Step
+     */
+    current_step: number;
+    /**
+     * Depth
+     */
+    depth: string;
+    /**
+     * Failure Reason
+     */
+    failure_reason?: string | null;
+    /**
+     * Fencing Token
+     */
+    fencing_token: number;
+    /**
+     * Finding Id
+     */
+    finding_id?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Max Steps
+     */
+    max_steps: number;
+    /**
+     * Mode
+     */
+    mode: string;
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Query
+     */
+    query: string;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Spent Micros
+     */
+    spent_micros: number;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Summary
+     */
+    summary?: string | null;
+    /**
+     * Target Type
+     */
+    target_type: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    /**
+     * Verdict
+     */
+    verdict?: string | null;
+    /**
+     * Verdict Confidence
+     */
+    verdict_confidence?: number | null;
+    /**
+     * Worker Id
+     */
+    worker_id?: string | null;
+};
+
+/**
  * JobEventV2
  */
 export type JobEventV2 = {
@@ -1558,6 +1918,11 @@ export type MemoryQueryResponseV1 = {
      */
     total_candidates: number;
 };
+
+/**
+ * ModelRole
+ */
+export type ModelRole = 'system' | 'user' | 'assistant' | 'tool';
 
 /**
  * NativeSelectionV1
@@ -2694,6 +3059,24 @@ export type SymbolObservationV1 = {
 };
 
 /**
+ * ToolCallV1
+ */
+export type ToolCallV1 = {
+    /**
+     * Arguments Json
+     */
+    arguments_json?: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
  * TraceBudgetV1
  */
 export type TraceBudgetV1 = {
@@ -3492,6 +3875,259 @@ export type BindGithubApiV1RepositoriesRepositoryIdGithubBindingPostResponses = 
 };
 
 export type BindGithubApiV1RepositoriesRepositoryIdGithubBindingPostResponse = BindGithubApiV1RepositoriesRepositoryIdGithubBindingPostResponses[keyof BindGithubApiV1RepositoriesRepositoryIdGithubBindingPostResponses];
+
+export type ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigationsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+    };
+    query?: {
+        /**
+         * Finding Id
+         */
+        finding_id?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{repository_id}/investigations';
+};
+
+export type ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigationsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigationsGetError = ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigationsGetErrors[keyof ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigationsGetErrors];
+
+export type ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigationsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: InvestigationListResponseV1;
+};
+
+export type ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigationsGetResponse = ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigationsGetResponses[keyof ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigationsGetResponses];
+
+export type CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostData = {
+    body: InvestigationCreateRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/investigations';
+};
+
+export type CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostError = CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostErrors[keyof CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostErrors];
+
+export type CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: InvestigationSummaryV1;
+};
+
+export type CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostResponse = CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostResponses[keyof CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostResponses];
+
+export type GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Investigation Id
+         */
+        investigation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/investigations/{investigation_id}';
+};
+
+export type GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetError = GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetErrors[keyof GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetErrors];
+
+export type GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: InvestigationDetailResponseV1;
+};
+
+export type GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetResponse = GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetResponses[keyof GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetResponses];
+
+export type ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Investigation Id
+         */
+        investigation_id: string;
+    };
+    query?: {
+        /**
+         * After Step
+         */
+        after_step?: number | null;
+    };
+    url: '/api/v1/repositories/{repository_id}/investigations/{investigation_id}/events';
+};
+
+export type ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetError = ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetErrors[keyof ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetErrors];
+
+export type ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetResponses = {
+    /**
+     * Response List Investigation Events Endpoint Api V1 Repositories  Repository Id  Investigations  Investigation Id  Events Get
+     *
+     * Successful Response
+     */
+    200: Array<InvestigationEventV1>;
+};
+
+export type ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetResponse = ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetResponses[keyof ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetResponses];
+
+export type ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Investigation Id
+         */
+        investigation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/investigations/{investigation_id}/execute';
+};
+
+export type ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostError = ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostErrors[keyof ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostErrors];
+
+export type ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: InvestigationDetailResponseV1;
+};
+
+export type ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostResponse = ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostResponses[keyof ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostResponses];
+
+export type RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostData = {
+    body: InvestigationFeedbackRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Investigation Id
+         */
+        investigation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/investigations/{investigation_id}/feedback';
+};
+
+export type RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostError = RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostErrors[keyof RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostErrors];
+
+export type RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostResponses = {
+    /**
+     * Response Record Investigation Feedback Endpoint Api V1 Repositories  Repository Id  Investigations  Investigation Id  Feedback Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostResponse = RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostResponses[keyof RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostResponses];
+
+export type StreamInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdStreamGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Investigation Id
+         */
+        investigation_id: string;
+    };
+    query?: {
+        /**
+         * After Step
+         */
+        after_step?: number | null;
+    };
+    url: '/api/v1/repositories/{repository_id}/investigations/{investigation_id}/stream';
+};
+
+export type StreamInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdStreamGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StreamInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdStreamGetError = StreamInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdStreamGetErrors[keyof StreamInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdStreamGetErrors];
+
+export type StreamInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdStreamGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type CreateScanApiV1RepositoriesRepositoryIdScansPostData = {
     body: CreateScanRequestV1;
