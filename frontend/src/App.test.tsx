@@ -275,6 +275,11 @@ it("displays structural architecture section and allows triggering analysis", as
           ),
         );
       }
+      if (url.includes("/investigations")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ items: [] })),
+        );
+      }
       if (url.includes("/repositories")) {
         return Promise.resolve(
           new Response(

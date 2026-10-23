@@ -44,11 +44,11 @@ describe("InvestigationsWorkbench", () => {
     renderWithClient(<InvestigationsWorkbench {...defaultProps} />);
 
     expect(
-      screen.getByText(/Agentic Investigation Workbench/i),
+      screen.getByText(/Agentic Security Investigations/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Autonomous, evidence-grounded security investigations/i,
+        /Evidence-grounded model orchestration, anti-hallucination claim verification/i,
       ),
     ).toBeInTheDocument();
     expect(
@@ -91,7 +91,7 @@ describe("InvestigationsWorkbench", () => {
 
     expect(
       screen.getByText(
-        /No active investigation. Select or start one to begin./i,
+        /Select an investigation from the left or launch a new hypothesis/i,
       ),
     ).toBeInTheDocument();
   });

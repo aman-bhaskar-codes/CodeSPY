@@ -620,7 +620,7 @@ export function InvestigationsWorkbench({
                         color: "#38bdf8",
                       }}
                     >
-                      {inv.query.slice(0, 36)}...
+                      {(inv.query || "").slice(0, 36)}...
                     </span>
                     <span
                       style={{
@@ -632,7 +632,7 @@ export function InvestigationsWorkbench({
                     >
                       {inv.verdict
                         ? inv.verdict.toUpperCase()
-                        : inv.status.toUpperCase()}
+                        : (inv.status || "").toUpperCase()}
                     </span>
                   </div>
                   <div
@@ -644,9 +644,9 @@ export function InvestigationsWorkbench({
                     }}
                   >
                     <span>
-                      Step: {inv.current_step}/{inv.max_steps}
+                      Step: {inv.current_step ?? 0}/{inv.max_steps ?? 10}
                     </span>
-                    <span>Spent: {formatMicros(inv.spent_micros)}</span>
+                    <span>Spent: {formatMicros(inv.spent_micros ?? 0)}</span>
                   </div>
                 </div>
               ))}
