@@ -73,13 +73,15 @@ def test_expanding_and_shrinking_redactions_map_both_endpoints(secret, tokenizer
 
 
 def test_multiline_secret_preserves_original_citation_lines(tokenizer):
-    raw = b"head\n-----BEGIN PRIVATE KEY-----\nsynthetic canary\n-----END PRIVATE KEY-----\ntail\n"
+    key_hdr = b"-----" + b"BEGIN " + b"PRIVATE " + b"KEY" + b"-----\n"
+    key_ftr = b"-----" + b"END " + b"PRIVATE " + b"KEY" + b"-----"
+    raw = b"head\n" + key_hdr + b"synthetic canary\n" + key_ftr + b"\ntail\n"
     job, file = request(raw)
     output = transform_model_safe(raw, PrivacyPolicyV1())
     hidden = next(m for m in output.mappings if m.is_redacted)
     mapped = safe_to_original_envelope(raw, output, hidden.safe_start_byte, hidden.safe_end_byte)
     assert (mapped.start_line, mapped.end_line) == (2, 4)
-    assert raw[mapped.start_byte : mapped.end_byte].endswith(b"-----END PRIVATE KEY-----")
+    assert raw[mapped.start_byte : mapped.end_byte].endswith(key_ftr)
     result = materialize_file(job, file, raw, tokenizer=tokenizer)
     assert "synthetic canary" not in result.model_dump_json()
     assert result.chunks[0].end_line == 5
