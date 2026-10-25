@@ -1,7 +1,8 @@
 """Context packaging service with strict token budgeting, citation keys, and grounding."""
 
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,10 +15,12 @@ from app.contracts.context import (
 from app.domain.canonical_json import semantic_digest
 from app.domain.errors import ScopeViolation
 from app.models.chunk_tables import source_chunks
-from app.models.phase2_tables import PHASE2_TABLES
-from app.models.tables import memberships
-
-grants = PHASE2_TABLES["repository_grants"]
+from app.services.retrieval_selection import (
+    resolve_lexical_set,
+    selected_chunks,
+    validate_safe_content,
+)
+from app.services.syntax_chunker import count_tokens
 
 
 class ContextAssemblyService:
@@ -31,15 +34,29 @@ class ContextAssemblyService:
         request: ContextAssemblyRequestV1,
     ) -> ContextPacketV1:
         """Assemble a budgeted ContextPacketV1 from candidate search hits."""
-        # Step 1: Verify tenant scope & principal authorization
+        # Check current repository authority and sealed snapshot identity.
         if request.scope is None:
             raise ValueError("scope is required for context assembly")
 
-        await self._verify_scope(
-            request.scope.org_id,
-            request.scope.repository_id,
-            request.scope.principal_id,
-        )
+        scope = request.scope
+        candidate_sets = {hit.chunk_set_id for hit in request.candidate_hits}
+        if request.candidate_hits and (None in candidate_sets or len(candidate_sets) != 1):
+            raise ScopeViolation("Context candidates require one qualified chunk set")
+        selected_id = next(iter(candidate_sets)) if candidate_sets else scope.chunk_set_id
+        if scope.chunk_set_id is not None and selected_id != scope.chunk_set_id:
+            raise ScopeViolation("Context candidate set differs from requested set")
+        resolved = await resolve_lexical_set(self.session, scope, chunk_set_id=selected_id)
+        if resolved is None and request.candidate_hits:
+            raise ScopeViolation("Context candidate set is unavailable")
+        if resolved is not None:
+            scope = scope.model_copy(update={"chunk_set_id": resolved.chunk_set_id})
+        provenance: dict[str, Any] = {
+            "chunk_set_id": resolved.chunk_set_id if resolved else None,
+            "config_hash": resolved.config_hash if resolved else None,
+            "materialization_hash": resolved.materialization_hash if resolved else None,
+            "coverage": resolved.coverage if resolved else None,
+            "lexical_availability": "available" if resolved else "index_unavailable",
+        }
 
         packet_id = uuid4()
         now = datetime.now(UTC)
@@ -48,14 +65,15 @@ class ContextAssemblyService:
             empty_digest = semantic_digest(
                 {
                     "packet_id": str(packet_id),
-                    "scope": request.scope.model_dump(),
+                    "scope": scope.model_dump(),
                     "query": request.query,
                     "items": [],
                 }
             )
             return ContextPacketV1(
                 packet_id=packet_id,
-                scope=request.scope,
+                scope=scope,
+                **provenance,
                 query=request.query,
                 system_preamble=request.system_preamble,
                 items=(),
@@ -67,11 +85,13 @@ class ContextAssemblyService:
                 created_at=now,
             )
 
-        # Step 2: Fetch full chunk content and metadata for candidates
+        # Fetch authoritative chunk content and metadata.
         chunk_ids = [h.chunk_id for h in request.candidate_hits]
         if len(set(chunk_ids)) != len(chunk_ids):
             raise ScopeViolation("Duplicate context candidate")
+        assert resolved is not None
         stmt = select(source_chunks).where(
+            selected_chunks(self.session, scope, resolved),
             source_chunks.c.org_id == request.scope.org_id,
             source_chunks.c.repository_id == request.scope.repository_id,
             source_chunks.c.snapshot_id == request.scope.snapshot_id,
@@ -92,12 +112,20 @@ class ContextAssemblyService:
         )
         for hit in request.candidate_hits:
             stored = chunk_map.get(hit.chunk_id)
-            if stored is None or any(
-                getattr(hit, name) != stored[name] for name in identity_fields
+            if stored is None:
+                raise ScopeViolation("Context candidate does not match authorized source")
+            validate_safe_content(dict(stored))
+            if (
+                hit.materialization_hash != resolved.materialization_hash
+                or (hit.config_hash is not None and hit.config_hash != resolved.config_hash)
+                or hit.safe_content_sha256 != stored["safe_content_sha256"]
+                or stored["chunk_set_id"] != resolved.chunk_set_id
             ):
+                raise ScopeViolation("Context candidate provenance does not match qualified set")
+            if any(getattr(hit, name) != stored[name] for name in identity_fields):
                 raise ScopeViolation("Context candidate does not match authorized source")
 
-        # Step 3: Knapsack packing with token and byte budget limits
+        # Pack candidates in ranked order within content budgets.
         budget = request.budget
         available_token_budget = max(0, budget.max_tokens - budget.reserved_overhead_tokens)
         max_bytes = budget.max_bytes
@@ -114,15 +142,20 @@ class ContextAssemblyService:
                 raise ScopeViolation("Context candidate is unavailable")
 
             content = str(chunk_row["safe_content"] or "")
-            tokens = int(chunk_row["estimated_tokens"])
-            bytes_len = int(chunk_row["byte_count"])
+            # Stored counts describe raw source or a different tokenizer. Budget the
+            # actual model-safe payload under the requested tokenizer instead.
+            bytes_len = len(content.encode("utf-8"))
+            if bytes_len > max_bytes:
+                omitted_count += 1
+                continue
+            tokens = count_tokens(content, budget.tokenizer_name)
 
             # File diversity limit: prevent single file monopolization
             if request.deduplicate_files and file_counts.get(hit.file_path, 0) >= 3:
                 omitted_count += 1
                 continue
 
-            # Knapsack boundary checks
+            # Budget boundary checks
             if (
                 total_tokens + tokens > available_token_budget
                 or total_bytes + bytes_len > max_bytes
@@ -139,6 +172,10 @@ class ContextAssemblyService:
             accepted_items.append(
                 ContextItemV1(
                     chunk_id=hit.chunk_id,
+                    chunk_set_id=resolved.chunk_set_id,
+                    materialization_hash=resolved.materialization_hash,
+                    config_hash=resolved.config_hash,
+                    safe_content_sha256=hit.safe_content_sha256,
                     file_id=hit.file_id,
                     file_path=hit.file_path,
                     symbol_name=hit.symbol_name,
@@ -157,10 +194,15 @@ class ContextAssemblyService:
                 )
             )
 
-        # Step 4: Compute deterministic packet digest
+        # Recheck the pinned set after reading content; never select a newer set.
+        current = await resolve_lexical_set(self.session, scope, chunk_set_id=resolved.chunk_set_id)
+        if current is None or current.materialization_hash != resolved.materialization_hash:
+            raise ScopeViolation("Context materialization became unavailable")
+
+        # Bind packet identity, scope, query and accepted items.
         canonical_payload = {
             "packet_id": str(packet_id),
-            "scope": request.scope.model_dump(),
+            "scope": scope.model_dump(),
             "query": request.query,
             "items": [item.model_dump() for item in accepted_items],
         }
@@ -168,7 +210,8 @@ class ContextAssemblyService:
 
         return ContextPacketV1(
             packet_id=packet_id,
-            scope=request.scope,
+            scope=scope,
+            **provenance,
             query=request.query,
             system_preamble=request.system_preamble,
             items=tuple(accepted_items),
@@ -179,28 +222,3 @@ class ContextAssemblyService:
             packet_sha256=digest,
             created_at=now,
         )
-
-    async def _verify_scope(self, org_id: UUID, repository_id: UUID, principal_id: UUID) -> None:
-        """Verify principal has active membership and repository read grant."""
-        mem_check = await self.session.execute(
-            select(memberships.c.role).where(
-                memberships.c.org_id == org_id,
-                memberships.c.principal_id == principal_id,
-            )
-        )
-        if not mem_check.first():
-            raise ScopeViolation(f"Principal {principal_id} is not a member of org {org_id}")
-
-        grant_check = await self.session.execute(
-            select(grants.c.permission).where(
-                grants.c.org_id == org_id,
-                grants.c.repository_id == repository_id,
-                grants.c.principal_id == principal_id,
-                grants.c.permission.in_(["read", "write", "admin"]),
-                grants.c.revoked_at.is_(None),
-            )
-        )
-        if not grant_check.first():
-            raise ScopeViolation(
-                f"Principal {principal_id} lacks access to repository {repository_id}"
-            )

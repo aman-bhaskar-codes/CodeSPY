@@ -344,7 +344,7 @@ async def test_mcp_security_scope_rejection_and_mutating_tool_forbiddance() -> N
         }
         bad_res = await server.handle_request(bad_req)
         assert bad_res["result"]["isError"] is True
-        assert "Unknown or unauthorized tool" in bad_res["result"]["content"][0]["text"]
+        assert "Invalid Parameters" in bad_res["result"]["content"][0]["text"]
 
     # 3. Malformed UUID parameter
     param_req = {
@@ -362,3 +362,107 @@ async def test_mcp_security_scope_rejection_and_mutating_tool_forbiddance() -> N
     param_res = await server.handle_request(param_req)
     assert param_res["result"]["isError"] is True
     assert "Invalid Parameters" in param_res["result"]["content"][0]["text"]
+
+
+def tool_request(arguments=None):
+    return {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": "query_memory",
+            "arguments": arguments or {"repository_id": str(uuid4()), "query": "test"},
+        },
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "error",
+    [
+        ScopeViolation("private-secret"),
+        ValueError("private-secret"),
+        RuntimeError("SQL private-secret"),
+    ],
+)
+async def test_mcp_errors_do_not_reflect_private_details(error):
+    memory = AsyncMock()
+    memory.query_memory.side_effect = error
+    server = ReadOnlyMcpServer(
+        identity=TenantContext(org_id=uuid4(), principal_id=uuid4(), role=OrgRole.MEMBER),
+        memory_service=memory,
+    )
+    result = await server.handle_request(tool_request())
+    assert result["result"]["isError"] is True
+    assert "private-secret" not in json.dumps(result)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "envelope",
+    [
+        [],
+        None,
+        {},
+        {"jsonrpc": "1.0", "method": "tools/list", "id": 1},
+        {"jsonrpc": "2.0", "method": "tools/call", "id": True},
+        {"jsonrpc": "2.0", "method": "tools/call", "id": 1, "params": []},
+        {"jsonrpc": "2.0", "method": ["private-secret"], "id": 1},
+    ],
+)
+async def test_mcp_rejects_invalid_envelopes(envelope):
+    response = await ReadOnlyMcpServer().handle_request(envelope)
+    assert response["error"]["code"] == -32600
+    assert "private-secret" not in json.dumps(response)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"query": {"private-secret": 1}},
+        {"limit": True},
+        {"limit": "2"},
+        {"principal_id": str(uuid4())},
+    ],
+)
+async def test_mcp_rejects_untyped_or_identity_arguments(override):
+    memory = AsyncMock()
+    server = ReadOnlyMcpServer(
+        identity=TenantContext(org_id=uuid4(), principal_id=uuid4(), role=OrgRole.MEMBER),
+        memory_service=memory,
+    )
+    args = {"repository_id": str(uuid4()), "query": "test", **override}
+    result = await server.handle_request(tool_request(args))
+    assert result["result"]["isError"] is True
+    memory.query_memory.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_mcp_bounds_output_without_partial_json():
+    memory = AsyncMock()
+    memory.query_memory.return_value.model_dump = lambda **kw: {"private-secret": "x" * 300000}
+    server = ReadOnlyMcpServer(
+        identity=TenantContext(org_id=uuid4(), principal_id=uuid4(), role=OrgRole.MEMBER),
+        memory_service=memory,
+    )
+    result = await server.handle_request(tool_request())
+    assert result["result"]["isError"] is True
+    assert "private-secret" not in json.dumps(result)
+    assert len(json.dumps(result).encode()) < 1024
+
+
+@pytest.mark.asyncio
+async def test_mcp_memory_snapshot_uses_trusted_identity():
+    memory = AsyncMock()
+    memory.query_memory.return_value.model_dump = lambda **kw: {}
+    identity = TenantContext(org_id=uuid4(), principal_id=uuid4(), role=OrgRole.MEMBER)
+    snapshot = uuid4()
+    result = await ReadOnlyMcpServer(identity=identity, memory_service=memory).handle_request(
+        tool_request({"repository_id": str(uuid4()), "snapshot_id": str(snapshot), "query": "test"})
+    )
+    assert result["result"]["isError"] is False
+    request = memory.query_memory.await_args.args[0]
+    assert request.snapshot_id == snapshot
+    assert request.org_id == identity.org_id
+    assert request.principal_id == identity.principal_id

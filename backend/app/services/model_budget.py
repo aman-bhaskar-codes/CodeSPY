@@ -8,6 +8,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contracts.model import GenerationPriceScheduleV1
+from app.db.time import database_now
 from app.models.budget_tables import embedding_budgets, price_schedules
 from app.models.model_gateway_tables import model_reservations, model_spend_ledger
 
@@ -118,15 +119,12 @@ class ModelBudgetService:
                 )
             )
         else:
-            await self.s.execute(
-                price_schedules.update()
-                .where(
-                    price_schedules.c.provider == schedule.provider,
-                    price_schedules.c.model_id == schedule.model_id,
-                    price_schedules.c.version == schedule.version,
-                )
-                .values(**vals)
-            )
+            for key, value in vals.items():
+                stored = existing[key]
+                if isinstance(stored, datetime) and stored.tzinfo is None:
+                    stored = stored.replace(tzinfo=UTC)
+                if stored != value:
+                    raise ModelInvalidStateTransitionError("Price version is immutable")
 
     async def ensure_default_generation_pricing(self) -> None:
         """Ensures a baseline active price schedule exists for local deterministic fake models."""
@@ -172,8 +170,12 @@ class ModelBudgetService:
             thinking_micros_per_1k=row.get("thinking_micros_per_1k") or 0,
             cache_read_micros_per_1k=row.get("cache_read_micros_per_1k") or 0,
             cache_write_micros_per_1k=row.get("cache_write_micros_per_1k") or 0,
-            effective_at=row["effective_at"],
-            expires_at=row["expires_at"],
+            effective_at=row["effective_at"].replace(tzinfo=UTC)
+            if row["effective_at"].tzinfo is None
+            else row["effective_at"],
+            expires_at=row["expires_at"].replace(tzinfo=UTC)
+            if row["expires_at"].tzinfo is None
+            else row["expires_at"],
         )
         if not schedule.is_active():
             raise ModelStalePriceError(f"Price schedule {schedule.version} is expired")
@@ -194,15 +196,53 @@ class ModelBudgetService:
         estimated_micros: int,
         idempotency_key: str,
         charge_category: str = "generation",
+        request_digest: str | None = None,
+        price_snapshot: GenerationPriceScheduleV1 | None = None,
     ) -> UUID:
-        # Check idempotency
+        if (
+            min(estimated_input_tokens, estimated_output_tokens, estimated_micros) < 0
+            or attempt_id < 1
+        ):
+            raise ModelInvalidStateTransitionError("Invalid reservation bounds")
+        if (request_digest is None) != (price_snapshot is None):
+            raise ModelInvalidStateTransitionError("Incomplete model request identity")
+        if request_digest is not None and (
+            len(request_digest) != 64 or any(c not in "0123456789abcdef" for c in request_digest)
+        ):
+            raise ModelInvalidStateTransitionError("Invalid model request digest")
+        if price_snapshot is not None and (
+            price_snapshot.provider != provider or price_snapshot.model_id != model_id
+        ):
+            raise ModelInvalidStateTransitionError("Price snapshot scope conflicts")
+        price_json = price_snapshot.model_dump(mode="json") if price_snapshot else None
+        binding = {
+            "request_digest": request_digest,
+            "price_snapshot": price_json,
+            "repository_id": repository_id,
+            "principal_id": principal_id,
+            "investigation_id": investigation_id,
+            "logical_call_id": logical_call_id,
+            "attempt_id": attempt_id,
+            "provider": provider,
+            "model_id": model_id,
+            "charge_category": charge_category,
+            "estimated_input_tokens": estimated_input_tokens,
+            "estimated_output_tokens": estimated_output_tokens,
+            "reserved_micros": estimated_micros,
+        }
+
+        def replay(row: Any) -> UUID:
+            if any(row[key] != value for key, value in binding.items()):
+                raise ModelInvalidStateTransitionError("Reservation request key conflicts")
+            return UUID(str(row["reservation_id"]))
+
         stmt_idem = select(model_reservations).where(
             model_reservations.c.org_id == org_id,
             model_reservations.c.idempotency_key == idempotency_key,
         )
         existing = (await self.s.execute(stmt_idem)).mappings().one_or_none()
         if existing:
-            return UUID(str(existing["reservation_id"]))
+            return replay(existing)
 
         # Lock budget row
         stmt_budget = (
@@ -216,6 +256,11 @@ class ModelBudgetService:
         budget = (await self.s.execute(stmt_budget)).mappings().one_or_none()
         if not budget:
             raise ModelBudgetExceededError("Budget account does not exist for repository")
+
+        # A concurrent request can commit while this transaction waits for the budget lock.
+        existing = (await self.s.execute(stmt_idem)).mappings().one_or_none()
+        if existing:
+            return replay(existing)
 
         available = budget["balance_micros"] - budget["reserved_micros"]
         if available < estimated_micros:
@@ -255,6 +300,8 @@ class ModelBudgetService:
                 estimated_output_tokens=estimated_output_tokens,
                 reserved_micros=estimated_micros,
                 settled_micros=None,
+                request_digest=request_digest,
+                price_snapshot=price_json,
                 state="reserved",
                 idempotency_key=idempotency_key,
                 created_at=now,
@@ -262,6 +309,30 @@ class ModelBudgetService:
             )
         )
         return reservation_id
+
+    async def get_reserved_price(
+        self, org_id: UUID, reservation_id: UUID
+    ) -> GenerationPriceScheduleV1:
+        row = (
+            (
+                await self.s.execute(
+                    select(model_reservations).where(
+                        model_reservations.c.org_id == org_id,
+                        model_reservations.c.reservation_id == reservation_id,
+                    )
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if row is None:
+            raise ModelReservationNotFoundError("Model reservation unavailable")
+        if row["request_digest"] is None or row["price_snapshot"] is None:
+            raise ModelInvalidStateTransitionError("Legacy reservation has no captured price")
+        price = GenerationPriceScheduleV1.model_validate(row["price_snapshot"])
+        if price.provider != row["provider"] or price.model_id != row["model_id"]:
+            raise ModelInvalidStateTransitionError("Captured price scope conflicts")
+        return price
 
     async def commit_dispatch_intent(self, org_id: UUID, reservation_id: UUID) -> None:
         stmt = (
@@ -319,8 +390,39 @@ class ModelBudgetService:
         if not res_row:
             raise ModelReservationNotFoundError(f"Reservation {reservation_id} not found")
 
-        if res_row["state"] in ("settled", "rejected_before_dispatch"):
-            return  # Idempotent return
+        if res_row["state"] == "settled":
+            ledger = (
+                (
+                    await self.s.execute(
+                        select(model_spend_ledger).where(
+                            model_spend_ledger.c.org_id == org_id,
+                            model_spend_ledger.c.reservation_id == reservation_id,
+                            model_spend_ledger.c.is_uncertain_hold.is_(False),
+                        )
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+            if (
+                ledger is None
+                or res_row["settled_micros"] != actual_micros
+                or res_row["provider_request_id"] != provider_request_id
+                or ledger["input_tokens"] != actual_input_tokens
+                or ledger["output_tokens"] != actual_output_tokens
+                or ledger["thinking_tokens"] != actual_thinking_tokens
+            ):
+                raise ModelInvalidStateTransitionError(
+                    "Settlement replay conflicts with recorded usage"
+                )
+            return
+        if res_row["state"] not in ("dispatch_intent_committed", "dispatched", "uncertain_hold"):
+            raise ModelInvalidStateTransitionError("Reservation has no dispatch intent")
+        if (
+            min(actual_input_tokens, actual_output_tokens, actual_thinking_tokens, actual_micros)
+            < 0
+        ):
+            raise ModelInvalidStateTransitionError("Invalid settlement usage")
 
         repo_id = res_row["repository_id"]
         reserved_micros = res_row["reserved_micros"]
@@ -395,13 +497,27 @@ class ModelBudgetService:
         reservation_id: UUID,
         failure_reason: str = "timeout_during_dispatch",
     ) -> None:
-        stmt_res = select(model_reservations).where(
-            model_reservations.c.org_id == org_id,
-            model_reservations.c.reservation_id == reservation_id,
+        stmt_res = (
+            select(model_reservations)
+            .where(
+                model_reservations.c.org_id == org_id,
+                model_reservations.c.reservation_id == reservation_id,
+            )
+            .with_for_update()
         )
         res_row = (await self.s.execute(stmt_res)).mappings().one_or_none()
         if not res_row:
             raise ModelReservationNotFoundError(f"Reservation {reservation_id} not found")
+
+        if res_row["state"] in (
+            "uncertain_hold",
+            "settled",
+            "rejected_before_dispatch",
+            "conservatively_reconciled",
+        ):
+            return
+        if res_row["state"] not in ("dispatch_intent_committed", "dispatched"):
+            raise ModelInvalidStateTransitionError("Reservation has no dispatch intent")
 
         now = datetime.now(UTC)
         await self.s.execute(
@@ -444,9 +560,13 @@ class ModelBudgetService:
         reservation_id: UUID,
         failure_reason: str = "cancelled_before_dispatch",
     ) -> None:
-        stmt_res = select(model_reservations).where(
-            model_reservations.c.org_id == org_id,
-            model_reservations.c.reservation_id == reservation_id,
+        stmt_res = (
+            select(model_reservations)
+            .where(
+                model_reservations.c.org_id == org_id,
+                model_reservations.c.reservation_id == reservation_id,
+            )
+            .with_for_update()
         )
         res_row = (await self.s.execute(stmt_res)).mappings().one_or_none()
         if not res_row:
@@ -454,6 +574,8 @@ class ModelBudgetService:
 
         if res_row["state"] in ("settled", "rejected_before_dispatch"):
             return
+        if res_row["state"] != "reserved":
+            raise ModelInvalidStateTransitionError("Cannot release potentially spent capacity")
 
         repo_id = res_row["repository_id"]
         reserved_micros = res_row["reserved_micros"]
@@ -494,3 +616,37 @@ class ModelBudgetService:
                 updated_at=datetime.now(UTC),
             )
         )
+
+    async def recover_dispatch_intents(
+        self,
+        org_id: UUID,
+        repository_id: UUID,
+        *,
+        minimum_age_seconds: int = 300,
+        limit: int = 100,
+    ) -> tuple[UUID, ...]:
+        """Conservatively hold bounded old dispatches; never replay or release them."""
+        if minimum_age_seconds < 60 or not 1 <= limit <= 100:
+            raise ValueError("Invalid dispatch recovery bounds")
+        cutoff = await database_now(self.s) - timedelta(seconds=minimum_age_seconds)
+        rows = (
+            (
+                await self.s.execute(
+                    select(model_reservations.c.reservation_id)
+                    .where(
+                        model_reservations.c.org_id == org_id,
+                        model_reservations.c.repository_id == repository_id,
+                        model_reservations.c.state.in_(("dispatch_intent_committed", "dispatched")),
+                        model_reservations.c.updated_at < cutoff,
+                    )
+                    .order_by(model_reservations.c.updated_at, model_reservations.c.reservation_id)
+                    .limit(limit)
+                    .with_for_update(skip_locked=True)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for identity in rows:
+            await self.hold_uncertain(org_id, identity, failure_reason="abandoned_dispatch")
+        return tuple(rows)

@@ -16,7 +16,7 @@ CodeSPY turns a source archive into an immutable snapshot, a file inventory and 
 
 The central distinction is **what the source establishes, what analysis infers, and what remains unknown**. Static call candidates are not observed execution paths. A matching quotation does not prove a security claim. An empty findings list does not establish that a repository is secure.
 
-> **Development status:** a local prototype with an established intake and structural-analysis foundation. Public scan wiring, durable indexing and provider-backed investigations still need integration and qualification. The repository is not a hosted production release.
+> **Development status:** a local prototype with an established intake and structural-analysis foundation. Public scan wiring and provider-backed investigations still need integration and qualification. Indexing controls, scoped API/read-only MCP status, durable publication and consistent search/context/memory reads have local qualification. The repository is not a hosted production release.
 
 ## Capabilities
 
@@ -25,10 +25,10 @@ The central distinction is **what the source establishes, what analysis infers, 
 | Source intake             | ZIP admission, path and expansion checks, immutable snapshots, file hashes and inventory                                                | Inventory coverage is separate from analysis coverage                                                      |
 | Structural analysis       | Python, JS, JSX, TS and TSX parsing; symbols, imports, call candidates and framework-boundary reports                                   | Bounded static analysis; dynamic behavior can remain unresolved                                            |
 | Security scanning         | Isolated Semgrep and Gitleaks adapters; offline npm/uv advisory assessment; durable result storage                                      | Public scan startup and job-to-result tracking are not fully connected                                     |
-| Findings and review       | Scoped list/detail services, evidence references, append-only triage events and optimistic projections                                  | Isolated excerpts, current-support aggregation and cross-instance cursor continuity remain incomplete      |
+| Findings and review       | Scoped list/detail services, evidence references, append-only triage events and optimistic projections                                  | Isolated redacted excerpts and current-support views are implemented; cross-instance cursor continuity remains incomplete      |
 | Feature tracing           | Deterministic, bounded neighborhoods from one published structural run, with actual file locations and omission reasons                 | Follows retained graph edges; does not invent route-handler links or prove exploitability                  |
-| Retrieval                 | Verified source-view services, recognized-secret redaction, chunking, exact search, PostgreSQL full-text search and rank-fusion helpers | Durable indexing and publication visibility are incomplete; dense retrieval is not live-qualified          |
-| Memory and investigations | Memory services, typed model contracts, budget/checkpoint records, investigator loops and workbench screens                             | Investigation tools/providers are not fully connected; the API currently uses a deterministic test adapter |
+| Retrieval                 | Verified source-view services, recognized-secret redaction, chunking, exact search, PostgreSQL full-text search and rank-fusion helpers | Durable publication and sealed-set reads are locally qualified; scoped API/workbench/read-only MCP controls are locally qualified; dense retrieval is not live-qualified          |
+| Memory and investigations | Memory services, typed model contracts, budget/checkpoint records, investigator loops and workbench screens                             | Investigation tools/providers are not fully connected; unconfigured execution returns unavailable |
 | MCP                       | Read-only dispatcher with a trusted server-supplied identity and scoped service calls                                                   | Standalone stdio startup and client interoperability remain unqualified                                    |
 
 ### Interface
@@ -262,3 +262,5 @@ docs/               Architecture, capability limits and qualification records
 ---
 
 [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [MIT license](LICENSE)
+
+Current local integration evidence and remaining retrieval/provider boundaries are recorded in [findings and retrieval checks](docs/acceptance/retrieval-boundaries.md) and [atomic index publication](docs/acceptance/index-publication.md) and [qualified index reads](docs/acceptance/index-reads.md), and [index interfaces](docs/acceptance/index-interface.md).

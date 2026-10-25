@@ -9,6 +9,7 @@ from app.adapters.github.http import ProviderFailure
 from app.admission.zip_inventory import AdmissionRejected
 from app.analyzers.runner import AnalysisProcessError
 from app.analyzers.source import SourceIntegrityError
+from app.contracts.indexing import JobEnvelopeV5
 from app.contracts.ingestion import AdmissionPolicy, ArtifactManifestV1, resolve_admission_policy
 from app.contracts.jobs import AttemptLeaseV2, JobEnvelopeV2, JobEnvelopeV3
 from app.contracts.scan_jobs import JobEnvelopeV4
@@ -26,6 +27,7 @@ from app.scanners.process import NativeProcessError
 from app.services.job_finalization import JobFinalizer
 from app.services.jobs import JobService
 from app.workers.operations.analyze_structure import StructuralAnalysisOperation
+from app.workers.operations.index_snapshot import IndexOperation
 from app.workers.operations.scan_snapshot import ScanOperation
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -60,6 +62,7 @@ class JobConsumer:
         processor: AdmissionProcessor,
         structural_operation: StructuralAnalysisOperation | None = None,
         scan_operation: ScanOperation | None = None,
+        index_operation: IndexOperation | None = None,
     ) -> None:
         self.factory = factory
         self.queue = queue
@@ -67,6 +70,7 @@ class JobConsumer:
         self.processor = processor
         self.structural_operation = structural_operation
         self.scan_operation = scan_operation
+        self.index_operation = index_operation
         self.jobs = JobService(factory)
 
     async def _ack(self, receipt: str) -> None:
@@ -80,19 +84,22 @@ class JobConsumer:
             logger.warning("invalid_queue_envelope")
             await self._ack(delivery.receipt)
             return
-        envelope: JobEnvelopeV2 | JobEnvelopeV3 | JobEnvelopeV4
+        envelope: JobEnvelopeV2 | JobEnvelopeV3 | JobEnvelopeV4 | JobEnvelopeV5
         try:
-            envelope = JobEnvelopeV4.model_validate_json(delivery.body)
+            envelope = JobEnvelopeV5.model_validate_json(delivery.body)
         except ValidationError:
             try:
-                envelope = JobEnvelopeV3.model_validate_json(delivery.body)
+                envelope = JobEnvelopeV4.model_validate_json(delivery.body)
             except ValidationError:
                 try:
-                    envelope = JobEnvelopeV2.model_validate_json(delivery.body)
+                    envelope = JobEnvelopeV3.model_validate_json(delivery.body)
                 except ValidationError:
-                    logger.warning("invalid_queue_envelope")
-                    await self._ack(delivery.receipt)
-                    return
+                    try:
+                        envelope = JobEnvelopeV2.model_validate_json(delivery.body)
+                    except ValidationError:
+                        logger.warning("invalid_queue_envelope")
+                        await self._ack(delivery.receipt)
+                        return
         async with transaction(self.factory) as s:
             job = await load_job(s, envelope.org_id, envelope.job_id)
             source_kind = (
@@ -110,6 +117,10 @@ class JobConsumer:
             or job["config_hash"] != envelope.config_hash
             or job["deadline"] != envelope.deadline
             or (
+                isinstance(envelope, JobEnvelopeV5)
+                and job.get("index_spec_id") != envelope.index_spec_id
+            )
+            or (
                 isinstance(envelope, JobEnvelopeV4)
                 and job.get("scan_spec_id") != envelope.scan_spec_id
             )
@@ -117,6 +128,16 @@ class JobConsumer:
             logger.warning("mismatched_queue_envelope")
             await self._ack(delivery.receipt)
             return
+        if envelope.operation == "index_snapshot":
+            if (
+                job["state"] in {"succeeded", "partial", "failed", "cancelled"}
+                or envelope.dispatch_generation != job["dispatch_generation"]
+            ):
+                await self._ack(delivery.receipt)
+                return
+            if self.index_operation is None:
+                await self.queue.extend(delivery.receipt, 120)
+                return
         if envelope.operation == "scan_snapshot" and self.scan_operation is None:
             await self.queue.extend(delivery.receipt, 120)
             return
@@ -165,6 +186,9 @@ class JobConsumer:
             elif envelope.operation == "scan_snapshot":
                 assert self.scan_operation is not None
                 await self.scan_operation.execute(lease, enter_finalization=enter_finalization)
+            elif envelope.operation == "index_snapshot":
+                assert self.index_operation is not None
+                await self.index_operation.execute(lease, enter_finalization=enter_finalization)
             else:
                 raise ValueError(f"unknown operation {envelope.operation}")
 
@@ -206,8 +230,24 @@ class JobConsumer:
         except FinalizationOutcomeUnknown:
             logger.warning("finalization_outcome_unknown")
         except NativeProcessError as error:
-            code, transient = scan_failure(error)
+            if envelope.operation == "index_snapshot":
+                code = str(error)
+                if code not in {
+                    "index_timeout",
+                    "index_process_failed",
+                    "index_cleanup_pending",
+                    "index_runtime_unavailable",
+                    "storage_unavailable",
+                    "integrity_failure",
+                }:
+                    code = "integrity_failure"
+                transient = code != "integrity_failure"
+            else:
+                code, transient = scan_failure(error)
             await self.jobs.fail_attempt(lease, code, transient=transient)
+            await self._ack(delivery.receipt)
+        except TimeoutError:
+            await self.jobs.fail_attempt(lease, "finalization_timeout", transient=True)
             await self._ack(delivery.receipt)
         except ProviderFailure as error:
             code = (
@@ -260,7 +300,9 @@ class JobConsumer:
         except Exception:
             await self.jobs.fail_attempt(
                 lease,
-                "scanner_process_failed"
+                "index_process_failed"
+                if envelope.operation == "index_snapshot"
+                else "scanner_process_failed"
                 if envelope.operation == "scan_snapshot"
                 else "analysis_process_failed"
                 if envelope.operation == "analyze_structure"

@@ -450,8 +450,22 @@
             "items": {
               "$ref": "#/components/schemas/HybridSearchHitV1"
             },
+            "maxItems": 100,
             "title": "Candidate Hits",
             "type": "array"
+          },
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
           },
           "deduplicate_files": {
             "default": true,
@@ -538,9 +552,35 @@
           "chunk_kind": {
             "$ref": "#/components/schemas/ChunkKind"
           },
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
           "citation_key": {
             "title": "Citation Key",
             "type": "string"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Config Hash"
           },
           "end_byte": {
             "minimum": 0,
@@ -568,6 +608,19 @@
             "title": "Match Modalities",
             "type": "array"
           },
+          "materialization_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Materialization Hash"
+          },
           "qualified_name": {
             "anyOf": [
               {
@@ -588,6 +641,19 @@
           "safe_content": {
             "title": "Safe Content",
             "type": "string"
+          },
+          "safe_content_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Safe Content Sha256"
           },
           "start_byte": {
             "minimum": 0,
@@ -638,6 +704,43 @@
       },
       "ContextPacketV1": {
         "properties": {
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Config Hash"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexCoverageV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -654,6 +757,28 @@
             "minimum": 0,
             "title": "Items Count",
             "type": "integer"
+          },
+          "lexical_availability": {
+            "default": "index_unavailable",
+            "enum": [
+              "available",
+              "index_unavailable"
+            ],
+            "title": "Lexical Availability",
+            "type": "string"
+          },
+          "materialization_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Materialization Hash"
           },
           "omitted_count": {
             "minimum": 0,
@@ -755,6 +880,32 @@
           "chunk_kind": {
             "$ref": "#/components/schemas/ChunkKind"
           },
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Config Hash"
+          },
           "content_sha256": {
             "title": "Content Sha256",
             "type": "string"
@@ -778,6 +929,19 @@
             "title": "File Path",
             "type": "string"
           },
+          "materialization_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Materialization Hash"
+          },
           "qualified_name": {
             "anyOf": [
               {
@@ -789,6 +953,19 @@
             ],
             "default": null,
             "title": "Qualified Name"
+          },
+          "safe_content_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Safe Content Sha256"
           },
           "score": {
             "maximum": 1.0,
@@ -841,6 +1018,19 @@
       },
       "DenseSearchRequestV1": {
         "properties": {
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
           "index_id": {
             "anyOf": [
               {
@@ -894,6 +1084,64 @@
       },
       "DenseSearchResponseV1": {
         "properties": {
+          "availability": {
+            "default": "available",
+            "enum": [
+              "available",
+              "index_unavailable",
+              "embedding_unconfigured",
+              "profile_unavailable"
+            ],
+            "title": "Availability",
+            "type": "string"
+          },
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Config Hash"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexCoverageV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "coverage_status": {
+            "default": "complete",
+            "enum": [
+              "complete",
+              "partial",
+              "unavailable"
+            ],
+            "title": "Coverage Status",
+            "type": "string"
+          },
           "embedding_model": {
             "title": "Embedding Model",
             "type": "string"
@@ -912,9 +1160,38 @@
             "type": "array"
           },
           "index_id": {
-            "format": "uuid",
-            "title": "Index Id",
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Index Id"
+          },
+          "lexical_availability": {
+            "default": "index_unavailable",
+            "enum": [
+              "available",
+              "index_unavailable"
+            ],
+            "title": "Lexical Availability",
             "type": "string"
+          },
+          "materialization_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Materialization Hash"
           },
           "query": {
             "title": "Query",
@@ -1193,6 +1470,32 @@
             "default": null,
             "title": "Chunk Id"
           },
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Config Hash"
+          },
           "end_line": {
             "minimum": 1,
             "title": "End Line",
@@ -1214,6 +1517,32 @@
             ],
             "default": null,
             "title": "Finding Id"
+          },
+          "materialization_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Materialization Hash"
+          },
+          "safe_content_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Safe Content Sha256"
           },
           "sha256": {
             "anyOf": [
@@ -1255,6 +1584,19 @@
       },
       "ExactSearchRequestV1": {
         "properties": {
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
           "limit": {
             "default": 20,
             "maximum": 100,
@@ -1433,6 +1775,11 @@
             "title": "Evidence Ids",
             "type": "array"
           },
+          "excerpt_reason": {
+            "default": "reader_unavailable",
+            "title": "Excerpt Reason",
+            "type": "string"
+          },
           "file_path": {
             "title": "File Path",
             "type": "string"
@@ -1583,6 +1930,18 @@
             "title": "File Path",
             "type": "string"
           },
+          "historical_disposition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Historical Disposition"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1611,6 +1970,11 @@
           },
           "severity": {
             "title": "Severity",
+            "type": "string"
+          },
+          "support_reason": {
+            "default": "current_support",
+            "title": "Support Reason",
             "type": "string"
           },
           "title": {
@@ -2006,6 +2370,32 @@
           "chunk_kind": {
             "$ref": "#/components/schemas/ChunkKind"
           },
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Config Hash"
+          },
           "content_sha256": {
             "title": "Content Sha256",
             "type": "string"
@@ -2036,6 +2426,19 @@
             "title": "Match Modalities",
             "type": "array"
           },
+          "materialization_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Materialization Hash"
+          },
           "modality_ranks": {
             "additionalProperties": {
               "type": "integer"
@@ -2054,6 +2457,19 @@
             ],
             "default": null,
             "title": "Qualified Name"
+          },
+          "safe_content_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Safe Content Sha256"
           },
           "score": {
             "minimum": 0.0,
@@ -2107,6 +2523,19 @@
       },
       "HybridSearchRequestV1": {
         "properties": {
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
           "dense_index_id": {
             "anyOf": [
               {
@@ -2149,7 +2578,7 @@
             "type": "integer"
           },
           "query": {
-            "maxLength": 1024,
+            "maxLength": 256,
             "minLength": 1,
             "title": "Query",
             "type": "string"
@@ -2188,6 +2617,63 @@
       },
       "HybridSearchResponseV1": {
         "properties": {
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Config Hash"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexCoverageV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "coverage_status": {
+            "default": "complete",
+            "enum": [
+              "complete",
+              "partial"
+            ],
+            "title": "Coverage Status",
+            "type": "string"
+          },
+          "dense_availability": {
+            "default": "available",
+            "enum": [
+              "available",
+              "index_unavailable",
+              "embedding_unconfigured",
+              "profile_unavailable"
+            ],
+            "title": "Dense Availability",
+            "type": "string"
+          },
           "execution_ms": {
             "default": 0.0,
             "minimum": 0.0,
@@ -2200,6 +2686,28 @@
             },
             "title": "Hits",
             "type": "array"
+          },
+          "lexical_availability": {
+            "default": "index_unavailable",
+            "enum": [
+              "available",
+              "index_unavailable"
+            ],
+            "title": "Lexical Availability",
+            "type": "string"
+          },
+          "materialization_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Materialization Hash"
           },
           "query": {
             "title": "Query",
@@ -2242,6 +2750,555 @@
           "physical_id"
         ],
         "title": "IdentityMapV1",
+        "type": "object"
+      },
+      "IndexAvailabilityV1": {
+        "additionalProperties": false,
+        "properties": {
+          "can_build": {
+            "default": false,
+            "title": "Can Build",
+            "type": "boolean"
+          },
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Set Id"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Hash"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexCoverageV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "index_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Index Id"
+          },
+          "lexical_availability": {
+            "default": "index_unavailable",
+            "enum": [
+              "available",
+              "index_unavailable"
+            ],
+            "title": "Lexical Availability",
+            "type": "string"
+          },
+          "materialization_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Materialization Hash"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "snapshot_id"
+        ],
+        "title": "IndexAvailabilityV1",
+        "type": "object"
+      },
+      "IndexCoverageV1": {
+        "additionalProperties": false,
+        "properties": {
+          "admitted_files": {
+            "maximum": 10000,
+            "minimum": 0,
+            "title": "Admitted Files",
+            "type": "integer"
+          },
+          "omission_examples": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IndexOmissionExampleV1"
+            },
+            "maxItems": 128,
+            "title": "Omission Examples",
+            "type": "array"
+          },
+          "omissions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/IndexOmissionV1"
+            },
+            "maxItems": 18,
+            "title": "Omissions",
+            "type": "array"
+          },
+          "processed_files": {
+            "maximum": 128,
+            "minimum": 0,
+            "title": "Processed Files",
+            "type": "integer"
+          },
+          "selected_files": {
+            "maximum": 128,
+            "minimum": 0,
+            "title": "Selected Files",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "admitted_files",
+          "selected_files",
+          "processed_files"
+        ],
+        "title": "IndexCoverageV1",
+        "type": "object"
+      },
+      "IndexCreateResponseV1": {
+        "additionalProperties": false,
+        "properties": {
+          "job": {
+            "$ref": "#/components/schemas/IndexJobRecordV5"
+          },
+          "status_url": {
+            "readOnly": true,
+            "title": "Status Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job",
+          "status_url"
+        ],
+        "title": "IndexCreateResponseV1",
+        "type": "object"
+      },
+      "IndexJobRecordV5": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_count": {
+            "minimum": 0.0,
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deadline": {
+            "format": "date-time",
+            "title": "Deadline",
+            "type": "string"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "index_spec_id": {
+            "format": "uuid",
+            "title": "Index Spec Id",
+            "type": "string"
+          },
+          "max_attempts": {
+            "exclusiveMinimum": 0.0,
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "operation": {
+            "const": "index_snapshot",
+            "default": "index_snapshot",
+            "title": "Operation",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "result_index_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Index Id"
+          },
+          "schema_version": {
+            "const": 5,
+            "default": 5,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "retry_wait",
+              "cancelling",
+              "succeeded",
+              "partial",
+              "failed",
+              "cancelled"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_id",
+          "id",
+          "repository_id",
+          "snapshot_id",
+          "index_spec_id",
+          "state",
+          "attempt_count",
+          "max_attempts",
+          "deadline",
+          "failure_code",
+          "result_index_id",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "IndexJobRecordV5",
+        "type": "object"
+      },
+      "IndexOmissionExampleV1": {
+        "additionalProperties": false,
+        "properties": {
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "file_path": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "File Path",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "source_limit",
+              "sensitive_path",
+              "unsupported_encoding",
+              "chunk_limit",
+              "safe_byte_limit",
+              "manifest_limit",
+              "draft_limit",
+              "unmappable_range",
+              "placeholder_limit"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "unit": {
+            "enum": [
+              "file",
+              "chunk"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "file_path",
+          "reason",
+          "unit"
+        ],
+        "title": "IndexOmissionExampleV1",
+        "type": "object"
+      },
+      "IndexOmissionV1": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "exclusiveMinimum": 0,
+            "maximum": 1000000,
+            "title": "Count",
+            "type": "integer"
+          },
+          "reason": {
+            "enum": [
+              "source_limit",
+              "sensitive_path",
+              "unsupported_encoding",
+              "chunk_limit",
+              "safe_byte_limit",
+              "manifest_limit",
+              "draft_limit",
+              "unmappable_range",
+              "placeholder_limit"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "unit": {
+            "enum": [
+              "file",
+              "chunk"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "unit",
+          "count"
+        ],
+        "title": "IndexOmissionV1",
+        "type": "object"
+      },
+      "IndexReceiptV1": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_id": {
+            "format": "uuid",
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "chunk_set_id": {
+            "format": "uuid",
+            "title": "Chunk Set Id",
+            "type": "string"
+          },
+          "config_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Config Hash",
+            "type": "string"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/IndexCoverageV1"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "draft_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Draft Digest",
+            "type": "string"
+          },
+          "fence": {
+            "exclusiveMinimum": 0.0,
+            "title": "Fence",
+            "type": "integer"
+          },
+          "index_id": {
+            "format": "uuid",
+            "title": "Index Id",
+            "type": "string"
+          },
+          "index_spec_id": {
+            "format": "uuid",
+            "title": "Index Spec Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "materialization_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Materialization Hash",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "spec_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Spec Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_id",
+          "repository_id",
+          "snapshot_id",
+          "job_id",
+          "attempt_id",
+          "fence",
+          "index_spec_id",
+          "spec_hash",
+          "config_hash",
+          "chunk_set_id",
+          "index_id",
+          "draft_digest",
+          "materialization_hash",
+          "coverage",
+          "created_at"
+        ],
+        "title": "IndexReceiptV1",
+        "type": "object"
+      },
+      "IndexRetryResponseV1": {
+        "additionalProperties": false,
+        "properties": {
+          "index_spec_id": {
+            "format": "uuid",
+            "title": "Index Spec Id",
+            "type": "string"
+          },
+          "retry_job_id": {
+            "format": "uuid",
+            "title": "Retry Job Id",
+            "type": "string"
+          },
+          "retry_of_job_id": {
+            "format": "uuid",
+            "title": "Retry Of Job Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "retry_job_id",
+          "retry_of_job_id",
+          "index_spec_id"
+        ],
+        "title": "IndexRetryResponseV1",
+        "type": "object"
+      },
+      "IndexStartRequestV1": {
+        "additionalProperties": false,
+        "properties": {
+          "request_key": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Request Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_key"
+        ],
+        "title": "IndexStartRequestV1",
+        "type": "object"
+      },
+      "IndexStatusV1": {
+        "additionalProperties": false,
+        "properties": {
+          "can_cancel": {
+            "default": false,
+            "title": "Can Cancel",
+            "type": "boolean"
+          },
+          "can_retry": {
+            "default": false,
+            "title": "Can Retry",
+            "type": "boolean"
+          },
+          "job": {
+            "$ref": "#/components/schemas/IndexJobRecordV5"
+          },
+          "receipt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexReceiptV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "job"
+        ],
+        "title": "IndexStatusV1",
         "type": "object"
       },
       "IntervalMappingV1": {
@@ -3481,6 +4538,19 @@
       },
       "LexicalSearchRequestV1": {
         "properties": {
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
           "limit": {
             "default": 40,
             "maximum": 100,
@@ -4530,6 +5600,13 @@
             "title": "By Disposition",
             "type": "object"
           },
+          "by_historical_disposition": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Historical Disposition",
+            "type": "object"
+          },
           "by_severity": {
             "additionalProperties": {
               "type": "integer"
@@ -4709,6 +5786,32 @@
           "chunk_kind": {
             "$ref": "#/components/schemas/ChunkKind"
           },
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Config Hash"
+          },
           "content_sha256": {
             "title": "Content Sha256",
             "type": "string"
@@ -4740,6 +5843,19 @@
             "title": "Match Reasons",
             "type": "array"
           },
+          "materialization_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Materialization Hash"
+          },
           "qualified_name": {
             "anyOf": [
               {
@@ -4751,6 +5867,19 @@
             ],
             "default": null,
             "title": "Qualified Name"
+          },
+          "safe_content_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Safe Content Sha256"
           },
           "score": {
             "minimum": 0.0,
@@ -4812,6 +5941,43 @@
       },
       "SearchResponseV1": {
         "properties": {
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Config Hash"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexCoverageV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "coverage_status": {
             "default": "complete",
             "title": "Coverage Status",
@@ -4829,6 +5995,28 @@
             },
             "title": "Hits",
             "type": "array"
+          },
+          "lexical_availability": {
+            "default": "index_unavailable",
+            "enum": [
+              "available",
+              "index_unavailable"
+            ],
+            "title": "Lexical Availability",
+            "type": "string"
+          },
+          "materialization_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Materialization Hash"
           },
           "mode": {
             "$ref": "#/components/schemas/SearchMode"
@@ -4864,6 +6052,19 @@
       },
       "SearchScopeV1": {
         "properties": {
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
           "org_id": {
             "format": "uuid",
             "title": "Org Id",
@@ -6518,6 +7719,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/JobRecordV3"
+                    },
+                    {
+                      "$ref": "#/components/schemas/IndexJobRecordV5"
                     }
                   ],
                   "title": "Response Get Job Api V1 Jobs  Job Id  Get"
@@ -6566,6 +7770,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/JobRecordV3"
+                    },
+                    {
+                      "$ref": "#/components/schemas/IndexJobRecordV5"
                     }
                   ],
                   "title": "Response Cancel Job Api V1 Jobs  Job Id  Cancel Post"
@@ -8255,6 +9462,304 @@
         "summary": "Get Triage History"
       }
     },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/index-jobs/{job_id}": {
+      "get": {
+        "operationId": "get_index_job_api_v1_repositories__repository_id__snapshots__snapshot_id__index_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexStatusV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Index Job"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/index-jobs/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_index_job_api_v1_repositories__repository_id__snapshots__snapshot_id__index_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexStatusV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Index Job"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/index-jobs/{job_id}/retry": {
+      "post": {
+        "operationId": "retry_index_job_api_v1_repositories__repository_id__snapshots__snapshot_id__index_jobs__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IndexStartRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexRetryResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Index Job"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/indexes": {
+      "get": {
+        "operationId": "index_availability_api_v1_repositories__repository_id__snapshots__snapshot_id__indexes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexAvailabilityV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Index Availability"
+      },
+      "post": {
+        "operationId": "create_snapshot_index_api_v1_repositories__repository_id__snapshots__snapshot_id__indexes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IndexStartRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexCreateResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Snapshot Index"
+      }
+    },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/memories": {
       "get": {
         "operationId": "query_memory_endpoint_api_v1_repositories__repository_id__snapshots__snapshot_id__memories_get",
@@ -8285,6 +9790,7 @@
             "required": false,
             "schema": {
               "default": "",
+              "maxLength": 256,
               "title": "Query",
               "type": "string"
             }
@@ -8327,6 +9833,8 @@
             "required": false,
             "schema": {
               "default": 20,
+              "maximum": 100,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }

@@ -48,6 +48,12 @@ model_reservations = sa.Table(
     sa.Column("settled_micros", sa.BigInteger, nullable=True),
     sa.Column("state", sa.String(32), nullable=False),
     sa.Column("idempotency_key", sa.String(128), nullable=False),
+    sa.Column("request_digest", sa.String(64), nullable=True),
+    sa.Column(
+        "price_snapshot",
+        JSONB(none_as_null=True).with_variant(sa.JSON(none_as_null=True), "sqlite"),
+        nullable=True,
+    ),
     sa.Column("provider_request_id", sa.String(128), nullable=True),
     sa.Column("failure_reason", sa.Text, nullable=True),
     created(),
@@ -65,6 +71,11 @@ model_reservations = sa.Table(
         "'rejected_before_dispatch', 'uncertain_hold', 'conservatively_reconciled')",
     ),
     ck("ck_model_reservation_micros_pos", "reserved_micros >= 0"),
+    ck(
+        "ck_model_request_pair",
+        "(request_digest IS NULL AND price_snapshot IS NULL) OR "
+        "(request_digest IS NOT NULL AND price_snapshot IS NOT NULL)",
+    ),
     fk(
         "fk_model_reservation_member",
         ["org_id", "principal_id"],
