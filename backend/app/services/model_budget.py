@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contracts.model import GenerationPriceScheduleV1
 from app.db.time import database_now
+from app.domain.budget_position import BudgetPosition
 from app.models.budget_tables import embedding_budgets, price_schedules
 from app.models.model_gateway_tables import model_reservations, model_spend_ledger
 
@@ -78,7 +79,8 @@ class ModelBudgetService:
         return {
             "balance_micros": row["balance_micros"],
             "reserved_micros": row["reserved_micros"],
-            "available_micros": row["balance_micros"] - row["reserved_micros"],
+            "available_micros": BudgetPosition.from_row(row).available_micros,
+            "debt_micros": row["debt_micros"],
             "currency": row["currency"],
             "write_version": row["write_version"],
         }
@@ -262,7 +264,9 @@ class ModelBudgetService:
         if existing:
             return replay(existing)
 
-        available = budget["balance_micros"] - budget["reserved_micros"]
+        if budget["debt_micros"]:
+            raise ModelBudgetExceededError("Outstanding budget debt blocks new reservations")
+        available = BudgetPosition.from_row(budget).available_micros
         if available < estimated_micros:
             raise ModelBudgetExceededError(
                 f"Insufficient funds available ({available} < {estimated_micros} micros)"
@@ -377,6 +381,9 @@ class ModelBudgetService:
         actual_thinking_tokens: int,
         actual_micros: int,
         provider_request_id: str | None = None,
+        *,
+        actual_cache_read_tokens: int = 0,
+        actual_cache_write_tokens: int = 0,
     ) -> None:
         stmt_res = (
             select(model_reservations)
@@ -411,6 +418,8 @@ class ModelBudgetService:
                 or ledger["input_tokens"] != actual_input_tokens
                 or ledger["output_tokens"] != actual_output_tokens
                 or ledger["thinking_tokens"] != actual_thinking_tokens
+                or ledger["cache_read_tokens"] != actual_cache_read_tokens
+                or ledger["cache_write_tokens"] != actual_cache_write_tokens
             ):
                 raise ModelInvalidStateTransitionError(
                     "Settlement replay conflicts with recorded usage"
@@ -419,7 +428,14 @@ class ModelBudgetService:
         if res_row["state"] not in ("dispatch_intent_committed", "dispatched", "uncertain_hold"):
             raise ModelInvalidStateTransitionError("Reservation has no dispatch intent")
         if (
-            min(actual_input_tokens, actual_output_tokens, actual_thinking_tokens, actual_micros)
+            min(
+                actual_input_tokens,
+                actual_output_tokens,
+                actual_thinking_tokens,
+                actual_micros,
+                actual_cache_read_tokens,
+                actual_cache_write_tokens,
+            )
             < 0
         ):
             raise ModelInvalidStateTransitionError("Invalid settlement usage")
@@ -438,8 +454,7 @@ class ModelBudgetService:
         )
         b_row = (await self.s.execute(stmt_budget)).mappings().one()
 
-        new_balance = max(0, b_row["balance_micros"] - actual_micros)
-        new_reserved = max(0, b_row["reserved_micros"] - reserved_micros)
+        position = BudgetPosition.from_row(b_row).complete(reserved_micros, actual_micros)
 
         await self.s.execute(
             update(embedding_budgets)
@@ -448,8 +463,7 @@ class ModelBudgetService:
                 embedding_budgets.c.repository_id == repo_id,
             )
             .values(
-                balance_micros=new_balance,
-                reserved_micros=new_reserved,
+                **position.update_values(),
                 write_version=b_row["write_version"] + 1,
                 updated_at=datetime.now(UTC),
             )
@@ -485,6 +499,8 @@ class ModelBudgetService:
                 input_tokens=actual_input_tokens,
                 output_tokens=actual_output_tokens,
                 thinking_tokens=actual_thinking_tokens,
+                cache_read_tokens=actual_cache_read_tokens,
+                cache_write_tokens=actual_cache_write_tokens,
                 charged_micros=actual_micros,
                 is_uncertain_hold=False,
                 created_at=now,
@@ -589,7 +605,7 @@ class ModelBudgetService:
             .with_for_update()
         )
         b_row = (await self.s.execute(stmt_budget)).mappings().one()
-        new_reserved = max(0, b_row["reserved_micros"] - reserved_micros)
+        position = BudgetPosition.from_row(b_row).complete(reserved_micros)
 
         await self.s.execute(
             update(embedding_budgets)
@@ -598,7 +614,7 @@ class ModelBudgetService:
                 embedding_budgets.c.repository_id == repo_id,
             )
             .values(
-                reserved_micros=new_reserved,
+                **position.update_values(),
                 write_version=b_row["write_version"] + 1,
                 updated_at=datetime.now(UTC),
             )

@@ -1,6 +1,7 @@
 """Legacy synthetic chunks fail closed; admitted-source authority remains current."""
 
 import hashlib
+import os
 from uuid import uuid4
 
 import pytest
@@ -26,6 +27,8 @@ from tests.phase3.integration.test_structural_publication import admitted
 async def test_admitted_retrieval_context_and_retained_source_authority(
     api_factory, broker_factory, migration_factory, tmp_path
 ):
+    if os.environ.get("CODESPY_TEST_SCHEMA_TARGET", "0014_finding_triage") < "0017_search_chunks":
+        pytest.skip("retrieval chunk storage requires schema >= 0017_search_chunks")
     ctx, snapshot, repo, _store = await admitted(migration_factory, tmp_path)
     async with migration_factory() as session:
         located = await locate_source(session, ctx.org_id, repo, snapshot)

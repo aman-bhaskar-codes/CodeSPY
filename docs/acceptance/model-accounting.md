@@ -31,7 +31,7 @@ The method is a recovery seam, not a claim that a periodic reconciliation worker
 is running. Slow active calls can still settle from the uncertain state.
 
 This remains partial accounting hardening. Measured input/category usage caps,
-actual-charge reconciliation, overrun/debt policy,
+invoice reconciliation and operational funding controls,
 production-role privileges and durable investigation jobs still need qualification
 before external model activation. The orchestration/checkpoint transaction still
 spans the investigation, but its rollback no longer erases factory-backed accounting.
@@ -98,8 +98,8 @@ Downgrade refuses to remove identity fields when bound reservations exist. Empty
 or legacy-only databases can roundtrip while preserving existing reservation rows.
 The JSON mapping writes absent snapshots as SQL NULL rather than JSON null.
 
-This captures request identity and pricing; provider usage measurement, overrun/debt
-accounting, reconciliation scheduling and live provider qualification remain pending.
+This captures request identity and pricing; provider usage measurement, invoice
+reconciliation scheduling and live provider qualification remain pending.
 
 Final identity qualification on 25 October 2026: **974 affected backend tests
 passed in 29.18 seconds**, and **18 real PostgreSQL accounting/migration checks
@@ -109,3 +109,85 @@ deletion rejection, incomplete metadata rejection, captured-price isolation from
 global schedule changes, preserved legacy rows and guarded downgrade. Models
 remain simulated and storage tests use the migration-owner role. No live provider
 or production-role qualification is claimed.
+
+## Shared-budget overruns
+
+The additive `0025_budget_debt` migration records unfunded charges explicitly.
+Both generation and embedding accounting use one typed integer-arithmetic helper.
+Settlement preserves other active holds and records the exact known charge in the
+existing ledger/reservation. Any shortfall becomes debt rather than a discarded
+negative balance or a failed settlement. New reservations are denied while debt
+remains, including zero-cost generation reservations. Releasing another hold
+applies newly freed cash to existing debt without recording a second charge.
+
+The invariant is funded balance >= outstanding holds >= 0. If debt exists, funded
+balance equals outstanding holds; there is no spendable cash alongside unpaid
+local exposure. Completing a hold preserves net balance-minus-debt less the exact
+charge. This is local budget accounting, not a payment or a verified provider bill.
+Downgrade refuses outstanding debt. Zero-debt accounts retain cash and holds through
+migration roundtrip. Operational funding/top-up interfaces and invoice reconciliation
+remain separate work.
+
+Five regressions failed before implementation. Final affected backend: **979 passed
+in 32.02 seconds**; real PostgreSQL accounting/migration suite: **22 passed in
+28.22 seconds**. Tests include concurrent overrun settlement, generation/embedding
+cross-accounting, intact unrelated holds and protected downgrade. Strict typing
+passed for 226 application files; Ruff and whitespace checks passed. No frontend
+or public transport changed; models remained simulated and storage tests used the
+migration-owner role.
+
+## Cache usage retention
+
+The additive `0026_model_cache_usage` migration retains measured cache-read and
+cache-write tokens in generation settlement records. The gateway forwards both
+categories, and settlement replay compares them alongside existing usage and
+charge fields. Historical rows and provisional uncertain holds retain NULL cache
+counts: their cache usage is unknown. A legacy settlement without measured cache
+counts cannot establish an exact replay. Downgrade refuses nonzero measured cache
+usage rather than silently discarding it.
+
+Observed checks: **980 affected backend tests passed in 24.81 seconds**;
+**23 real PostgreSQL accounting/migration tests passed in 27.87 seconds**;
+strict typing passed across 226 application files; Ruff and whitespace checks
+passed. The new settlement regression failed before implementation. All six
+authored files matched the executable test copy. Storage qualification used the
+migration-owner role and simulated model responses. Live provider normalization,
+invoice verification, audited manual reconciliation and production-role
+qualification remain unexecuted. No frontend or public API contracts changed.
+
+## Audited uncertain-call reconciliation
+
+An internal `ModelReconciliationService` now accepts owner-supplied verified usage
+and an evidence digest for an uncertain model reservation. It checks current owner
+membership and repository write permission, repeats authorization after reservation
+lock acquisition, and uses the captured historical price. Authorization is checked
+within the transaction; membership revocation is not locked through commit.
+Callers must verify all usage categories, including explicit zero categories, before
+submission. An evidence digest is a reference, not automatic invoice verification.
+
+Budget/debt changes, final usage ledger and the reconciliation receipt commit in one
+independent transaction. Exact same-key replay returns the original receipt after
+fresh authorization; changed replay and a new key for an already settled call are
+rejected. The audit binds actor, request, reservation, evidence, usage and price.
+Database guards reject audit mutation and receipts inconsistent with the final
+settlement, and refuse a downgrade that would erase reconciliation history.
+Uncertain estimated ledger records remain marked as provisional; consumers must
+not sum them as additional settled charges. Legacy reservations without captured
+prices remain unsupported. No provider is called or retried during reconciliation.
+
+Observed final checks: **30 real PostgreSQL accounting/migration tests passed in
+34.06 seconds**, including concurrent identical reconciliation, rollback on injected
+audit failure, revoked access, current-owner demotion, immutable audit rows,
+captured-price settlement, forged receipt rejection and guarded downgrade.
+**980 affected backend tests passed in 28.27 seconds**; strict typing passed for
+228 application files; Ruff and whitespace checks passed. The initial new tests
+could not collect before the missing contract/service existed; this is not a claim
+that each assertion was independently observed failing before implementation.
+
+An unrestricted backend invocation reported **1,066 passed, 253 skipped and 76
+fixture-setup errors**; the broader guarded legacy database/emulator fixtures were
+not configured for that command (including the required loopback port 55432).
+The full suite is therefore not qualified. The separately configured owned
+PostgreSQL accounting harness passed. Storage checks use the migration-owner role
+and simulated provider failures/usage. Production-role privileges, live invoice
+verification, public activation and automatic reconciliation remain unqualified.

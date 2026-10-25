@@ -133,6 +133,6 @@ async def test_downgrade_refuses_to_erase_bound_identity(migration_factory, db_v
         )
     async with migration_factory() as session:
         assert await session.scalar(text("SELECT version_num FROM alembic_version")) == (
-            "0024_model_request_identity"
+            db_values.get("CODESPY_TEST_SCHEMA_TARGET", "0024_model_request_identity")
         )
         assert await session.scalar(select(model_reservations.c.request_digest)) is not None

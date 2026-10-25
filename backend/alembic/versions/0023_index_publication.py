@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Scoped immutable lexical materializations and job-specific publication receipts."""
 
 from alembic import op

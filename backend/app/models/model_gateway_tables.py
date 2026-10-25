@@ -105,6 +105,14 @@ model_spend_ledger = sa.Table(
     sa.Column("input_tokens", sa.Integer, server_default="0", nullable=False),
     sa.Column("output_tokens", sa.Integer, server_default="0", nullable=False),
     sa.Column("thinking_tokens", sa.Integer, server_default="0", nullable=False),
+    sa.Column("cache_read_tokens", sa.BigInteger, nullable=True),
+    sa.Column("cache_write_tokens", sa.BigInteger, nullable=True),
+    sa.CheckConstraint(
+        "cache_read_tokens IS NULL OR cache_read_tokens >= 0", name="ck_model_cache_read_nonneg"
+    ),
+    sa.CheckConstraint(
+        "cache_write_tokens IS NULL OR cache_write_tokens >= 0", name="ck_model_cache_write_nonneg"
+    ),
     sa.Column("charged_micros", sa.BigInteger, nullable=False),
     sa.Column("is_uncertain_hold", sa.Boolean, server_default=sa.text("false"), nullable=False),
     created(),
@@ -115,4 +123,39 @@ model_spend_ledger = sa.Table(
         "repositories",
         ["org_id", "id"],
     ),
+)
+
+model_usage_reconciliations = sa.Table(
+    "model_usage_reconciliations",
+    md,
+    orgid(),
+    col("id", "uuid"),
+    col("repository_id", "uuid"),
+    col("reservation_id", "uuid"),
+    col("actor_principal_id", "uuid"),
+    sa.Column("request_key", sa.String(128), nullable=False),
+    sa.Column("request_digest", sa.String(64), nullable=False),
+    sa.Column("evidence_digest", sa.String(64), nullable=False),
+    sa.Column("price_digest", sa.String(64), nullable=False),
+    sa.Column("provider_request_id", sa.String(128), nullable=False),
+    sa.Column("usage_json", JSONB().with_variant(sa.JSON(), "sqlite"), nullable=False),
+    sa.Column("reason", sa.String(40), nullable=False),
+    sa.Column("charged_micros", sa.BigInteger, nullable=False),
+    created(),
+    pk("org_id", "id"),
+    uq("uq_model_reconcile_key", "org_id", "request_key"),
+    uq("uq_model_reconcile_reservation", "org_id", "reservation_id"),
+    fk(
+        "fk_model_reconcile_reservation",
+        ["org_id", "reservation_id"],
+        "model_reservations",
+        ["org_id", "reservation_id"],
+    ),
+    fk(
+        "fk_model_reconcile_actor",
+        ["org_id", "actor_principal_id"],
+        "memberships",
+        ["org_id", "principal_id"],
+    ),
+    fk("fk_model_reconcile_repo", ["org_id", "repository_id"], "repositories", ["org_id", "id"]),
 )

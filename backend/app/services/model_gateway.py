@@ -170,6 +170,8 @@ class ModelGatewayService:
                     actual_input_tokens=response.usage.input_tokens,
                     actual_output_tokens=response.usage.output_tokens,
                     actual_thinking_tokens=response.usage.thinking_tokens,
+                    actual_cache_read_tokens=response.usage.cache_read_tokens,
+                    actual_cache_write_tokens=response.usage.cache_write_tokens,
                     actual_micros=actual_charge,
                     provider_request_id=response.provider_request_id,
                 )

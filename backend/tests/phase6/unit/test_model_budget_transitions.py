@@ -126,3 +126,29 @@ async def test_settlement_replay_rejects_changed_usage(budget_fixture, field, va
     with pytest.raises(ModelInvalidStateTransitionError):
         await service.settle_reservation(**{**usage, field: value})
     assert await budget_fixture.scalar(select(func.count()).select_from(model_spend_ledger)) == 1
+
+
+@pytest.mark.asyncio
+async def test_settlement_preserves_cache_usage_and_rejects_changed_replay(budget_fixture):
+    service, args, identity = await reserved(budget_fixture)
+    await service.commit_dispatch_intent(args["org_id"], identity)
+    usage = {
+        "org_id": args["org_id"],
+        "reservation_id": identity,
+        "actual_input_tokens": 10,
+        "actual_output_tokens": 5,
+        "actual_thinking_tokens": 2,
+        "actual_micros": 50,
+        "actual_cache_read_tokens": 30,
+        "actual_cache_write_tokens": 40,
+    }
+    await service.settle_reservation(**usage)
+    row = (await budget_fixture.execute(select(model_spend_ledger))).mappings().one()
+    assert (row["cache_read_tokens"], row["cache_write_tokens"]) == (30, 40)
+    await service.settle_reservation(**usage)
+    for field in ("actual_cache_read_tokens", "actual_cache_write_tokens"):
+        with pytest.raises(ModelInvalidStateTransitionError):
+            await service.settle_reservation(**{**usage, field: 99})
+    assert (await service.get_budget(args["org_id"], args["repository_id"]))[
+        "balance_micros"
+    ] == 950
