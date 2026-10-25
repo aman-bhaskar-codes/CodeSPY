@@ -1,13 +1,16 @@
+import hashlib
 from collections.abc import AsyncIterator
-from uuid import UUID, uuid4
+from uuid import UUID, uuid4, uuid5
 
 import pytest
 import pytest_asyncio
+import sqlalchemy as sa
 from app.contracts.chunking import ChunkKind, SourceChunkV1
 from app.contracts.context import (
     ContextAssemblyRequestV1,
     ContextBudgetV1,
 )
+from app.contracts.indexing import IndexCoverageV1
 from app.contracts.search import (
     HybridSearchHitV1,
     SearchScopeV1,
@@ -15,10 +18,57 @@ from app.contracts.search import (
 from app.domain.errors import ScopeViolation
 from app.models.chunk_tables import source_chunks
 from app.models.phase2_tables import PHASE2_TABLES, md
-from app.models.tables import memberships
+from app.models.tables import memberships, repositories, source_snapshots
 from app.services.context_assembly import ContextAssemblyService
 from app.services.lexical_search import LexicalSearchService
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+
+@pytest.fixture(autouse=True)
+def retained_source_stub(monkeypatch):
+    # Unit fixtures model snapshot authority, not archive admission records.
+    async def retained(*args):
+        return None
+
+    monkeypatch.setattr("app.services.retrieval_authority.locate_source", retained)
+    # Isolate packaging from publication; real qualification is tested in PostgreSQL.
+    from types import SimpleNamespace
+
+    async def resolve(session, scope, *, chunk_set_id=None):
+        import app.services.retrieval_authority as authority
+        from app.domain.scope import OrgRole, TenantContext
+        from app.security.authorization import require_snapshot
+        from sqlalchemy.exc import NoResultFound
+
+        await require_snapshot(
+            session,
+            TenantContext(
+                org_id=scope.org_id, principal_id=scope.principal_id, role=OrgRole.MEMBER
+            ),
+            scope.repository_id,
+            scope.snapshot_id,
+        )
+        try:
+            await authority.locate_source(
+                session, scope.org_id, scope.repository_id, scope.snapshot_id
+            )
+        except NoResultFound as exc:
+            raise ScopeViolation("retrieval source unavailable") from exc
+        expected = uuid5(scope.snapshot_id, "unit-qualified-set")
+        if chunk_set_id is not None and chunk_set_id != expected:
+            raise ScopeViolation("Unavailable set")
+        return SimpleNamespace(
+            chunk_set_id=expected,
+            config_hash="b" * 64,
+            materialization_hash="c" * 64,
+            coverage=IndexCoverageV1(admitted_files=0, selected_files=0, processed_files=0),
+        )
+
+    monkeypatch.setattr("app.services.context_assembly.resolve_lexical_set", resolve)
+    monkeypatch.setattr(
+        "app.services.context_assembly.selected_chunks",
+        lambda session, scope, resolved: source_chunks.c.chunk_set_id == resolved.chunk_set_id,
+    )
 
 
 @pytest_asyncio.fixture
@@ -30,6 +80,19 @@ async def session() -> AsyncIterator[AsyncSession]:
             lambda sync_conn: md.create_all(
                 sync_conn,
                 tables=[memberships, grants, source_chunks],
+            )
+        )
+    async with engine.begin() as conn:
+        await conn.execute(
+            sa.text(
+                "CREATE TABLE repositories (org_id UUID, id UUID, repository_key TEXT, "
+                "display_name TEXT, source_kind TEXT, created_at DATETIME)"
+            )
+        )
+        await conn.execute(
+            sa.text(
+                "CREATE TABLE source_snapshots "
+                "(org_id UUID, id UUID, repository_id UUID, state TEXT)"
             )
         )
     factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -69,7 +132,7 @@ def make_chunk_and_hit(
         end_byte=len(raw),
         start_line=start_line,
         end_line=end_line,
-        content_sha256="abc",
+        content_sha256=hashlib.sha256(raw).hexdigest(),
         byte_count=len(raw),
         token_count=tokens,
         raw_content=raw,
@@ -90,7 +153,10 @@ def make_chunk_and_hit(
         end_line=end_line,
         score=score,
         snippet=content,
-        content_sha256="abc",
+        content_sha256=hashlib.sha256(raw).hexdigest(),
+        chunk_set_id=uuid5(snap_id, "unit-qualified-set"),
+        materialization_hash="c" * 64,
+        safe_content_sha256=hashlib.sha256(raw).hexdigest(),
         match_modalities=("exact", "dense"),
         modality_ranks={"exact": 1, "dense": 2},
     )
@@ -118,6 +184,7 @@ async def test_context_assembly_knapsack_budget(session: AsyncSession) -> None:
         )
     )
 
+    await seed_snapshot(session, org_id, repo_id, snap_id)
     lex_svc = LexicalSearchService(session)
     c1, h1 = make_chunk_and_hit(
         org_id, repo_id, snap_id, "src/a.py", "func_a", "x = 1\n" * 30, 0.95
@@ -129,7 +196,7 @@ async def test_context_assembly_knapsack_budget(session: AsyncSession) -> None:
         org_id, repo_id, snap_id, "src/c.py", "func_c", "z = 3\n" * 30, 0.75
     )  # 45 tokens
 
-    await lex_svc.index_chunks([c1, c2, c3])
+    await seed_context_chunks(lex_svc, [c1, c2, c3])
 
     svc = ContextAssemblyService(session)
     scope = SearchScopeV1(
@@ -139,9 +206,12 @@ async def test_context_assembly_knapsack_budget(session: AsyncSession) -> None:
         principal_id=principal_id,
     )
 
-    # Budget allows ~120 tokens max (max_tokens=200, reserved=80 -> available=120)
-    # So c1 (~50) and c2 (~50) fit (~100 tokens), but c3 would exceed 120 tokens!
-    budget = ContextBudgetV1(max_tokens=200, reserved_overhead_tokens=80, max_bytes=10000)
+    from app.services.syntax_chunker import count_tokens
+
+    available = 2 * count_tokens(c1.safe_content)
+    budget = ContextBudgetV1(
+        max_tokens=available + 80, reserved_overhead_tokens=80, max_bytes=10000
+    )
     packet = await svc.assemble_context(
         ContextAssemblyRequestV1(
             scope=scope,
@@ -154,7 +224,7 @@ async def test_context_assembly_knapsack_budget(session: AsyncSession) -> None:
 
     assert packet.items_count == 2
     assert packet.omitted_count == 1
-    assert packet.total_tokens <= 120
+    assert packet.total_tokens == available
     assert packet.items[0].chunk_id == c1.chunk_id
     assert packet.items[1].chunk_id == c2.chunk_id
     assert packet.items[0].citation_key == "[src/a.py#L1-L10]"
@@ -182,6 +252,7 @@ async def test_context_assembly_file_diversity_limit(session: AsyncSession) -> N
         )
     )
 
+    await seed_snapshot(session, org_id, repo_id, snap_id)
     lex_svc = LexicalSearchService(session)
     chunks = []
     hits = []
@@ -199,7 +270,7 @@ async def test_context_assembly_file_diversity_limit(session: AsyncSession) -> N
         chunks.append(c)
         hits.append(h)
 
-    await lex_svc.index_chunks(chunks)
+    await seed_context_chunks(lex_svc, chunks)
 
     svc = ContextAssemblyService(session)
     scope = SearchScopeV1(
@@ -263,6 +334,7 @@ async def test_context_rejects_untrusted_chunk_identity(session: AsyncSession, c
         .insert()
         .values(org_id=org_id, repository_id=repo_id, principal_id=principal_id, permission="read")
     )
+    await seed_snapshot(session, org_id, repo_id, snap_id)
     chunk, hit = make_chunk_and_hit(
         org_id,
         uuid4() if change == "repository" else repo_id,
@@ -272,7 +344,7 @@ async def test_context_rejects_untrusted_chunk_identity(session: AsyncSession, c
         "def private_function(): pass",
         1.0,
     )
-    await LexicalSearchService(session).index_chunks([chunk])
+    await seed_context_chunks(LexicalSearchService(session), [chunk])
     overrides: dict[str, object] = {
         "file_path": "src/forged.py",
         "file_id": uuid4(),
@@ -295,3 +367,283 @@ async def test_context_rejects_untrusted_chunk_identity(session: AsyncSession, c
                 candidate_hits=hits,
             )
         )
+
+
+async def seed_context_chunks(service, chunks):
+    await service.index_chunks(chunks)
+    for chunk in chunks:
+        await service.s.execute(
+            sa.update(source_chunks)
+            .where(source_chunks.c.id == chunk.chunk_id)
+            .values(
+                chunk_set_id=uuid5(chunk.snapshot_id, "unit-qualified-set"),
+                safe_content_sha256=hashlib.sha256(chunk.safe_content.encode()).hexdigest(),
+            )
+        )
+
+
+async def seed_snapshot(session, org_id, repo_id, snap_id, state="sealed"):
+    await session.execute(
+        sa.insert(repositories).values(org_id=org_id, id=repo_id, source_kind="archive")
+    )
+    await session.execute(
+        sa.insert(source_snapshots).values(
+            org_id=org_id, id=snap_id, repository_id=repo_id, state=state
+        )
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("state", ["building", "missing", "wrong_repository"])
+async def test_context_requires_sealed_repository_snapshot(session, state):
+    org, principal, repo, snap = uuid4(), uuid4(), uuid4(), uuid4()
+    await session.execute(
+        memberships.insert().values(org_id=org, principal_id=principal, role="member")
+    )
+    await session.execute(
+        PHASE2_TABLES["repository_grants"]
+        .insert()
+        .values(org_id=org, repository_id=repo, principal_id=principal, permission="read")
+    )
+    await seed_snapshot(session, org, repo, snap, "building" if state == "building" else "sealed")
+    if state == "missing":
+        await session.execute(sa.delete(source_snapshots))
+    if state == "wrong_repository":
+        await session.execute(sa.update(source_snapshots).values(repository_id=uuid4()))
+    with pytest.raises(ScopeViolation):
+        await ContextAssemblyService(session).assemble_context(
+            ContextAssemblyRequestV1(
+                scope=SearchScopeV1(
+                    org_id=org, repository_id=repo, snapshot_id=snap, principal_id=principal
+                ),
+                query="test",
+            )
+        )
+
+
+@pytest.mark.asyncio
+async def test_context_counts_model_safe_bytes_and_tokens_not_stale_estimates(session):
+    from app.services.syntax_chunker import count_tokens
+
+    org, principal, repo, snap = uuid4(), uuid4(), uuid4(), uuid4()
+    await session.execute(
+        memberships.insert().values(org_id=org, principal_id=principal, role="member")
+    )
+    await session.execute(
+        PHASE2_TABLES["repository_grants"]
+        .insert()
+        .values(org_id=org, repository_id=repo, principal_id=principal, permission="read")
+    )
+    await seed_snapshot(session, org, repo, snap)
+    chunks, hits = zip(
+        *(make_chunk_and_hit(org, repo, snap, f"{i}.py", "f", "secret", 1.0) for i in range(3)),
+        strict=True,
+    )
+    await seed_context_chunks(LexicalSearchService(session), list(chunks))
+    contents = ("é" * 200, "x" * 600, "small")
+    for chunk, content in zip(chunks, contents, strict=True):
+        await session.execute(
+            sa.update(source_chunks)
+            .where(source_chunks.c.id == chunk.chunk_id)
+            .values(
+                safe_content=content,
+                safe_content_sha256=hashlib.sha256(content.encode()).hexdigest(),
+                byte_count=1,
+                estimated_tokens=0,
+            )
+        )
+    hits = tuple(
+        hit.model_copy(update={"safe_content_sha256": hashlib.sha256(content.encode()).hexdigest()})
+        for hit, content in zip(hits, contents, strict=True)
+    )
+    packet = await ContextAssemblyService(session).assemble_context(
+        ContextAssemblyRequestV1(
+            scope=SearchScopeV1(
+                org_id=org, repository_id=repo, snapshot_id=snap, principal_id=principal
+            ),
+            query="test",
+            candidate_hits=hits,
+            budget=ContextBudgetV1(max_tokens=1024, max_bytes=512, reserved_overhead_tokens=0),
+        )
+    )
+    assert packet.items_count == 2
+    assert packet.omitted_count == 1
+    assert packet.total_bytes == len((contents[0] + contents[2]).encode())
+    assert packet.total_tokens == sum(count_tokens(x) for x in (contents[0], contents[2]))
+    assert packet.items[0].safe_content == contents[0]
+
+
+def test_context_rejects_more_candidates_than_search_limit():
+    from pydantic import ValidationError
+
+    _, hit = make_chunk_and_hit(uuid4(), uuid4(), uuid4(), "a.py", "f", "pass", 1.0)
+    with pytest.raises(ValidationError, match="at most 100"):
+        ContextAssemblyRequestV1(query="test", candidate_hits=(hit,) * 101)
+    assert (
+        len(ContextAssemblyRequestV1(query="test", candidate_hits=(hit,) * 100).candidate_hits)
+        == 100
+    )
+
+
+@pytest.mark.asyncio
+async def test_context_omits_token_overflow_and_ignores_untrusted_snippet(session):
+    from app.services.syntax_chunker import count_tokens
+
+    org, principal, repo, snap = uuid4(), uuid4(), uuid4(), uuid4()
+    await session.execute(
+        memberships.insert().values(org_id=org, principal_id=principal, role="member")
+    )
+    await session.execute(
+        PHASE2_TABLES["repository_grants"]
+        .insert()
+        .values(org_id=org, repository_id=repo, principal_id=principal, permission="read")
+    )
+    await seed_snapshot(session, org, repo, snap)
+    first, first_hit = make_chunk_and_hit(org, repo, snap, "a.py", "a", "x = 1\n" * 100, 1.0)
+    second, second_hit = make_chunk_and_hit(org, repo, snap, "b.py", "b", "pass", 0.5)
+    await seed_context_chunks(LexicalSearchService(session), [first, second])
+    scope = SearchScopeV1(org_id=org, repository_id=repo, snapshot_id=snap, principal_id=principal)
+    request = ContextAssemblyRequestV1(
+        scope=scope,
+        query="test",
+        candidate_hits=(first_hit, second_hit.model_copy(update={"snippet": "forged"})),
+        budget=ContextBudgetV1(max_tokens=128, reserved_overhead_tokens=120),
+    )
+    packet = await ContextAssemblyService(session).assemble_context(request)
+    assert packet.items_count == packet.omitted_count == 1
+    assert packet.items[0].safe_content == "pass"
+    assert packet.total_bytes == 4
+    assert packet.total_tokens == count_tokens("pass")
+    empty = await ContextAssemblyService(session).assemble_context(
+        request.model_copy(
+            update={"budget": ContextBudgetV1(max_tokens=128, reserved_overhead_tokens=129)}
+        )
+    )
+    assert empty.items_count == empty.total_bytes == empty.total_tokens == 0
+    assert empty.omitted_count == 2
+
+
+@pytest.mark.asyncio
+async def test_context_rejects_missing_retained_source(session, monkeypatch):
+    from sqlalchemy.exc import NoResultFound
+
+    org, principal, repo, snap = uuid4(), uuid4(), uuid4(), uuid4()
+    await session.execute(
+        memberships.insert().values(org_id=org, principal_id=principal, role="member")
+    )
+    await session.execute(
+        PHASE2_TABLES["repository_grants"]
+        .insert()
+        .values(org_id=org, repository_id=repo, principal_id=principal, permission="read")
+    )
+    await seed_snapshot(session, org, repo, snap)
+
+    async def missing(*args):
+        raise NoResultFound()
+
+    monkeypatch.setattr("app.services.retrieval_authority.locate_source", missing)
+    with pytest.raises(ScopeViolation, match="retrieval source unavailable"):
+        await ContextAssemblyService(session).assemble_context(
+            ContextAssemblyRequestV1(
+                scope=SearchScopeV1(
+                    org_id=org, repository_id=repo, snapshot_id=snap, principal_id=principal
+                ),
+                query="test",
+            )
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "change", ["legacy", "mixed", "materialization", "safe_digest", "stored_digest"]
+)
+async def test_context_requires_one_qualified_set_and_verified_content(session, change):
+    org, principal, repo, snap = (uuid4() for _ in range(4))
+    await session.execute(
+        memberships.insert().values(org_id=org, principal_id=principal, role="member")
+    )
+    await session.execute(
+        PHASE2_TABLES["repository_grants"]
+        .insert()
+        .values(org_id=org, repository_id=repo, principal_id=principal, permission="read")
+    )
+    await seed_snapshot(session, org, repo, snap)
+    chunk, hit = make_chunk_and_hit(org, repo, snap, "a.py", "f", "safe", 1.0)
+    await seed_context_chunks(LexicalSearchService(session), [chunk])
+    changes = {
+        "legacy": {"chunk_set_id": None},
+        "mixed": {"chunk_set_id": uuid4()},
+        "materialization": {"materialization_hash": "d" * 64},
+        "safe_digest": {"safe_content_sha256": "d" * 64},
+    }
+    if change == "stored_digest":
+        await session.execute(sa.update(source_chunks).values(safe_content="tampered"))
+    else:
+        hit = hit.model_copy(update=changes[change])
+    with pytest.raises(ScopeViolation):
+        await ContextAssemblyService(session).assemble_context(
+            ContextAssemblyRequestV1(
+                scope=SearchScopeV1(
+                    org_id=org, repository_id=repo, snapshot_id=snap, principal_id=principal
+                ),
+                query="test",
+                candidate_hits=(hit,),
+            )
+        )
+
+
+@pytest.mark.asyncio
+async def test_context_pins_candidate_set_across_final_revalidation(session, monkeypatch):
+    org, principal, repo, snap = (uuid4() for _ in range(4))
+    await session.execute(
+        memberships.insert().values(org_id=org, principal_id=principal, role="member")
+    )
+    await session.execute(
+        PHASE2_TABLES["repository_grants"]
+        .insert()
+        .values(org_id=org, repository_id=repo, principal_id=principal, permission="read")
+    )
+    await seed_snapshot(session, org, repo, snap)
+    chunk, hit = make_chunk_and_hit(org, repo, snap, "a.py", "f", "safe", 1.0)
+    await seed_context_chunks(LexicalSearchService(session), [chunk])
+    import app.services.context_assembly as module
+
+    original = module.resolve_lexical_set
+    observed = []
+
+    async def tracked(session, scope, *, chunk_set_id=None):
+        observed.append(chunk_set_id)
+        return await original(session, scope, chunk_set_id=chunk_set_id)
+
+    monkeypatch.setattr(module, "resolve_lexical_set", tracked)
+    packet = await ContextAssemblyService(session).assemble_context(
+        ContextAssemblyRequestV1(
+            scope=SearchScopeV1(
+                org_id=org, repository_id=repo, snapshot_id=snap, principal_id=principal
+            ),
+            query="test",
+            candidate_hits=(hit,),
+        )
+    )
+    assert observed == [hit.chunk_set_id, hit.chunk_set_id]
+    assert packet.scope.chunk_set_id == packet.chunk_set_id == hit.chunk_set_id
+    assert packet.items[0].safe_content_sha256 == hashlib.sha256(b"safe").hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_empty_context_reports_missing_index_explicitly(session, monkeypatch):
+    async def unavailable(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr("app.services.context_assembly.resolve_lexical_set", unavailable)
+    packet = await ContextAssemblyService(session).assemble_context(
+        ContextAssemblyRequestV1(
+            scope=SearchScopeV1(
+                org_id=uuid4(), repository_id=uuid4(), snapshot_id=uuid4(), principal_id=uuid4()
+            ),
+            query="test",
+        )
+    )
+    assert packet.lexical_availability == "index_unavailable"
+    assert packet.chunk_set_id is packet.coverage is None
+    assert not packet.items

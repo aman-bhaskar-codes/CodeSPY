@@ -7,11 +7,13 @@ from typing import Any, get_args
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.contracts.findings import Category
+from app.contracts.scan_publication import EffectiveVerificationV1
+from app.contracts.source_view import REMAINING_PRIVACY_RISK_LIMITATIONS
 from app.contracts.triage import TriageReason, TriageRecordV1, TriageState
 from app.db.transaction import transaction
 from app.domain.errors import DuplicateConflict
@@ -26,8 +28,10 @@ from app.models.scan_tables import (
 from app.models.tables import source_files
 from app.ports.object_store import ObjectStore
 from app.ports.scan_execution import ScanCapabilities
+from app.ports.source_reader import SourceReaderPort
 from app.security.authorization import require_snapshot
 from app.security.cursors import CursorCodec
+from app.services.finding_excerpts import FindingExcerpt, FindingExcerptService
 from app.services.scan_reads import ScanReadService
 
 
@@ -43,6 +47,8 @@ class FindingSummaryV1(BaseModel):
     file_path: str
     line_number: int | None = None
     disposition: str
+    historical_disposition: str | None = None
+    support_reason: str = "current_support"
     triage_state: TriageState
     triage_reason: TriageReason
     triage_version: int
@@ -72,6 +78,7 @@ class FindingDetailResponseV1(BaseModel):
     line_number: int | None = None
     end_line: int | None = None
     code_excerpt: str | None = None
+    excerpt_reason: str = "reader_unavailable"
     disposition: str
     historical_disposition: str
     support_reason: str
@@ -93,6 +100,7 @@ class ScanSummaryResponseV1(BaseModel):
     by_severity: dict[str, int]
     by_disposition: dict[str, int]
     by_triage: dict[str, int]
+    by_historical_disposition: dict[str, int] = Field(default_factory=dict)
     created_at: datetime | None = None
 
 
@@ -102,10 +110,48 @@ class FindingsQueryService:
         factory: async_sessionmaker[AsyncSession],
         capabilities: ScanCapabilities | None = None,
         cursors: CursorCodec | None = None,
+        *,
+        source_reader: SourceReaderPort | None = None,
+        store: ObjectStore | None = None,
     ):
         self.factory = factory
+        self.excerpts = FindingExcerptService(store, source_reader)
         self.scan_reads = ScanReadService(factory, capabilities)
         self.cursors = cursors or CursorCodec(secrets.token_bytes(32))
+
+    async def _current_support(
+        self, session: AsyncSession, ctx: TenantContext, snapshot_id: UUID, run_id: UUID
+    ) -> dict[UUID, EffectiveVerificationV1]:
+        supported = await session.scalar(
+            select(verification_decisions.c.finding_id)
+            .where(
+                verification_decisions.c.org_id == ctx.org_id,
+                verification_decisions.c.snapshot_id == snapshot_id,
+                verification_decisions.c.run_id == run_id,
+                verification_decisions.c.disposition == "supported-static",
+            )
+            .limit(1)
+        )
+        if supported is None:
+            return {}
+        try:
+            result = await self.scan_reads.read_in_session(
+                session, ctx, RunRef(org_id=ctx.org_id, snapshot_id=snapshot_id, run_id=run_id)
+            )
+        except (DuplicateConflict, NoResultFound, ValueError):
+            return {}
+        return {d.finding_id: d for d in result.effective_decisions} if result else {}
+
+    @staticmethod
+    def _project_support(
+        finding_id: UUID, historical: str, current: dict[UUID, EffectiveVerificationV1]
+    ) -> tuple[str, str]:
+        if historical != "supported-static":
+            return historical, "current_support"
+        decision = current.get(finding_id)
+        if decision is None or decision.historical_disposition != historical:
+            return "unresolved", "source_unavailable"
+        return decision.effective_disposition, decision.reason
 
     async def get_summary(
         self,
@@ -136,6 +182,7 @@ class FindingsQueryService:
             # Query all findings for this scan run with triage projections and decisions
             query = (
                 select(
+                    finding_occurrences.c.id,
                     finding_occurrences.c.category,
                     finding_occurrences.c.payload_json,
                     verification_decisions.c.disposition,
@@ -172,12 +219,17 @@ class FindingsQueryService:
             by_sev: Counter[str] = Counter()
             by_disp: Counter[str] = Counter()
             by_triage: Counter[str] = Counter()
+            by_history: Counter[str] = Counter()
+            current = await self._current_support(session, ctx, snapshot_id, run_id)
 
-            for cat, payload, disp, triage_state in rows:
+            for finding_id, cat, payload, disp, triage_state in rows:
                 by_cat[cat] += 1
                 sev = payload.get("severity", "info") if isinstance(payload, dict) else "info"
                 by_sev[sev] += 1
-                by_disp[disp or "unresolved"] += 1
+                historical = disp or "unresolved"
+                effective, _ = self._project_support(finding_id, historical, current)
+                by_disp[effective] += 1
+                by_history[historical] += 1
                 by_triage[triage_state or "unreviewed"] += 1
 
             return ScanSummaryResponseV1(
@@ -190,6 +242,7 @@ class FindingsQueryService:
                 by_severity=dict(by_sev),
                 by_disposition=dict(by_disp),
                 by_triage=dict(by_triage),
+                by_historical_disposition=dict(by_history),
                 created_at=report_row["created_at"],
             )
 
@@ -231,6 +284,23 @@ class FindingsQueryService:
         }
         async with transaction(self.factory) as session:
             await require_snapshot(session, ctx, repository_id, snapshot_id)
+            current = await self._current_support(session, ctx, snapshot_id, run_id)
+            supported_ids = tuple(
+                key
+                for key, value in current.items()
+                if value.historical_disposition == "supported-static"
+                and value.effective_disposition == "supported-static"
+            )
+            effective_sql = case(
+                (
+                    verification_decisions.c.disposition == "supported-static",
+                    case(
+                        (finding_occurrences.c.id.in_(supported_ids), "supported-static"),
+                        else_="unresolved",
+                    ),
+                ),
+                else_=func.coalesce(verification_decisions.c.disposition, "unresolved"),
+            )
             base_query = (
                 select(
                     finding_occurrences.c.id,
@@ -240,6 +310,7 @@ class FindingsQueryService:
                     finding_occurrences.c.payload_json,
                     source_files.c.path.label("file_path"),
                     verification_decisions.c.disposition,
+                    effective_sql.label("effective_disposition"),
                     finding_triage_projections.c.current_state,
                     finding_triage_projections.c.current_reason,
                     finding_triage_projections.c.version,
@@ -284,9 +355,7 @@ class FindingsQueryService:
                     == severity
                 )
             if disposition:
-                base_query = base_query.where(
-                    func.coalesce(verification_decisions.c.disposition, "unresolved") == disposition
-                )
+                base_query = base_query.where(effective_sql == disposition)
             if triage_state:
                 if triage_state == "unreviewed":
                     base_query = base_query.where(
@@ -334,7 +403,11 @@ class FindingsQueryService:
                         title=payload.get("title", r["rule_id"]),
                         file_path=r["file_path"],
                         line_number=line_no,
-                        disposition=r["disposition"] or "unresolved",
+                        disposition=r["effective_disposition"],
+                        historical_disposition=r["disposition"] or "unresolved",
+                        support_reason=self._project_support(
+                            r["id"], r["disposition"] or "unresolved", current
+                        )[1],
                         triage_state=r["current_state"] or "unreviewed",
                         triage_reason=r["current_reason"] or "none",
                         triage_version=r["version"] or 0,
@@ -434,29 +507,19 @@ class FindingsQueryService:
                 end_line = entity["range"].get("end_line")
 
             historical = r["disposition"] or "unresolved"
-            effective = historical
-            support_reason = "current_support"
-            if historical == "supported-static":
-                effective, support_reason = "unresolved", "source_unavailable"
-                try:
-                    current = await self.scan_reads.read_in_session(
-                        session,
-                        ctx,
-                        RunRef(org_id=ctx.org_id, snapshot_id=snapshot_id, run_id=r["run_id"]),
-                    )
-                except (DuplicateConflict, NoResultFound, ValueError):
-                    current = None
-                decision = (
-                    next(
-                        (d for d in current.effective_decisions if d.finding_id == finding_id),
-                        None,
-                    )
-                    if current is not None
-                    else None
+            current = (
+                await self._current_support(session, ctx, snapshot_id, r["run_id"])
+                if historical == "supported-static"
+                else {}
+            )
+            effective, support_reason = self._project_support(finding_id, historical, current)
+
+            excerpt = FindingExcerpt(None, "support_unavailable")
+            if effective == "supported-static":
+                excerpt = await self.excerpts.read(
+                    session, ctx, repository_id, snapshot_id, r["file_id"], r["category"], payload
                 )
-                if decision is not None and decision.historical_disposition == historical:
-                    effective = decision.effective_disposition
-                    support_reason = decision.reason
+            await require_snapshot(session, ctx, repository_id, snapshot_id)
 
             triage_record = TriageRecordV1(
                 finding_id=finding_id,
@@ -481,12 +544,14 @@ class FindingsQueryService:
                 file_path=r["file_path"],
                 line_number=start_line,
                 end_line=end_line,
-                code_excerpt=None,
+                code_excerpt=excerpt.text,
+                excerpt_reason=excerpt.reason,
                 disposition=effective,
                 historical_disposition=historical,
                 support_reason=support_reason,
                 recommendation=payload.get("recommendation"),
-                limitations=payload.get("limitations", []),
+                limitations=payload.get("limitations", [])
+                + (list(REMAINING_PRIVACY_RISK_LIMITATIONS) if excerpt.text is not None else []),
                 triage=triage_record,
                 evidence_ids=list(evidence_rows),
             )

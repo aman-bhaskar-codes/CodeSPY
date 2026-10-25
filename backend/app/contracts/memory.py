@@ -21,6 +21,10 @@ class EvidencePointerV1(BaseModel):
     end_line: int = Field(ge=1)
     finding_id: UUID | None = None
     chunk_id: UUID | None = None
+    chunk_set_id: UUID | None = None
+    config_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    materialization_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    safe_content_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     symbol_name: str | None = None
     sha256: str | None = None
 
@@ -59,6 +63,7 @@ class MemoryQueryRequestV1(BaseModel):
     org_id: UUID | None = None
     repository_id: UUID | None = None
     principal_id: UUID | None = None
+    snapshot_id: UUID | None = None
     query: str = Field(min_length=1, max_length=256)
     memory_kind: MemoryKind | None = None
     topic: str | None = None

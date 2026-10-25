@@ -17,13 +17,16 @@ from app.contracts.source_view import (
     SourceRepresentation,
     SourceViewRequestV1,
 )
+from app.contracts.structure import SourceFileV1
 from app.domain.errors import ScopeViolation
 from app.models.derived_artifacts import derived_artifacts
 from app.models.phase2_tables import PHASE2_TABLES, md
 from app.models.tables import memberships, source_files
 from app.ports.object_store import ObjectStore
+from app.ports.source_reader import AdmittedSourceReadV1
 from app.services.analysis_sources import LocatedSource
 from app.services.source_view import SourceViewService
+from app.source_read.extract import read_admitted_entry
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -47,6 +50,22 @@ class MemoryObjectStore(ObjectStore):
 
     async def describe_owned(self, key: str, max_bytes: int):  # type: ignore[no-untyped-def]
         return None
+
+
+class FixtureSourceReader:
+    """In-process test double, never a production source reader."""
+
+    def __init__(self, store: MemoryObjectStore):
+        self.store = store
+
+    async def read(self, request: AdmittedSourceReadV1) -> bytes:
+        return read_admitted_entry(
+            self.store.objects[request.archive.key],
+            path=request.path,
+            sha256=request.sha256,
+            size_bytes=request.size_bytes,
+            strip_root=request.strip_root,
+        )
 
 
 @pytest_asyncio.fixture
@@ -134,12 +153,20 @@ async def test_model_safe_view_redacts_canary_and_registers_derived_artifact(
     located = LocatedSource(
         archive=archive_desc,
         manifest=archive_desc,
-        files=(),
+        files=(
+            SourceFileV1(
+                file_id=file_id,
+                path="src/compute.py",
+                sha256=code_sha,
+                size_bytes=len(code),
+                eligible=True,
+            ),
+        ),
         policy=AdmissionPolicyV1(),
         revision="main",
     )
 
-    svc = SourceViewService(session, store)
+    svc = SourceViewService(session, store, reader=FixtureSourceReader(store))
     req = SourceViewRequestV1(
         org_id=org_id,
         repository_id=repo_id,
@@ -215,7 +242,7 @@ async def test_sensitive_path_omitted_under_model_safe(session: AsyncSession) ->
     await session.commit()
 
     store = MemoryObjectStore({})
-    svc = SourceViewService(session, store)
+    svc = SourceViewService(session, store, reader=FixtureSourceReader(store))
     req = SourceViewRequestV1(
         org_id=org_id,
         repository_id=repo_id,
@@ -297,12 +324,20 @@ async def test_original_representation_authorization(session: AsyncSession) -> N
     located = LocatedSource(
         archive=desc,
         manifest=desc,
-        files=(),
+        files=(
+            SourceFileV1(
+                file_id=file_id,
+                path="src/token.py",
+                sha256=code_sha,
+                size_bytes=len(code),
+                eligible=True,
+            ),
+        ),
         policy=AdmissionPolicyV1(),
         revision="main",
     )
 
-    svc = SourceViewService(session, store)
+    svc = SourceViewService(session, store, reader=FixtureSourceReader(store))
 
     # 1. Allowed for member when policy permits
     req_member = SourceViewRequestV1(
@@ -383,12 +418,20 @@ async def test_sliced_range_query(session: AsyncSession) -> None:
     located = LocatedSource(
         archive=desc,
         manifest=desc,
-        files=(),
+        files=(
+            SourceFileV1(
+                file_id=file_id,
+                path="src/alpha.txt",
+                sha256=code_sha,
+                size_bytes=len(code),
+                eligible=True,
+            ),
+        ),
         policy=AdmissionPolicyV1(),
         revision="main",
     )
     store = MemoryObjectStore({"archive.zip": archive_bytes})
-    svc = SourceViewService(session, store)
+    svc = SourceViewService(session, store, reader=FixtureSourceReader(store))
 
     req = SourceViewRequestV1(
         org_id=org_id,
@@ -431,7 +474,7 @@ async def test_revoked_grant_denies_view(session: AsyncSession) -> None:
     await session.commit()
 
     store = MemoryObjectStore({})
-    svc = SourceViewService(session, store)
+    svc = SourceViewService(session, store, reader=FixtureSourceReader(store))
     req = SourceViewRequestV1(
         org_id=org_id,
         repository_id=repo_id,

@@ -38,6 +38,10 @@ export function FindingsSummaryCard({ summary }: Props) {
           <h3 style={{ margin: 0, fontSize: "18px", color: "var(--ink)" }}>
             Findings Summary
           </h3>
+          <p className="muted">
+            Support counts reflect the current read; historical decisions are
+            retained.
+          </p>
           <span className="muted" style={{ fontSize: "13px" }}>
             Report published:{" "}
             {summary.created_at
@@ -74,8 +78,8 @@ export function FindingsSummaryCard({ summary }: Props) {
             marginBottom: "16px",
           }}
         >
-          <strong>0 findings detected across scanned rules.</strong> This does not
-          indicate absence of all vulnerabilities or complete security.
+          <strong>0 findings detected across scanned rules.</strong> This does
+          not indicate absence of all vulnerabilities or complete security.
         </div>
       )}
 

@@ -25,6 +25,10 @@ async def test_concurrent_duplicate_commands_commit_one_response_and_event(
     name = db_values["CODESPY_TEST_DATABASE"]
     harness.migrate(db_values, name, "0022_triage_commands")
     harness.grant_app(db_values, name)
+    with harness.connect(db_values, name) as connection:
+        revision_before = connection.execute(
+            "SELECT version_num FROM public.alembic_version"
+        ).fetchone()[0]
     service = TriageService(api_factory)
     gate = asyncio.Event()
 
@@ -65,5 +69,5 @@ async def test_concurrent_duplicate_commands_commit_one_response_and_event(
     with harness.connect(db_values, db_values["CODESPY_TEST_DATABASE"]) as connection:
         assert (
             connection.execute("SELECT version_num FROM public.alembic_version").fetchone()[0]
-            == "0022_triage_commands"
+            == revision_before
         )

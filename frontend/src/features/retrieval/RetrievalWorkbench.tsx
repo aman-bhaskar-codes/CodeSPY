@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
+import { IndexBuildPanel } from "./IndexBuildPanel";
 import type {
   ContextItemV1,
+  EvidencePointerV1,
+  SearchResponseV1,
+  DenseSearchResponseV1,
+  HybridSearchResponseV1,
   ContextPacketV1,
   HybridSearchHitV1,
   MemoryCreateRequestV1,
@@ -18,21 +23,35 @@ interface RetrievalWorkbenchProps {
   csrfToken: string;
 }
 
-export function RetrievalWorkbench({
+export function RetrievalWorkbench(props: RetrievalWorkbenchProps) {
+  return (
+    <RetrievalWorkbenchState
+      key={`${props.repositoryId}:${props.snapshotId}`}
+      {...props}
+    />
+  );
+}
+
+function RetrievalWorkbenchState({
   repositoryId,
   snapshotId,
   csrfToken,
 }: RetrievalWorkbenchProps) {
-  const [activeTab, setActiveTab] = useState<"search" | "context" | "memory">("search");
+  const [activeTab, setActiveTab] = useState<"search" | "context" | "memory">(
+    "search",
+  );
   const [searchMode, setSearchMode] = useState<SearchMode>("hybrid");
   const [query, setQuery] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
   const [limit, setLimit] = useState(10);
   const [denseIndexId, setDenseIndexId] = useState("");
 
   // Context Engineering states
   const [maxTokens, setMaxTokens] = useState(2048);
   const [overheadTokens, setOverheadTokens] = useState(128);
-  const [preamble, setPreamble] = useState("You are an expert security software engineer assisting with CodeSPY.");
+  const [preamble, setPreamble] = useState(
+    "You are an expert security software engineer assisting with CodeSPY.",
+  );
   const [lastPacket, setLastPacket] = useState<ContextPacketV1 | null>(null);
 
   // Source View Modal
@@ -45,27 +64,54 @@ export function RetrievalWorkbench({
 
   // Memory states
   const [memoryQuery, setMemoryQuery] = useState("");
+  const [memoryDraft, setMemoryDraft] = useState("");
   const [newMemoryTopic, setNewMemoryTopic] = useState("");
-  const [newMemoryKind, setNewMemoryKind] = useState<MemoryKind>("architecture_invariant");
+  const [newMemoryKind, setNewMemoryKind] =
+    useState<MemoryKind>("architecture_fact");
   const [newMemorySummary, setNewMemorySummary] = useState("");
   const [newMemoryEvidenceFile, setNewMemoryEvidenceFile] = useState("");
-  const [newMemoryStartLine, setNewMemoryStartLine] = useState<number | undefined>();
-  const [newMemoryEndLine, setNewMemoryEndLine] = useState<number | undefined>();
+  const [newMemoryStartLine, setNewMemoryStartLine] = useState<
+    number | undefined
+  >();
+  const [newMemoryEndLine, setNewMemoryEndLine] = useState<
+    number | undefined
+  >();
   const [newMemorySymbol, setNewMemorySymbol] = useState("");
   const [memorySuccessMsg, setMemorySuccessMsg] = useState("");
+  const [memoryValidation, setMemoryValidation] = useState("");
+
+  const [lastSearch, setLastSearch] = useState<
+    SearchResponseV1 | DenseSearchResponseV1 | HybridSearchResponseV1 | null
+  >(null);
+  const [pinnedEvidence, setPinnedEvidence] =
+    useState<EvidencePointerV1 | null>(null);
+  const searchSequence = useRef(0);
+  const assembleSequence = useRef(0);
 
   // Search Mutation
   const searchMutation = useMutation({
     mutationFn: async () => {
       if (!query.trim()) return null;
+      const seq = ++searchSequence.current;
+      let result;
       if (searchMode === "exact") {
-        return await api.searchExact(repositoryId, snapshotId, query, limit, csrfToken);
-      }
-      if (searchMode === "lexical") {
-        return await api.searchLexical(repositoryId, snapshotId, query, limit, csrfToken);
-      }
-      if (searchMode === "dense") {
-        return await api.searchDense(
+        result = await api.searchExact(
+          repositoryId,
+          snapshotId,
+          query,
+          limit,
+          csrfToken,
+        );
+      } else if (searchMode === "lexical") {
+        result = await api.searchLexical(
+          repositoryId,
+          snapshotId,
+          query,
+          limit,
+          csrfToken,
+        );
+      } else if (searchMode === "dense") {
+        result = await api.searchDense(
           repositoryId,
           snapshotId,
           query,
@@ -73,31 +119,46 @@ export function RetrievalWorkbench({
           limit,
           csrfToken,
         );
+      } else {
+        result = await api.searchHybrid(
+          repositoryId,
+          snapshotId,
+          query,
+          limit,
+          denseIndexId || undefined,
+          csrfToken,
+        );
       }
-      // Hybrid
-      return await api.searchHybrid(
-        repositoryId,
-        snapshotId,
-        query,
-        limit,
-        denseIndexId || undefined,
-        csrfToken,
-      );
+      return { result, seq };
+    },
+    onSuccess: (data) => {
+      if (data && data.seq === searchSequence.current && data.result) {
+        setLastSearch(data.result);
+      }
     },
   });
 
   // Context Assembly Mutation
   const assembleMutation = useMutation({
     mutationFn: async () => {
-      const hits = searchMutation.data && "hits" in searchMutation.data
-        ? (searchMutation.data.hits as HybridSearchHitV1[])
-        : undefined;
+      const seq = ++assembleSequence.current;
+      const hits: HybridSearchHitV1[] | undefined = lastSearch?.hits.map(
+        (hit) => ({
+          ...hit,
+          match_modalities:
+            "match_modalities" in hit
+              ? hit.match_modalities
+              : ["match_type" in hit ? String(hit.match_type) : "dense"],
+          modality_ranks: "modality_ranks" in hit ? hit.modality_ranks : {},
+        }),
+      );
       const res = await api.assembleContext(
         repositoryId,
         snapshotId,
         {
-          query: query || "CodeSPY retrieval inquiry",
+          query: lastSearch?.query || query || "CodeSPY retrieval inquiry",
           candidate_hits: hits,
+          chunk_set_id: lastSearch?.chunk_set_id,
           budget: {
             max_tokens: maxTokens,
             reserved_overhead_tokens: overheadTokens,
@@ -106,8 +167,12 @@ export function RetrievalWorkbench({
         },
         csrfToken,
       );
-      setLastPacket(res);
-      return res;
+      return { res, seq };
+    },
+    onSuccess: (data) => {
+      if (data && data.seq === assembleSequence.current && data.res) {
+        setLastPacket(data.res);
+      }
     },
   });
 
@@ -115,13 +180,23 @@ export function RetrievalWorkbench({
   const memoriesQuery = useQuery({
     queryKey: ["repo_memories", repositoryId, snapshotId, memoryQuery],
     queryFn: ({ signal }) =>
-      api.queryMemories(repositoryId, snapshotId, { query: memoryQuery || undefined }, signal),
+      api.queryMemories(
+        repositoryId,
+        snapshotId,
+        { query: memoryQuery || undefined },
+        signal,
+      ),
   });
 
   // Memory Create Mutation
   const recordMemoryMutation = useMutation({
     mutationFn: async (payload: MemoryCreateRequestV1) => {
-      return await api.recordMemory(repositoryId, snapshotId, payload, csrfToken);
+      return await api.recordMemory(
+        repositoryId,
+        snapshotId,
+        payload,
+        csrfToken,
+      );
     },
     onSuccess: () => {
       setMemorySuccessMsg("Grounded memory recorded successfully!");
@@ -131,6 +206,7 @@ export function RetrievalWorkbench({
       setNewMemoryStartLine(undefined);
       setNewMemoryEndLine(undefined);
       setNewMemorySymbol("");
+      setPinnedEvidence(null);
       memoriesQuery.refetch();
       setTimeout(() => setMemorySuccessMsg(""), 4000);
     },
@@ -166,11 +242,25 @@ export function RetrievalWorkbench({
   const handlePinAsMemory = (hit: SearchHitV1 | HybridSearchHitV1) => {
     setActiveTab("memory");
     setNewMemoryTopic(hit.symbol_name ?? hit.file_path);
-    setNewMemorySummary(`Evidence identified in ${hit.file_path} via retrieval query '${query}'.`);
+    setNewMemorySummary(
+      `Evidence identified in ${hit.file_path} via retrieval query '${lastSearch?.query ?? query}'.`,
+    );
     setNewMemoryEvidenceFile(hit.file_path);
     setNewMemoryStartLine(hit.start_line);
     setNewMemoryEndLine(hit.end_line);
     setNewMemorySymbol(hit.symbol_name ?? "");
+    setPinnedEvidence({
+      file_path: hit.file_path,
+      start_line: hit.start_line,
+      end_line: hit.end_line,
+      symbol_name: hit.symbol_name,
+      chunk_id: hit.chunk_id,
+      chunk_set_id: hit.chunk_set_id,
+      config_hash: hit.config_hash,
+      materialization_hash: hit.materialization_hash,
+      safe_content_sha256: hit.safe_content_sha256,
+      sha256: hit.content_sha256,
+    });
   };
 
   const copyCitation = (citation: string) => {
@@ -183,10 +273,11 @@ export function RetrievalWorkbench({
         <div>
           <h2 id="retrieval-title">Source Retrieval & Grounding Workbench</h2>
           <span className="muted">
-            Multi-modal hybrid search (AST + BM25 + Titan V2 Dense), token-budgeted context & evidence memory
+            Search published source, assemble bounded context and retain cited
+            evidence
           </span>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           <button
             type="button"
             className={activeTab === "search" ? "primary" : ""}
@@ -211,6 +302,12 @@ export function RetrievalWorkbench({
         </div>
       </div>
 
+      <IndexBuildPanel
+        repositoryId={repositoryId}
+        snapshotId={snapshotId}
+        csrfToken={csrfToken}
+      />
+
       {/* TAB 1: MULTI-MODAL SEARCH */}
       {activeTab === "search" && (
         <div>
@@ -226,7 +323,15 @@ export function RetrievalWorkbench({
               borderRadius: 6,
             }}
           >
-            <span style={{ fontWeight: 600, fontSize: 13, textTransform: "uppercase" }}>Channel:</span>
+            <span
+              style={{
+                fontWeight: 600,
+                fontSize: 13,
+                textTransform: "uppercase",
+              }}
+            >
+              Channel:
+            </span>
             {(["hybrid", "lexical", "dense", "exact"] as const).map((m) => (
               <label
                 key={m}
@@ -249,20 +354,27 @@ export function RetrievalWorkbench({
                 {m === "hybrid"
                   ? "Hybrid (RRF Fusion)"
                   : m === "lexical"
-                  ? "Lexical (BM25)"
-                  : m === "dense"
-                  ? "Dense (Vector)"
-                  : "Exact (AST/Symbol)"}
+                    ? "Lexical (BM25)"
+                    : m === "dense"
+                      ? "Dense (Vector)"
+                      : "Exact (AST/Symbol)"}
               </label>
             ))}
           </div>
 
           <form
+            noValidate
             onSubmit={(e) => {
               e.preventDefault();
               searchMutation.mutate();
             }}
-            style={{ display: "flex", gap: 12, maxWidth: "100%", marginBottom: 20 }}
+            style={{
+              display: "flex",
+              gap: 12,
+              maxWidth: "100%",
+              flexWrap: "wrap",
+              marginBottom: 20,
+            }}
           >
             <input
               type="text"
@@ -270,14 +382,26 @@ export function RetrievalWorkbench({
                 searchMode === "exact"
                   ? "Exact symbol or filepath (e.g. login_user or src/auth.py)"
                   : searchMode === "dense"
-                  ? "Semantic query (e.g. authenticate user with password credentials)"
-                  : "Search code, symbols, or topics..."
+                    ? "Semantic query (e.g. authenticate user with password credentials)"
+                    : "Search code, symbols, or topics..."
               }
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               style={{ flex: 1 }}
-              required
+              ref={searchInput}
+              aria-label="Search admitted source"
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  searchInput.current?.focus();
+                }}
+              >
+                Clear source query
+              </button>
+            )}
             <select
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
@@ -314,8 +438,29 @@ export function RetrievalWorkbench({
             </p>
           )}
 
-          {searchMutation.data && (
+          {lastSearch && (
             <div>
+              <p className="muted">
+                Results for “{lastSearch.query}”. Results set:{" "}
+                <code style={{ overflowWrap: "anywhere" }}>
+                  {lastSearch.chunk_set_id ?? "unavailable"}
+                </code>
+              </p>
+              {lastSearch.lexical_availability === "index_unavailable" && (
+                <p role="status">
+                  Source index unavailable. Build a source index before
+                  searching.
+                </p>
+              )}
+              {lastSearch.coverage &&
+                lastSearch.coverage.processed_files <
+                  lastSearch.coverage.admitted_files && (
+                  <p role="status">
+                    Partial coverage: {lastSearch.coverage.processed_files} of{" "}
+                    {lastSearch.coverage.admitted_files} admitted files
+                    processed.
+                  </p>
+                )}
               <div
                 style={{
                   display: "flex",
@@ -325,12 +470,16 @@ export function RetrievalWorkbench({
                 }}
               >
                 <span style={{ fontSize: 13, color: "var(--muted)" }}>
-                  Retrieved {searchMutation.data.hits.length} of {searchMutation.data.total_candidates} candidates
-                  in {searchMutation.data.execution_ms}ms
+                  Retrieved {lastSearch.hits.length} of{" "}
+                  {lastSearch.total_candidates} candidates in{" "}
+                  {lastSearch.execution_ms}ms
                 </span>
                 <button
                   type="button"
                   style={{ fontSize: 13, padding: "4px 10px" }}
+                  disabled={
+                    assembleMutation.isPending || !lastSearch.chunk_set_id
+                  }
                   onClick={() => {
                     setActiveTab("context");
                     assembleMutation.mutate();
@@ -340,132 +489,182 @@ export function RetrievalWorkbench({
                 </button>
               </div>
 
-              {searchMutation.data.hits.length === 0 ? (
-                <p className="muted" style={{ padding: 24, textAlign: "center", border: "1px dashed var(--border)" }}>
-                  No matching source chunks found for this query within the authorized scope.
+              {lastSearch.hits.length === 0 ? (
+                <p
+                  className="muted"
+                  style={{
+                    padding: 24,
+                    textAlign: "center",
+                    border: "1px dashed var(--border)",
+                  }}
+                >
+                  {lastSearch.lexical_availability === "index_unavailable"
+                    ? "No source index is available for this search."
+                    : "No matching source chunks found in this published set."}
                 </p>
               ) : (
                 <div style={{ display: "grid", gap: 12 }}>
-                  {searchMutation.data.hits.map((hit: SearchHitV1 | HybridSearchHitV1) => {
-                    const isHybrid = "match_modalities" in hit;
-                    const hybridHit = isHybrid ? (hit as HybridSearchHitV1) : null;
-                    return (
-                      <div
-                        key={hit.chunk_id}
-                        style={{
-                          border: "1px solid var(--border)",
-                          borderRadius: 6,
-                          padding: 14,
-                          background: "#fff",
-                        }}
-                      >
+                  {lastSearch.hits.map(
+                    (hit: SearchHitV1 | HybridSearchHitV1) => {
+                      const isHybrid = "match_modalities" in hit;
+                      const hybridHit = isHybrid
+                        ? (hit as HybridSearchHitV1)
+                        : null;
+                      return (
                         <div
+                          key={hit.chunk_id}
                           style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: 8,
+                            border: "1px solid var(--border)",
+                            borderRadius: 6,
+                            padding: 14,
+                            background: "#fff",
                           }}
                         >
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                            <span
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: 8,
+                            }}
+                          >
+                            <div
                               style={{
-                                fontWeight: 700,
-                                fontFamily: "monospace",
-                                fontSize: 14,
-                                color: "var(--ink)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                flexWrap: "wrap",
                               }}
                             >
-                              {hit.file_path}
-                              {hit.start_line && hit.end_line
-                                ? ` #L${hit.start_line}-L${hit.end_line}`
-                                : ""}
-                            </span>
-                            {hit.symbol_name && (
                               <span
                                 style={{
-                                  background: "#f0f4f8",
-                                  padding: "2px 8px",
-                                  borderRadius: 4,
-                                  fontSize: 12,
+                                  fontWeight: 700,
                                   fontFamily: "monospace",
-                                  color: "var(--action)",
+                                  fontSize: 14,
+                                  color: "var(--ink)",
                                 }}
                               >
-                                {hit.symbol_name} ({hit.chunk_kind})
+                                {hit.file_path}
+                                {hit.start_line && hit.end_line
+                                  ? ` #L${hit.start_line}-L${hit.end_line}`
+                                  : ""}
                               </span>
-                            )}
-                            {hybridHit?.match_modalities?.map((m) => (
+                              {hit.symbol_name && (
+                                <span
+                                  style={{
+                                    background: "#f0f4f8",
+                                    padding: "2px 8px",
+                                    borderRadius: 4,
+                                    fontSize: 12,
+                                    fontFamily: "monospace",
+                                    color: "var(--action)",
+                                  }}
+                                >
+                                  {hit.symbol_name} ({hit.chunk_kind})
+                                </span>
+                              )}
+                              {hybridHit?.match_modalities?.map((m) => (
+                                <span
+                                  key={m}
+                                  style={{
+                                    background:
+                                      m === "exact"
+                                        ? "#d1fae5"
+                                        : m === "dense"
+                                          ? "#ede9fe"
+                                          : "#e0f2fe",
+                                    color:
+                                      m === "exact"
+                                        ? "#065f46"
+                                        : m === "dense"
+                                          ? "#5b21b6"
+                                          : "#075985",
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    padding: "1px 6px",
+                                    borderRadius: 3,
+                                    textTransform: "uppercase",
+                                  }}
+                                >
+                                  {m}
+                                </span>
+                              ))}
+                            </div>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                              }}
+                            >
                               <span
-                                key={m}
                                 style={{
-                                  background: m === "exact" ? "#d1fae5" : m === "dense" ? "#ede9fe" : "#e0f2fe",
-                                  color: m === "exact" ? "#065f46" : m === "dense" ? "#5b21b6" : "#075985",
-                                  fontSize: 11,
+                                  fontSize: 12,
                                   fontWeight: 600,
-                                  padding: "1px 6px",
-                                  borderRadius: 3,
-                                  textTransform: "uppercase",
+                                  color: "var(--muted)",
                                 }}
                               >
-                                {m}
+                                Score: {hit.score.toFixed(4)}
                               </span>
-                            ))}
+                              <button
+                                type="button"
+                                style={{ padding: "3px 8px", fontSize: 12 }}
+                                onClick={() =>
+                                  setSelectedFileForView({
+                                    fileId: hit.file_id,
+                                    filePath: hit.file_path,
+                                    startLine: hit.start_line,
+                                    endLine: hit.end_line,
+                                  })
+                                }
+                              >
+                                Safe Source View
+                              </button>
+                              <button
+                                type="button"
+                                style={{ padding: "3px 8px", fontSize: 12 }}
+                                onClick={() => handlePinAsMemory(hit)}
+                              >
+                                Pin to Memory
+                              </button>
+                            </div>
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>
-                              Score: {hit.score.toFixed(4)}
-                            </span>
-                            <button
-                              type="button"
-                              style={{ padding: "3px 8px", fontSize: 12 }}
-                              onClick={() =>
-                                setSelectedFileForView({
-                                  fileId: hit.file_id,
-                                  filePath: hit.file_path,
-                                  startLine: hit.start_line,
-                                  endLine: hit.end_line,
-                                })
-                              }
-                            >
-                              Safe Source View
-                            </button>
-                            <button
-                              type="button"
-                              style={{ padding: "3px 8px", fontSize: 12 }}
-                              onClick={() => handlePinAsMemory(hit)}
-                            >
-                              Pin to Memory
-                            </button>
-                          </div>
+
+                          {hybridHit &&
+                            Object.keys(hybridHit.modality_ranks).length >
+                              0 && (
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  color: "var(--muted)",
+                                  marginBottom: 8,
+                                }}
+                              >
+                                Channel Ranks:{" "}
+                                {Object.entries(hybridHit.modality_ranks)
+                                  .map(([k, r]) => `${k}: #${r}`)
+                                  .join(" | ")}
+                              </div>
+                            )}
+
+                          <pre
+                            style={{
+                              background: "#0f172a",
+                              color: "#e2e8f0",
+                              padding: 12,
+                              borderRadius: 4,
+                              overflowX: "auto",
+                              fontSize: 13,
+                              lineHeight: 1.45,
+                              margin: 0,
+                            }}
+                          >
+                            <code>{hit.snippet}</code>
+                          </pre>
                         </div>
-
-                        {hybridHit && Object.keys(hybridHit.modality_ranks).length > 0 && (
-                          <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 8 }}>
-                            Channel Ranks:{" "}
-                            {Object.entries(hybridHit.modality_ranks)
-                              .map(([k, r]) => `${k}: #${r}`)
-                              .join(" | ")}
-                          </div>
-                        )}
-
-                        <pre
-                          style={{
-                            background: "#0f172a",
-                            color: "#e2e8f0",
-                            padding: 12,
-                            borderRadius: 4,
-                            overflowX: "auto",
-                            fontSize: 13,
-                            lineHeight: 1.45,
-                            margin: 0,
-                          }}
-                        >
-                          <code>{hit.snippet}</code>
-                        </pre>
-                      </div>
-                    );
-                  })}
+                      );
+                    },
+                  )}
                 </div>
               )}
             </div>
@@ -476,9 +675,18 @@ export function RetrievalWorkbench({
       {/* TAB 2: CONTEXT ENGINEERING */}
       {activeTab === "context" && (
         <div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 16,
+              marginBottom: 16,
+            }}
+          >
             <div>
-              <label style={{ display: "block", marginBottom: 6, fontSize: 13 }}>
+              <label
+                style={{ display: "block", marginBottom: 6, fontSize: 13 }}
+              >
                 Max Token Budget ({maxTokens} tokens):
               </label>
               <input
@@ -492,7 +700,9 @@ export function RetrievalWorkbench({
               />
             </div>
             <div>
-              <label style={{ display: "block", marginBottom: 6, fontSize: 13 }}>
+              <label
+                style={{ display: "block", marginBottom: 6, fontSize: 13 }}
+              >
                 Reserved Overhead Tokens ({overheadTokens} tokens):
               </label>
               <input
@@ -512,10 +722,12 @@ export function RetrievalWorkbench({
               LLM System Preamble / Grounding Fence:
             </label>
             <textarea
+              className="resize-none"
               rows={2}
               value={preamble}
               onChange={(e) => setPreamble(e.target.value)}
               style={{
+                minHeight: 80,
                 width: "100%",
                 padding: 10,
                 border: "1px solid var(--border)",
@@ -532,7 +744,9 @@ export function RetrievalWorkbench({
             onClick={() => assembleMutation.mutate()}
             style={{ marginBottom: 18 }}
           >
-            {assembleMutation.isPending ? "Assembling Grounded Context…" : "Assemble Grounded Context Packet"}
+            {assembleMutation.isPending
+              ? "Assembling Grounded Context…"
+              : "Assemble Grounded Context Packet"}
           </button>
 
           {lastPacket && (
@@ -546,15 +760,35 @@ export function RetrievalWorkbench({
                   marginBottom: 16,
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 8,
+                  }}
+                >
                   <span style={{ fontWeight: 700, fontSize: 14 }}>
-                    Grounding Packet: {lastPacket.items_count} items packed ({lastPacket.total_tokens} / {maxTokens} tokens)
+                    Grounding Packet: {lastPacket.items_count} items packed (
+                    {lastPacket.total_tokens} / {maxTokens} tokens)
                   </span>
-                  <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--muted)" }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontFamily: "monospace",
+                      color: "var(--muted)",
+                    }}
+                  >
                     Digest: {lastPacket.packet_sha256.slice(0, 16)}…
                   </span>
                 </div>
 
+                <p>
+                  Context for “{lastPacket.query}”. Context set:{" "}
+                  <code style={{ overflowWrap: "anywhere" }}>
+                    {lastPacket.chunk_set_id ?? "unavailable"}
+                  </code>
+                </p>
                 {/* Token Meter */}
                 <div
                   style={{
@@ -569,13 +803,17 @@ export function RetrievalWorkbench({
                     style={{
                       height: "100%",
                       width: `${Math.min(100, (lastPacket.total_tokens / maxTokens) * 100)}%`,
-                      background: lastPacket.total_tokens > maxTokens * 0.9 ? "#ef4444" : "var(--action)",
+                      background:
+                        lastPacket.total_tokens > maxTokens * 0.9
+                          ? "#ef4444"
+                          : "var(--action)",
                     }}
                   />
                 </div>
 
                 <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                  Total Bytes: {lastPacket.total_bytes} bytes | Omitted: {lastPacket.omitted_count} items
+                  Total Bytes: {lastPacket.total_bytes} bytes | Omitted:{" "}
+                  {lastPacket.omitted_count} items
                 </div>
               </div>
 
@@ -598,7 +836,13 @@ export function RetrievalWorkbench({
                         marginBottom: 8,
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
                         <button
                           type="button"
                           onClick={() => copyCitation(item.citation_key)}
@@ -626,7 +870,8 @@ export function RetrievalWorkbench({
                         )}
                       </div>
                       <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                        {item.token_count} tokens | score: {item.relevance_score.toFixed(4)}
+                        {item.token_count} tokens | score:{" "}
+                        {item.relevance_score.toFixed(4)}
                       </span>
                     </div>
 
@@ -659,17 +904,28 @@ export function RetrievalWorkbench({
             <input
               type="text"
               placeholder="Query repository memories by topic or semantic phrase…"
-              value={memoryQuery}
-              onChange={(e) => setMemoryQuery(e.target.value)}
+              value={memoryDraft}
+              onChange={(e) => setMemoryDraft(e.target.value)}
               style={{ flex: 1 }}
             />
             <button
               type="button"
               className="primary"
-              onClick={() => memoriesQuery.refetch()}
+              onClick={() => setMemoryQuery(memoryDraft)}
             >
               Filter Memories
             </button>
+            {memoryDraft && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMemoryDraft("");
+                  setMemoryQuery("");
+                }}
+              >
+                Clear memory query
+              </button>
+            )}
           </div>
 
           {memorySuccessMsg && (
@@ -678,6 +934,7 @@ export function RetrievalWorkbench({
             </p>
           )}
 
+          {memoryValidation && <p role="alert">{memoryValidation}</p>}
           {/* Record New Grounded Memory Box */}
           <div
             style={{
@@ -688,31 +945,70 @@ export function RetrievalWorkbench({
               marginBottom: 20,
             }}
           >
-            <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>Record Grounded Memory</h3>
+            <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>
+              Record Grounded Memory
+            </h3>
+            {pinnedEvidence && (
+              <p className="muted">
+                Pinned evidence set:{" "}
+                <code style={{ overflowWrap: "anywhere" }}>
+                  {pinnedEvidence.chunk_set_id}
+                </code>
+                . Editing its file or range removes the chunk association.
+              </p>
+            )}
             <form
+              noValidate
               onSubmit={(e) => {
                 e.preventDefault();
+                if (!newMemoryTopic.trim() || !newMemorySummary.trim()) {
+                  setMemoryValidation("Enter a memory topic and summary.");
+                  return;
+                }
+                if (
+                  newMemoryEvidenceFile &&
+                  ((newMemoryStartLine ?? 1) < 1 ||
+                    (newMemoryEndLine ?? newMemoryStartLine ?? 1) <
+                      (newMemoryStartLine ?? 1))
+                ) {
+                  setMemoryValidation(
+                    "Enter a valid evidence line range, starting at line 1 or later.",
+                  );
+                  return;
+                }
+                setMemoryValidation("");
                 recordMemoryMutation.mutate({
                   memory_kind: newMemoryKind,
                   topic: newMemoryTopic,
                   summary: newMemorySummary,
-                  evidence_pointers: newMemoryEvidenceFile
-                    ? [
-                        {
-                          file_path: newMemoryEvidenceFile,
-                          start_line: newMemoryStartLine,
-                          end_line: newMemoryEndLine,
-                          symbol_name: newMemorySymbol || undefined,
-                        },
-                      ]
-                    : [],
+                  evidence_pointers: pinnedEvidence
+                    ? [pinnedEvidence]
+                    : newMemoryEvidenceFile
+                      ? [
+                          {
+                            file_path: newMemoryEvidenceFile,
+                            start_line: newMemoryStartLine ?? 1,
+                            end_line:
+                              newMemoryEndLine ?? newMemoryStartLine ?? 1,
+                            symbol_name: newMemorySymbol || undefined,
+                          },
+                        ]
+                      : [],
                 });
               }}
               style={{ display: "grid", gap: 10, maxWidth: "100%" }}
             >
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                }}
+              >
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600 }}>Memory Topic / Identifier:</label>
+                  <label style={{ fontSize: 12, fontWeight: 600 }}>
+                    Memory Topic / Identifier:
+                  </label>
                   <input
                     type="text"
                     required
@@ -723,30 +1019,38 @@ export function RetrievalWorkbench({
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600 }}>Memory Classification Kind:</label>
+                  <label style={{ fontSize: 12, fontWeight: 600 }}>
+                    Memory Classification Kind:
+                  </label>
                   <select
                     value={newMemoryKind}
-                    onChange={(e) => setNewMemoryKind(e.target.value as MemoryKind)}
+                    onChange={(e) =>
+                      setNewMemoryKind(e.target.value as MemoryKind)
+                    }
                     style={{ width: "100%" }}
                   >
-                    <option value="architecture_invariant">Architecture Invariant</option>
-                    <option value="security_finding_investigation">Security Investigation</option>
+                    <option value="architecture_fact">Architecture Fact</option>
+                    <option value="security_finding_evidence">
+                      Security Finding Evidence
+                    </option>
                     <option value="triage_resolution">Triage Resolution</option>
-                    <option value="developer_hypothesis">Developer Hypothesis</option>
-                    <option value="review_consensus">Review Consensus</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600 }}>Grounded Summary / Finding Resolution:</label>
+                <label style={{ fontSize: 12, fontWeight: 600 }}>
+                  Grounded Summary / Finding Resolution:
+                </label>
                 <textarea
+                  className="resize-none"
                   required
                   rows={2}
                   placeholder="Record deterministic fact or architectural invariant established during analysis..."
                   value={newMemorySummary}
                   onChange={(e) => setNewMemorySummary(e.target.value)}
                   style={{
+                    minHeight: 80,
                     width: "100%",
                     padding: 8,
                     border: "1px solid var(--border)",
@@ -756,41 +1060,64 @@ export function RetrievalWorkbench({
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 8 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                  gap: 8,
+                }}
+              >
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600 }}>Evidence File:</label>
+                  <label style={{ fontSize: 12, fontWeight: 600 }}>
+                    Evidence File:
+                  </label>
                   <input
                     type="text"
                     placeholder="src/auth.py"
                     value={newMemoryEvidenceFile}
-                    onChange={(e) => setNewMemoryEvidenceFile(e.target.value)}
+                    onChange={(e) => {
+                      setNewMemoryEvidenceFile(e.target.value);
+                      setPinnedEvidence(null);
+                    }}
                     style={{ width: "100%" }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600 }}>Start Line:</label>
+                  <label style={{ fontSize: 12, fontWeight: 600 }}>
+                    Start Line:
+                  </label>
                   <input
                     type="number"
                     value={newMemoryStartLine ?? ""}
-                    onChange={(e) =>
-                      setNewMemoryStartLine(e.target.value ? Number(e.target.value) : undefined)
-                    }
+                    onChange={(e) => (
+                      setNewMemoryStartLine(
+                        e.target.value ? Number(e.target.value) : undefined,
+                      ),
+                      setPinnedEvidence(null)
+                    )}
                     style={{ width: "100%" }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600 }}>End Line:</label>
+                  <label style={{ fontSize: 12, fontWeight: 600 }}>
+                    End Line:
+                  </label>
                   <input
                     type="number"
                     value={newMemoryEndLine ?? ""}
-                    onChange={(e) =>
-                      setNewMemoryEndLine(e.target.value ? Number(e.target.value) : undefined)
-                    }
+                    onChange={(e) => (
+                      setNewMemoryEndLine(
+                        e.target.value ? Number(e.target.value) : undefined,
+                      ),
+                      setPinnedEvidence(null)
+                    )}
                     style={{ width: "100%" }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600 }}>Symbol:</label>
+                  <label style={{ fontSize: 12, fontWeight: 600 }}>
+                    Symbol:
+                  </label>
                   <input
                     type="text"
                     placeholder="login_user"
@@ -804,7 +1131,11 @@ export function RetrievalWorkbench({
               <button
                 type="submit"
                 className="primary"
-                disabled={recordMemoryMutation.isPending || !newMemoryTopic || !newMemorySummary}
+                disabled={
+                  recordMemoryMutation.isPending ||
+                  !newMemoryTopic ||
+                  !newMemorySummary
+                }
                 style={{ width: 200, marginTop: 4 }}
               >
                 {recordMemoryMutation.isPending ? "Recording…" : "Save Memory"}
@@ -814,11 +1145,15 @@ export function RetrievalWorkbench({
 
           {/* List Memories */}
           <div>
-            <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>Repository Memories</h3>
+            <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>
+              Repository Memories
+            </h3>
             {memoriesQuery.isLoading ? (
               <p className="muted">Loading memories…</p>
             ) : memoriesQuery.data?.items.length === 0 ? (
-              <p className="muted">No grounded memories recorded for this repository yet.</p>
+              <p className="muted">
+                No grounded memories recorded for this repository yet.
+              </p>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
                 {memoriesQuery.data?.items.map((mem: MemoryEntryV1) => (
@@ -839,8 +1174,16 @@ export function RetrievalWorkbench({
                         marginBottom: 6,
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 14 }}>{mem.topic}</span>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <span style={{ fontWeight: 700, fontSize: 14 }}>
+                          {mem.topic}
+                        </span>
                         <span
                           style={{
                             background: "#ede9fe",
@@ -859,12 +1202,23 @@ export function RetrievalWorkbench({
                       </span>
                     </div>
 
-                    <p style={{ margin: "4px 0 8px", fontSize: 14 }}>{mem.summary}</p>
+                    <p style={{ margin: "4px 0 8px", fontSize: 14 }}>
+                      {mem.summary}
+                    </p>
 
-                    {mem.evidence_pointers.length > 0 && (
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                        <span style={{ fontSize: 11, color: "var(--muted)" }}>Evidence:</span>
-                        {mem.evidence_pointers.map((ev, i) => (
+                    {(mem.evidence_pointers ?? []).length > 0 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                          Evidence:
+                        </span>
+                        {(mem.evidence_pointers ?? []).map((ev, i) => (
                           <span
                             key={i}
                             style={{
@@ -876,7 +1230,9 @@ export function RetrievalWorkbench({
                             }}
                           >
                             {ev.file_path}
-                            {ev.start_line && ev.end_line ? `#L${ev.start_line}-L${ev.end_line}` : ""}
+                            {ev.start_line && ev.end_line
+                              ? `#L${ev.start_line}-L${ev.end_line}`
+                              : ""}
                             {ev.symbol_name ? ` (${ev.symbol_name})` : ""}
                           </span>
                         ))}
@@ -920,7 +1276,8 @@ export function RetrievalWorkbench({
               display: "flex",
               flexDirection: "column",
               padding: 20,
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              boxShadow:
+                "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
             }}
           >
             <div
@@ -937,7 +1294,13 @@ export function RetrievalWorkbench({
                 <h3 style={{ margin: 0, fontSize: 16 }}>
                   Privacy-Transformed Model-Safe Source View
                 </h3>
-                <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "monospace" }}>
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "var(--muted)",
+                    fontFamily: "monospace",
+                  }}
+                >
                   {selectedFileForView.filePath}
                   {selectedFileForView.startLine && selectedFileForView.endLine
                     ? ` #L${selectedFileForView.startLine}-L${selectedFileForView.endLine}`
@@ -955,10 +1318,13 @@ export function RetrievalWorkbench({
 
             <div style={{ flex: 1, overflowY: "auto" }}>
               {sourceViewQuery.isLoading ? (
-                <p className="muted">Extracting verified model-safe source range…</p>
+                <p className="muted">
+                  Extracting verified model-safe source range…
+                </p>
               ) : sourceViewQuery.isError ? (
                 <p role="alert" style={{ color: "var(--danger)" }}>
-                  Failed to load source view: {(sourceViewQuery.error as Error).message}
+                  Failed to load source view:{" "}
+                  {(sourceViewQuery.error as Error).message}
                 </p>
               ) : sourceViewQuery.data ? (
                 <div>
@@ -971,15 +1337,36 @@ export function RetrievalWorkbench({
                       marginBottom: 10,
                     }}
                   >
-                    <span>Representation: {sourceViewQuery.data.representation}</span>
-                    <span>Policy Version: {sourceViewQuery.data.policy_version}</span>
-                    <span>Redactions: {sourceViewQuery.data.interval_mappings.filter((m) => m.is_redacted).length}</span>
-                    <span>SHA: {sourceViewQuery.data.content_sha256.slice(0, 16)}…</span>
+                    <span>
+                      Representation: {sourceViewQuery.data.representation}
+                    </span>
+                    <span>
+                      Policy Version: {sourceViewQuery.data.policy_version}
+                    </span>
+                    <span>
+                      Redactions:{" "}
+                      {
+                        (sourceViewQuery.data.interval_mappings ?? []).filter(
+                          (m) => m.is_redacted,
+                        ).length
+                      }
+                    </span>
+                    <span>
+                      SHA: {sourceViewQuery.data.content_sha256.slice(0, 16)}…
+                    </span>
                   </div>
 
                   {sourceViewQuery.data.is_omitted ? (
-                    <p style={{ color: "#b45309", background: "#fef3c7", padding: 12, borderRadius: 4 }}>
-                      File content omitted: {sourceViewQuery.data.omission_reason}
+                    <p
+                      style={{
+                        color: "#b45309",
+                        background: "#fef3c7",
+                        padding: 12,
+                        borderRadius: 4,
+                      }}
+                    >
+                      File content omitted:{" "}
+                      {sourceViewQuery.data.omission_reason}
                     </p>
                   ) : (
                     <pre

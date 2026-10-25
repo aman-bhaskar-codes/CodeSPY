@@ -1,3 +1,5 @@
+"""SQLite API transport checks with simulated ranking; not publication qualification."""
+
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -135,7 +137,21 @@ async def test_retrieval_endpoints_unauthenticated(tmp_path: Path) -> None:
 async def test_retrieval_and_context_endpoints_authenticated(
     factory: async_sessionmaker[AsyncSession],
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from tests.phase5.unit.legacy_ranking import install_legacy_ranking
+
+    install_legacy_ranking(monkeypatch, include_context=True)
+    from unittest.mock import AsyncMock
+
+    # Transport-only fixture; real retained-source authority is tested in PostgreSQL.
+    monkeypatch.setattr("app.services.retrieval_authority.locate_source", AsyncMock())
+    from sqlalchemy import literal, select
+
+    monkeypatch.setattr(
+        "app.services.memory_service.MemoryService._snapshot_available",
+        lambda self, org_id, repository_id, snapshot_id: select(literal(True)),
+    )
     org_id = uuid4()
     principal_id = uuid4()
     repo_id = uuid4()
@@ -247,7 +263,7 @@ async def test_retrieval_and_context_endpoints_authenticated(
                 snapshot_id=snap_id,
                 index_type=str(IndexType.DENSE),
                 state=str(IndexState.READY),
-                embedding_provider="titan",
+                embedding_provider="aws_bedrock_simulated",
                 embedding_model="amazon.titan-embed-text-v2:0",
                 dimension=1024,
                 total_chunks=1,
@@ -323,7 +339,8 @@ async def test_retrieval_and_context_endpoints_authenticated(
         )
         assert dense_res.status_code == 200
         dense_data = dense_res.json()
-        assert dense_data["total_candidates"] >= 1
+        assert dense_data["total_candidates"] == 0
+        assert dense_data["availability"] == "embedding_unconfigured"
 
         # 5. Hybrid Search
         hybrid_res = await client.post(
