@@ -295,3 +295,51 @@ async def test_request_response_is_not_shared_across_principals(commands_ready):
             TriageTransitionV1(state="confirmed", expected_version=0),
             request_key="same-key",
         )
+
+
+async def test_current_support_filter_precedes_keyset_count_and_page(findings_case, monkeypatch):
+    from types import SimpleNamespace
+
+    from app.contracts.scan_publication import EffectiveVerificationV1
+    from app.models.scan_tables import verification_decisions
+    from app.services.scan_reads import ScanReadService
+
+    case = findings_case
+    ids = [UUID(int=(0xABCDEF << 104) + i) for i in range(1, 6)]
+    async with case.factory() as session, session.begin():
+        for identity in ids:
+            await session.execute(
+                verification_decisions.insert().values(
+                    org_id=case.ctx.org_id,
+                    snapshot_id=case.snapshot_id,
+                    run_id=case.run_id,
+                    finding_id=identity,
+                    disposition="supported-static",
+                    payload_json={},
+                    canonical_text="{}",
+                    payload_digest="a" * 64,
+                )
+            )
+
+    async def read(*args):
+        return SimpleNamespace(
+            effective_decisions=tuple(
+                EffectiveVerificationV1(
+                    finding_id=identity,
+                    historical_disposition="supported-static",
+                    effective_disposition="unresolved" if i % 2 else "supported-static",
+                    reason="source_unavailable" if i % 2 else "current_support",
+                )
+                for i, identity in enumerate(ids, 1)
+            )
+        )
+
+    monkeypatch.setattr(ScanReadService, "read_in_session", read)
+    service = FindingsQueryService(case.factory)
+    first = await page(case, service, disposition="unresolved", limit=2)
+    assert [f.id for f in first.items] == [ids[0], ids[2]]
+    assert first.total_count == 3 and first.next_cursor
+    last = await page(case, service, disposition="unresolved", limit=2, cursor=first.next_cursor)
+    assert [f.id for f in last.items] == [ids[4]]
+    assert last.total_count == 3 and last.next_cursor is None
+    assert all(f.historical_disposition == "supported-static" for f in first.items + last.items)

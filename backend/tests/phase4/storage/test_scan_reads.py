@@ -35,6 +35,10 @@ async def test_read_rechecks_source_without_mutating_historical_decisions(
     assert detail.disposition == "supported-static"
     assert detail.historical_disposition == "supported-static"
     assert detail.code_excerpt is None
+    before = await query.get_summary(
+        ctx, draft.spec.repository_id, lease.run_ref.snapshot_id, lease.run_ref.run_id
+    )
+    assert before.by_disposition.get("supported-static", 0) > 0
     objects = PHASE2_TABLES["object_records"]
     async with migration_factory() as session, session.begin():
         await session.execute(
@@ -51,6 +55,19 @@ async def test_read_rechecks_source_without_mutating_historical_decisions(
     assert detail.disposition == "unresolved"
     assert detail.historical_disposition == "supported-static"
     assert detail.support_reason == "source_unavailable"
+    page = await query.list_findings(
+        ctx,
+        draft.spec.repository_id,
+        lease.run_ref.snapshot_id,
+        lease.run_ref.run_id,
+        disposition="supported-static",
+    )
+    assert page.total_count == 0 and page.items == []
+    summary = await query.get_summary(
+        ctx, draft.spec.repository_id, lease.run_ref.snapshot_id, lease.run_ref.run_id
+    )
+    assert summary.by_disposition.get("supported-static", 0) == 0
+    assert summary.by_historical_disposition.get("supported-static", 0) > 0
     foreign = RunRef(
         org_id=ctx.principal_id, snapshot_id=lease.run_ref.snapshot_id, run_id=lease.run_ref.run_id
     )

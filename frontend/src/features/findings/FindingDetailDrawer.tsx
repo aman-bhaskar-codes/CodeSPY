@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
+import { FindingSupport } from "./FindingSupport";
 import { FeatureTraceGraph } from "./FeatureTraceGraph";
 import { TriageModal } from "./TriageModal";
 import type {
@@ -310,43 +311,14 @@ export function FindingDetailDrawer({
                 </div>
               </div>
 
-              {/* Verified Code Excerpt */}
-              {detail?.code_excerpt && (
-                <div>
-                  <h4 style={{ margin: "0 0 8px", fontSize: "14px" }}>
-                    Code Excerpt (Lines {detail.line_number ?? "?"} -{" "}
-                    {detail.end_line ?? detail.line_number ?? "?"})
-                  </h4>
-                  <pre
-                    style={{
-                      background: "#0f172a",
-                      color: "#f8fafc",
-                      padding: "16px",
-                      borderRadius: "6px",
-                      overflowX: "auto",
-                      fontSize: "12px",
-                      fontFamily: "ui-monospace, monospace",
-                      lineHeight: "1.5",
-                      margin: 0,
-                    }}
-                  >
-                    <code>{detail.code_excerpt}</code>
-                  </pre>
-                  {finding.category === "secret_format" && (
-                    <span
-                      className="muted"
-                      style={{
-                        fontSize: "11px",
-                        marginTop: "4px",
-                        display: "block",
-                      }}
-                    >
-                      Sensitive tokens and API secrets are automatically
-                      redacted from preview excerpts.
-                    </span>
-                  )}
-                </div>
-              )}
+              <FindingSupport
+                category={finding.category}
+                disposition={finding.disposition}
+                historicalDisposition={finding.historical_disposition}
+                supportReason={finding.support_reason}
+                excerpt={finding.code_excerpt}
+                excerptReason={finding.excerpt_reason}
+              />
 
               {/* Remediation */}
               {recommendation && (

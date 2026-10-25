@@ -102,6 +102,7 @@ class ModelRouter:
         disclosure_policy: DisclosurePolicyV1,
         idempotency_key: str,
         preferred_provider: str | None = None,
+        request_digest: str | None = None,
     ) -> RoutedModelV1:
         # Step 1: Filter candidates based on disclosure policy
         if requirement.required_region and not disclosure_policy.is_region_permitted(
@@ -157,7 +158,11 @@ class ModelRouter:
                 and model.provider != ModelProvider.FAKE
             ):
                 continue
-            if model.max_context_tokens < requirement.estimated_context_tokens:
+            if (
+                requirement.estimated_output_tokens > model.max_output_tokens
+                or requirement.estimated_context_tokens + requirement.estimated_output_tokens
+                > model.max_context_tokens
+            ):
                 continue
             capable_candidates.append(model)
 
@@ -203,6 +208,8 @@ class ModelRouter:
             estimated_output_tokens=requirement.estimated_output_tokens,
             estimated_micros=estimated_micros,
             idempotency_key=idempotency_key,
+            request_digest=request_digest,
+            price_snapshot=price if request_digest is not None else None,
         )
 
         return RoutedModelV1(

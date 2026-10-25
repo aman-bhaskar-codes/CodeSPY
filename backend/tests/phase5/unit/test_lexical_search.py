@@ -51,7 +51,16 @@ def test_extract_path_tokens() -> None:
 
 
 @pytest_asyncio.fixture
-async def session() -> AsyncIterator[AsyncSession]:
+async def session(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[AsyncSession]:
+    # These channel tests isolate retrieval ranking with explicit authority/retention doubles.
+    # Full authority is exercised by test_dense_availability and PostgreSQL integration.
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr("app.services.retrieval_authority.require_snapshot", AsyncMock())
+    monkeypatch.setattr("app.services.retrieval_authority.locate_source", AsyncMock())
+    from .legacy_ranking import install_legacy_ranking
+
+    install_legacy_ranking(monkeypatch)
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     grants = PHASE2_TABLES["repository_grants"]
     async with engine.begin() as conn:
