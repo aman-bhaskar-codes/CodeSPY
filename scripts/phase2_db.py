@@ -281,6 +281,20 @@ def grant_app(values, name):
             c.execute(
                 "GRANT INSERT, UPDATE, DELETE ON repo_memories TO p2_api,p2_broker"
             )
+        if c.execute("SELECT to_regclass('public.index_specs')").fetchone()[0]:
+            c.execute(
+                "GRANT SELECT ON index_specs,index_attempt_specs,retrieval_chunk_sets,index_publication_receipts TO p2_api,p2_broker"
+            )
+            c.execute("GRANT INSERT ON index_specs TO p2_api")
+            c.execute(
+                "GRANT EXECUTE ON FUNCTION public.codespy_scan_json(jsonb),public.codespy_scan_digest(jsonb) TO p2_api"
+            )
+            c.execute(
+                "GRANT INSERT ON index_attempt_specs,retrieval_chunk_sets,index_publication_receipts TO p2_broker"
+            )
+            c.execute(
+                "GRANT EXECUTE ON FUNCTION public.codespy_index_authority(uuid,uuid),public.codespy_index_complete_set(uuid,uuid) TO p2_broker"
+            )
         c.execute("REVOKE ALL ON public.alembic_version FROM p2_api,p2_broker")
         c.execute("REVOKE CREATE ON SCHEMA public FROM p2_api,p2_broker")
 

@@ -2,7 +2,7 @@ from alembic import context
 from app.core.database_config import DatabaseSettings
 from app.db.base import Base
 from app.db.migration_version import ensure_revision_capacity
-from app.models import phase2_tables, phase3_tables, scan_tables, tables  # noqa: F401
+from app.models import index_tables, phase2_tables, phase3_tables, scan_tables, tables  # noqa: F401
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
 

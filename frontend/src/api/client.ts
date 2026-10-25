@@ -197,6 +197,67 @@ export const api = {
         body: JSON.stringify(budget ?? {}),
       },
     ),
+  indexAvailability: (
+    repoId: string,
+    snapshotId: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("./generated/types.gen").IndexAvailabilityV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/indexes`,
+      { signal },
+    ),
+  createIndex: (
+    repoId: string,
+    snapshotId: string,
+    csrf: string,
+    key: string,
+  ) =>
+    request<import("./generated/types.gen").IndexCreateResponseV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/indexes`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf, key),
+        body: JSON.stringify({ request_key: key }),
+      },
+    ),
+  indexJob: (
+    repoId: string,
+    snapshotId: string,
+    jobId: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("./generated/types.gen").IndexStatusV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/index-jobs/${jobId}`,
+      { signal },
+    ),
+  cancelIndex: (
+    repoId: string,
+    snapshotId: string,
+    jobId: string,
+    csrf: string,
+  ) =>
+    request<import("./generated/types.gen").IndexStatusV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/index-jobs/${jobId}/cancel`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf),
+      },
+    ),
+  retryIndex: (
+    repoId: string,
+    snapshotId: string,
+    jobId: string,
+    csrf: string,
+    key: string,
+  ) =>
+    request<import("./generated/types.gen").IndexRetryResponseV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/index-jobs/${jobId}/retry`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf, key),
+        body: JSON.stringify({ request_key: key }),
+      },
+    ),
   searchExact: (
     repoId: string,
     snapshotId: string,

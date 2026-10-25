@@ -12,6 +12,7 @@ embedding_budgets = sa.Table(
     sa.Column("currency", sa.String(3), server_default="USD", nullable=False),
     sa.Column("balance_micros", sa.BigInteger, nullable=False),
     sa.Column("reserved_micros", sa.BigInteger, server_default="0", nullable=False),
+    sa.Column("debt_micros", sa.BigInteger, server_default="0", nullable=False),
     sa.Column("write_version", sa.BigInteger, server_default="1", nullable=False),
     created(),
     sa.Column(
@@ -24,6 +25,8 @@ embedding_budgets = sa.Table(
     ck("ck_budget_balance_nonneg", "balance_micros >= 0"),
     ck("ck_budget_reserved_nonneg", "reserved_micros >= 0"),
     ck("ck_budget_reserved_le_balance", "reserved_micros <= balance_micros"),
+    ck("ck_budget_debt_nonneg", "debt_micros >= 0"),
+    ck("ck_budget_debt_cash", "debt_micros=0 OR balance_micros=reserved_micros"),
     fk("fk_budget_repo", ["org_id", "repository_id"], "repositories", ["org_id", "id"]),
 )
 
