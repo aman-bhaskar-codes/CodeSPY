@@ -64,7 +64,7 @@ dependencies = [
 
     "tiktoken>=0.8.0",
 
-    "tenacity>=9.0.0",
+    "tenacity>=9.2.1",
 
     # --- DSA, AST/CPG Parsing, Git & Scientific Graph Ops ---
 
