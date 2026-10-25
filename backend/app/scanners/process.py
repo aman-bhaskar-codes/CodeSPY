@@ -55,16 +55,17 @@ async def _reap(process: asyncio.subprocess.Process, tasks: list[asyncio.Task[ob
         await asyncio.gather(discard(process.stdout), discard(process.stderr), process.wait())
 
 
-async def run_private(
+async def _run_bounded(
     argv: tuple[str, ...],
     *,
     deadline: float,
     stdout_limit: int,
     stderr_limit: int,
     cwd: Path | None = None,
+    output_ceiling: int,
 ) -> NativeResult:
     """Discard diagnostics, bound both pipes, and reap on every exit path."""
-    if not argv or not 0 < deadline <= 180 or not 0 < stdout_limit <= 2097152:
+    if not argv or not 0 < deadline <= 180 or not 0 < stdout_limit <= output_ceiling:
         raise ValueError("invalid scanner process limits")
     if not 0 < stderr_limit <= 65536:
         raise ValueError("invalid scanner process limits")
@@ -118,3 +119,22 @@ async def run_private(
                 if current is not None and current.cancelling():
                     raise asyncio.CancelledError() from None
                 raise NativeProcessError("scanner_cleanup_pending") from None
+
+
+async def run_private(
+    argv: tuple[str, ...],
+    *,
+    deadline: float,
+    stdout_limit: int,
+    stderr_limit: int,
+    cwd: Path | None = None,
+) -> NativeResult:
+    """Scanner pipe profile retains its existing 2 MiB output ceiling."""
+    return await _run_bounded(
+        argv,
+        deadline=deadline,
+        stdout_limit=stdout_limit,
+        stderr_limit=stderr_limit,
+        cwd=cwd,
+        output_ceiling=2_097_152,
+    )

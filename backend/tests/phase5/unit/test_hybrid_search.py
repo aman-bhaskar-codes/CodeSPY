@@ -3,6 +3,7 @@ from uuid import UUID, uuid4
 
 import pytest
 import pytest_asyncio
+from app.adapters.embedding.fake import FakeEmbeddingAdapter
 from app.contracts.chunking import ChunkKind, SourceChunkV1
 from app.contracts.search import (
     HybridSearchRequestV1,
@@ -21,7 +22,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 
 @pytest_asyncio.fixture
-async def session() -> AsyncIterator[AsyncSession]:
+async def session(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[AsyncSession]:
+    # These channel tests isolate retrieval ranking with explicit authority/retention doubles.
+    # Full authority is exercised by test_dense_availability and PostgreSQL integration.
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr("app.services.retrieval_authority.require_snapshot", AsyncMock())
+    monkeypatch.setattr("app.services.retrieval_authority.locate_source", AsyncMock())
+    from .legacy_ranking import install_legacy_ranking
+
+    install_legacy_ranking(monkeypatch)
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     grants = PHASE2_TABLES["repository_grants"]
     async with engine.begin() as conn:
@@ -99,9 +109,9 @@ async def test_hybrid_rrf_scoring_and_fusion(session: AsyncSession) -> None:
         )
     )
 
-    lifecycle = IndexLifecycleService(session)
+    lifecycle = IndexLifecycleService(session, embedding_port=FakeEmbeddingAdapter())
     lexical_svc = LexicalSearchService(session)
-    dense_svc = DenseSearchService(session)
+    dense_svc = DenseSearchService(session, embedding_port=FakeEmbeddingAdapter())
     hybrid_svc = HybridSearchService(session, lexical_service=lexical_svc, dense_service=dense_svc)
 
     # Create dense index
@@ -110,6 +120,7 @@ async def test_hybrid_rrf_scoring_and_fusion(session: AsyncSession) -> None:
         repository_id=repo_id,
         snapshot_id=snap_id,
         index_type=IndexType.DENSE,
+        embedding_provider="fake",
         embedding_model="fake-v1",
         dimension=1024,
     )
@@ -186,7 +197,7 @@ async def test_near_duplicate_subsumption(session: AsyncSession) -> None:
     )
 
     lexical_svc = LexicalSearchService(session)
-    dense_svc = DenseSearchService(session)
+    dense_svc = DenseSearchService(session, embedding_port=FakeEmbeddingAdapter())
     hybrid_svc = HybridSearchService(session, lexical_service=lexical_svc, dense_service=dense_svc)
 
     # Specific function chunk
@@ -230,6 +241,8 @@ async def test_near_duplicate_subsumption(session: AsyncSession) -> None:
     res = await hybrid_svc.search_hybrid(
         HybridSearchRequestV1(scope=scope, query="calculate_tax", limit=5)
     )
+    assert res.coverage_status == "partial"
+    assert res.dense_availability == "index_unavailable"
     hit_ids = [h.chunk_id for h in res.hits]
     assert c_func.chunk_id in hit_ids
     # Window chunk should be subsumed if function chunk is already present

@@ -30,16 +30,14 @@ source_chunks = sa.Table(
     sa.Column("redaction_digest", sa.String(64), nullable=False),
     sa.Column("chunker_version", sa.String(32), nullable=False),
     sa.Column("tsv", TSVECTOR().with_variant(sa.Text, "sqlite"), nullable=True),
+    col("chunk_set_id", "uuid", nullable=True),
+    sa.Column("safe_content_sha256", sa.Text, nullable=True),
+    sa.Column("safe_start_byte", sa.BigInteger, nullable=True),
+    sa.Column("safe_end_byte", sa.BigInteger, nullable=True),
+    sa.Column("provenance_json", JSONB().with_variant(sa.JSON, "sqlite"), nullable=True),
     created(),
     pk("org_id", "id"),
-    uq(
-        "uq_chunk_scope",
-        "org_id",
-        "snapshot_id",
-        "file_id",
-        "chunk_index",
-        "chunker_version",
-    ),
+    uq("uq_chunk_set_scope", "org_id", "repository_id", "snapshot_id", "id", "chunk_set_id"),
     ck("ck_chunk_byte_bounds", "start_byte >= 0 AND end_byte >= start_byte"),
     ck("ck_chunk_line_bounds", "start_line >= 1 AND end_line >= start_line"),
     ck("ck_chunk_counts", "byte_count >= 0 AND estimated_tokens >= 0"),
@@ -51,6 +49,28 @@ source_chunks = sa.Table(
         ["org_id", "snapshot_id", "id"],
     ),
 )
+
+sa.Index(
+    "uq_chunk_legacy",
+    *[
+        source_chunks.c[n]
+        for n in ("org_id", "snapshot_id", "file_id", "chunk_index", "chunker_version")
+    ],
+    unique=True,
+    postgresql_where=source_chunks.c.chunk_set_id.is_(None),
+    sqlite_where=source_chunks.c.chunk_set_id.is_(None),
+)
+sa.Index(
+    "uq_chunk_materialized",
+    source_chunks.c.org_id,
+    source_chunks.c.chunk_set_id,
+    source_chunks.c.file_id,
+    source_chunks.c.chunk_index,
+    unique=True,
+    postgresql_where=source_chunks.c.chunk_set_id.is_not(None),
+    sqlite_where=source_chunks.c.chunk_set_id.is_not(None),
+)
+
 
 search_indices = sa.Table(
     "search_indices",
@@ -74,6 +94,7 @@ search_indices = sa.Table(
         nullable=False,
         server_default="{}",
     ),
+    col("chunk_set_id", "uuid", nullable=True),
     created(),
     sa.Column(
         "updated_at",
@@ -82,6 +103,8 @@ search_indices = sa.Table(
         server_default=sa.func.clock_timestamp(),
     ),
     pk("org_id", "id"),
+    uq("uq_index_result_scope", "org_id", "repository_id", "snapshot_id", "id"),
+    uq("uq_index_set_scope", "org_id", "repository_id", "snapshot_id", "id", "chunk_set_id"),
     ck(
         "ck_index_state",
         "state IN ('building', 'sealing', 'ready', 'partial_ready', 'failed', 'stale')",
@@ -111,6 +134,7 @@ chunk_embeddings = sa.Table(
     ),
     sa.Column("token_count", sa.Integer, nullable=False, server_default="0"),
     created(),
+    col("chunk_set_id", "uuid", nullable=True),
     pk("org_id", "chunk_id", "index_id"),
     sa.ForeignKeyConstraint(
         ["org_id", "chunk_id"],

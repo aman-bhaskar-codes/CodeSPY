@@ -1,4 +1,4 @@
-"""Quantitative benchmark evaluation for CodeSPY Phase 5 retrieval suite.
+"""Synthetic ranking evaluation with mocked materialization and retained-source selection.
 
 Evaluates Exact, Lexical, Dense, and Hybrid (RRF) search across a frozen 10-case
 relevance dataset, asserting Recall@5, MRR, negative rejection, and context packing.
@@ -101,7 +101,16 @@ class EvalBenchmarkResult:
 
 
 @pytest_asyncio.fixture
-async def eval_session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+async def eval_session_factory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+    from unittest.mock import AsyncMock
+
+    from tests.phase5.unit.legacy_ranking import install_legacy_ranking
+
+    # Ranking metrics are simulated; PostgreSQL admission/publication is qualified separately.
+    install_legacy_ranking(monkeypatch, include_context=True)
+    monkeypatch.setattr("app.services.retrieval_authority.locate_source", AsyncMock())
     from sqlalchemy import CheckConstraint
 
     source_files.c.path.type.collation = None  # type: ignore[attr-defined]
@@ -402,7 +411,7 @@ async def test_retrieval_benchmark_suite(
                 snapshot_id=snap_id,
                 index_type=str(IndexType.DENSE),
                 state=str(IndexState.READY),
-                embedding_provider="simulated",
+                embedding_provider="simulated_semantic",
                 embedding_model="amazon.titan-embed-text-v2:0",
                 dimension=1024,
                 total_chunks=len(chunk_definitions),

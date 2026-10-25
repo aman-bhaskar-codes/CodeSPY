@@ -368,6 +368,7 @@ export function InvestigationsWorkbench({
                 Security Hypothesis or Finding to Investigate:
               </label>
               <textarea
+                className="resize-none"
                 id="investigation-query-input"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -1016,6 +1017,7 @@ export function InvestigationsWorkbench({
                 </div>
 
                 <textarea
+                  className="resize-none"
                   id="feedback-notes-input"
                   value={feedbackNotes}
                   onChange={(e) => setFeedbackNotes(e.target.value)}
