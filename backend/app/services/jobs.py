@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import and_, func, insert, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.contracts.indexing import EnqueueIndexJobV5, IndexJobRecordV5
 from app.contracts.jobs import AttemptLeaseV2, EnqueueJobV2, EnqueueJobV3, JobRecordV2, JobRecordV3
 from app.contracts.persistence import RunCreate
 from app.contracts.scan_jobs import EnqueueScanJobV4, ScanJobRecordV4
@@ -46,7 +47,7 @@ class JobService:
 
     async def enqueue(
         self, ctx: TenantContext, request: EnqueueJobV2 | EnqueueJobV3 | EnqueueScanJobV4
-    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4:
+    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5:
         if request.request_key.startswith(("job:", "child:")):
             raise ValueError("reserved request namespace")
         async with transaction(self.factory) as s:
@@ -54,7 +55,7 @@ class JobService:
                 s, ctx.org_id, ctx.principal_id, request.repository_id, request.snapshot_id
             )
             row = await self._enqueue(s, ctx, request)
-        if row.get("operation") == "scan_snapshot":
+        if row.get("operation") in {"scan_snapshot", "index_snapshot"}:
             return public_job_record(row)
         if isinstance(request, EnqueueJobV3) or row.get("operation") == "analyze_structure":
             return job_record_v3(row)
@@ -64,11 +65,15 @@ class JobService:
         self,
         s: AsyncSession,
         ctx: TenantContext,
-        request: EnqueueJobV2 | EnqueueJobV3 | EnqueueScanJobV4,
+        request: EnqueueJobV2 | EnqueueJobV3 | EnqueueScanJobV4 | EnqueueIndexJobV5,
     ) -> dict[str, Any]:
         digest = semantic_digest(request.model_dump())
         target_jobs = jobs
-        if isinstance(request, EnqueueScanJobV4):
+        if isinstance(request, EnqueueIndexJobV5):
+            from app.models.index_tables import index_jobs
+
+            target_jobs = index_jobs
+        elif isinstance(request, EnqueueScanJobV4):
             from app.models.scan_tables import scan_jobs
 
             target_jobs = scan_jobs
@@ -93,7 +98,8 @@ class JobService:
                 s, ctx.org_id, ctx.principal_id, old["repository_id"], write=True
             )
             if old["request_hash"] != digest or (
-                request.operation == "scan_snapshot" and old["principal_id"] != ctx.principal_id
+                request.operation in {"scan_snapshot", "index_snapshot"}
+                and old["principal_id"] != ctx.principal_id
             ):
                 raise DuplicateConflict("request key has different input")
             return dict(old)
@@ -131,7 +137,7 @@ class JobService:
 
     async def get(
         self, ctx: TenantContext, job_id: UUID
-    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4:
+    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5:
         async with transaction(self.factory) as s:
             row = await load_job(s, ctx.org_id, job_id)
             await require_repository(s, ctx.org_id, ctx.principal_id, row["repository_id"])
@@ -146,7 +152,7 @@ class JobService:
                     .order_by(jobs.c.created_at.desc(), jobs.c.id.desc())
                     .limit(1)
                 )
-        if row.get("operation") == "scan_snapshot":
+        if row.get("operation") in {"scan_snapshot", "index_snapshot"}:
             return public_job_record(row)
         if row.get("operation") == "analyze_structure":
             return job_record_v3(row)
@@ -277,7 +283,11 @@ class JobService:
                 .one()
             )
             target_jobs = jobs
-            if job.get("operation") == "scan_snapshot":
+            if job.get("operation") == "index_snapshot":
+                from app.models.index_tables import index_jobs
+
+                target_jobs = index_jobs
+            elif job.get("operation") == "scan_snapshot":
                 from app.models.scan_tables import scan_jobs
 
                 target_jobs = scan_jobs
@@ -316,6 +326,26 @@ class JobService:
                 else None,
             )
             await worker_context(s, lease)
+            if job["operation"] == "index_snapshot":
+                from app.models.index_tables import index_attempt_specs, index_specs
+
+                spec_hash = await s.scalar(
+                    select(index_specs.c.spec_hash).where(
+                        index_specs.c.org_id == org_id, index_specs.c.id == job["index_spec_id"]
+                    )
+                )
+                await s.execute(
+                    insert(index_attempt_specs).values(
+                        org_id=org_id,
+                        id=attempt_id,
+                        job_id=job_id,
+                        fence=fence,
+                        spec_id=job["index_spec_id"],
+                        repository_id=job["repository_id"],
+                        snapshot_id=job["snapshot_id"],
+                        spec_hash=spec_hash,
+                    )
+                )
             if run_id:
                 if job["operation"] == "scan_snapshot":
                     from app.contracts.scan_jobs import stored_config
@@ -545,7 +575,11 @@ class JobService:
         if retry:
             delay = min(60, 5 * 2 ** max(0, job["attempt_count"] - 1))
             target_jobs = jobs
-            if job.get("operation") == "scan_snapshot":
+            if job.get("operation") == "index_snapshot":
+                from app.models.index_tables import index_jobs
+
+                target_jobs = index_jobs
+            elif job.get("operation") == "scan_snapshot":
                 from app.models.scan_tables import scan_jobs
 
                 target_jobs = scan_jobs
@@ -651,11 +685,17 @@ class JobService:
             "unsupported_format",
             "integrity_failure",
             "internal_invariant",
+            "index_process_failed",
+            "index_cleanup_pending",
+            "index_timeout",
+            "index_runtime_unavailable",
         }
         if code not in allowed:
             raise ValueError("unknown failure code")
         async with transaction(self.factory) as s:
             job, _ = await self._locked(s, lease.org_id, lease.job_id)
+            if code.startswith("index_") and job["operation"] != "index_snapshot":
+                raise ValueError("unknown failure code")
             attempt = await self._current(s, lease, job)
             await self._finish_failure(
                 s, job, attempt, code, transient=transient, cancel=code == "access_revoked"
@@ -663,7 +703,7 @@ class JobService:
 
     async def request_cancel(
         self, ctx: TenantContext, job_id: UUID
-    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4:
+    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5:
         """API cancellation fences work; broker alone closes an inventory run."""
         async with transaction(self.factory) as s:
             hint = await load_job(s, ctx.org_id, job_id)
@@ -711,7 +751,7 @@ class JobService:
 
     async def cancel(
         self, ctx: TenantContext, job_id: UUID
-    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4:
+    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5:
         async with transaction(self.factory) as s:
             hint = await load_job(s, ctx.org_id, job_id)
             await lock_scope(
@@ -748,6 +788,8 @@ class JobService:
     async def recover_due(self, limit: int = 100) -> int:
         if not 1 <= limit <= 100:
             raise ValueError("invalid sweep batch size")
+        from app.repositories.index_recovery import index_recovery_due
+
         async with transaction(self.factory) as s:
             candidates = (
                 await s.execute(
@@ -764,6 +806,7 @@ class JobService:
                         jobs.c.state.not_in(TERMINAL),
                         or_(
                             jobs.c.deadline <= func.clock_timestamp(),
+                            index_recovery_due(),
                             and_(
                                 jobs.c.state == "running",
                                 attempts.c.lease_expires_at <= func.clock_timestamp(),
@@ -801,6 +844,37 @@ class JobService:
                     and attempt["state"] == "active"
                     and attempt["lease_expires_at"] <= now
                 )
+                if job["operation"] == "index_snapshot":
+                    if job["cancel_requested_at"] is not None:
+                        await self._finish_failure(
+                            s,
+                            job,
+                            dict(attempt) if attempt else None,
+                            "user_requested",
+                            transient=False,
+                            cancel=True,
+                        )
+                        changed += 1
+                        continue
+                    try:
+                        await require_repository(
+                            s,
+                            org_id,
+                            job["principal_id"],
+                            job["repository_id"],
+                            write=True,
+                            lock=True,
+                        )
+                    except ScopeViolation:
+                        await self._finish_failure(
+                            s,
+                            job,
+                            dict(attempt) if attempt else None,
+                            "access_revoked",
+                            transient=False,
+                        )
+                        changed += 1
+                        continue
                 if job["deadline"] <= now or expired:
                     await self._finish_failure(
                         s,

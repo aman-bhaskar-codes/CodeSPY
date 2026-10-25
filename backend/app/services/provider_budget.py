@@ -15,6 +15,7 @@ from app.contracts.provider_budget import (
     SettlementOutcomeV1,
     calculate_charge_micros,
 )
+from app.domain.budget_position import BudgetPosition
 from app.models.budget_tables import (
     embedding_budgets,
     embedding_reservations,
@@ -92,7 +93,8 @@ class ProviderBudgetService:
         return {
             "balance_micros": row["balance_micros"],
             "reserved_micros": row["reserved_micros"],
-            "available_micros": row["balance_micros"] - row["reserved_micros"],
+            "available_micros": BudgetPosition.from_row(row).available_micros,
+            "debt_micros": row["debt_micros"],
             "currency": row["currency"],
             "write_version": row["write_version"],
         }
@@ -242,7 +244,9 @@ class ProviderBudgetService:
         if budget_row is None:
             raise BudgetExceededError("Budget account does not exist for repository")
 
-        available = budget_row["balance_micros"] - budget_row["reserved_micros"]
+        if budget_row["debt_micros"]:
+            raise BudgetExceededError("Outstanding budget debt blocks new reservations")
+        available = BudgetPosition.from_row(budget_row).available_micros
         if available < estimated_charge:
             raise BudgetExceededError(
                 f"Insufficient available budget: available {available} micros < "
@@ -354,8 +358,7 @@ class ProviderBudgetService:
 
         if outcome.status == "success":
             actual_micros = outcome.actual_charge_micros
-            new_reserved = max(0, budget_row["reserved_micros"] - est_micros)
-            new_balance = max(0, budget_row["balance_micros"] - actual_micros)
+            position = BudgetPosition.from_row(budget_row).complete(est_micros, actual_micros)
 
             await self.s.execute(
                 embedding_budgets.update()
@@ -364,8 +367,7 @@ class ProviderBudgetService:
                     embedding_budgets.c.repository_id == res_row["repository_id"],
                 )
                 .values(
-                    balance_micros=new_balance,
-                    reserved_micros=new_reserved,
+                    **position.update_values(),
                     updated_at=ts,
                     write_version=budget_row["write_version"] + 1,
                 )
@@ -389,7 +391,7 @@ class ProviderBudgetService:
             fail_msg = None
 
         elif outcome.status == "failed":
-            new_reserved = max(0, budget_row["reserved_micros"] - est_micros)
+            position = BudgetPosition.from_row(budget_row).complete(est_micros)
             await self.s.execute(
                 embedding_budgets.update()
                 .where(
@@ -397,7 +399,7 @@ class ProviderBudgetService:
                     embedding_budgets.c.repository_id == res_row["repository_id"],
                 )
                 .values(
-                    reserved_micros=new_reserved,
+                    **position.update_values(),
                     updated_at=ts,
                     write_version=budget_row["write_version"] + 1,
                 )
@@ -510,7 +512,7 @@ class ProviderBudgetService:
         )
 
         if budget_row is not None:
-            new_reserved = max(0, budget_row["reserved_micros"] - res_row["estimated_micros"])
+            position = BudgetPosition.from_row(budget_row).complete(res_row["estimated_micros"])
             await self.s.execute(
                 embedding_budgets.update()
                 .where(
@@ -518,7 +520,7 @@ class ProviderBudgetService:
                     embedding_budgets.c.repository_id == res_row["repository_id"],
                 )
                 .values(
-                    reserved_micros=new_reserved,
+                    **position.update_values(),
                     updated_at=ts,
                     write_version=budget_row["write_version"] + 1,
                 )

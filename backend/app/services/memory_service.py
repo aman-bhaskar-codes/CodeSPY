@@ -1,9 +1,10 @@
 """Evidence-backed repository memory service for persistent findings and decisions."""
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contracts.memory import (
@@ -14,12 +15,19 @@ from app.contracts.memory import (
     MemoryQueryRequestV1,
     MemoryQueryResponseV1,
 )
+from app.contracts.search import SearchScopeV1
 from app.domain.errors import ScopeViolation
+from app.models.chunk_tables import source_chunks
 from app.models.memory_tables import repo_memories
 from app.models.phase2_tables import PHASE2_TABLES
-from app.models.tables import memberships
-
-grants = PHASE2_TABLES["repository_grants"]
+from app.models.scan_tables import finding_occurrences
+from app.models.tables import artifacts, source_files, source_snapshots
+from app.security.authorization import require_repository
+from app.services.retrieval_selection import (
+    resolve_lexical_set,
+    selected_chunks,
+    validate_safe_content,
+)
 
 
 class MemoryService:
@@ -42,7 +50,20 @@ class MemoryService:
             request.org_id,
             request.repository_id,
             request.principal_id,
+            write=True,
         )
+        if not await self.session.scalar(
+            self._snapshot_available(request.org_id, request.repository_id, request.snapshot_id)
+        ):
+            raise ScopeViolation("Memory snapshot is unavailable in repository")
+        for pointer in request.evidence_pointers:
+            await self._verify_pointer(
+                request.org_id,
+                request.repository_id,
+                request.snapshot_id,
+                request.principal_id,
+                pointer,
+            )
 
         memory_id = uuid4()
         now = datetime.now(UTC)
@@ -89,7 +110,21 @@ class MemoryService:
         stmt = select(repo_memories).where(
             repo_memories.c.org_id == request.org_id,
             repo_memories.c.repository_id == request.repository_id,
+            self._snapshot_available(
+                request.org_id, request.repository_id, repo_memories.c.snapshot_id
+            ).scalar_subquery(),
         )
+        if request.snapshot_id is not None:
+            owned = await self.session.scalar(
+                select(source_snapshots.c.id).where(
+                    source_snapshots.c.org_id == request.org_id,
+                    source_snapshots.c.repository_id == request.repository_id,
+                    source_snapshots.c.id == request.snapshot_id,
+                )
+            )
+            if owned is None:
+                raise ScopeViolation("Memory snapshot is outside repository")
+            stmt = stmt.where(repo_memories.c.snapshot_id == request.snapshot_id)
 
         if request.memory_kind is not None:
             stmt = stmt.where(repo_memories.c.memory_kind == str(request.memory_kind))
@@ -97,16 +132,34 @@ class MemoryService:
         if request.topic is not None:
             stmt = stmt.where(repo_memories.c.topic == request.topic)
 
-        result = await self.session.execute(stmt.order_by(repo_memories.c.created_at.desc()))
-        rows = result.mappings().all()
-
         query_terms = [t.lower() for t in request.query.split() if len(t) > 1]
+        if query_terms:
+            corpus = func.lower(repo_memories.c.topic + " " + repo_memories.c.summary)
+            stmt = stmt.where(
+                or_(*(corpus.contains(term, autoescape=True) for term in query_terms))
+            )
+        result = await self.session.stream(
+            stmt.order_by(
+                repo_memories.c.created_at.desc(), repo_memories.c.id.desc()
+            ).execution_options(yield_per=100)
+        )
+
         matched: list[MemoryEntryV1] = []
 
-        for r in rows:
-            text_corpus = f"{r['topic']} {r['summary']}".lower()
-            if not query_terms or any(term in text_corpus for term in query_terms):
+        try:
+            async for r in result.mappings():
                 ptrs = tuple(EvidencePointerV1(**p) for p in (r["evidence_pointers"] or []))
+                try:
+                    for pointer in ptrs:
+                        await self._verify_pointer(
+                            request.org_id,
+                            request.repository_id,
+                            r["snapshot_id"],
+                            request.principal_id,
+                            pointer,
+                        )
+                except ScopeViolation:
+                    continue
                 matched.append(
                     MemoryEntryV1(
                         memory_id=r["id"],
@@ -121,9 +174,11 @@ class MemoryService:
                         updated_at=r["updated_at"],
                     )
                 )
+
                 if len(matched) >= request.limit:
                     break
-
+        finally:
+            await result.close()
         return MemoryQueryResponseV1(
             org_id=request.org_id,
             repository_id=request.repository_id,
@@ -132,27 +187,123 @@ class MemoryService:
             items=tuple(matched),
         )
 
-    async def _verify_scope(self, org_id: UUID, repository_id: UUID, principal_id: UUID) -> None:
-        """Verify principal has active membership and repository access."""
-        mem_check = await self.session.execute(
-            select(memberships.c.role).where(
-                memberships.c.org_id == org_id,
-                memberships.c.principal_id == principal_id,
+    def _snapshot_available(
+        self, org_id: UUID, repository_id: UUID, snapshot_id: UUID | ColumnElement[UUID]
+    ) -> Select[Any]:
+        objects = PHASE2_TABLES["object_records"]
+        return select(
+            select(source_snapshots.c.id)
+            .join(
+                artifacts,
+                (artifacts.c.org_id == source_snapshots.c.org_id)
+                & (artifacts.c.repository_id == source_snapshots.c.repository_id)
+                & (artifacts.c.id == source_snapshots.c.artifact_id),
             )
+            .join(
+                objects,
+                (objects.c.org_id == artifacts.c.org_id)
+                & (objects.c.repository_id == artifacts.c.repository_id)
+                & (objects.c.key == artifacts.c.storage_key)
+                & (objects.c.sha256 == artifacts.c.sha256)
+                & (objects.c.size_bytes == artifacts.c.size_bytes),
+            )
+            .where(
+                source_snapshots.c.org_id == org_id,
+                source_snapshots.c.repository_id == repository_id,
+                source_snapshots.c.id == snapshot_id,
+                source_snapshots.c.state == "sealed",
+                objects.c.kind == "source",
+                objects.c.state == "available",
+            )
+            .correlate(repo_memories)
+            .exists()
         )
-        if not mem_check.first():
-            raise ScopeViolation(f"Principal {principal_id} is not a member of org {org_id}")
 
-        grant_check = await self.session.execute(
-            select(grants.c.permission).where(
-                grants.c.org_id == org_id,
-                grants.c.repository_id == repository_id,
-                grants.c.principal_id == principal_id,
-                grants.c.permission.in_(["read", "write", "admin"]),
-                grants.c.revoked_at.is_(None),
+    async def _verify_pointer(
+        self,
+        org_id: UUID,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        principal_id: UUID,
+        pointer: EvidencePointerV1,
+    ) -> None:
+        file_id = await self.session.scalar(
+            select(source_files.c.id).where(
+                source_files.c.org_id == org_id,
+                source_files.c.snapshot_id == snapshot_id,
+                source_files.c.path == pointer.file_path,
             )
         )
-        if not grant_check.first():
-            raise ScopeViolation(
-                f"Principal {principal_id} lacks access to repository {repository_id}"
+        if file_id is None or pointer.end_line < pointer.start_line:
+            raise ScopeViolation("Memory evidence file or range is invalid")
+        if pointer.chunk_id is not None:
+            if (
+                pointer.chunk_set_id is None
+                or pointer.materialization_hash is None
+                or pointer.safe_content_sha256 is None
+            ):
+                raise ScopeViolation("Memory evidence requires qualified chunk provenance")
+            scope = SearchScopeV1(
+                org_id=org_id,
+                repository_id=repository_id,
+                snapshot_id=snapshot_id,
+                principal_id=principal_id,
+                chunk_set_id=pointer.chunk_set_id,
             )
+            resolved = await resolve_lexical_set(
+                self.session, scope, chunk_set_id=pointer.chunk_set_id
+            )
+            if resolved is None or pointer.materialization_hash != resolved.materialization_hash:
+                raise ScopeViolation("Memory evidence materialization is unavailable")
+            if pointer.config_hash is not None and pointer.config_hash != resolved.config_hash:
+                raise ScopeViolation("Memory evidence configuration differs")
+            result = await self.session.execute(
+                select(source_chunks).where(
+                    selected_chunks(self.session, scope, resolved),
+                    source_chunks.c.org_id == org_id,
+                    source_chunks.c.repository_id == repository_id,
+                    source_chunks.c.snapshot_id == snapshot_id,
+                    source_chunks.c.file_id == file_id,
+                    source_chunks.c.id == pointer.chunk_id,
+                    source_chunks.c.file_path == pointer.file_path,
+                    source_chunks.c.start_line <= pointer.start_line,
+                    source_chunks.c.end_line >= pointer.end_line,
+                )
+            )
+            chunk = result.mappings().one_or_none()
+            if chunk is None:
+                raise ScopeViolation("Memory evidence chunk is outside scoped file range")
+            validate_safe_content(dict(chunk))
+            if chunk["safe_content_sha256"] != pointer.safe_content_sha256:
+                raise ScopeViolation("Memory evidence safe-content digest differs")
+            if pointer.sha256 is not None and pointer.sha256 != chunk["content_sha256"]:
+                raise ScopeViolation("Memory evidence source digest differs")
+        if pointer.finding_id is not None:
+            finding = await self.session.scalar(
+                select(finding_occurrences.c.id)
+                .where(
+                    finding_occurrences.c.org_id == org_id,
+                    finding_occurrences.c.snapshot_id == snapshot_id,
+                    finding_occurrences.c.file_id == file_id,
+                    finding_occurrences.c.id == pointer.finding_id,
+                )
+                .limit(1)
+            )
+            if finding is None:
+                raise ScopeViolation("Memory evidence finding is outside scoped file")
+
+        if pointer.chunk_id is not None:
+            # Recheck historical authority after all awaited evidence reads.
+            current = await resolve_lexical_set(
+                self.session, scope, chunk_set_id=pointer.chunk_set_id
+            )
+            if current is None or current.materialization_hash != pointer.materialization_hash:
+                raise ScopeViolation("Memory evidence materialization became unavailable")
+
+    async def _verify_scope(
+        self, org_id: UUID, repository_id: UUID, principal_id: UUID, *, write: bool = False
+    ) -> None:
+        """Reuse current repository authority for HTTP, worker and MCP callers."""
+        await require_repository(
+            self.session, org_id, principal_id, repository_id, write=write, lock=True
+        )

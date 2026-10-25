@@ -9,7 +9,6 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
-from app.adapters.model.fake import FakeModelAdapter
 from app.analyzers.reporting import render_json, render_markdown
 from app.contracts.context import (
     ContextAssemblyRequestV1,
@@ -29,6 +28,15 @@ from app.contracts.http import (
     RepositoryListItemV1,
     RepositoryPageV1,
     SessionV1,
+)
+from app.contracts.indexing import (
+    IndexAvailabilityV1,
+    IndexBuildConfigV1,
+    IndexCreateResponseV1,
+    IndexJobRecordV5,
+    IndexRetryResponseV1,
+    IndexStartRequestV1,
+    IndexStatusV1,
 )
 from app.contracts.ingestion import (
     AdmissionPolicy,
@@ -121,13 +129,15 @@ from app.domain.errors import (
 from app.domain.scope import TenantContext
 from app.models.phase2_tables import PHASE2_TABLES
 from app.models.tables import memberships, repositories, source_files, source_snapshots
+from app.ports.embedding import EmbeddingPort
 from app.ports.model import ModelPort
 from app.ports.object_store import ObjectStore
 from app.ports.scan_execution import ScanCapabilities
+from app.ports.source_reader import SourceReaderPort, SourceReaderUnavailable
 from app.repositories.command_repository import record_command, replay_command
 from app.repositories.identity_repository import IdentityRepository
 from app.repositories.repository_repository import RepositoryRepository
-from app.security.authorization import require_repository
+from app.security.authorization import require_repository, require_snapshot
 from app.security.cursors import CursorCodec
 from app.security.oauth import OAuthRejected, OAuthService
 from app.security.sessions import SessionService, token_digest
@@ -143,6 +153,7 @@ from app.services.findings_query import (
 )
 from app.services.github_acquisition import GitHubAcquisitionService
 from app.services.hybrid_search import HybridSearchService
+from app.services.index_jobs import IndexJobCapabilities, IndexJobService
 from app.services.investigation_checkpointer import (
     FencedCheckpointer,
     InvestigationNotFoundError,
@@ -166,7 +177,7 @@ from app.services.submissions import SubmissionService
 from app.services.triage import TriageService
 from app.services.two_specialist_investigator import TwoSpecialistInvestigator
 from app.services.webhooks import GitHubWebhookService
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
@@ -228,11 +239,17 @@ class ApplicationPorts:
     scan_capabilities: ScanCapabilities | None = None
     stream_buffer: InvestigationStreamBuffer | None = None
     model_adapter: ModelPort | None = None
+    source_reader: SourceReaderPort | None = None
+    embedding_port: EmbeddingPort | None = None
+    index_config: IndexBuildConfigV1 | None = None
+    index_builder: IndexJobCapabilities | None = None
 
 
 def legacy_job_record(
-    value: JobRecordV2 | JobRecordV3 | ScanJobRecordV4,
+    value: JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5,
 ) -> JobRecordV2 | JobRecordV3:
+    if isinstance(value, IndexJobRecordV5):
+        raise HTTPException(409, detail="index_operation_unavailable")
     if isinstance(value, ScanJobRecordV4):
         raise HTTPException(409, detail="scan_operation_unavailable")
     return value
@@ -277,11 +294,20 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     )
     sessions = SessionService(ports.factory)
     jobs = JobService(ports.factory)
+    indexes = IndexJobService(
+        ports.factory, ports.index_builder if ports.index_config is not None else None
+    )
     retries = RetryService(ports.factory, ports.store)
     submissions = SubmissionService(ports.factory, ports.store, policy=ports.admission_policy)
     structural = StructuralAnalysisService(ports.factory)
     cursors = CursorCodec(secrets.token_bytes(32))
-    findings_query = FindingsQueryService(ports.factory, ports.scan_capabilities, cursors)
+    findings_query = FindingsQueryService(
+        ports.factory,
+        ports.scan_capabilities,
+        cursors,
+        source_reader=ports.source_reader,
+        store=ports.store,
+    )
     triage_service = TriageService(ports.factory, cursors)
     trace_service = FeatureTraceService(ports.factory)
     app_stream_buffer = ports.stream_buffer or InvestigationStreamBuffer()
@@ -338,10 +364,19 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             503: "provider_unconfigured",
         }
         code = codes.get(exception.status_code, "invalid_state")
-        if exception.status_code == 503 and exception.detail == "analysis_unavailable":
-            code = "analysis_unavailable"
-        if exception.status_code == 409 and exception.detail == "scan_operation_unavailable":
-            code = "scan_operation_unavailable"
+        if exception.status_code == 503 and exception.detail in {
+            "analysis_unavailable",
+            "source_reader_unavailable",
+            "inference_unavailable",
+            "index_unavailable",
+        }:
+            code = exception.detail
+        if exception.status_code == 409 and exception.detail in {
+            "scan_operation_unavailable",
+            "index_operation_unavailable",
+            "memory_snapshot_unbound",
+        }:
+            code = exception.detail
         return error(exception.status_code, code)
 
     @app.exception_handler(RequestValidationError)
@@ -794,16 +829,28 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         return await submissions.cancel(ctx, submission_id)
 
     @app.get("/api/v1/jobs/{job_id}")
-    async def get_job(request: Request, job_id: UUID) -> JobRecordV2 | JobRecordV3:
+    async def get_job(
+        request: Request, job_id: UUID
+    ) -> JobRecordV2 | JobRecordV3 | IndexJobRecordV5:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id)
-        return legacy_job_record(await jobs.get(ctx, job_id))
+        job = await jobs.get(ctx, job_id)
+        if isinstance(job, IndexJobRecordV5):
+            return (await indexes.get(ctx, job.repository_id, job.snapshot_id, job_id)).job
+        return legacy_job_record(job)
 
     @app.post("/api/v1/jobs/{job_id}/cancel")
     async def cancel_job(
         request: Request, response: Response, job_id: UUID
-    ) -> JobRecordV2 | JobRecordV3:
+    ) -> JobRecordV2 | JobRecordV3 | IndexJobRecordV5:
         ctx = await resource_context(request, PHASE2_TABLES["jobs"], job_id, write=True)
-        legacy_job_record(await jobs.get(ctx, job_id))
+        current = await jobs.get(ctx, job_id)
+        if isinstance(current, IndexJobRecordV5):
+            result_index = await indexes.cancel(
+                ctx, current.repository_id, current.snapshot_id, job_id
+            )
+            response.status_code = 202 if result_index.job.state == "cancelling" else 200
+            return result_index.job
+        legacy_job_record(current)
         result = legacy_job_record(await jobs.request_cancel(ctx, job_id))
         response.status_code = 202 if result.state == "cancelling" else 200
         return result
@@ -1262,6 +1309,65 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             "excerpt": excerpt.model_dump(mode="json") if excerpt else None,
         }
 
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/indexes")
+    async def index_availability(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> IndexAvailabilityV1:
+        ctx = await repository_context(request, repository_id)
+        return await indexes.availability(ctx, repository_id, snapshot_id, ports.index_config)
+
+    @app.post(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/indexes", status_code=202
+    )
+    async def create_snapshot_index(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> IndexCreateResponseV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        async with transaction(ports.factory) as session:
+            await require_snapshot(session, ctx, repository_id, snapshot_id, write=True)
+        body = await json_body(request, IndexStartRequestV1)
+        if body.request_key != key(request):
+            raise HTTPException(422, detail="request_key_mismatch")
+        if ports.index_config is None or ports.index_builder is None:
+            raise HTTPException(503, detail="index_unavailable")
+        return await indexes.create(
+            ctx, repository_id, snapshot_id, ports.index_config, body.request_key
+        )
+
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/index-jobs/{job_id}")
+    async def get_index_job(
+        request: Request, repository_id: UUID, snapshot_id: UUID, job_id: UUID
+    ) -> IndexStatusV1:
+        ctx = await repository_context(request, repository_id)
+        return await indexes.get(ctx, repository_id, snapshot_id, job_id)
+
+    @app.post(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/index-jobs/{job_id}/cancel"
+    )
+    async def cancel_index_job(
+        request: Request, response: Response, repository_id: UUID, snapshot_id: UUID, job_id: UUID
+    ) -> IndexStatusV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        result = await indexes.cancel(ctx, repository_id, snapshot_id, job_id)
+        response.status_code = 202 if result.job.state == "cancelling" else 200
+        return result
+
+    @app.post(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/index-jobs/{job_id}/retry",
+        status_code=202,
+    )
+    async def retry_index_job(
+        request: Request, repository_id: UUID, snapshot_id: UUID, job_id: UUID
+    ) -> IndexRetryResponseV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        await indexes.get(ctx, repository_id, snapshot_id, job_id)
+        body = await json_body(request, IndexStartRequestV1)
+        if body.request_key != key(request):
+            raise HTTPException(422, detail="request_key_mismatch")
+        if ports.index_config is None or ports.index_builder is None:
+            raise HTTPException(503, detail="index_unavailable")
+        return await indexes.retry(ctx, repository_id, job_id, body.request_key)
+
     @app.post(
         "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans",
         status_code=202,
@@ -1438,6 +1544,8 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             repository_id=repository_id,
             snapshot_id=snapshot_id,
             principal_id=ctx.principal_id,
+            chunk_set_id=body.chunk_set_id
+            or (body.scope.chunk_set_id if body.scope is not None else None),
         )
         req = ExactSearchRequestV1(
             scope=scope,
@@ -1460,6 +1568,8 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             repository_id=repository_id,
             snapshot_id=snapshot_id,
             principal_id=ctx.principal_id,
+            chunk_set_id=body.chunk_set_id
+            or (body.scope.chunk_set_id if body.scope is not None else None),
         )
         req = LexicalSearchRequestV1(
             scope=scope,
@@ -1481,6 +1591,8 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             repository_id=repository_id,
             snapshot_id=snapshot_id,
             principal_id=ctx.principal_id,
+            chunk_set_id=body.chunk_set_id
+            or (body.scope.chunk_set_id if body.scope is not None else None),
         )
         req = DenseSearchRequestV1(
             scope=scope,
@@ -1490,7 +1602,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             min_score=body.min_score,
         )
         async with transaction(ports.factory) as s:
-            svc = DenseSearchService(s)
+            svc = DenseSearchService(s, embedding_port=ports.embedding_port)
             return await svc.search_dense(req)
 
     @app.post("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/hybrid")
@@ -1504,6 +1616,8 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             repository_id=repository_id,
             snapshot_id=snapshot_id,
             principal_id=ctx.principal_id,
+            chunk_set_id=body.chunk_set_id
+            or (body.scope.chunk_set_id if body.scope is not None else None),
         )
         req = HybridSearchRequestV1(
             scope=scope,
@@ -1517,7 +1631,9 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             dense_index_id=body.dense_index_id,
         )
         async with transaction(ports.factory) as s:
-            svc = HybridSearchService(s)
+            svc = HybridSearchService(
+                s, dense_service=DenseSearchService(s, embedding_port=ports.embedding_port)
+            )
             return await svc.search_hybrid(req)
 
     @app.post("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/context/assemble")
@@ -1531,15 +1647,22 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             repository_id=repository_id,
             snapshot_id=snapshot_id,
             principal_id=ctx.principal_id,
+            chunk_set_id=body.chunk_set_id
+            or (body.scope.chunk_set_id if body.scope is not None else None),
         )
         async with transaction(ports.factory) as s:
             candidate_hits = body.candidate_hits
             if not candidate_hits:
-                h_svc = HybridSearchService(s)
+                if not 1 <= len(body.query) <= 256:
+                    raise HTTPException(422, detail="invalid_search_query")
+                h_svc = HybridSearchService(
+                    s, dense_service=DenseSearchService(s, embedding_port=ports.embedding_port)
+                )
                 h_res = await h_svc.search_hybrid(
                     HybridSearchRequestV1(scope=scope, query=body.query, limit=20)
                 )
                 candidate_hits = h_res.hits
+                scope = h_res.scope
             c_svc = ContextAssemblyService(s)
             return await c_svc.assemble_context(
                 ContextAssemblyRequestV1(
@@ -1577,15 +1700,16 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         request: Request,
         repository_id: UUID,
         snapshot_id: UUID,
-        query: str = "",
+        query: str = Query(default="", max_length=256),
         topic: str | None = None,
         memory_kind: MemoryKind | None = None,
-        limit: int = 20,
+        limit: int = Query(default=20, ge=1, le=100),
     ) -> MemoryQueryResponseV1:
         ctx = await repository_context(request, repository_id, write=False)
         req = MemoryQueryRequestV1(
             org_id=ctx.org_id,
             repository_id=repository_id,
+            snapshot_id=snapshot_id,
             principal_id=ctx.principal_id,
             query=query or "memory",
             topic=topic,
@@ -1622,11 +1746,13 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             representation=representation,
         )
         async with transaction(ports.factory) as s:
-            svc = SourceViewService(s, ports.store)
+            svc = SourceViewService(s, ports.store, reader=ports.source_reader)
             try:
                 return await svc.get(req, PrivacyPolicyV1())
+            except SourceReaderUnavailable as e:
+                raise HTTPException(503, detail="source_reader_unavailable") from e
             except ScopeViolation as e:
-                raise HTTPException(403, detail=str(e)) from e
+                raise HTTPException(403, detail="source_unavailable") from e
 
     @app.post("/api/v1/repositories/{repository_id}/investigations", status_code=201)
     async def create_investigation_endpoint(
@@ -1714,27 +1840,27 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             if inv_summary.repository_id != repository_id:
                 raise HTTPException(404, detail="investigation_not_found")
 
-            fence = await checkpointer.acquire_lease(
-                ctx.org_id, investigation_id, worker_id=worker_id
-            )
+            if ports.model_adapter is None:
+                raise HTTPException(503, detail="inference_unavailable")
 
             budget_svc = ModelBudgetService(s)
             await budget_svc.ensure_default_generation_pricing()
             await budget_svc.ensure_budget(
                 ctx.org_id, repository_id, initial_balance_micros=10_000_000
             )
-            router = ModelRouter(budget_svc)
-            default_resp = json.dumps(
-                {
-                    "verdict": "indeterminate",
-                    "confidence": 0.5,
-                    "summary": "Automated verification completed with indeterminate findings.",
-                    "claims": [],
-                }
+        async with transaction(ports.factory) as s:
+            checkpointer = FencedCheckpointer(s, event_sink=app_stream_buffer)
+            fence = await checkpointer.acquire_lease(
+                ctx.org_id, investigation_id, worker_id=worker_id
             )
-            adapter = ports.model_adapter or FakeModelAdapter(default_content=default_resp)
+            budget_svc = ModelBudgetService(s)
+            router = ModelRouter(budget_svc)
+            adapter = ports.model_adapter
             gateway = ModelGatewayService(
-                router=router, budget_service=budget_svc, adapters={"fake": adapter}
+                router=router,
+                budget_service=budget_svc,
+                adapters={"fake": adapter},
+                accounting_factory=ports.factory,
             )
             exec_ctx = ToolExecutionContext(
                 org_id=ctx.org_id,
@@ -1850,6 +1976,10 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             if UUID(str(inv["repository_id"])) != repository_id:
                 raise HTTPException(404, detail="investigation_not_found")
 
+            memory_snapshot = inv.get("snapshot_id")
+            if body.save_to_memory and memory_snapshot is None:
+                raise HTTPException(409, detail="memory_snapshot_unbound")
+
             await checkpointer.record_feedback(
                 org_id=ctx.org_id,
                 investigation_id=investigation_id,
@@ -1863,7 +1993,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 mem_req = MemoryCreateRequestV1(
                     org_id=ctx.org_id,
                     repository_id=repository_id,
-                    snapshot_id=repository_id,
+                    snapshot_id=UUID(str(memory_snapshot)),
                     principal_id=ctx.principal_id,
                     memory_kind=MemoryKind.TRIAGE_RESOLUTION,
                     topic=body.memory_topic
@@ -1885,6 +2015,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
             components = schema.setdefault("components", {}).setdefault("schemas", {})
             contract_models: tuple[type[BaseModel], ...] = (
+                IndexStartRequestV1,
                 RepositoryCreate,
                 UploadReservationV1,
                 GitHubAcquisitionV1,
@@ -1942,6 +2073,14 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 components.update(model_schema.pop("$defs", {}))
                 components[model.__name__] = model_schema
             body_contracts: tuple[tuple[str, type[BaseModel]], ...] = (
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/indexes",
+                    IndexStartRequestV1,
+                ),
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/index-jobs/{job_id}/retry",
+                    IndexStartRequestV1,
+                ),
                 ("/api/v1/repositories", RepositoryCreate),
                 ("/api/v1/repositories/{repository_id}/github-binding", GitHubBindingV1),
                 ("/api/v1/repositories/{repository_id}/uploads", UploadReservationV1),

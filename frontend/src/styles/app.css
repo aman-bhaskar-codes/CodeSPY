@@ -237,3 +237,7 @@ nav {
     scroll-behavior: auto !important;
   }
 }
+
+.resize-none {
+  resize: none;
+}

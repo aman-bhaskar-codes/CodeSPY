@@ -3,13 +3,12 @@
 import math
 import time
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.adapters.embedding.fake import FakeEmbeddingAdapter
 from app.contracts.chunking import ChunkKind
 from app.contracts.provider_budget import EmbeddingRequestV1
 from app.contracts.search import (
@@ -18,12 +17,19 @@ from app.contracts.search import (
     DenseSearchResponseV1,
     IndexState,
     IndexType,
+    SearchScopeV1,
 )
 from app.domain.errors import ScopeViolation
 from app.models.chunk_tables import chunk_embeddings, search_indices, source_chunks
 from app.models.phase2_tables import PHASE2_TABLES
 from app.models.tables import memberships
 from app.ports.embedding import EmbeddingPort
+from app.services.retrieval_authority import require_retrieval_source
+from app.services.retrieval_selection import (
+    resolve_lexical_set,
+    selected_chunks,
+    validate_safe_content,
+)
 
 grants = PHASE2_TABLES["repository_grants"]
 
@@ -38,7 +44,7 @@ class DenseSearchService:
         embedding_port: EmbeddingPort | None = None,
     ) -> None:
         self.session = session
-        self.embedding_port = embedding_port or FakeEmbeddingAdapter()
+        self.embedding_port = embedding_port
 
     async def search_dense(self, request: DenseSearchRequestV1) -> DenseSearchResponseV1:
         """Execute a dense vector search within the authorized scope."""
@@ -50,15 +56,38 @@ class DenseSearchService:
             request.scope.org_id,
             request.scope.repository_id,
             request.scope.principal_id,
+            request.scope.snapshot_id,
         )
 
-        # Step 2: Resolve active search index
+        resolved = await resolve_lexical_set(self.session, request.scope)
+        if resolved is None:
+            return DenseSearchResponseV1(
+                scope=request.scope,
+                query=request.query,
+                index_id=request.index_id,
+                embedding_model="none",
+                availability="index_unavailable",
+                coverage_status="unavailable",
+                total_candidates=0,
+                hits=(),
+            )
+        request = request.model_copy(
+            update={
+                "scope": request.scope.model_copy(update={"chunk_set_id": resolved.chunk_set_id})
+            }
+        )
+
+        assert request.scope is not None
+        # Resolve active search index
         index_row = await self._resolve_index(request)
         if not index_row:
             return DenseSearchResponseV1(
                 scope=request.scope,
+                **resolved.response_fields(),
                 query=request.query,
-                index_id=request.index_id or request.scope.snapshot_id,
+                index_id=request.index_id,
+                availability="index_unavailable",
+                coverage_status="unavailable",
                 embedding_model="none",
                 total_candidates=0,
                 hits=(),
@@ -66,18 +95,43 @@ class DenseSearchService:
             )
 
         target_index_id = index_row["id"]
-        model_id = index_row["embedding_model"] or "fake-v1"
-        dimension = index_row["dimension"] or 1024
+        model_id = index_row["embedding_model"]
+        dimension = index_row["dimension"]
+        provider = index_row["embedding_provider"]
+        unavailable: Literal["profile_unavailable", "embedding_unconfigured"] | None = None
+        if not model_id or not provider or not isinstance(dimension, int) or dimension <= 0:
+            unavailable = "profile_unavailable"
+        elif self.embedding_port is None:
+            unavailable = "embedding_unconfigured"
+        if unavailable is not None:
+            return DenseSearchResponseV1(
+                scope=request.scope,
+                **resolved.response_fields(),
+                query=request.query,
+                index_id=target_index_id,
+                embedding_model=model_id or "none",
+                availability=unavailable,
+                coverage_status="unavailable",
+                total_candidates=0,
+                hits=(),
+                execution_ms=round((time.perf_counter() - t0) * 1000, 2),
+            )
+        assert self.embedding_port is not None
 
         # Step 3: Embed the query text
         query_req = EmbeddingRequestV1(
             text=request.query,
+            provider=provider,
             model_id=model_id,
             dimensions=dimension,
             normalize=True,
         )
+        await require_retrieval_source(self.session, request.scope)
         query_resp = await self.embedding_port.embed(query_req)
         query_vec = query_resp.vector
+        if query_resp.model_id != model_id or query_resp.provider != provider:
+            raise ValueError("embedding response profile does not match index")
+        self._validate_vector(query_vec, dimension)
 
         # Step 4: Load scoped embeddings joined with source_chunks
         stmt = (
@@ -95,6 +149,7 @@ class DenseSearchService:
                 source_chunks.c.end_line,
                 source_chunks.c.safe_content,
                 source_chunks.c.content_sha256,
+                source_chunks.c.safe_content_sha256,
             )
             .join(
                 source_chunks,
@@ -106,6 +161,10 @@ class DenseSearchService:
                 chunk_embeddings.c.repository_id == request.scope.repository_id,
                 chunk_embeddings.c.snapshot_id == request.scope.snapshot_id,
                 chunk_embeddings.c.index_id == target_index_id,
+                source_chunks.c.repository_id == request.scope.repository_id,
+                source_chunks.c.snapshot_id == request.scope.snapshot_id,
+                chunk_embeddings.c.chunk_set_id == resolved.chunk_set_id,
+                selected_chunks(self.session, request.scope, resolved),
             )
         )
 
@@ -113,9 +172,9 @@ class DenseSearchService:
         scored_candidates: list[tuple[float, Any]] = []
 
         for row in rows:
+            validate_safe_content(dict(row))
             vec = row["embedding_json"]
-            if not isinstance(vec, (list, tuple)):
-                continue
+            self._validate_vector(vec, dimension)
             sim = self._cosine_similarity(query_vec, vec)
             norm_score = max(0.0, min(1.0, sim))
             if norm_score >= request.min_score:
@@ -146,21 +205,33 @@ class DenseSearchService:
                     score=round(score, 4),
                     snippet=first_lines,
                     content_sha256=row["content_sha256"],
+                    chunk_set_id=resolved.chunk_set_id,
+                    config_hash=resolved.config_hash,
+                    materialization_hash=resolved.materialization_hash,
+                    safe_content_sha256=row["safe_content_sha256"],
                 )
             )
 
+        await require_retrieval_source(self.session, request.scope)
         exec_ms = round((time.perf_counter() - t0) * 1000, 2)
         return DenseSearchResponseV1(
             scope=request.scope,
+            **resolved.response_fields(),
             query=request.query,
             index_id=target_index_id,
             embedding_model=model_id,
             total_candidates=len(scored_candidates),
             hits=tuple(hits),
+            coverage_status="partial"
+            if resolved.coverage.status == "partial"
+            or index_row["state"] == str(IndexState.PARTIAL_READY)
+            else "complete",
             execution_ms=exec_ms,
         )
 
-    async def _verify_scope(self, org_id: UUID, repository_id: UUID, principal_id: UUID) -> None:
+    async def _verify_scope(
+        self, org_id: UUID, repository_id: UUID, principal_id: UUID, snapshot_id: UUID
+    ) -> None:
         """Verify principal has active read/write grant on the repository."""
         mem_check = await self.session.execute(
             select(memberships.c.role).where(
@@ -184,6 +255,15 @@ class DenseSearchService:
             raise ScopeViolation(
                 f"Principal {principal_id} lacks access to repository {repository_id}"
             )
+        await require_retrieval_source(
+            self.session,
+            SearchScopeV1(
+                org_id=org_id,
+                repository_id=repository_id,
+                snapshot_id=snapshot_id,
+                principal_id=principal_id,
+            ),
+        )
 
     async def _resolve_index(self, request: DenseSearchRequestV1) -> Any | None:
         """Resolve the requested or latest ready dense/hybrid index."""
@@ -195,9 +275,15 @@ class DenseSearchService:
                 search_indices.c.id == request.index_id,
                 search_indices.c.repository_id == request.scope.repository_id,
                 search_indices.c.snapshot_id == request.scope.snapshot_id,
+                search_indices.c.chunk_set_id == request.scope.chunk_set_id,
                 search_indices.c.state.in_([str(IndexState.READY), str(IndexState.PARTIAL_READY)]),
             )
-            return (await self.session.execute(stmt)).mappings().one_or_none()
+            row = (await self.session.execute(stmt)).mappings().one_or_none()
+            if row is None:
+                raise ScopeViolation("Requested dense index is unavailable in the authorized scope")
+            if row["index_type"] not in (str(IndexType.DENSE), str(IndexType.HYBRID)):
+                raise ValueError("Requested index does not support dense search")
+            return row
 
         stmt = (
             select(search_indices)
@@ -205,12 +291,28 @@ class DenseSearchService:
                 search_indices.c.org_id == request.scope.org_id,
                 search_indices.c.repository_id == request.scope.repository_id,
                 search_indices.c.snapshot_id == request.scope.snapshot_id,
+                search_indices.c.chunk_set_id == request.scope.chunk_set_id,
                 search_indices.c.index_type.in_([str(IndexType.DENSE), str(IndexType.HYBRID)]),
                 search_indices.c.state.in_([str(IndexState.READY), str(IndexState.PARTIAL_READY)]),
             )
             .order_by(search_indices.c.created_at.desc())
         )
         return (await self.session.execute(stmt)).mappings().first()
+
+    @staticmethod
+    def _validate_vector(vector: Any, dimension: int) -> None:
+        if (
+            not isinstance(vector, (list, tuple))
+            or len(vector) != dimension
+            or not all(
+                isinstance(value, (float, int))
+                and not isinstance(value, bool)
+                and math.isfinite(value)
+                for value in vector
+            )
+            or not any(vector)
+        ):
+            raise ValueError("Embedding must be finite, nonzero, and match the index dimension")
 
     @staticmethod
     def _cosine_similarity(u: Sequence[float], v: Sequence[float]) -> float:
