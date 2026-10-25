@@ -1,29 +1,24 @@
-"""Durable staged search index lifecycle service with versioning and fencing."""
+"""Scoped local index publication with external worker activation kept unavailable."""
 
+import math
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import select, update
+from sqlalchemy import exists, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.adapters.embedding.fake import FakeEmbeddingAdapter
 from app.contracts.chunking import SourceChunkV1
 from app.contracts.jobs import AttemptLeaseV2
-from app.contracts.provider_budget import (
-    BudgetReservationRequestV1,
-    DisclosurePolicyV1,
-    EmbeddingRequestV1,
-    SettlementOutcomeV1,
-    calculate_charge_micros,
-)
+from app.contracts.provider_budget import EmbeddingRequestV1
 from app.contracts.search import IndexState, IndexType, SearchIndexRecordV1
 from app.contracts.source_view import PrivacyPolicyV1
 from app.domain.errors import ScopeViolation
 from app.models.chunk_tables import chunk_embeddings, search_indices
+from app.models.index_tables import index_publication_receipts, retrieval_chunk_sets
 from app.ports.embedding import EmbeddingPort
-from app.repositories.job_repository import worker_context
+from app.security.authorization import require_repository
 from app.services.provider_budget import ProviderBudgetService
 
 
@@ -42,7 +37,7 @@ class IndexLifecycleService:
         budget_service: ProviderBudgetService | None = None,
     ) -> None:
         self.session = session
-        self.embedding_port = embedding_port or FakeEmbeddingAdapter()
+        self.embedding_port = embedding_port
         self.budget_service = budget_service
 
     async def create_index(
@@ -129,6 +124,30 @@ class IndexLifecycleService:
                 search_indices.c.repository_id == repository_id,
                 search_indices.c.snapshot_id == snapshot_id,
                 search_indices.c.state.in_([str(IndexState.READY), str(IndexState.PARTIAL_READY)]),
+                search_indices.c.chunk_set_id.is_not(None),
+                exists(
+                    select(1)
+                    .select_from(
+                        retrieval_chunk_sets.join(
+                            index_publication_receipts,
+                            (index_publication_receipts.c.org_id == retrieval_chunk_sets.c.org_id)
+                            & (
+                                index_publication_receipts.c.chunk_set_id
+                                == retrieval_chunk_sets.c.id
+                            )
+                            & (
+                                index_publication_receipts.c.materialization_hash
+                                == retrieval_chunk_sets.c.materialization_hash
+                            ),
+                        )
+                    )
+                    .where(
+                        retrieval_chunk_sets.c.org_id == search_indices.c.org_id,
+                        retrieval_chunk_sets.c.repository_id == search_indices.c.repository_id,
+                        retrieval_chunk_sets.c.snapshot_id == search_indices.c.snapshot_id,
+                        retrieval_chunk_sets.c.id == search_indices.c.chunk_set_id,
+                    )
+                ),
             )
             .order_by(search_indices.c.created_at.desc())
         )
@@ -148,16 +167,17 @@ class IndexLifecycleService:
         chunks: Sequence[SourceChunkV1],
         lease: AttemptLeaseV2 | None = None,
         privacy_policy: PrivacyPolicyV1 | None = None,
+        principal_id: UUID | None = None,
     ) -> dict[str, int]:
-        """Publish embeddings batch with lease fencing and budget verification."""
+        """Validate and publish local batches; external worker publication is unavailable."""
         if not chunks:
             return {"indexed": 0, "failed": 0}
 
-        # Apply worker fencing context if lease is supplied
         if lease is not None:
             if lease.org_id != org_id:
                 raise ScopeViolation("Lease org mismatch")
-            await worker_context(self.session, lease)
+            # Jobs have no persisted index association, so GUCs cannot establish ownership.
+            raise RuntimeError("Index publication requires a qualified worker binding")
 
         # Lock and check index state
         stmt = (
@@ -171,8 +191,18 @@ class IndexLifecycleService:
         idx_row = (await self.session.execute(stmt)).mappings().one_or_none()
         if not idx_row:
             raise ScopeViolation(f"Index {index_id} not found")
+        if idx_row["chunk_set_id"] is not None:
+            raise ScopeViolation("Qualified immutable indexes cannot accept legacy batches")
         if idx_row["state"] != str(IndexState.BUILDING):
             raise RuntimeError(f"Index is in state {idx_row['state']}, cannot publish chunks")
+
+        if any(
+            chunk.org_id != idx_row["org_id"]
+            or chunk.repository_id != idx_row["repository_id"]
+            or chunk.snapshot_id != idx_row["snapshot_id"]
+            for chunk in chunks
+        ):
+            raise ScopeViolation("Chunk scope differs from index scope")
 
         idx_type = IndexType(idx_row["index_type"])
         if idx_type == IndexType.LEXICAL:
@@ -188,101 +218,72 @@ class IndexLifecycleService:
             )
             return {"indexed": len(chunks), "failed": 0}
 
-        # Validate cloud provider policy
-        provider_name = idx_row["embedding_provider"] or "fake"
+        if self.embedding_port is None:
+            raise RuntimeError("Embedding adapter is not configured")
+
+        provider_name = idx_row["embedding_provider"]
+        model_id = idx_row["embedding_model"]
+        dimension = idx_row["dimension"]
         if (
-            provider_name != "fake"
-            and privacy_policy is not None
-            and not privacy_policy.allow_cloud_providers
+            not isinstance(provider_name, str)
+            or not provider_name.strip()
+            or not isinstance(model_id, str)
+            or not model_id.strip()
+            or not isinstance(dimension, int)
+            or isinstance(dimension, bool)
+            or dimension <= 0
         ):
-            raise ScopeViolation(
-                f"Privacy policy prohibits cloud embedding provider '{provider_name}'"
-            )
+            raise ValueError("Dense index profile is incomplete")
 
-        model_id = idx_row["embedding_model"] or "amazon.titan-embed-text-v2:0"
-        dimension = idx_row["dimension"] or 1024
-
-        # Compute token count for budget reservation
-        total_tokens = sum(c.token_count for c in chunks)
-        reservation_id = None
-        if self.budget_service is not None and provider_name != "fake":
-            price = await self.budget_service.get_active_price(provider_name, model_id)
-            est_charge = calculate_charge_micros(total_tokens, price.input_micros_per_1k)
-            disc_policy = DisclosurePolicyV1(
-                allow_external_disclosure=(
-                    privacy_policy.allow_cloud_providers if privacy_policy else True
-                ),
-                allowed_providers=(provider_name,),
+        if provider_name != "fake":
+            if privacy_policy is None or not privacy_policy.allow_cloud_providers:
+                raise ScopeViolation("Privacy policy prohibits cloud embedding provider")
+            if self.budget_service is None:
+                raise ScopeViolation("External index publication requires a budget service")
+            if principal_id is None:
+                raise ScopeViolation("External index publication requires a principal")
+            await require_repository(
+                self.session, org_id, principal_id, idx_row["repository_id"], write=True
             )
-            res_record = await self.budget_service.reserve(
-                BudgetReservationRequestV1(
-                    org_id=org_id,
-                    repository_id=idx_row["repository_id"],
-                    principal_id=org_id,
-                    provider=provider_name,
-                    model_id=model_id,
-                    estimated_tokens=total_tokens,
-                    max_charge_micros=max(1, est_charge * 2),
-                    idempotency_key=f"emb_idx_{index_id}_{chunks[0].chunk_id}",
-                ),
-                policy=disc_policy,
-            )
-            reservation_id = res_record.reservation_id
+            # No index job operation/binding exists to authorize durable external dispatch.
+            raise RuntimeError("External index publication requires a qualified worker binding")
 
         indexed_count = 0
         failed_count = 0
-        actual_tokens = 0
-
-        try:
-            for chunk in chunks:
-                try:
-                    # Embed using privacy-transformed safe_content
-                    req = EmbeddingRequestV1(
+        for chunk in chunks:
+            try:
+                response = await self.embedding_port.embed(
+                    EmbeddingRequestV1(
                         text=chunk.safe_content,
+                        provider=provider_name,
                         model_id=model_id,
                         dimensions=dimension,
                         normalize=True,
                     )
-                    resp = await self.embedding_port.embed(req)
-                    actual_tokens += resp.token_count
-
-                    # Idempotent write to chunk_embeddings
-                    val_dict = {
-                        "org_id": org_id,
-                        "chunk_id": chunk.chunk_id,
-                        "index_id": index_id,
-                        "repository_id": chunk.repository_id,
-                        "snapshot_id": chunk.snapshot_id,
-                        "embedding_json": list(resp.vector),
-                        "token_count": resp.token_count,
-                    }
-                    # Insert embedding row
-                    await self.session.execute(chunk_embeddings.insert().values(**val_dict))
-                    indexed_count += 1
-                except Exception:
-                    failed_count += 1
-                    # Record failure in index metadata
-                    pass
-        except Exception:
-            if reservation_id is not None and self.budget_service is not None:
-                await self.budget_service.cancel(
-                    org_id=org_id,
-                    reservation_id=reservation_id,
-                    reason="index embedding failed",
                 )
-            raise
-
-        if reservation_id is not None and self.budget_service is not None:
-            actual_charge = calculate_charge_micros(actual_tokens, price.input_micros_per_1k)
-            await self.budget_service.settle(
-                org_id=org_id,
-                outcome=SettlementOutcomeV1(
-                    reservation_id=reservation_id,
-                    status="success",
-                    actual_tokens=actual_tokens,
-                    actual_charge_micros=actual_charge,
-                ),
-            )
+                if (
+                    response.provider != provider_name
+                    or response.model_id != model_id
+                    or len(response.vector) != dimension
+                    or not all(math.isfinite(value) for value in response.vector)
+                    or not any(response.vector)
+                    or response.token_count < 0
+                ):
+                    raise ValueError("Embedding response differs from the index profile")
+                await self.session.execute(
+                    chunk_embeddings.insert().values(
+                        org_id=org_id,
+                        chunk_id=chunk.chunk_id,
+                        index_id=index_id,
+                        repository_id=idx_row["repository_id"],
+                        snapshot_id=idx_row["snapshot_id"],
+                        embedding_json=list(response.vector),
+                        token_count=response.token_count,
+                    )
+                )
+                indexed_count += 1
+            except Exception:
+                failed_count += 1
 
         now = datetime.now(UTC)
         # Update index progress
@@ -318,6 +319,9 @@ class IndexLifecycleService:
         if not row:
             raise ScopeViolation(f"Index {index_id} not found")
 
+        if row["chunk_set_id"] is not None:
+            raise ScopeViolation("Qualified immutable indexes cannot be resealed")
+
         total = max(row["total_chunks"], row["indexed_chunks"] + row["failed_chunks"])
         failed = row["failed_chunks"]
         indexed = row["indexed_chunks"]
@@ -351,6 +355,7 @@ class IndexLifecycleService:
                     search_indices.c.snapshot_id == row["snapshot_id"],
                     search_indices.c.index_type == row["index_type"],
                     search_indices.c.id != index_id,
+                    search_indices.c.chunk_set_id.is_(None),
                     search_indices.c.state.in_(
                         [str(IndexState.READY), str(IndexState.PARTIAL_READY)]
                     ),

@@ -222,6 +222,10 @@ export type ContextAssemblyRequestV1 = {
      */
     candidate_hits?: Array<HybridSearchHitV1>;
     /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
      * Deduplicate Files
      */
     deduplicate_files?: boolean;
@@ -272,9 +276,17 @@ export type ContextItemV1 = {
     chunk_id: string;
     chunk_kind: ChunkKind;
     /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
      * Citation Key
      */
     citation_key: string;
+    /**
+     * Config Hash
+     */
+    config_hash?: string | null;
     /**
      * End Byte
      */
@@ -296,6 +308,10 @@ export type ContextItemV1 = {
      */
     match_modalities: Array<string>;
     /**
+     * Materialization Hash
+     */
+    materialization_hash?: string | null;
+    /**
      * Qualified Name
      */
     qualified_name?: string | null;
@@ -307,6 +323,10 @@ export type ContextItemV1 = {
      * Safe Content
      */
     safe_content: string;
+    /**
+     * Safe Content Sha256
+     */
+    safe_content_sha256?: string | null;
     /**
      * Start Byte
      */
@@ -330,6 +350,15 @@ export type ContextItemV1 = {
  */
 export type ContextPacketV1 = {
     /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
+     * Config Hash
+     */
+    config_hash?: string | null;
+    coverage?: IndexCoverageV1 | null;
+    /**
      * Created At
      */
     created_at: string;
@@ -341,6 +370,14 @@ export type ContextPacketV1 = {
      * Items Count
      */
     items_count: number;
+    /**
+     * Lexical Availability
+     */
+    lexical_availability?: 'available' | 'index_unavailable';
+    /**
+     * Materialization Hash
+     */
+    materialization_hash?: string | null;
     /**
      * Omitted Count
      */
@@ -393,6 +430,14 @@ export type DenseSearchHitV1 = {
     chunk_id: string;
     chunk_kind: ChunkKind;
     /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
+     * Config Hash
+     */
+    config_hash?: string | null;
+    /**
      * Content Sha256
      */
     content_sha256: string;
@@ -413,9 +458,17 @@ export type DenseSearchHitV1 = {
      */
     file_path: string;
     /**
+     * Materialization Hash
+     */
+    materialization_hash?: string | null;
+    /**
      * Qualified Name
      */
     qualified_name?: string | null;
+    /**
+     * Safe Content Sha256
+     */
+    safe_content_sha256?: string | null;
     /**
      * Score
      */
@@ -443,6 +496,10 @@ export type DenseSearchHitV1 = {
  */
 export type DenseSearchRequestV1 = {
     /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
      * Index Id
      */
     index_id?: string | null;
@@ -466,6 +523,23 @@ export type DenseSearchRequestV1 = {
  */
 export type DenseSearchResponseV1 = {
     /**
+     * Availability
+     */
+    availability?: 'available' | 'index_unavailable' | 'embedding_unconfigured' | 'profile_unavailable';
+    /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
+     * Config Hash
+     */
+    config_hash?: string | null;
+    coverage?: IndexCoverageV1 | null;
+    /**
+     * Coverage Status
+     */
+    coverage_status?: 'complete' | 'partial' | 'unavailable';
+    /**
      * Embedding Model
      */
     embedding_model: string;
@@ -480,7 +554,15 @@ export type DenseSearchResponseV1 = {
     /**
      * Index Id
      */
-    index_id: string;
+    index_id: string | null;
+    /**
+     * Lexical Availability
+     */
+    lexical_availability?: 'available' | 'index_unavailable';
+    /**
+     * Materialization Hash
+     */
+    materialization_hash?: string | null;
     /**
      * Query
      */
@@ -636,6 +718,14 @@ export type EvidencePointerV1 = {
      */
     chunk_id?: string | null;
     /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
+     * Config Hash
+     */
+    config_hash?: string | null;
+    /**
      * End Line
      */
     end_line: number;
@@ -647,6 +737,14 @@ export type EvidencePointerV1 = {
      * Finding Id
      */
     finding_id?: string | null;
+    /**
+     * Materialization Hash
+     */
+    materialization_hash?: string | null;
+    /**
+     * Safe Content Sha256
+     */
+    safe_content_sha256?: string | null;
     /**
      * Sha256
      */
@@ -665,6 +763,10 @@ export type EvidencePointerV1 = {
  * ExactSearchRequestV1
  */
 export type ExactSearchRequestV1 = {
+    /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
     /**
      * Limit
      */
@@ -758,6 +860,10 @@ export type FindingDetailResponseV1 = {
      * Evidence Ids
      */
     evidence_ids?: Array<string>;
+    /**
+     * Excerpt Reason
+     */
+    excerpt_reason?: string;
     /**
      * File Path
      */
@@ -854,6 +960,10 @@ export type FindingSummaryV1 = {
      */
     file_path: string;
     /**
+     * Historical Disposition
+     */
+    historical_disposition?: string | null;
+    /**
      * Id
      */
     id: string;
@@ -873,6 +983,10 @@ export type FindingSummaryV1 = {
      * Severity
      */
     severity: string;
+    /**
+     * Support Reason
+     */
+    support_reason?: string;
     /**
      * Title
      */
@@ -1066,6 +1180,14 @@ export type HybridSearchHitV1 = {
     chunk_id: string;
     chunk_kind: ChunkKind;
     /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
+     * Config Hash
+     */
+    config_hash?: string | null;
+    /**
      * Content Sha256
      */
     content_sha256: string;
@@ -1090,6 +1212,10 @@ export type HybridSearchHitV1 = {
      */
     match_modalities: Array<string>;
     /**
+     * Materialization Hash
+     */
+    materialization_hash?: string | null;
+    /**
      * Modality Ranks
      */
     modality_ranks: {
@@ -1099,6 +1225,10 @@ export type HybridSearchHitV1 = {
      * Qualified Name
      */
     qualified_name?: string | null;
+    /**
+     * Safe Content Sha256
+     */
+    safe_content_sha256?: string | null;
     /**
      * Score
      */
@@ -1125,6 +1255,10 @@ export type HybridSearchHitV1 = {
  * HybridSearchRequestV1
  */
 export type HybridSearchRequestV1 = {
+    /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
     /**
      * Dense Index Id
      */
@@ -1167,6 +1301,23 @@ export type HybridSearchRequestV1 = {
  */
 export type HybridSearchResponseV1 = {
     /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
+     * Config Hash
+     */
+    config_hash?: string | null;
+    coverage?: IndexCoverageV1 | null;
+    /**
+     * Coverage Status
+     */
+    coverage_status?: 'complete' | 'partial';
+    /**
+     * Dense Availability
+     */
+    dense_availability?: 'available' | 'index_unavailable' | 'embedding_unconfigured' | 'profile_unavailable';
+    /**
      * Execution Ms
      */
     execution_ms?: number;
@@ -1174,6 +1325,14 @@ export type HybridSearchResponseV1 = {
      * Hits
      */
     hits: Array<HybridSearchHitV1>;
+    /**
+     * Lexical Availability
+     */
+    lexical_availability?: 'available' | 'index_unavailable';
+    /**
+     * Materialization Hash
+     */
+    materialization_hash?: string | null;
     /**
      * Query
      */
@@ -1197,6 +1356,295 @@ export type IdentityMapV1 = {
      * Semantic Key
      */
     semantic_key: string;
+};
+
+/**
+ * IndexAvailabilityV1
+ */
+export type IndexAvailabilityV1 = {
+    /**
+     * Can Build
+     */
+    can_build?: boolean;
+    /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
+     * Config Hash
+     */
+    config_hash?: string | null;
+    coverage?: IndexCoverageV1 | null;
+    /**
+     * Index Id
+     */
+    index_id?: string | null;
+    /**
+     * Lexical Availability
+     */
+    lexical_availability?: 'available' | 'index_unavailable';
+    /**
+     * Materialization Hash
+     */
+    materialization_hash?: string | null;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+};
+
+/**
+ * IndexCoverageV1
+ */
+export type IndexCoverageV1 = {
+    /**
+     * Admitted Files
+     */
+    admitted_files: number;
+    /**
+     * Omission Examples
+     */
+    omission_examples?: Array<IndexOmissionExampleV1>;
+    /**
+     * Omissions
+     */
+    omissions?: Array<IndexOmissionV1>;
+    /**
+     * Processed Files
+     */
+    processed_files: number;
+    /**
+     * Selected Files
+     */
+    selected_files: number;
+};
+
+/**
+ * IndexCreateResponseV1
+ */
+export type IndexCreateResponseV1 = {
+    job: IndexJobRecordV5;
+    /**
+     * Status Url
+     */
+    readonly status_url: string;
+};
+
+/**
+ * IndexJobRecordV5
+ */
+export type IndexJobRecordV5 = {
+    /**
+     * Attempt Count
+     */
+    attempt_count: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Deadline
+     */
+    deadline: string;
+    /**
+     * Failure Code
+     */
+    failure_code: string | null;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Index Spec Id
+     */
+    index_spec_id: string;
+    /**
+     * Max Attempts
+     */
+    max_attempts: number;
+    /**
+     * Operation
+     */
+    operation?: 'index_snapshot';
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Result Index Id
+     */
+    result_index_id: string | null;
+    /**
+     * Schema Version
+     */
+    schema_version?: 5;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+    /**
+     * State
+     */
+    state: 'queued' | 'running' | 'retry_wait' | 'cancelling' | 'succeeded' | 'partial' | 'failed' | 'cancelled';
+};
+
+/**
+ * IndexOmissionExampleV1
+ */
+export type IndexOmissionExampleV1 = {
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * Reason
+     */
+    reason: 'source_limit' | 'sensitive_path' | 'unsupported_encoding' | 'chunk_limit' | 'safe_byte_limit' | 'manifest_limit' | 'draft_limit' | 'unmappable_range' | 'placeholder_limit';
+    /**
+     * Unit
+     */
+    unit: 'file' | 'chunk';
+};
+
+/**
+ * IndexOmissionV1
+ */
+export type IndexOmissionV1 = {
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Reason
+     */
+    reason: 'source_limit' | 'sensitive_path' | 'unsupported_encoding' | 'chunk_limit' | 'safe_byte_limit' | 'manifest_limit' | 'draft_limit' | 'unmappable_range' | 'placeholder_limit';
+    /**
+     * Unit
+     */
+    unit: 'file' | 'chunk';
+};
+
+/**
+ * IndexReceiptV1
+ */
+export type IndexReceiptV1 = {
+    /**
+     * Attempt Id
+     */
+    attempt_id: string;
+    /**
+     * Chunk Set Id
+     */
+    chunk_set_id: string;
+    /**
+     * Config Hash
+     */
+    config_hash: string;
+    coverage: IndexCoverageV1;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Draft Digest
+     */
+    draft_digest: string;
+    /**
+     * Fence
+     */
+    fence: number;
+    /**
+     * Index Id
+     */
+    index_id: string;
+    /**
+     * Index Spec Id
+     */
+    index_spec_id: string;
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Materialization Hash
+     */
+    materialization_hash: string;
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+    /**
+     * Spec Hash
+     */
+    spec_hash: string;
+};
+
+/**
+ * IndexRetryResponseV1
+ */
+export type IndexRetryResponseV1 = {
+    /**
+     * Index Spec Id
+     */
+    index_spec_id: string;
+    /**
+     * Retry Job Id
+     */
+    retry_job_id: string;
+    /**
+     * Retry Of Job Id
+     */
+    retry_of_job_id: string;
+};
+
+/**
+ * IndexStartRequestV1
+ */
+export type IndexStartRequestV1 = {
+    /**
+     * Request Key
+     */
+    request_key: string;
+};
+
+/**
+ * IndexStatusV1
+ */
+export type IndexStatusV1 = {
+    /**
+     * Can Cancel
+     */
+    can_cancel?: boolean;
+    /**
+     * Can Retry
+     */
+    can_retry?: boolean;
+    job: IndexJobRecordV5;
+    receipt?: IndexReceiptV1 | null;
 };
 
 /**
@@ -1850,6 +2298,10 @@ export type JobRecordV3 = {
  */
 export type LexicalSearchRequestV1 = {
     /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
      * Limit
      */
     limit?: number;
@@ -2398,6 +2850,12 @@ export type ScanSummaryResponseV1 = {
         [key: string]: number;
     };
     /**
+     * By Historical Disposition
+     */
+    by_historical_disposition?: {
+        [key: string]: number;
+    };
+    /**
      * By Severity
      */
     by_severity: {
@@ -2505,6 +2963,14 @@ export type SearchHitV1 = {
     chunk_id: string;
     chunk_kind: ChunkKind;
     /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
+     * Config Hash
+     */
+    config_hash?: string | null;
+    /**
      * Content Sha256
      */
     content_sha256: string;
@@ -2529,9 +2995,17 @@ export type SearchHitV1 = {
      */
     match_reasons?: Array<string>;
     /**
+     * Materialization Hash
+     */
+    materialization_hash?: string | null;
+    /**
      * Qualified Name
      */
     qualified_name?: string | null;
+    /**
+     * Safe Content Sha256
+     */
+    safe_content_sha256?: string | null;
     /**
      * Score
      */
@@ -2564,6 +3038,15 @@ export type SearchMode = 'exact' | 'lexical' | 'dense' | 'hybrid';
  */
 export type SearchResponseV1 = {
     /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
+     * Config Hash
+     */
+    config_hash?: string | null;
+    coverage?: IndexCoverageV1 | null;
+    /**
      * Coverage Status
      */
     coverage_status?: string;
@@ -2575,6 +3058,14 @@ export type SearchResponseV1 = {
      * Hits
      */
     hits: Array<SearchHitV1>;
+    /**
+     * Lexical Availability
+     */
+    lexical_availability?: 'available' | 'index_unavailable';
+    /**
+     * Materialization Hash
+     */
+    materialization_hash?: string | null;
     mode: SearchMode;
     /**
      * Omitted Count
@@ -2595,6 +3086,10 @@ export type SearchResponseV1 = {
  * SearchScopeV1
  */
 export type SearchScopeV1 = {
+    /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
     /**
      * Org Id
      */
@@ -3428,6 +3923,13 @@ export type ValidationError = {
     type: string;
 };
 
+/**
+ * IndexCreateResponseV1
+ */
+export type IndexCreateResponseV1Writable = {
+    job: IndexJobRecordV5;
+};
+
 export type OauthCallbackApiV1AuthGithubCallbackGetData = {
     body?: never;
     path?: never;
@@ -3501,7 +4003,7 @@ export type GetJobApiV1JobsJobIdGetResponses = {
      *
      * Successful Response
      */
-    200: JobRecordV2 | JobRecordV3;
+    200: JobRecordV2 | JobRecordV3 | IndexJobRecordV5;
 };
 
 export type GetJobApiV1JobsJobIdGetResponse = GetJobApiV1JobsJobIdGetResponses[keyof GetJobApiV1JobsJobIdGetResponses];
@@ -3533,7 +4035,7 @@ export type CancelJobApiV1JobsJobIdCancelPostResponses = {
      *
      * Successful Response
      */
-    200: JobRecordV2 | JobRecordV3;
+    200: JobRecordV2 | JobRecordV3 | IndexJobRecordV5;
 };
 
 export type CancelJobApiV1JobsJobIdCancelPostResponse = CancelJobApiV1JobsJobIdCancelPostResponses[keyof CancelJobApiV1JobsJobIdCancelPostResponses];
@@ -4525,6 +5027,188 @@ export type GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFind
 };
 
 export type GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetResponse = GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetResponses[keyof GetTriageHistoryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFindingsFindingIdTriageHistoryGetResponses];
+
+export type GetIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/index-jobs/{job_id}';
+};
+
+export type GetIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdGetError = GetIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdGetErrors[keyof GetIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdGetErrors];
+
+export type GetIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: IndexStatusV1;
+};
+
+export type GetIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdGetResponse = GetIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdGetResponses[keyof GetIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdGetResponses];
+
+export type CancelIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdCancelPostData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/index-jobs/{job_id}/cancel';
+};
+
+export type CancelIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdCancelPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CancelIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdCancelPostError = CancelIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdCancelPostErrors[keyof CancelIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdCancelPostErrors];
+
+export type CancelIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdCancelPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: IndexStatusV1;
+};
+
+export type CancelIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdCancelPostResponse = CancelIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdCancelPostResponses[keyof CancelIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdCancelPostResponses];
+
+export type RetryIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdRetryPostData = {
+    body: IndexStartRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/index-jobs/{job_id}/retry';
+};
+
+export type RetryIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdRetryPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RetryIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdRetryPostError = RetryIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdRetryPostErrors[keyof RetryIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdRetryPostErrors];
+
+export type RetryIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdRetryPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: IndexRetryResponseV1;
+};
+
+export type RetryIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdRetryPostResponse = RetryIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdRetryPostResponses[keyof RetryIndexJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexJobsJobIdRetryPostResponses];
+
+export type IndexAvailabilityApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/indexes';
+};
+
+export type IndexAvailabilityApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type IndexAvailabilityApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesGetError = IndexAvailabilityApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesGetErrors[keyof IndexAvailabilityApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesGetErrors];
+
+export type IndexAvailabilityApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: IndexAvailabilityV1;
+};
+
+export type IndexAvailabilityApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesGetResponse = IndexAvailabilityApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesGetResponses[keyof IndexAvailabilityApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesGetResponses];
+
+export type CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesPostData = {
+    body: IndexStartRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/indexes';
+};
+
+export type CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesPostError = CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesPostErrors[keyof CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesPostErrors];
+
+export type CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: IndexCreateResponseV1;
+};
+
+export type CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesPostResponse = CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesPostResponses[keyof CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesPostResponses];
 
 export type QueryMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesGetData = {
     body?: never;

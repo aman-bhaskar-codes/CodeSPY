@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 import pytest
 import pytest_asyncio
+from app.adapters.embedding.fake import FakeEmbeddingAdapter
 from app.adapters.embedding.titan import AmazonTitanEmbeddingAdapter
 from app.contracts.chunking import ChunkKind, SourceChunkV1
 from app.contracts.provider_budget import EmbeddingRequestV1
@@ -52,7 +53,16 @@ async def test_titan_v2_offline_simulation() -> None:
 
 
 @pytest_asyncio.fixture
-async def session() -> AsyncIterator[AsyncSession]:
+async def session(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[AsyncSession]:
+    # These channel tests isolate retrieval ranking with explicit authority/retention doubles.
+    # Full authority is exercised by test_dense_availability and PostgreSQL integration.
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr("app.services.retrieval_authority.require_snapshot", AsyncMock())
+    monkeypatch.setattr("app.services.retrieval_authority.locate_source", AsyncMock())
+    from .legacy_ranking import install_legacy_ranking
+
+    install_legacy_ranking(monkeypatch)
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     grants = PHASE2_TABLES["repository_grants"]
     async with engine.begin() as conn:
@@ -104,7 +114,32 @@ def make_chunk(
 
 
 @pytest.mark.asyncio
-async def test_dense_search_exact_match(session: AsyncSession) -> None:
+@pytest.mark.parametrize("partial_parent", [False, True])
+async def test_dense_search_exact_match(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch, partial_parent: bool
+) -> None:
+    if partial_parent:
+        from dataclasses import replace
+
+        from app.contracts.indexing import IndexCoverageV1, IndexOmissionV1
+        from app.services import dense_search
+
+        resolver = dense_search.resolve_lexical_set
+
+        async def resolve_partial(*args, **kwargs):
+            resolved = await resolver(*args, **kwargs)
+            assert resolved is not None
+            return replace(
+                resolved,
+                coverage=IndexCoverageV1(
+                    admitted_files=1,
+                    selected_files=0,
+                    processed_files=0,
+                    omissions=(IndexOmissionV1(reason="source_limit", unit="file", count=1),),
+                ),
+            )
+
+        monkeypatch.setattr(dense_search, "resolve_lexical_set", resolve_partial)
     org_id = uuid4()
     principal_id = uuid4()
     repo_id = uuid4()
@@ -124,12 +159,13 @@ async def test_dense_search_exact_match(session: AsyncSession) -> None:
         )
     )
 
-    lifecycle = IndexLifecycleService(session)
+    lifecycle = IndexLifecycleService(session, embedding_port=FakeEmbeddingAdapter())
     idx = await lifecycle.create_index(
         org_id=org_id,
         repository_id=repo_id,
         snapshot_id=snap_id,
         index_type=IndexType.DENSE,
+        embedding_provider="fake",
         embedding_model="fake-v1",
         dimension=1024,
     )
@@ -175,7 +211,7 @@ async def test_dense_search_exact_match(session: AsyncSession) -> None:
     )
     await lifecycle.seal_index(org_id, idx.index_id)
 
-    search_svc = DenseSearchService(session)
+    search_svc = DenseSearchService(session, embedding_port=FakeEmbeddingAdapter())
     scope = SearchScopeV1(
         org_id=org_id,
         repository_id=repo_id,
@@ -192,6 +228,7 @@ async def test_dense_search_exact_match(session: AsyncSession) -> None:
             limit=5,
         )
     )
+    assert resp.coverage_status == ("partial" if partial_parent else "complete")
     assert len(resp.hits) == 1
     hit = resp.hits[0]
     assert hit.file_path == "src/auth.py"
@@ -225,7 +262,7 @@ async def test_dense_search_multitenant_isolation(session: AsyncSession) -> None
         )
     )
 
-    lifecycle = IndexLifecycleService(session)
+    lifecycle = IndexLifecycleService(session, embedding_port=FakeEmbeddingAdapter())
 
     # Index in Repo A
     idx_a = await lifecycle.create_index(
@@ -233,6 +270,9 @@ async def test_dense_search_multitenant_isolation(session: AsyncSession) -> None
         repository_id=repo_a,
         snapshot_id=snap_a,
         index_type=IndexType.DENSE,
+        embedding_provider="fake",
+        embedding_model="fake-v1",
+        dimension=1024,
     )
     chunk_a = make_chunk(org_a, repo_a, snap_a, "src/auth.py", "auth", "shared code")
     await session.execute(
@@ -273,6 +313,9 @@ async def test_dense_search_multitenant_isolation(session: AsyncSession) -> None
         repository_id=repo_b,
         snapshot_id=snap_b,
         index_type=IndexType.DENSE,
+        embedding_provider="fake",
+        embedding_model="fake-v1",
+        dimension=1024,
     )
     chunk_b = make_chunk(org_b, repo_b, snap_b, "src/auth.py", "auth", "shared code")
     await session.execute(
@@ -307,7 +350,7 @@ async def test_dense_search_multitenant_isolation(session: AsyncSession) -> None
     )
     await lifecycle.seal_index(org_b, idx_b.index_id)
 
-    search_svc = DenseSearchService(session)
+    search_svc = DenseSearchService(session, embedding_port=FakeEmbeddingAdapter())
 
     # Query within Repo A scope
     scope_a = SearchScopeV1(
@@ -333,3 +376,26 @@ async def test_dense_search_multitenant_isolation(session: AsyncSession) -> None
         await search_svc.search_dense(
             DenseSearchRequestV1(scope=scope_b, query="shared code", limit=10)
         )
+
+
+@pytest.mark.asyncio
+async def test_explicit_foreign_index_is_denied_without_embedding(session: AsyncSession) -> None:
+    adapter = FakeEmbeddingAdapter()
+    org_id, principal_id, repo_id, snap_id = (uuid4() for _ in range(4))
+    await session.execute(
+        memberships.insert().values(org_id=org_id, principal_id=principal_id, role="member")
+    )
+    await session.execute(
+        PHASE2_TABLES["repository_grants"]
+        .insert()
+        .values(org_id=org_id, repository_id=repo_id, principal_id=principal_id, permission="read")
+    )
+    service = DenseSearchService(session, embedding_port=adapter)
+    scope = SearchScopeV1(
+        org_id=org_id, repository_id=repo_id, snapshot_id=snap_id, principal_id=principal_id
+    )
+    with pytest.raises(ScopeViolation, match="index"):
+        await service.search_dense(
+            DenseSearchRequestV1(scope=scope, query="query", index_id=uuid4())
+        )
+    assert not adapter.calls

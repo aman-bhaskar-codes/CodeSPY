@@ -146,7 +146,11 @@ export function TriageModal({ finding, isOpen, onClose, onSubmit }: Props) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
+        <form
+          noValidate
+          onSubmit={handleSubmit}
+          style={{ display: "grid", gap: "16px" }}
+        >
           <div>
             <label
               htmlFor="triage-state-select"

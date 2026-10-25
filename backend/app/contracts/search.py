@@ -1,11 +1,12 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.contracts.chunking import ChunkKind
+from app.contracts.indexing import IndexCoverageV1
 
 
 class SearchMode(StrEnum):
@@ -44,9 +45,27 @@ class SearchScopeV1(BaseModel):
     repository_id: UUID
     snapshot_id: UUID
     principal_id: UUID
+    chunk_set_id: UUID | None = None
 
 
-class ExactSearchRequestV1(BaseModel):
+class SelectionRequestV1(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    scope: SearchScopeV1 | None = None
+    chunk_set_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def consistent_pin(self) -> Self:
+        if self.scope is not None and self.chunk_set_id is not None:
+            if self.scope.chunk_set_id not in (None, self.chunk_set_id):
+                raise ValueError("conflicting materialization selection")
+            object.__setattr__(
+                self, "scope", self.scope.model_copy(update={"chunk_set_id": self.chunk_set_id})
+            )
+        return self
+
+
+class ExactSearchRequestV1(SelectionRequestV1):
     model_config = ConfigDict(frozen=True)
 
     scope: SearchScopeV1 | None = None
@@ -55,7 +74,7 @@ class ExactSearchRequestV1(BaseModel):
     limit: int = Field(default=20, ge=1, le=100)
 
 
-class LexicalSearchRequestV1(BaseModel):
+class LexicalSearchRequestV1(SelectionRequestV1):
     model_config = ConfigDict(frozen=True)
 
     scope: SearchScopeV1 | None = None
@@ -67,6 +86,10 @@ class SearchHitV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     chunk_id: UUID
+    chunk_set_id: UUID | None = None
+    config_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    materialization_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    safe_content_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     file_id: UUID
     file_path: str
     chunk_kind: ChunkKind
@@ -86,6 +109,11 @@ class SearchResponseV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     scope: SearchScopeV1
+    chunk_set_id: UUID | None = None
+    config_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    materialization_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    coverage: IndexCoverageV1 | None = None
+    lexical_availability: Literal["available", "index_unavailable"] = "index_unavailable"
     mode: SearchMode
     query: str
     total_candidates: int = Field(ge=0)
@@ -116,7 +144,7 @@ class SearchIndexRecordV1(BaseModel):
     metadata_json: dict[str, Any] = Field(default_factory=dict)
 
 
-class DenseSearchRequestV1(BaseModel):
+class DenseSearchRequestV1(SelectionRequestV1):
     model_config = ConfigDict(frozen=True)
 
     scope: SearchScopeV1 | None = None
@@ -130,6 +158,10 @@ class DenseSearchHitV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     chunk_id: UUID
+    chunk_set_id: UUID | None = None
+    config_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    materialization_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    safe_content_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     file_id: UUID
     file_path: str
     chunk_kind: ChunkKind
@@ -148,19 +180,28 @@ class DenseSearchResponseV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     scope: SearchScopeV1
+    chunk_set_id: UUID | None = None
+    config_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    materialization_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    coverage: IndexCoverageV1 | None = None
+    lexical_availability: Literal["available", "index_unavailable"] = "index_unavailable"
     query: str
-    index_id: UUID
+    index_id: UUID | None
     embedding_model: str
+    availability: Literal[
+        "available", "index_unavailable", "embedding_unconfigured", "profile_unavailable"
+    ] = "available"
+    coverage_status: Literal["complete", "partial", "unavailable"] = "complete"
     total_candidates: int = Field(ge=0)
     hits: tuple[DenseSearchHitV1, ...]
     execution_ms: float = Field(default=0.0, ge=0.0)
 
 
-class HybridSearchRequestV1(BaseModel):
+class HybridSearchRequestV1(SelectionRequestV1):
     model_config = ConfigDict(frozen=True)
 
     scope: SearchScopeV1 | None = None
-    query: str = Field(min_length=1, max_length=1024)
+    query: str = Field(min_length=1, max_length=256)
     limit: int = Field(default=20, ge=1, le=100)
     rrf_k: int = Field(default=60, ge=1, le=200)
     weights: dict[str, float] = Field(
@@ -176,6 +217,10 @@ class HybridSearchHitV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     chunk_id: UUID
+    chunk_set_id: UUID | None = None
+    config_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    materialization_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    safe_content_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     file_id: UUID
     file_path: str
     chunk_kind: ChunkKind
@@ -196,7 +241,16 @@ class HybridSearchResponseV1(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     scope: SearchScopeV1
+    chunk_set_id: UUID | None = None
+    config_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    materialization_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    coverage: IndexCoverageV1 | None = None
+    lexical_availability: Literal["available", "index_unavailable"] = "index_unavailable"
     query: str
     total_candidates: int = Field(ge=0)
     hits: tuple[HybridSearchHitV1, ...]
+    dense_availability: Literal[
+        "available", "index_unavailable", "embedding_unconfigured", "profile_unavailable"
+    ] = "available"
+    coverage_status: Literal["complete", "partial"] = "complete"
     execution_ms: float = Field(default=0.0, ge=0.0)
