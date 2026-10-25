@@ -54,6 +54,9 @@ class WorkerRuntime:
                     except TimeoutError:
                         pass
 
+        index_operation = getattr(self.consumer, "index_operation", None)
+        if index_operation is not None:
+            await index_operation.recover_owned()
         tasks = [
             asyncio.create_task(periodic(self.dispatcher.dispatch_once, 1)),
             asyncio.create_task(periodic(recovery, 15)),

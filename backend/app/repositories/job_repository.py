@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.contracts.indexing import IndexJobRecordV5
 from app.contracts.jobs import AttemptLeaseV2, JobRecordV2, JobRecordV3
 from app.contracts.scan_jobs import ScanJobRecordV4
 from app.domain.errors import ScopeViolation
@@ -25,6 +26,22 @@ async def load_job(
     if row is None:
         raise ScopeViolation("job unavailable")
     res: dict[str, Any] = dict(row)
+    if res.get("operation") == "index_snapshot":
+        from app.models.index_tables import index_jobs
+
+        projection = (
+            (
+                await s.execute(
+                    select(index_jobs).where(
+                        index_jobs.c.org_id == org_id, index_jobs.c.id == job_id
+                    )
+                )
+            )
+            .mappings()
+            .one()
+        )
+        # Refresh lifecycle and publication fields from the same statement snapshot.
+        res = dict(projection)
     if res.get("operation") == "scan_snapshot":
         from app.models.scan_tables import scan_jobs, scan_reports
 
@@ -72,7 +89,15 @@ def scan_job_record(row: dict[str, Any]) -> ScanJobRecordV4:
     return ScanJobRecordV4(**{k: row[k] for k in ScanJobRecordV4.model_fields if k in row})
 
 
-def public_job_record(row: dict[str, Any]) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4:
+def index_job_record(row: dict[str, Any]) -> IndexJobRecordV5:
+    return IndexJobRecordV5(**{k: row[k] for k in IndexJobRecordV5.model_fields if k in row})
+
+
+def public_job_record(
+    row: dict[str, Any],
+) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5:
+    if row["operation"] == "index_snapshot":
+        return index_job_record(row)
     if row["operation"] == "scan_snapshot":
         return scan_job_record(row)
     return job_record_v3(row) if row["operation"] == "analyze_structure" else job_record(row)

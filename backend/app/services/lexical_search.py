@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import delete, func, or_, select, text
+from sqlalchemy import delete, func, literal_column, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contracts.chunking import ChunkKind, SourceChunkV1
@@ -26,6 +26,12 @@ from app.services.lexical_tokens import (
     build_search_terms,
     extract_path_tokens,
     split_identifier_subwords,
+)
+from app.services.retrieval_authority import require_retrieval_source
+from app.services.retrieval_selection import (
+    resolve_lexical_set,
+    selected_chunks,
+    validate_safe_content,
 )
 
 
@@ -59,9 +65,19 @@ class LexicalSearchService:
             if dialect_name == "postgresql":
                 # Weighted tsvector in PostgreSQL: A=symbols, B=paths/identifiers, C=content
                 tsv_expr = (
-                    func.setweight(func.to_tsvector("simple", a_text), "A")
-                    .concat(func.setweight(func.to_tsvector("simple", b_text), "B"))
-                    .concat(func.setweight(func.to_tsvector("simple", c_text), "C"))
+                    func.setweight(
+                        func.to_tsvector("simple", a_text), literal_column("'A'::\"char\"")
+                    )
+                    .concat(
+                        func.setweight(
+                            func.to_tsvector("simple", b_text), literal_column("'B'::\"char\"")
+                        )
+                    )
+                    .concat(
+                        func.setweight(
+                            func.to_tsvector("simple", c_text), literal_column("'C'::\"char\"")
+                        )
+                    )
                 )
             else:
                 # Fallback for SQLite / test environments
@@ -100,6 +116,19 @@ class LexicalSearchService:
         self, org_id: UUID, snapshot_id: UUID, chunker_version: str | None = None
     ) -> int:
         """Clear indexed chunks for a snapshot to support clean reindexing."""
+        if (
+            await self.s.scalar(
+                select(source_chunks.c.id)
+                .where(
+                    source_chunks.c.org_id == org_id,
+                    source_chunks.c.snapshot_id == snapshot_id,
+                    source_chunks.c.chunk_set_id.is_not(None),
+                )
+                .limit(1)
+            )
+            is not None
+        ):
+            raise ScopeViolation("Qualified immutable chunks cannot be cleared")
         stmt = delete(source_chunks).where(
             source_chunks.c.org_id == org_id,
             source_chunks.c.snapshot_id == snapshot_id,
@@ -115,13 +144,33 @@ class LexicalSearchService:
         if request.scope is None:
             raise ValueError("scope is required for search")
         await self._verify_scope(request.scope)
+        resolved = await resolve_lexical_set(self.s, request.scope)
+        if resolved is None:
+            return SearchResponseV1(
+                scope=request.scope,
+                mode=SearchMode.EXACT
+                if isinstance(request, ExactSearchRequestV1)
+                else SearchMode.LEXICAL,
+                query=request.query,
+                total_candidates=0,
+                hits=(),
+                coverage_status="unavailable",
+                lexical_availability="index_unavailable",
+            )
+        request = request.model_copy(
+            update={
+                "scope": request.scope.model_copy(update={"chunk_set_id": resolved.chunk_set_id})
+            }
+        )
 
+        assert request.scope is not None
         q = request.query.strip()
         sc = source_chunks.c
         filters = [
             sc.org_id == request.scope.org_id,
             sc.repository_id == request.scope.repository_id,
             sc.snapshot_id == request.scope.snapshot_id,
+            selected_chunks(self.s, request.scope, resolved),
         ]
 
         st = request.search_type
@@ -162,6 +211,7 @@ class LexicalSearchService:
 
         hits: list[SearchHitV1] = []
         for r in rows:
+            validate_safe_content(dict(r))
             reasons = []
             if r["symbol_name"] == q:
                 reasons.append("exact_symbol")
@@ -190,10 +240,15 @@ class LexicalSearchService:
                     score=1.0,
                     snippet=snippet,
                     content_sha256=str(r["content_sha256"]),
+                    chunk_set_id=resolved.chunk_set_id,
+                    config_hash=resolved.config_hash,
+                    materialization_hash=resolved.materialization_hash,
+                    safe_content_sha256=r["safe_content_sha256"],
                     match_reasons=tuple(reasons) or ("exact_match",),
                 )
             )
 
+        await require_retrieval_source(self.s, request.scope)
         elapsed = (time.perf_counter() - t0) * 1000.0
         return SearchResponseV1(
             scope=request.scope,
@@ -201,7 +256,8 @@ class LexicalSearchService:
             query=request.query,
             total_candidates=len(hits),
             hits=tuple(hits),
-            coverage_status="complete" if hits else "no_results",
+            coverage_status=resolved.coverage.status,
+            **resolved.response_fields(),
             execution_ms=round(elapsed, 2),
         )
 
@@ -211,7 +267,26 @@ class LexicalSearchService:
         if request.scope is None:
             raise ValueError("scope is required for search")
         await self._verify_scope(request.scope)
+        resolved = await resolve_lexical_set(self.s, request.scope)
+        if resolved is None:
+            return SearchResponseV1(
+                scope=request.scope,
+                mode=SearchMode.EXACT
+                if isinstance(request, ExactSearchRequestV1)
+                else SearchMode.LEXICAL,
+                query=request.query,
+                total_candidates=0,
+                hits=(),
+                coverage_status="unavailable",
+                lexical_availability="index_unavailable",
+            )
+        request = request.model_copy(
+            update={
+                "scope": request.scope.model_copy(update={"chunk_set_id": resolved.chunk_set_id})
+            }
+        )
 
+        assert request.scope is not None
         dialect_name = self.s.bind.dialect.name if self.s.bind else "postgresql"
         terms = build_search_terms(request.query)
         if not terms:
@@ -221,7 +296,8 @@ class LexicalSearchService:
                 query=request.query,
                 total_candidates=0,
                 hits=(),
-                coverage_status="no_results",
+                coverage_status=resolved.coverage.status,
+                **resolved.response_fields(),
                 execution_ms=0.0,
             )
 
@@ -230,6 +306,7 @@ class LexicalSearchService:
             sc.org_id == request.scope.org_id,
             sc.repository_id == request.scope.repository_id,
             sc.snapshot_id == request.scope.snapshot_id,
+            selected_chunks(self.s, request.scope, resolved),
         ]
 
         hits: list[SearchHitV1] = []
@@ -249,6 +326,7 @@ class LexicalSearchService:
             )
             rows = (await self.s.execute(stmt)).mappings().all()
             for r in rows:
+                validate_safe_content(dict(r))
                 snippet = self._generate_snippet(str(r["safe_content"]), terms)
                 hits.append(
                     SearchHitV1(
@@ -265,6 +343,10 @@ class LexicalSearchService:
                         score=float(r["rank"]),
                         snippet=snippet,
                         content_sha256=str(r["content_sha256"]),
+                        chunk_set_id=resolved.chunk_set_id,
+                        config_hash=resolved.config_hash,
+                        materialization_hash=resolved.materialization_hash,
+                        safe_content_sha256=r["safe_content_sha256"],
                         match_reasons=("fts_tsvector",),
                     )
                 )
@@ -292,6 +374,7 @@ class LexicalSearchService:
             # Rank candidates in Python for SQLite test consistency
             scored_rows = []
             for r in raw_rows:
+                validate_safe_content(dict(r))
                 score = 0.0
                 reasons = []
                 sym = (r["symbol_name"] or "").lower()
@@ -344,10 +427,15 @@ class LexicalSearchService:
                         score=score,
                         snippet=snippet,
                         content_sha256=str(r["content_sha256"]),
+                        chunk_set_id=resolved.chunk_set_id,
+                        config_hash=resolved.config_hash,
+                        materialization_hash=resolved.materialization_hash,
+                        safe_content_sha256=r["safe_content_sha256"],
                         match_reasons=tuple(reasons) or ("keyword_match",),
                     )
                 )
 
+        await require_retrieval_source(self.s, request.scope)
         elapsed = (time.perf_counter() - t0) * 1000.0
         return SearchResponseV1(
             scope=request.scope,
@@ -355,7 +443,8 @@ class LexicalSearchService:
             query=request.query,
             total_candidates=len(hits),
             hits=tuple(hits),
-            coverage_status="complete" if hits else "no_results",
+            coverage_status=resolved.coverage.status,
+            **resolved.response_fields(),
             execution_ms=round(elapsed, 2),
         )
 
@@ -387,6 +476,7 @@ class LexicalSearchService:
         )
         if grant is None:
             raise ScopeViolation("Repository grant is missing or revoked")
+        await require_retrieval_source(self.s, scope)
 
     def _generate_snippet(self, content: str, terms: Sequence[str], max_lines: int = 5) -> str:
         """Extract a relevant snippet of code around matching terms."""

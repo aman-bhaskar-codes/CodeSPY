@@ -1,4 +1,4 @@
-"""Integration tests for Phase 6 Investigation REST and SSE endpoints."""
+"""Investigation REST and SSE transport tests with an explicitly fake model."""
 
 import json
 from collections.abc import AsyncIterator
@@ -258,7 +258,7 @@ async def test_investigation_api_full_lifecycle(
         event_types = [e["event_type"] for e in events]
         assert "verdict_reached" in event_types
 
-        # Step 6: Submit human feedback with save_to_memory=True
+        # Unbound investigations cannot create snapshot-scoped memory.
         fb_res = await client.post(
             f"/api/v1/repositories/{repo_id}/investigations/{inv_id}/feedback",
             json={
@@ -269,10 +269,21 @@ async def test_investigation_api_full_lifecycle(
             },
             headers=headers,
         )
+        assert fb_res.status_code == 409
+        assert fb_res.json()["code"] == "memory_snapshot_unbound"
+        fb_res = await client.post(
+            f"/api/v1/repositories/{repo_id}/investigations/{inv_id}/feedback",
+            json={
+                "feedback_type": "agree",
+                "notes": "Confirmed benign: webhook egress uses strict IP allowlist.",
+                "save_to_memory": False,
+            },
+            headers=headers,
+        )
         assert fb_res.status_code == 200
         fb_data = fb_res.json()
         assert fb_data["status"] == "ok"
-        assert fb_data["memory_entry_id"] is not None
+        assert fb_data["memory_entry_id"] is None
 
         # Verify feedback event recorded
         events_after = (

@@ -134,3 +134,44 @@ async def test_detail_never_opens_uploaded_archive_in_api(supported_finding, mon
     )
     assert detail.code_excerpt is None
     assert reads == []
+
+
+@pytest.mark.parametrize("effective", ["supported-static", "unresolved"])
+async def test_list_filters_counts_and_summary_use_current_support(
+    supported_finding, monkeypatch, effective
+):
+    from app.services.scan_reads import ScanReadService
+
+    case = supported_finding
+
+    async def read(*args):
+        return SimpleNamespace(
+            effective_decisions=(
+                EffectiveVerificationV1(
+                    finding_id=case.finding_id,
+                    historical_disposition="supported-static",
+                    effective_disposition=effective,
+                    reason="current_support"
+                    if effective == "supported-static"
+                    else "source_unavailable",
+                ),
+            )
+        )
+
+    monkeypatch.setattr(ScanReadService, "read_in_session", read)
+    service = FindingsQueryService(case.factory)
+    page = await service.list_findings(
+        case.ctx, case.repository_id, case.snapshot_id, case.run_id, disposition=effective, limit=1
+    )
+    assert page.total_count == 1
+    assert len(page.items) == 1
+    assert page.items[0].disposition == effective
+    assert page.items[0].historical_disposition == "supported-static"
+    other = "unresolved" if effective == "supported-static" else "supported-static"
+    empty = await service.list_findings(
+        case.ctx, case.repository_id, case.snapshot_id, case.run_id, disposition=other
+    )
+    assert empty.total_count == 0 and not empty.items
+    summary = await service.get_summary(case.ctx, case.repository_id, case.snapshot_id, case.run_id)
+    assert summary.by_disposition == {effective: 1}
+    assert summary.by_historical_disposition == {"supported-static": 1}

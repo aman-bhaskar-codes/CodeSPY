@@ -15,9 +15,12 @@ from app.contracts.search import (
     HybridSearchResponseV1,
     LexicalSearchRequestV1,
 )
+from app.domain.errors import ScopeViolation
 from app.models.phase2_tables import PHASE2_TABLES
 from app.services.dense_search import DenseSearchService
 from app.services.lexical_search import LexicalSearchService
+from app.services.retrieval_authority import require_retrieval_source
+from app.services.retrieval_selection import resolve_lexical_set
 
 grants = PHASE2_TABLES["repository_grants"]
 
@@ -41,7 +44,25 @@ class HybridSearchService:
         if request.scope is None:
             raise ValueError("scope is required for hybrid search")
 
-        # Step 1: Execute retrieval channels
+        resolved = await resolve_lexical_set(self.session, request.scope)
+        if resolved is None:
+            return HybridSearchResponseV1(
+                scope=request.scope,
+                query=request.query,
+                total_candidates=0,
+                hits=(),
+                coverage_status="partial",
+                lexical_availability="index_unavailable",
+                dense_availability="index_unavailable",
+            )
+        request = request.model_copy(
+            update={
+                "scope": request.scope.model_copy(update={"chunk_set_id": resolved.chunk_set_id})
+            }
+        )
+
+        assert request.scope is not None
+        # Execute retrieval channels
         exact_req = ExactSearchRequestV1(
             scope=request.scope,
             query=request.query,
@@ -63,7 +84,17 @@ class HybridSearchService:
         lexical_res = await self.lexical_service.search_lexical(lexical_req)
         dense_res = await self.dense_service.search_dense(dense_req)
 
-        # Step 2: Compute Reciprocal Rank Fusion scores
+        for response in (exact_res, lexical_res, dense_res):
+            if response.chunk_set_id != resolved.chunk_set_id:
+                raise ScopeViolation("Retrieval channels selected different materializations")
+            for hit in response.hits:
+                if (
+                    hit.chunk_set_id != resolved.chunk_set_id
+                    or hit.materialization_hash != resolved.materialization_hash
+                ):
+                    raise ScopeViolation("Retrieval hit differs from the pinned materialization")
+
+        # Compute Reciprocal Rank Fusion scores
         k = request.rrf_k
         w_exact = request.weights.get("exact", 1.5)
         w_lexical = request.weights.get("lexical", 1.0)
@@ -157,6 +188,10 @@ class HybridSearchService:
                     score=round(score, 6),
                     snippet=hit.snippet,
                     content_sha256=hit.content_sha256,
+                    chunk_set_id=hit.chunk_set_id,
+                    config_hash=hit.config_hash,
+                    materialization_hash=hit.materialization_hash,
+                    safe_content_sha256=hit.safe_content_sha256,
                     match_modalities=tuple(modalities[cid]),
                     modality_ranks=ranks[cid],
                 )
@@ -164,11 +199,17 @@ class HybridSearchService:
             if len(final_hits) >= request.limit:
                 break
 
+        await require_retrieval_source(self.session, request.scope)
         exec_ms = round((time.perf_counter() - t0) * 1000, 2)
         return HybridSearchResponseV1(
             scope=request.scope,
+            **resolved.response_fields(),
             query=request.query,
             total_candidates=len(scores),
             hits=tuple(final_hits),
+            dense_availability=dense_res.availability,
+            coverage_status="complete"
+            if resolved.coverage.status == "complete" and dense_res.coverage_status == "complete"
+            else "partial",
             execution_ms=exec_ms,
         )

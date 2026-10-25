@@ -78,6 +78,18 @@ class ScannerOwnership:
             raise ValueError("foreign scanner ownership workspace")
         return cls(root, image, value["marker"])
 
+    @classmethod
+    def restore_recorded(cls, root: Path) -> "ScannerOwnership":
+        """Restore an exclusively owned workspace whose pinned image is recorded locally."""
+        root = root.absolute()
+        if root.is_symlink():
+            raise ValueError("invalid scanner ownership workspace")
+        value = _read(root / "ownership.json")
+        image = value.get("image", "")
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", image):
+            raise ValueError("invalid scanner ownership image")
+        return cls.restore(root, image)
+
     def reserve(self) -> str:
         name = "codespy-scan-" + uuid4().hex
         _write(

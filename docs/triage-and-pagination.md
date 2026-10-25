@@ -12,7 +12,7 @@ The new `0022_triage_commands` migration extends the existing immutable `api_com
 
 ## Finding pages
 
-Finding queries accept category, severity, historical disposition and triage-state filters. All filters apply before matching totals and page limits. Limits are 1–100, default 50. Findings sort by their immutable UUID in ascending order. `total_count` counts all current matches, independent of the current page position.
+Finding queries accept category, severity, current effective disposition and triage-state filters. All filters apply before matching totals and page limits. Limits are 1–100, default 50. Findings sort by their immutable UUID in ascending order. `total_count` counts all current matches, independent of the current page position.
 
 Pass `next_cursor` back as `cursor` with the same filters and scope. Tokens are signed and bound to the organization, principal, repository, snapshot, run and filters. Malformed or mismatched tokens and invalid filters or limits return 422. Current authorization is checked on every request. Changing filters restarts pagination. Tokens use the application's existing ephemeral signing key and expire when the application instance restarts; multi-instance key configuration remains separate work.
 
@@ -20,7 +20,7 @@ Pass `next_cursor` back as `cursor` with the same filters and scope. Tokens are 
 
 History uses the same 1–100 limit, default 50, and returns `next_cursor`. Events sort by `(created_at, event_id)` descending, so events with identical timestamps have a deterministic order. The UI offers older and newest decisions without implying that the displayed page is the complete audit trail.
 
-These are live queries, not a snapshot held across HTTP requests. Concurrent triage changes can alter finding filter membership and totals between pages. Historical disposition filtering is separate from finding-detail current-support evaluation.
+These are live queries, not a snapshot held across HTTP requests. Concurrent triage changes can alter finding filter membership and totals between pages. Disposition filters, counts and detail share the current-support projection; historical decisions remain separately available. Support availability changes can also alter membership between pages.
 
 ## Verification boundary
 

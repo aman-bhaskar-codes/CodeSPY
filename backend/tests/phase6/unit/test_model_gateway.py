@@ -226,6 +226,9 @@ async def test_model_budget_service_uncertain_hold(session: AsyncSession) -> Non
         idempotency_key="idemp_hold_001",
     )
 
+    await budget_svc.commit_dispatch_intent(org_id, res_id)
+    await budget_svc.mark_dispatched(org_id, res_id)
+
     # Simulate network drop during dispatch -> hold uncertain
     await budget_svc.hold_uncertain(
         org_id=org_id,
@@ -485,3 +488,106 @@ async def test_model_gateway_end_to_end_execution(session: AsyncSession) -> None
     budget = await budget_svc.get_budget(org_id, repo_id)
     assert budget["reserved_micros"] == 0  # Cleanly settled
     assert budget["balance_micros"] == 1_000_000 - response.charge_micros
+
+
+async def configured_gateway(session, adapter):
+    budget = ModelBudgetService(session)
+    org, repo = uuid4(), uuid4()
+    now = datetime.now(UTC)
+    await budget.ensure_budget(org, repo, initial_balance_micros=1_000_000)
+    await budget.set_generation_price_schedule(
+        GenerationPriceScheduleV1(
+            provider="fake",
+            model_id="codespy-fake-investigator-v1",
+            version="2026-10-22.1",
+            input_micros_per_1k=500,
+            output_micros_per_1k=1000,
+            effective_at=now - timedelta(days=1),
+            expires_at=now + timedelta(days=1),
+        )
+    )
+    gateway = ModelGatewayService(ModelRouter(budget), budget, {"fake": adapter})
+    args = {
+        "org_id": org,
+        "repository_id": repo,
+        "principal_id": uuid4(),
+        "investigation_id": uuid4(),
+        "logical_call_id": uuid4(),
+        "messages": (ChatMessageV1(role=ModelRole.USER, content="source-canary-78219"),),
+        "requirement": ModelRoutingRequirementV1(
+            estimated_context_tokens=1000,
+            estimated_output_tokens=500,
+            requires_structured_output=True,
+        ),
+        "disclosure_policy": DisclosurePolicyV1(allow_external_disclosure=False),
+        "idempotency_key": "gateway-safety",
+        "response_schema": {"type": "object", "required": ["status"]},
+    }
+    return gateway, budget, args
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content", ["source-canary-78219", '{"other": "source-canary-78219"}', ""])
+async def test_invalid_output_is_settled_without_implicit_repair(session, caplog, content):
+    from app.services.output_validator import OutputValidationError
+    from sqlalchemy import select
+
+    adapter = FakeModelAdapter(
+        default_content=content, fixed_input_tokens=150, fixed_output_tokens=60
+    )
+    gateway, budget, args = await configured_gateway(session, adapter)
+    with pytest.raises(OutputValidationError):
+        await gateway.execute_call(**args)
+    assert len(adapter.call_history) == 1
+    row = (await session.execute(select(model_reservations))).mappings().one()
+    assert row["state"] == "settled"
+    ledger = (await session.execute(select(model_spend_ledger))).mappings().one()
+    assert ledger["input_tokens"] == 150
+    assert ledger["output_tokens"] == 60
+    assert row["settled_micros"] == ledger["charged_micros"] == 135
+    assert (await budget.get_budget(args["org_id"], args["repository_id"]))["reserved_micros"] == 0
+    assert "source-canary-78219" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_dispatch_exception_is_preserved_and_sanitized(session, caplog):
+    from sqlalchemy import select
+
+    original = RuntimeError("source-canary-78219 provider credentials text")
+
+    def failing(request):
+        raise original
+
+    adapter = FakeModelAdapter(custom_handler=failing)
+    gateway, budget, args = await configured_gateway(session, adapter)
+    with pytest.raises(RuntimeError) as raised:
+        await gateway.execute_call(**args)
+    assert raised.value is original
+    assert len(adapter.call_history) == 1
+    row = (await session.execute(select(model_reservations))).mappings().one()
+    assert row["state"] == "uncertain_hold"
+    assert row["failure_reason"] == "provider_dispatch_failed"
+    assert "source-canary-78219" not in caplog.text
+    assert (await budget.get_budget(args["org_id"], args["repository_id"]))["reserved_micros"] > 0
+
+
+@pytest.mark.asyncio
+async def test_dispatch_cancellation_propagates_without_implicit_retry(session, caplog):
+    import asyncio
+
+    from sqlalchemy import select
+
+    cancelled = asyncio.CancelledError("source-canary-78219")
+
+    def cancel(request):
+        raise cancelled
+
+    adapter = FakeModelAdapter(custom_handler=cancel)
+    gateway, _, args = await configured_gateway(session, adapter)
+    with pytest.raises(asyncio.CancelledError) as raised:
+        await gateway.execute_call(**args)
+    assert raised.value is cancelled
+    assert len(adapter.call_history) == 1
+    row = (await session.execute(select(model_reservations))).mappings().one()
+    assert row["state"] == "uncertain_hold"
+    assert "source-canary-78219" not in caplog.text
