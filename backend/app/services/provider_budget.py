@@ -490,7 +490,7 @@ class ProviderBudgetService:
             from app.repositories.accounting_repository import AccountingRepository
 
             row = await AccountingRepository(self.s).cancel_embedding_request(
-                org_id, reservation_id
+                org_id, reservation_id, reason
             )
             return ReservationRecordV1.model_validate(
                 {k: row[k] for k in ReservationRecordV1.model_fields}
