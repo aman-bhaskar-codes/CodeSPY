@@ -11,6 +11,7 @@ from app.models.derived_artifacts import derived_artifacts
 from app.ports.source_reader import SourceReaderUnavailable
 from app.services.privacy_transform import transform_model_safe
 from app.services.source_view import SourceFileRow, SourceViewService
+
 from tests.phase5.unit.test_source_view_service import MemoryObjectStore
 from tests.phase5.unit.test_source_view_service import session as source_session_fixture
 

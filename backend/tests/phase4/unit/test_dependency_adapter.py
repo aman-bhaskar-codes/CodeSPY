@@ -12,6 +12,7 @@ from app.scanners.ownership import ScannerOwnership
 from app.scanners.process import NativeProcessError, NativeResult
 from app.services.analysis_sources import LocatedSource
 from app.services.dependency_sources import BoundDependencyStager
+
 from tests.phase4.dependency_fixtures import fixture_dependency
 
 IMAGE = "sha256:" + "a" * 64

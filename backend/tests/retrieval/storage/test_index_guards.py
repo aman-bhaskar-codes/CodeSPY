@@ -14,6 +14,7 @@ from app.services.analysis_sources import locate_source
 from scripts import phase2_db as harness
 from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
+
 from tests.phase3.integration.test_structural_publication import admitted
 from tests.retrieval.unit.test_index_contracts import config
 
@@ -239,6 +240,7 @@ async def publish_rows(
 ):
     from app.models.chunk_tables import search_indices, source_chunks
     from app.models.index_tables import index_publication_receipts, retrieval_chunk_sets
+
     from tests.retrieval.unit.test_index_contracts import draft
 
     result = prepared or draft(spec)
@@ -531,6 +533,7 @@ async def test_manifest_is_a_complete_unambiguous_publication(
     api_factory, broker_factory, migration_factory, tmp_path, scenario
 ):
     from app.contracts.indexing import IndexCoverageV1, IndexOmissionV1, IndexPublicationDraftV1
+
     from tests.retrieval.unit.test_index_contracts import draft
 
     ctx, spec, values = await source_case(migration_factory, tmp_path)

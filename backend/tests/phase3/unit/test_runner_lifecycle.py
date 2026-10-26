@@ -8,6 +8,7 @@ import pytest
 from app.analyzers.pipeline import analyze
 from app.analyzers.runner import AnalysisProcessError, DockerAnalysisRunner
 from app.domain.canonical_json import canonical_bytes
+
 from tests.phase3.unit.test_materialization import fixture_input
 
 

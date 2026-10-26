@@ -26,6 +26,7 @@ from app.workers.dispatcher import OutboxDispatcher
 from app.workers.operations.index_snapshot import IndexOperation
 from app.workers.recovery import RecoveryWorker
 from app.workers.runtime import WorkerRuntime
+
 from tests.phase2.integration import test_submission_ingestion as ingestion
 from tests.phase3.integration.test_structural_publication import admitted
 

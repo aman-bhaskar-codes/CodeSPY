@@ -24,9 +24,15 @@ class PublicationExecutor:
         safety_seconds: float = 5,
         cleanup_seconds: float = 5,
         commit_hook: Callable[[AsyncSession], Awaitable[None]] | None = None,
+        statement_seconds: int = 20,
+        idle_seconds: int = 90,
     ):
         if not 0 < budget_seconds <= 60 or not 0 < cleanup_seconds <= safety_seconds <= 5:
             raise ValueError("invalid publication profile")
+        if not 1 <= statement_seconds <= 20 or not 1 <= idle_seconds <= 90:
+            raise ValueError("invalid SQL timeout profile")
+        self.statement_seconds = statement_seconds
+        self.idle_seconds = idle_seconds
         self.factory = factory
         self.budget_seconds = budget_seconds
         self.safety_seconds = safety_seconds
@@ -46,21 +52,30 @@ class PublicationExecutor:
                 session = self.factory()
                 await session.begin()
                 conn = await session.connection()
-                raw = await conn.get_raw_connection()
-                driver = raw.driver_connection
-                assert driver is not None
-                terminate_driver: Callable[[], None] = driver.terminate
+                dialect_name = getattr(getattr(conn, "dialect", None), "name", None)
+                if dialect_name != "sqlite":
+                    raw = await conn.get_raw_connection()
+                    driver = getattr(raw, "driver_connection", None)
+                    assert driver is not None
+                    terminate_driver: Callable[[], None] = driver.terminate
 
-                def discard() -> None:
-                    if raw.is_valid and raw.driver_connection is driver:
-                        terminate_driver()
-                        raw.invalidate(soft=True)
-                        raw.detach()
+                    def discard() -> None:
+                        if raw.is_valid and raw.driver_connection is driver:
+                            terminate_driver()
+                            raw.invalidate(soft=True)
+                            raw.detach()
 
-                terminate = discard
-                await session.execute(text("SET LOCAL statement_timeout='20s'"))
-                await session.execute(text("SET LOCAL lock_timeout='2s'"))
-                await session.execute(text("SET LOCAL idle_in_transaction_session_timeout='90s'"))
+                    terminate = discard
+                if dialect_name == "postgresql":
+                    await session.execute(
+                        text(f"SET LOCAL statement_timeout='{self.statement_seconds}s'")
+                    )
+                    await session.execute(text("SET LOCAL lock_timeout='2s'"))
+                    await session.execute(
+                        text(
+                            f"SET LOCAL idle_in_transaction_session_timeout='{self.idle_seconds}s'"
+                        )
+                    )
                 result = await work(session, budget)
                 commit_started = True
                 if self.commit_hook is not None:

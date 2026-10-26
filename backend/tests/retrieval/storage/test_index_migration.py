@@ -74,6 +74,7 @@ async def test_legacy_chunk_and_memory_reference_survive_roundtrip(
     from app.models.memory_tables import repo_memories
     from app.models.tables import source_files
     from sqlalchemy import select
+
     from tests.phase3.integration.test_structural_publication import admitted
 
     ctx, snapshot, repo, _ = await admitted(migration_factory, tmp_path)

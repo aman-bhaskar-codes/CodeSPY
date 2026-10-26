@@ -9,6 +9,7 @@ from app.domain.canonical_json import semantic_digest
 from app.models.model_gateway_tables import model_reservations
 from app.services.model_budget import ModelBudgetService, ModelInvalidStateTransitionError
 from sqlalchemy import select
+
 from tests.phase6.unit import test_model_gateway as fixtures
 from tests.phase6.unit.test_model_budget_transitions import reserved
 

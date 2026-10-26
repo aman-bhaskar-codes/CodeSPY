@@ -35,6 +35,7 @@ class OutboxDispatcher:
                     await s.execute(
                         select(outbox)
                         .where(
+                            outbox.c.kind.in_(("wakeup", "dead_letter")),
                             outbox.c.next_send_at <= func.clock_timestamp(),
                             or_(
                                 outbox.c.state == "pending",

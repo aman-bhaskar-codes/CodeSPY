@@ -21,7 +21,7 @@ from app.contracts.structure import (
     SourceInputV1,
     SourcePolicyV1,
 )
-from app.domain.errors import DuplicateConflict
+from app.domain.errors import DuplicateConflict, InvalidTransition
 from app.models.phase2_tables import PHASE2_TABLES
 from app.models.tables import artifacts, source_files, source_snapshots
 from app.ports.object_store import ObjectStore
@@ -239,3 +239,38 @@ async def stage_source(
         toolchain_hash=config.toolchain_hash,
         request_nonce=uuid4().hex,
     )
+
+
+async def lock_retained_snapshot(
+    session: AsyncSession, org: UUID, repo: UUID, snapshot_id: UUID
+) -> None:
+    """Pin an available immutable source object through a short authority transaction."""
+    objects = PHASE2_TABLES["object_records"]
+    locked = await session.scalar(
+        select(objects.c.id)
+        .join(
+            artifacts,
+            (artifacts.c.org_id == objects.c.org_id)
+            & (artifacts.c.repository_id == objects.c.repository_id)
+            & (artifacts.c.storage_key == objects.c.key)
+            & (artifacts.c.sha256 == objects.c.sha256)
+            & (artifacts.c.size_bytes == objects.c.size_bytes),
+        )
+        .join(
+            source_snapshots,
+            (source_snapshots.c.org_id == artifacts.c.org_id)
+            & (source_snapshots.c.artifact_id == artifacts.c.id)
+            & (source_snapshots.c.repository_id == artifacts.c.repository_id),
+        )
+        .where(
+            source_snapshots.c.org_id == org,
+            source_snapshots.c.repository_id == repo,
+            source_snapshots.c.id == snapshot_id,
+            source_snapshots.c.state == "sealed",
+            objects.c.state == "available",
+            objects.c.kind == "source",
+        )
+        .with_for_update(read=True, of=objects)
+    )
+    if locked is None:
+        raise InvalidTransition("context_invalidated")

@@ -8,6 +8,7 @@ import pytest
 from app.contracts.jobs import AttemptLeaseV2
 from app.indexing.receipt import _issue
 from app.workers.operations.index_snapshot import IndexOperation
+
 from tests.retrieval.unit.test_index_contracts import draft, spec
 
 

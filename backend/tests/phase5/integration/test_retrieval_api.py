@@ -16,7 +16,7 @@ from app.contracts.memory import MemoryKind
 from app.contracts.search import IndexState, IndexType
 from app.domain.scope import OrgRole, TenantContext
 from app.models.chunk_tables import chunk_embeddings, search_indices, source_chunks
-from app.models.memory_tables import repo_memories
+from app.models.memory_tables import MEMORY_TABLES
 from app.models.phase2_tables import PHASE2_TABLES, md
 from app.models.tables import (
     memberships,
@@ -71,7 +71,7 @@ async def factory(
                     source_chunks,
                     search_indices,
                     chunk_embeddings,
-                    repo_memories,
+                    *MEMORY_TABLES,
                 ],
             )
         )
@@ -145,6 +145,10 @@ async def test_retrieval_and_context_endpoints_authenticated(
     from unittest.mock import AsyncMock
 
     # Transport-only fixture; real retained-source authority is tested in PostgreSQL.
+    monkeypatch.setattr("app.services.memory_evidence.SourceMemoryEvidence.verify", AsyncMock())
+    monkeypatch.setattr(
+        "app.services.memory_evidence.SourceMemoryEvidence.verify_current", AsyncMock()
+    )
     monkeypatch.setattr("app.services.retrieval_authority.locate_source", AsyncMock())
     from sqlalchemy import literal, select
 
@@ -388,7 +392,23 @@ async def test_retrieval_and_context_endpoints_authenticated(
         assert mem_data["topic"] == "auth-login"
         assert len(mem_data["evidence_pointers"]) == 1
 
-        # 8. Query Memory
+        assert mem_data["state"] == "candidate"
+        before = await client.get(
+            f"/api/v1/repositories/{repo_id}/snapshots/{snap_id}/memories?query=timing"
+        )
+        assert before.json()["items"] == []
+        reviewed = await client.post(
+            f"/api/v1/repositories/{repo_id}/memories/{mem_data['memory_id']}/reviews",
+            json={
+                "action": "accept",
+                "expected_version": 1,
+                "request_key": "memory-review",
+                "reason": "Synthetic transport review",
+            },
+            headers=headers,
+        )
+        assert reviewed.status_code == 200, reviewed.text
+        # Query only reviewed memory.
         mem_query_res = await client.get(
             f"/api/v1/repositories/{repo_id}/snapshots/{snap_id}/memories?query=timing",
             headers={"Origin": "http://testserver"},

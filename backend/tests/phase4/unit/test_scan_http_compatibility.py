@@ -5,6 +5,7 @@ from uuid import UUID
 import pytest
 from app.contracts.scan_jobs import ScanJobRecordV4
 from fastapi import HTTPException
+
 from tests.phase4.dependency_fixtures import NOW
 
 

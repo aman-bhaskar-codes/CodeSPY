@@ -19,11 +19,12 @@ from app.contracts.source_view import (
 )
 from app.domain.errors import ScopeViolation
 from app.domain.scope import TenantContext
+from app.ports.memory import MemorySelectionPort
 from app.services.context_assembly import ContextAssemblyService
 from app.services.hybrid_search import HybridSearchService
 from app.services.index_jobs import IndexJobService
+from app.services.investigation_queries import InvestigationQueryService
 from app.services.lexical_search import LexicalSearchService
-from app.services.memory_service import MemoryService
 from app.services.source_view import SourceViewService
 
 
@@ -44,8 +45,9 @@ class ReadOnlyMcpServer:
         lexical_service: LexicalSearchService | None = None,
         hybrid_service: HybridSearchService | None = None,
         context_service: ContextAssemblyService | None = None,
-        memory_service: MemoryService | None = None,
+        memory_service: MemorySelectionPort | None = None,
         index_service: IndexJobService | None = None,
+        investigation_query_service: InvestigationQueryService | None = None,
     ) -> None:
         self._identity = identity
         self.source_view_service = source_view_service
@@ -54,6 +56,7 @@ class ReadOnlyMcpServer:
         self.context_service = context_service
         self.memory_service = memory_service
         self.index_service = index_service
+        self.investigation_query_service = investigation_query_service
 
     def get_tool_definitions(self) -> list[dict[str, Any]]:
         """Return MCP tool schemas for read-only retrieval capabilities."""
@@ -105,7 +108,7 @@ class ReadOnlyMcpServer:
                         "snapshot_id": {"type": "string", "format": "uuid"},
                         "chunk_set_id": {"type": "string", "format": "uuid"},
                         "query": {"type": "string"},
-                        "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20},
+                        "limit": {"type": "integer", "minimum": 1, "maximum": 10, "default": 5},
                     },
                     "required": ["repository_id", "snapshot_id", "query"],
                 },
@@ -123,7 +126,7 @@ class ReadOnlyMcpServer:
                         "snapshot_id": {"type": "string", "format": "uuid"},
                         "chunk_set_id": {"type": "string", "format": "uuid"},
                         "query": {"type": "string"},
-                        "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20},
+                        "limit": {"type": "integer", "minimum": 1, "maximum": 10, "default": 5},
                     },
                     "required": ["repository_id", "snapshot_id", "query"],
                 },
@@ -162,9 +165,43 @@ class ReadOnlyMcpServer:
                         "query": {"type": "string"},
                         "topic": {"type": "string"},
                         "snapshot_id": {"type": "string", "format": "uuid"},
-                        "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20},
+                        "history_mode": {
+                            "type": "string",
+                            "enum": ["off", "current_only", "historical_hints"],
+                        },
+                        "limit": {"type": "integer", "minimum": 1, "maximum": 10, "default": 5},
                     },
-                    "required": ["repository_id", "query"],
+                    "required": ["repository_id", "query", "snapshot_id"],
+                },
+            },
+            {
+                "name": "get_investigation_status",
+                "description": (
+                    "Fetch bounded investigation lifecycle status, job progress, and verdict."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "repository_id": {"type": "string", "format": "uuid"},
+                        "investigation_id": {"type": "string", "format": "uuid"},
+                    },
+                    "required": ["repository_id", "investigation_id"],
+                },
+            },
+            {
+                "name": "get_investigation_result",
+                "description": (
+                    "Fetch final report, verified claims, and evidence count for an investigation."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "repository_id": {"type": "string", "format": "uuid"},
+                        "investigation_id": {"type": "string", "format": "uuid"},
+                    },
+                    "required": ["repository_id", "investigation_id"],
                 },
             },
         ]
@@ -340,7 +377,7 @@ class ReadOnlyMcpServer:
             req_exact = ExactSearchRequestV1(
                 scope=scope,
                 query=str(args["query"]),
-                limit=int(args.get("limit", 20)),
+                limit=int(args.get("limit", 5)),
             )
             res_exact = await self.lexical_service.search_exact(req_exact)
             return json.dumps(res_exact.model_dump(mode="json"))
@@ -358,7 +395,7 @@ class ReadOnlyMcpServer:
             req_hybrid = HybridSearchRequestV1(
                 scope=scope,
                 query=str(args["query"]),
-                limit=int(args.get("limit", 20)),
+                limit=int(args.get("limit", 5)),
             )
             res_hybrid = await self.hybrid_service.search_hybrid(req_hybrid)
             return json.dumps(res_hybrid.model_dump(mode="json"))
@@ -398,9 +435,74 @@ class ReadOnlyMcpServer:
                 query=str(args["query"]),
                 topic=args.get("topic"),
                 snapshot_id=UUID(args["snapshot_id"]) if "snapshot_id" in args else None,
-                limit=int(args.get("limit", 20)),
+                limit=int(args.get("limit", 5)),
+                history_mode=args.get("history_mode", "current_only"),
             )
             m_res = await self.memory_service.query_memory(m_req)
             return json.dumps(m_res.model_dump(mode="json"))
+
+        if name == "get_investigation_status":
+            if not self.investigation_query_service:
+                raise RuntimeError("InvestigationQueryService not configured on MCP server")
+            detail = await self.investigation_query_service.detail(
+                self._identity,
+                UUID(args["repository_id"]),
+                UUID(args["investigation_id"]),
+            )
+            status_payload = {
+                "investigation_id": str(detail.summary.id),
+                "repository_id": str(detail.summary.repository_id),
+                "snapshot_id": (
+                    str(detail.summary.snapshot_id) if detail.summary.snapshot_id else None
+                ),
+                "status": detail.summary.status,
+                "target_type": detail.summary.target_type,
+                "query": detail.summary.query,
+                "current_step": detail.summary.current_step,
+                "max_steps": detail.summary.max_steps,
+                "budget_limit_micros": detail.summary.budget_limit_micros,
+                "spent_micros": detail.summary.spent_micros,
+                "held_micros": detail.summary.held_micros,
+                "verdict": detail.summary.verdict,
+                "verdict_confidence": detail.summary.verdict_confidence,
+                "summary": detail.summary.summary,
+                "failure_reason": detail.summary.failure_reason,
+                "available_actions": list(detail.available_actions),
+                "claims_count": detail.claims_count,
+                "evidence_count": detail.evidence_count,
+                "events_count": detail.events_count,
+                "job": (
+                    {
+                        "id": str(detail.job.id),
+                        "state": detail.job.state,
+                        "attempt_count": detail.job.attempt_count,
+                        "max_attempts": detail.job.max_attempts,
+                    }
+                    if detail.job
+                    else None
+                ),
+            }
+            return json.dumps(status_payload)
+
+        if name == "get_investigation_result":
+            if not self.investigation_query_service:
+                raise RuntimeError("InvestigationQueryService not configured on MCP server")
+            detail = await self.investigation_query_service.detail(
+                self._identity,
+                UUID(args["repository_id"]),
+                UUID(args["investigation_id"]),
+            )
+            result_payload = {
+                "investigation_id": str(detail.summary.id),
+                "repository_id": str(detail.summary.repository_id),
+                "status": detail.summary.status,
+                "verdict": detail.summary.verdict,
+                "verdict_confidence": detail.summary.verdict_confidence,
+                "summary": detail.summary.summary,
+                "claims_count": detail.claims_count,
+                "evidence_count": detail.evidence_count,
+                "report": detail.report,
+            }
+            return json.dumps(result_payload)
 
         raise ValueError("Unknown or unauthorized tool")

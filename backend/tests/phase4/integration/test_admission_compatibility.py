@@ -17,6 +17,7 @@ from app.services.submissions import SubmissionService
 from app.workers.consumer import JobConsumer
 from app.workers.dispatcher import OutboxDispatcher
 from sqlalchemy import select
+
 from tests.phase2.integration.test_submission_ingestion import chunks, submission_scenario
 from tests.phase4.unit.test_admission_policy import archive
 
@@ -114,6 +115,7 @@ async def test_github_v2_preserves_selected_acquisition_and_root_policy(factory,
     from app.models.tables import repositories
     from app.services.github_acquisition import GitHubAcquisitionService
     from sqlalchemy import insert, update
+
     from tests.phase2.integration.test_github_acquisition import FakeGitHub
 
     _, ctx, reservation, _, _, store = await submission_scenario(factory, tmp_path)

@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 from app.contracts.structure import SourceFileV1
 from app.services.index_jobs import select_index_files
+
 from tests.retrieval.unit.test_index_contracts import config
 
 
@@ -60,6 +61,7 @@ async def test_unconfigured_builder_cannot_pass_job_readiness():
 @pytest.mark.asyncio
 async def test_runtime_config_must_match_actual_registered_image(tmp_path):
     from app.ports.index_builder import IndexBuilderUnavailable
+
     from tests.retrieval.unit.test_index_adapter import setup
 
     job, _, _, builder, _ = setup(tmp_path)

@@ -8,6 +8,7 @@ from app.domain.errors import ScopeViolation
 from app.scanners.source import read_scanner_sources
 from app.services.analysis_sources import LocatedSource
 from app.services.scanner_sources import BoundScannerStager
+
 from tests.phase4.unit.test_scanner_archive import fixture_input
 
 

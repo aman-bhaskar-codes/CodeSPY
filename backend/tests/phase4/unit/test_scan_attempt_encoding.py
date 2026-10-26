@@ -5,6 +5,7 @@ from uuid import UUID
 
 from app.domain.canonical_json import load_json
 from app.repositories.scan_repository import ScanRepository
+
 from tests.phase4.dependency_fixtures import NOW
 from tests.phase4.unit.test_scan_config import config
 

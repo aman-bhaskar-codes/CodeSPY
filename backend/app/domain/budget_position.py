@@ -41,6 +41,25 @@ class BudgetPosition:
         payment = min(owed, self.balance_micros - remaining)
         return BudgetPosition(self.balance_micros - payment, remaining, owed - payment)
 
+    def fund(self, amount_micros: int) -> tuple["BudgetPosition", int, int]:
+        if (
+            type(amount_micros) is not int
+            or amount_micros <= 0
+            or amount_micros > 9223372036854775807
+        ):
+            raise ValueError("Invalid budget funding amount")
+        if self.balance_micros + amount_micros > 9223372036854775807:
+            raise ValueError("Budget balance would overflow int64")
+        repayment = min(amount_micros, self.debt_micros)
+        credited = amount_micros - repayment
+        new_debt = self.debt_micros - repayment
+        new_balance = self.balance_micros + credited
+        return (
+            BudgetPosition(new_balance, self.reserved_micros, new_debt),
+            credited,
+            repayment,
+        )
+
     def update_values(self) -> dict[str, int]:
         return {
             "balance_micros": self.balance_micros,

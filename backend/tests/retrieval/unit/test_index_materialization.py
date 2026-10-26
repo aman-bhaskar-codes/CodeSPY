@@ -17,6 +17,7 @@ from app.indexing.materialize import (
     safe_to_original_envelope,
 )
 from app.services.privacy_transform import TransformOutput, transform_model_safe
+
 from tests.retrieval.unit.test_index_contracts import spec
 
 
@@ -277,6 +278,7 @@ def test_adjacent_redactions_and_clipped_identity_intervals():
 
 def test_aggregate_row_cap_is_partial_deterministic_and_renumbers_retained_chunks():
     from app.indexing.materialize import MaterializedFileV1
+
     from tests.retrieval.unit.test_index_contracts import chunk
 
     raw = b"x" * 3072
@@ -325,6 +327,7 @@ def test_canonical_metadata_and_escaped_text_budgets_are_incremental(kind):
     from app.contracts.indexing import IndexIntervalV1
     from app.domain.canonical_json import semantic_digest
     from app.indexing.budget import HEADER_RESERVE, ChunkBudget
+
     from tests.retrieval.unit.test_index_contracts import chunk
 
     if kind == "manifest_limit":

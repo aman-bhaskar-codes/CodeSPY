@@ -14,6 +14,7 @@ from app.services.jobs import JobService
 from app.services.scan_jobs import ScanJobService
 from app.services.scan_publication import FindingFinalizer
 from sqlalchemy import text
+
 from tests.phase4.runtime_fixtures import runtime
 from tests.phase4.storage.scan_fixtures import admit_contents
 from tests.phase4.storage.test_scan_jobs import Registry

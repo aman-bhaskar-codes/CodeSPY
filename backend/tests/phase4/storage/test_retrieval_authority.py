@@ -21,6 +21,7 @@ from app.services.context_assembly import ContextAssemblyService
 from app.services.hybrid_search import HybridSearchService
 from app.services.lexical_search import LexicalSearchService
 from sqlalchemy import func, select, update
+
 from tests.phase3.integration.test_structural_publication import admitted
 
 

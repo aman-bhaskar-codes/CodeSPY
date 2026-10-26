@@ -5,6 +5,7 @@ import os
 
 import pytest
 from app.analyzers.runner import AnalysisProcessError, DockerAnalysisRunner, drain
+
 from tests.phase3.unit.test_materialization import fixture_input
 
 

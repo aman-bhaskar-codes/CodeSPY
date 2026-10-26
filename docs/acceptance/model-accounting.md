@@ -191,3 +191,50 @@ The full suite is therefore not qualified. The separately configured owned
 PostgreSQL accounting harness passed. Storage checks use the migration-owner role
 and simulated provider failures/usage. Production-role privileges, live invoice
 verification, public activation and automatic reconciliation remain unqualified.
+
+## Least-privilege authority and bounded recovery
+
+The additive `0028_accounting_authority` migration establishes role-isolated accounting
+mutations and explicit positive funding records. Runtime roles `p2_api` and `p2_broker`
+are stripped of direct table DML (`INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`) on all
+financial tables (`embedding_budgets`, `price_schedules`, `model_reservations`,
+`model_spend_ledger`, `model_usage_reconciliations`, and `budget_funding_receipts`).
+All state transitions execute through security-definer routines owned by the schema
+owner with pinned `search_path = pg_catalog, public`. An `AccountingRepository` provides
+the typed adapter layer delegating to PostgreSQL security-definer routines or direct
+transaction fallbacks in SQLite environments.
+
+Explicit budget funding is managed by `BudgetOperationsService.fund()` requiring owner
+role authorization and producing immutable `budget_funding_receipts`. Funding enforces
+strict priority: incoming credit automatically repays outstanding debt first; only
+the excess increases the spendable balance while preserving outstanding reservations.
+Exact same-key replay returns the original funding receipt idempotently; conflicting
+keys are rejected with duplicate conflicts.
+
+Implicit runtime budget and price seeding has been removed from application execution
+routes. Missing accounts, missing/expired price schedules, and insufficient spendable
+balance reject immediately with stable domain errors mapped to HTTP 402/409 before
+dispatch.
+
+Queue-independent recovery is provided by `AccountingRecoveryWorker`, discovering stale
+reservations in `dispatch_intent_committed` and `dispatched` states using database time
+and SKIP LOCKED batches. Stale candidates transition conservatively to uncertain holds,
+protecting committed capacity without releasing spendable budget or re-dispatching
+inference.
+
+Observed checks: **87 accounting and Phase 6 unit/integration tests passed in 1.87
+seconds**; **580 Phase 2, 4, and 5 unit tests passed in 14.24 seconds**; strict typing
+passed for 233 application files with zero errors; Ruff formatting and linting passed
+for all modified files. Storage tests against unprovisioned Docker environments were
+safely skipped. Live provider adapters, token normalization, external billing feeds,
+and user-facing billing UI remain deferred.
+
+## Configured generation integration
+
+Configured provider execution now uses constrained generation routines, immutable
+numeric receipts and encrypted scoped continuation state. An additive repair corrects
+SQL charge arithmetic, exact replay comparison and concurrent dispatch claims.
+Restricted generation roles, cancellation and request replay are qualified by the
+[model connection checks](model-connections.md). These results do not qualify the
+older shared embedding authority routines or their runtime-role wiring. That remains
+a deployment gate; no real inference or account access was enabled.

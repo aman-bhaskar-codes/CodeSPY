@@ -13,6 +13,7 @@ from app.scanners.ownership import ScannerOwnership
 from app.services.findings_query import FindingsQueryService
 from app.services.scan_publication import FindingFinalizer
 from app.source_read.adapter import DockerSourceReader
+
 from tests.phase4.storage.test_scan_jobs import Registry
 from tests.phase4.storage.test_scan_publication import publication_case
 
@@ -76,6 +77,7 @@ async def test_concurrent_first_privacy_views_share_one_verified_registry(
     from app.services.source_view import SourceViewService
     from sqlalchemy import func, select
     from sqlalchemy.ext.asyncio import AsyncSession
+
     from tests.phase3.integration.test_structural_publication import admitted
 
     image = os.environ.get("CODESPY_SOURCE_READER_IMAGE")

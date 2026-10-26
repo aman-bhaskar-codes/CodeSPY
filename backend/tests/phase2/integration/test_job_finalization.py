@@ -6,6 +6,7 @@ from app.models.phase2_tables import PHASE2_TABLES
 from app.services.job_finalization import JobFinalizer
 from app.services.jobs import JobService
 from sqlalchemy import func, select
+
 from tests.phase2.integration.test_submission_ingestion import chunks, submission_scenario
 
 

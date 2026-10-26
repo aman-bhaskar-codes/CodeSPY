@@ -12,6 +12,7 @@ from app.models.phase2_tables import PHASE2_TABLES
 from app.services.index_publication import IndexFinalizer
 from app.services.jobs import JobService
 from sqlalchemy import func, select, text, update
+
 from tests.retrieval.storage.test_index_guards import source_case
 from tests.retrieval.storage.test_index_jobs import service
 from tests.retrieval.unit.test_index_contracts import chunk, draft
@@ -421,6 +422,7 @@ async def test_native_admission_reader_builder_publication_chain(
     from app.services.index_jobs import IndexJobService
     from app.source_read.adapter import DockerSourceReader
     from app.workers.operations.index_snapshot import IndexOperation
+
     from tests.phase3.integration.test_structural_publication import admitted
 
     image, source_hash, reader_image = (
@@ -502,6 +504,7 @@ async def test_native_maximum_materialization_commits_inside_publication_budget(
     from app.repositories.index_repository import IndexRepository
     from app.services.index_jobs import IndexJobService
     from app.services.job_finalization import JobFinalizer
+
     from tests.phase2.integration import test_submission_ingestion as ingestion
     from tests.retrieval.native.test_index_runtime import runtime
 

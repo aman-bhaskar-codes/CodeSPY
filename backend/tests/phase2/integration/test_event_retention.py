@@ -3,6 +3,7 @@ from datetime import timedelta
 from app.models.phase2_tables import PHASE2_TABLES
 from app.workers.retention import RetentionWorker
 from sqlalchemy import func, select, update
+
 from tests.phase2.integration.test_job_lifecycle import job_scenario
 
 

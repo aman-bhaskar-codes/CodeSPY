@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.contracts.chunking import ChunkKind
 from app.contracts.indexing import IndexCoverageV1
+from app.contracts.memory import MemoryQueryResponseV1
 from app.contracts.search import HybridSearchHitV1, SearchScopeV1, SelectionRequestV1
 
 
@@ -49,11 +50,11 @@ class ContextAssemblyRequestV1(SelectionRequestV1):
     model_config = ConfigDict(frozen=True)
 
     scope: SearchScopeV1 | None = None
-    query: str
+    query: str = Field(min_length=1, max_length=4000)
     candidate_hits: tuple[HybridSearchHitV1, ...] = Field(default=(), max_length=100)
     budget: ContextBudgetV1 = Field(default_factory=ContextBudgetV1)
     deduplicate_files: bool = True
-    system_preamble: str | None = None
+    system_preamble: str | None = Field(default=None, max_length=16384)
 
 
 class ContextPacketV1(BaseModel):
@@ -67,7 +68,7 @@ class ContextPacketV1(BaseModel):
     coverage: IndexCoverageV1 | None = None
     lexical_availability: Literal["available", "index_unavailable"] = "index_unavailable"
     query: str
-    system_preamble: str | None = None
+    system_preamble: str | None = Field(default=None, max_length=16384)
     items: tuple[ContextItemV1, ...]
     total_tokens: int = Field(ge=0)
     total_bytes: int = Field(ge=0)
@@ -75,3 +76,17 @@ class ContextPacketV1(BaseModel):
     omitted_count: int = Field(ge=0)
     packet_sha256: str
     created_at: datetime
+
+
+class ContextPreviewRequestV1(ContextAssemblyRequestV1):
+    memory_mode: Literal["off", "current_only", "historical_hints"] = "current_only"
+
+
+class ContextPreviewV1(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    packet: ContextPacketV1
+    memories: "MemoryQueryResponseV1"
+    memory_tokens: int
+    selection_digest: str
+    qualification: Literal["selection_preview"] = "selection_preview"

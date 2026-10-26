@@ -6,6 +6,7 @@ from app.domain.canonical_json import canonical_bytes
 from app.domain.scope import RunRef
 from app.services.structural_reads import report_items, summary
 from app.services.structural_results import materialize_result
+
 from tests.phase3.unit.test_materialization import fixture_input
 
 

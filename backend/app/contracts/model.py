@@ -5,11 +5,12 @@ from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ModelProvider(StrEnum):
     FAKE = "fake"
+    OPENAI = "openai"
     BEDROCK_CLAUDE = "bedrock_claude"
     GOOGLE_GEMINI = "google_gemini"
 
@@ -53,6 +54,7 @@ class ChatMessageV1(BaseModel):
     name: str | None = None
     tool_calls: tuple[ToolCallV1, ...] = ()
     tool_call_id: str | None = None
+    continuation_ref: UUID | None = None
 
 
 class ModelCapabilityV1(BaseModel):
@@ -161,6 +163,7 @@ class ModelRequestV1(BaseModel):
     response_schema: dict[str, Any] | None = None
     context_manifest_id: UUID | None = None
     reservation_id: UUID
+    opaque_context_json: str = Field(default="{}", repr=False, max_length=1048576)
 
 
 class ModelResponseV1(BaseModel):
@@ -177,6 +180,15 @@ class ModelResponseV1(BaseModel):
     finish_reason: Literal["stop", "tool_calls", "length", "content_filter", "error"] = "stop"
     provider_request_id: str | None = None
     latency_ms: int = Field(default=0, ge=0)
+    continuation_ref: UUID | None = None
+    context_packet_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    memory_provenance_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+
+    @model_validator(mode="after")
+    def paired_context_references(self) -> "ModelResponseV1":
+        if (self.context_packet_hash is None) != (self.memory_provenance_hash is None):
+            raise ValueError("context references must be paired")
+        return self
 
 
 class ModelStreamChunkV1(BaseModel):
@@ -210,3 +222,5 @@ class RoutedModelV1(BaseModel):
     reservation_id: UUID
     estimated_micros: int = Field(ge=0)
     is_fallback: bool = False
+    model_alias: str | None = None
+    profile_digest: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")

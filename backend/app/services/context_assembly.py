@@ -64,7 +64,14 @@ class ContextAssemblyService:
         if not request.candidate_hits:
             empty_digest = semantic_digest(
                 {
-                    "packet_id": str(packet_id),
+                    "strategy_revision": "source-selection-v2",
+                    "system_preamble": request.system_preamble,
+                    "budget": request.budget.model_dump(),
+                    "deduplicate_files": request.deduplicate_files,
+                    "provenance": {
+                        k: v.model_dump() if hasattr(v, "model_dump") else v
+                        for k, v in provenance.items()
+                    },
                     "scope": scope.model_dump(),
                     "query": request.query,
                     "items": [],
@@ -201,10 +208,17 @@ class ContextAssemblyService:
 
         # Bind packet identity, scope, query and accepted items.
         canonical_payload = {
-            "packet_id": str(packet_id),
+            "strategy_revision": "source-selection-v2",
+            "system_preamble": request.system_preamble,
+            "budget": request.budget.model_dump(),
+            "deduplicate_files": request.deduplicate_files,
+            "provenance": {
+                k: v.model_dump() if hasattr(v, "model_dump") else v for k, v in provenance.items()
+            },
             "scope": scope.model_dump(),
             "query": request.query,
             "items": [item.model_dump() for item in accepted_items],
+            "omitted_count": omitted_count,
         }
         digest = semantic_digest(canonical_payload)
 

@@ -11,6 +11,7 @@ from app.domain.errors import (
     StaleWrite,
 )
 from sqlalchemy import text
+
 from tests.support.fixtures import batch_for, scenario
 
 

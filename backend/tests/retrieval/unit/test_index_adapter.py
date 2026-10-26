@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from app.scanners.ownership import ScannerOwnership
 from app.scanners.process import NativeResult
+
 from tests.retrieval.unit.test_index_contracts import file, spec
 
 

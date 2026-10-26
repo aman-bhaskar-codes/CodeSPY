@@ -9,6 +9,7 @@ from app.models.phase2_tables import PHASE2_TABLES
 from app.services.findings_query import FindingsQueryService
 from app.services.scan_publication import FindingFinalizer
 from sqlalchemy import update
+
 from tests.phase4.storage.test_scan_jobs import Registry
 from tests.phase4.storage.test_scan_publication import publication_case
 

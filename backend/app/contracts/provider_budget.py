@@ -95,8 +95,8 @@ class BudgetReservationRequestV1(BaseModel):
     principal_id: UUID
     provider: str
     model_id: str
-    estimated_tokens: int = Field(gt=0)
-    max_charge_micros: int = Field(gt=0)
+    estimated_tokens: int = Field(gt=0, le=2147483647, strict=True)
+    max_charge_micros: int = Field(gt=0, le=9223372036854775807, strict=True)
     idempotency_key: str = Field(min_length=1, max_length=128)
 
 
@@ -163,8 +163,8 @@ class SettlementOutcomeV1(BaseModel):
 
     reservation_id: UUID
     status: Literal["success", "failed", "timeout", "duplicate_replay"]
-    actual_tokens: int = Field(ge=0)
-    actual_charge_micros: int = Field(ge=0)
+    actual_tokens: int = Field(ge=0, le=9223372036854775807, strict=True)
+    actual_charge_micros: int = Field(ge=0, le=9223372036854775807, strict=True)
     provider_request_id: str | None = None
     error_message: str | None = None
 

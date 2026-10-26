@@ -29,6 +29,13 @@ investigations = sa.Table(
     sa.Column("verdict_confidence", sa.Float, nullable=True),
     sa.Column("summary", sa.Text, nullable=True),
     sa.Column("failure_reason", sa.Text, nullable=True),
+    col("spec_hash", nullable=True),
+    col("snapshot_id", "uuid", nullable=True),
+    col("current_job_id", "uuid", nullable=True),
+    col("deadline", "time", nullable=True),
+    sa.Column("next_event_sequence", sa.BigInteger, server_default="1", nullable=False),
+    col("final_report_id", "uuid", nullable=True),
+    sa.Column("execution_revision", sa.Integer, server_default="1", nullable=False),
     created(),
     sa.Column(
         "updated_at",

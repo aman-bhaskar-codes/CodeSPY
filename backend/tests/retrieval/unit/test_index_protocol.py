@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from app.contracts.indexing import TOKENIZER_SHA256
 from app.domain.canonical_json import canonical_bytes
+
 from tests.retrieval.unit.test_index_contracts import file, spec
 
 

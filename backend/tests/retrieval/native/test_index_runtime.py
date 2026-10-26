@@ -15,6 +15,7 @@ from app.indexing.docker import IndexDockerController
 from app.ports.index_builder import IndexBuilderUnavailable, VerifiedIndexInputV1
 from app.scanners.docker import SandboxLaunch
 from app.scanners.ownership import ScannerOwnership
+
 from tests.retrieval.unit.test_index_contracts import spec
 
 

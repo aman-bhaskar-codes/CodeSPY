@@ -4,6 +4,7 @@ import pytest
 from app.contracts.scanners import ScannerObservationV1, ScannerResultV1
 from app.domain.source_ranges import SourceRangeV1
 from app.scanners.attestation import ScannerAttestationV1, attest
+
 from tests.phase4.unit.test_scanner_archive import fixture_input
 
 

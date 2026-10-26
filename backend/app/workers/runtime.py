@@ -7,6 +7,7 @@ from collections.abc import Awaitable, Callable
 from app.ports.queue import Delivery
 from app.workers.consumer import JobConsumer
 from app.workers.dispatcher import OutboxDispatcher
+from app.workers.memory_maintenance import MemoryMaintenanceWorker
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,9 @@ class WorkerRuntime:
         stop: asyncio.Event,
         recovery: Callable[[], Awaitable[int]],
         cleanup: Callable[[], Awaitable[int]],
+        *,
+        model_maintenance: Callable[[], Awaitable[int]] | None = None,
+        memory_maintenance: Callable[[], Awaitable[int]] | None = None,
     ) -> None:
         async def periodic(action: Callable[[], Awaitable[int]], interval: float) -> None:
             while not stop.is_set():
@@ -63,6 +67,19 @@ class WorkerRuntime:
             asyncio.create_task(periodic(cleanup, 15)),
             asyncio.create_task(consume()),
         ]
+        investigation = getattr(self.consumer, "investigation_operation", None)
+        proposals = getattr(investigation, "memory_proposals", None)
+        if proposals is not None:
+            tasks.append(asyncio.create_task(periodic(proposals.tick, 15)))
+        if model_maintenance is not None:
+            tasks.append(asyncio.create_task(periodic(model_maintenance, 15)))
+        if (
+            memory_maintenance is None
+            and (factory := getattr(self.consumer, "factory", None)) is not None
+        ):
+            memory_maintenance = MemoryMaintenanceWorker(factory).tick
+        if memory_maintenance is not None:
+            tasks.append(asyncio.create_task(periodic(memory_maintenance, 60)))
         scan_operation = getattr(self.consumer, "scan_operation", None)
         if scan_operation is not None:
             tasks.append(

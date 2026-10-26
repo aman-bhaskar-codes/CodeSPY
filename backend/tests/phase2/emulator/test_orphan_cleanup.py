@@ -8,6 +8,7 @@ from app.adapters.storage.s3 import S3ObjectStore
 from app.models.phase2_tables import PHASE2_TABLES
 from app.workers.cleanup import CleanupWorker
 from sqlalchemy import func, insert
+
 from tests.phase2.integration.test_submission_ingestion import submission_scenario
 
 

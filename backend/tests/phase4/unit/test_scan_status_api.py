@@ -15,6 +15,7 @@ from app.models.phase2_tables import PHASE2_TABLES
 from app.security.sessions import SessionService
 from app.services.jobs import JobService
 from app.services.scan_jobs import ScanJobService
+
 from tests.phase4.unit.test_findings_authorization import authority as authority_fixture
 from tests.phase4.unit.test_scan_config import config
 

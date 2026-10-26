@@ -5,6 +5,7 @@ from app.api.application import ApiSettings, ApplicationPorts, create_app
 from app.models.phase2_tables import PHASE2_TABLES
 from scripts.phase1_fixture import scenario
 from sqlalchemy import insert
+
 from tests.phase2.integration.test_submission_ingestion import zip_bytes
 
 

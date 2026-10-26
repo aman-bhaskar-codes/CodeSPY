@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import pytest
 from app.scanners.finding_catalog import reviewed_catalog
 from app.scanners.runtime import RuntimeManifest
+
 from tests.phase4.runtime_fixtures import runtime
 from tests.phase4.unit.test_scan_config import config
 

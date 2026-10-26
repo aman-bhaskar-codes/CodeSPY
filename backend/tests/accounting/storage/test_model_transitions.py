@@ -4,6 +4,7 @@ import asyncio
 from uuid import uuid4
 
 from app.services.model_budget import ModelBudgetService
+
 from tests.phase3.integration.test_structural_publication import admitted
 
 

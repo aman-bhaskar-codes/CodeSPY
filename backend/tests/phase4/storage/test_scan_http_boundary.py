@@ -7,6 +7,7 @@ from app.api.application import ApiSettings, ApplicationPorts, create_app
 from app.security.sessions import SessionService
 from app.services.jobs import JobService
 from app.services.scan_jobs import ScanJobService
+
 from tests.phase4.storage.test_scan_jobs import Registry, scenario
 
 

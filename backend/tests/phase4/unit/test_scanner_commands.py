@@ -4,6 +4,7 @@ from uuid import UUID
 
 import pytest
 from app.scanners.commands import gitleaks_command, semgrep_command
+
 from tests.phase4.runtime_fixtures import runtime
 
 ALIAS = UUID(int=1).hex + ".py"

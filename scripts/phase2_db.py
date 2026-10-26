@@ -281,6 +281,12 @@ def grant_app(values, name):
             c.execute(
                 "GRANT INSERT, UPDATE, DELETE ON repo_memories TO p2_api,p2_broker"
             )
+            if c.execute(
+                "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='repo_memories' AND column_name='state')"
+            ).fetchone()[0]:
+                c.execute("REVOKE UPDATE,DELETE ON repo_memories FROM p2_broker")
+                c.execute("GRANT UPDATE(updated_at) ON repo_memories TO p2_broker")
+                c.execute("REVOKE DELETE ON repo_memories FROM p2_api")
         if c.execute("SELECT to_regclass('public.index_specs')").fetchone()[0]:
             c.execute(
                 "GRANT SELECT ON index_specs,index_attempt_specs,retrieval_chunk_sets,index_publication_receipts TO p2_api,p2_broker"
@@ -295,6 +301,22 @@ def grant_app(values, name):
             c.execute(
                 "GRANT EXECUTE ON FUNCTION public.codespy_index_authority(uuid,uuid),public.codespy_index_complete_set(uuid,uuid) TO p2_broker"
             )
+        if c.execute("SELECT to_regclass('public.model_continuations')").fetchone()[0]:
+            c.execute(
+                "REVOKE ALL ON public.model_continuations,public.provider_usage_receipts FROM p2_api,p2_broker"
+            )
+        if c.execute(
+            "SELECT to_regprocedure('public.codespy_claim_model_dispatch(uuid,uuid)')"
+        ).fetchone()[0]:
+            c.execute(
+                "REVOKE INSERT,UPDATE,DELETE,TRUNCATE ON public.embedding_budgets,public.price_schedules,public.model_reservations,public.model_spend_ledger,public.embedding_reservations,public.model_usage_reconciliations,public.budget_funding_receipts FROM p2_api,p2_broker"
+            )
+        if c.execute("SELECT to_regclass('public.model_call_results')").fetchone()[0]:
+            c.execute("REVOKE SELECT ON public.model_call_results FROM p2_api")
+            if c.execute(
+                "SELECT to_regproc('public.codespy_get_model_result')"
+            ).fetchone()[0]:
+                c.execute("REVOKE SELECT ON public.model_call_results FROM p2_broker")
         c.execute("REVOKE ALL ON public.alembic_version FROM p2_api,p2_broker")
         c.execute("REVOKE CREATE ON SCHEMA public FROM p2_api,p2_broker")
 

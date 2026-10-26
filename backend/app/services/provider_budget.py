@@ -182,6 +182,14 @@ class ProviderBudgetService:
                 f"Provider {request.provider} is not permitted under repository disclosure policy"
             )
 
+        if self.s.bind is not None and self.s.bind.dialect.name == "postgresql":
+            from app.repositories.accounting_repository import AccountingRepository
+
+            row = await AccountingRepository(self.s).reserve_embedding_request(request)
+            return ReservationRecordV1.model_validate(
+                {k: row[k] for k in ReservationRecordV1.model_fields}
+            )
+
         # 2. Price schedule verification
         price = await self.get_active_price(request.provider, request.model_id, ts)
         estimated_charge = calculate_charge_micros(
@@ -311,6 +319,13 @@ class ProviderBudgetService:
         at: datetime | None = None,
     ) -> ReservationRecordV1:
         ts = at or datetime.now(UTC)
+        if self.s.bind is not None and self.s.bind.dialect.name == "postgresql":
+            from app.repositories.accounting_repository import AccountingRepository
+
+            row = await AccountingRepository(self.s).transition_embedding_request(org_id, outcome)
+            return ReservationRecordV1.model_validate(
+                {k: row[k] for k in ReservationRecordV1.model_fields}
+            )
 
         res_row = (
             (
@@ -471,6 +486,15 @@ class ProviderBudgetService:
         at: datetime | None = None,
     ) -> ReservationRecordV1:
         ts = at or datetime.now(UTC)
+        if self.s.bind is not None and self.s.bind.dialect.name == "postgresql":
+            from app.repositories.accounting_repository import AccountingRepository
+
+            row = await AccountingRepository(self.s).cancel_embedding_request(
+                org_id, reservation_id, reason
+            )
+            return ReservationRecordV1.model_validate(
+                {k: row[k] for k in ReservationRecordV1.model_fields}
+            )
 
         res_row = (
             (

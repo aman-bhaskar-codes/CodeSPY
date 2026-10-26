@@ -3,12 +3,49 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type {
   InvestigationClaimV1,
-  InvestigationDetailResponseV1,
-  InvestigationEventV1,
+  InvestigationDetail,
+  InvestigationEvent,
   InvestigationFeedbackRequestV1,
   InvestigationMode,
+  InvestigationSummaryV2,
   InvestigationVerdict,
 } from "./types";
+
+interface ExtendedSummary {
+  held_micros?: number;
+  failure_reason?: string | null;
+  current_job_id?: string | null;
+  spec_hash?: string | null;
+}
+
+interface CitationItem {
+  file_path?: string;
+  path?: string;
+  line_start?: number;
+  line?: number;
+  statement?: string;
+  snippet?: string;
+}
+
+interface ExtendedReport {
+  claims?: InvestigationClaimV1[];
+  coverage_notes?: string[];
+  citations?: CitationItem[];
+}
+
+interface ExtendedDetail {
+  claims?: InvestigationClaimV1[];
+  report?: ExtendedReport | null;
+}
+
+interface EventShape {
+  id?: string;
+  sequence?: number;
+  event_type?: string;
+  type?: string;
+  node_name?: string;
+  node?: string;
+}
 
 interface Props {
   repositoryId: string;
@@ -36,7 +73,7 @@ export function InvestigationsWorkbench({
     "agree" | "disagree" | "needs_review"
   >("agree");
   const [saveToMemory, setSaveToMemory] = useState(true);
-  const [liveEvents, setLiveEvents] = useState<InvestigationEventV1[]>([]);
+  const [liveEvents, setLiveEvents] = useState<InvestigationEvent[]>([]);
 
   // List past investigations
   const listQuery = useQuery({
@@ -56,22 +93,58 @@ export function InvestigationsWorkbench({
         : null,
     enabled: !!selectedInvId && !!repositoryId,
     refetchInterval: (query) => {
-      const data = query.state.data as InvestigationDetailResponseV1 | null;
-      if (!data) return false;
-      const status = data.summary.status;
-      return status === "running" || status === "pending" ? 2000 : false;
+      const data = query.state.data as InvestigationDetail | null;
+      const status = data?.summary?.status;
+      if (!status) return false;
+      return status === "running" || status === "pending" || status === "checkpointed" ? 2000 : false;
+    },
+  });
+
+  // Query events list for selected investigation
+  const eventsQuery = useQuery({
+    queryKey: ["investigation-events", repositoryId, selectedInvId],
+    queryFn: ({ signal }) =>
+      selectedInvId
+        ? api.listInvestigationEvents(repositoryId, selectedInvId, undefined, signal)
+        : null,
+    enabled: !!selectedInvId && !!repositoryId,
+    refetchInterval: () => {
+      const data = detailQuery.data;
+      const status = data?.summary?.status;
+      if (!status) return false;
+      return status === "running" || status === "pending" || status === "checkpointed" ? 2000 : false;
     },
   });
 
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async () => {
+      const trimmedQuery = query.trim();
+      const trimmedFindingId = findingId.trim() || undefined;
+      const targetType = trimmedFindingId ? "finding" : "repository";
+
+      if (snapshotId) {
+        return await api.createInvestigation(
+          repositoryId,
+          {
+            repository_id: repositoryId,
+            snapshot_id: snapshotId,
+            target_type: targetType,
+            query: trimmedQuery,
+            finding_id: trimmedFindingId,
+            mode,
+            max_steps: maxSteps,
+            budget_limit_micros: budgetMicros,
+          },
+          csrfToken,
+        );
+      }
       return await api.createInvestigation(
         repositoryId,
         {
           repository_id: repositoryId,
-          query: query.trim(),
-          finding_id: findingId.trim() || undefined,
+          query: trimmedQuery,
+          finding_id: trimmedFindingId,
           mode,
           max_steps: maxSteps,
           budget_limit_micros: budgetMicros,
@@ -94,12 +167,97 @@ export function InvestigationsWorkbench({
       return await api.executeInvestigation(repositoryId, id, csrfToken);
     },
     onSuccess: (result) => {
-      queryClient.setQueryData(
-        ["investigation-detail", repositoryId, selectedInvId],
-        result,
-      );
+      if ("summary" in result) {
+        queryClient.setQueryData(
+          ["investigation-detail", repositoryId, selectedInvId],
+          result,
+        );
+      }
+      queryClient.invalidateQueries({
+        queryKey: ["investigation-detail", repositoryId, selectedInvId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["investigation-events", repositoryId, selectedInvId],
+      });
       queryClient.invalidateQueries({
         queryKey: ["investigations", repositoryId],
+      });
+    },
+  });
+
+  // Cancel mutation
+  const cancelMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await api.cancelInvestigation(repositoryId, id, csrfToken);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["investigation-detail", repositoryId, selectedInvId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["investigation-events", repositoryId, selectedInvId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["investigations", repositoryId],
+      });
+    },
+  });
+
+  // Resume mutation
+  const resumeMutation = useMutation({
+    mutationFn: async () => {
+      if (!summary) return;
+      const currentJobId = (summary as InvestigationSummaryV2).current_job_id ?? "";
+      const specHash = (summary as InvestigationSummaryV2).spec_hash ?? "";
+      return await api.resumeInvestigation(
+        repositoryId,
+        summary.id,
+        {
+          expected_failed_job_id: currentJobId,
+          expected_spec_hash: specHash,
+        },
+        csrfToken,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["investigation-detail", repositoryId, selectedInvId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["investigation-events", repositoryId, selectedInvId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["investigations", repositoryId],
+      });
+    },
+  });
+
+  // Retry mutation
+  const retryMutation = useMutation({
+    mutationFn: async () => {
+      if (!summary) return;
+      return await api.retryInvestigation(
+        repositoryId,
+        summary.id,
+        {
+          max_steps: maxSteps,
+          budget_limit_micros: budgetMicros,
+        },
+        csrfToken,
+      );
+    },
+    onSuccess: (newSummary) => {
+      if (newSummary?.id) {
+        setSelectedInvId(newSummary.id);
+      }
+      queryClient.invalidateQueries({
+        queryKey: ["investigations", repositoryId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["investigation-detail", repositoryId, newSummary?.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["investigation-events", repositoryId, newSummary?.id],
       });
     },
   });
@@ -128,13 +286,13 @@ export function InvestigationsWorkbench({
 
   // Server-Sent Events (SSE) Live Stream Subscription
   useEffect(() => {
-    if (!selectedInvId) return;
+    if (!selectedInvId || typeof EventSource === "undefined") return;
     const sseUrl = `/api/v1/repositories/${repositoryId}/investigations/${selectedInvId}/stream`;
     const eventSource = new EventSource(sseUrl);
 
     eventSource.onmessage = (e) => {
       try {
-        const parsed = JSON.parse(e.data) as InvestigationEventV1;
+        const parsed = JSON.parse(e.data) as InvestigationEvent;
         setLiveEvents((prev) => {
           if (prev.some((item) => item.id === parsed.id)) return prev;
           return [...prev, parsed];
@@ -146,7 +304,7 @@ export function InvestigationsWorkbench({
 
     eventSource.addEventListener("step_started", (e: MessageEvent) => {
       try {
-        const parsed = JSON.parse(e.data) as InvestigationEventV1;
+        const parsed = JSON.parse(e.data) as InvestigationEvent;
         setLiveEvents((prev) => [...prev, parsed]);
       } catch {
         // Ignored unparsable SSE ping
@@ -156,6 +314,9 @@ export function InvestigationsWorkbench({
     eventSource.addEventListener("verdict_reached", () => {
       queryClient.invalidateQueries({
         queryKey: ["investigation-detail", repositoryId, selectedInvId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["investigation-events", repositoryId, selectedInvId],
       });
       queryClient.invalidateQueries({
         queryKey: ["investigations", repositoryId],
@@ -249,6 +410,7 @@ export function InvestigationsWorkbench({
     >
       {/* Header Banner */}
       <div
+        className="investigation-heading"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -274,7 +436,7 @@ export function InvestigationsWorkbench({
             verification, and durable fenced execution.
           </p>
         </div>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" }}>
           <div
             style={{
               padding: "6px 12px",
@@ -324,9 +486,9 @@ export function InvestigationsWorkbench({
 
       {/* Main Grid: Left Form/History, Right Active Workbench */}
       <div
+        className="investigation-columns"
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1.6fr",
           gap: "24px",
         }}
       >
@@ -642,12 +804,19 @@ export function InvestigationsWorkbench({
                       justifyContent: "space-between",
                       fontSize: "11px",
                       color: "#94a3b8",
+                      flexWrap: "wrap",
+                      gap: "4px",
                     }}
                   >
                     <span>
                       Step: {inv.current_step ?? 0}/{inv.max_steps ?? 10}
                     </span>
                     <span>Spent: {formatMicros(inv.spent_micros ?? 0)}</span>
+                    {(inv as unknown as ExtendedSummary).held_micros ? (
+                      <span style={{ color: "#fbbf24" }}>
+                        Held: {formatMicros((inv as unknown as ExtendedSummary).held_micros ?? 0)}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -669,7 +838,7 @@ export function InvestigationsWorkbench({
         >
           {summary ? (
             <>
-              {/* Detail Header & Action */}
+              {/* Detail Header & Actions */}
               <div
                 style={{
                   display: "flex",
@@ -677,6 +846,7 @@ export function InvestigationsWorkbench({
                   alignItems: "flex-start",
                   borderBottom: "1px solid #334155",
                   paddingBottom: "16px",
+                  gap: "16px",
                 }}
               >
                 <div>
@@ -686,6 +856,7 @@ export function InvestigationsWorkbench({
                       gap: "8px",
                       alignItems: "center",
                       marginBottom: "6px",
+                      flexWrap: "wrap",
                     }}
                   >
                     <span
@@ -698,11 +869,19 @@ export function InvestigationsWorkbench({
                         background:
                           summary.status === "completed"
                             ? "#065f46"
-                            : "#1e3a8a",
+                            : summary.status === "awaiting_human_decision"
+                              ? "#78350f"
+                              : summary.status === "failed" || summary.status === "cancelled"
+                                ? "#7f1d1d"
+                                : "#1e3a8a",
                         color:
                           summary.status === "completed"
                             ? "#34d399"
-                            : "#60a5fa",
+                            : summary.status === "awaiting_human_decision"
+                              ? "#fde047"
+                              : summary.status === "failed" || summary.status === "cancelled"
+                                ? "#fca5a5"
+                                : "#60a5fa",
                       }}
                     >
                       {summary.status.toUpperCase()}
@@ -710,36 +889,192 @@ export function InvestigationsWorkbench({
                     <span style={{ fontSize: "12px", color: "#64748b" }}>
                       ID: {summary.id.slice(0, 8)}
                     </span>
+                    {(summary as unknown as ExtendedSummary).current_job_id && (
+                      <span style={{ fontSize: "11px", color: "#64748b" }}>
+                        Job: {String((summary as unknown as ExtendedSummary).current_job_id).slice(0, 8)}
+                      </span>
+                    )}
                   </div>
                   <h4 style={{ margin: 0, fontSize: "16px", color: "#f8fafc" }}>
                     {summary.query}
                   </h4>
                 </div>
 
-                {summary.status !== "completed" && (
-                  <button
-                    id="execute-investigation-btn"
-                    type="button"
-                    disabled={executeMutation.isPending}
-                    onClick={() => executeMutation.mutate(summary.id)}
+                {/* Header Action Buttons */}
+                <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                  {(summary.status === "pending" || summary.status === "queued") && (
+                    <button
+                      id="execute-investigation-btn"
+                      type="button"
+                      disabled={executeMutation.isPending}
+                      onClick={() => executeMutation.mutate(summary.id)}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: "6px",
+                        border: "none",
+                        background: "#10b981",
+                        color: "#ffffff",
+                        fontWeight: 600,
+                        fontSize: "13px",
+                        cursor: executeMutation.isPending ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {executeMutation.isPending ? "Starting..." : "Execute Investigation"}
+                    </button>
+                  )}
+
+                  {(summary.status === "running" ||
+                    summary.status === "pending" ||
+                    summary.status === "queued" ||
+                    summary.status === "checkpointed" ||
+                    summary.status === "awaiting_human_decision") && (
+                    <button
+                      id="cancel-investigation-btn"
+                      type="button"
+                      disabled={cancelMutation.isPending}
+                      onClick={() => cancelMutation.mutate(summary.id)}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: "6px",
+                        border: "none",
+                        background: "#ef4444",
+                        color: "#ffffff",
+                        fontWeight: 600,
+                        fontSize: "13px",
+                        cursor: cancelMutation.isPending ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {cancelMutation.isPending ? "Cancelling..." : "Cancel"}
+                    </button>
+                  )}
+
+                  {summary.status === "awaiting_human_decision" && (
+                    <button
+                      id="resume-investigation-btn"
+                      type="button"
+                      disabled={resumeMutation.isPending}
+                      onClick={() => resumeMutation.mutate()}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: "6px",
+                        border: "none",
+                        background: "#f59e0b",
+                        color: "#ffffff",
+                        fontWeight: 600,
+                        fontSize: "13px",
+                        cursor: resumeMutation.isPending ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {resumeMutation.isPending ? "Resuming..." : "Resume"}
+                    </button>
+                  )}
+
+                  {(summary.status === "failed" || summary.status === "cancelled") && (
+                    <button
+                      id="retry-investigation-btn"
+                      type="button"
+                      disabled={retryMutation.isPending}
+                      onClick={() => retryMutation.mutate()}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: "6px",
+                        border: "none",
+                        background: "#8b5cf6",
+                        color: "#ffffff",
+                        fontWeight: 600,
+                        fontSize: "13px",
+                        cursor: retryMutation.isPending ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {retryMutation.isPending ? "Retrying..." : "Retry Investigation"}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Human Decision Banner */}
+              {summary.status === "awaiting_human_decision" && (
+                <div
+                  id="human-decision-banner"
+                  style={{
+                    padding: "14px",
+                    borderRadius: "8px",
+                    background: "#78350f",
+                    border: "1px solid #f59e0b",
+                    color: "#fef3c7",
+                    fontSize: "13px",
+                  }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: "4px" }}>
+                    Human Decision Required
+                  </div>
+                  <div>
+                    This investigation has reached a decision checkpoint that requires operator authorization or resolution before proceeding. Click Resume to continue execution.
+                  </div>
+                </div>
+              )}
+
+              {/* Failure Reason Banner */}
+              {(summary as unknown as ExtendedSummary).failure_reason && (
+                <div
+                  id="failure-reason-banner"
+                  style={{
+                    padding: "12px",
+                    borderRadius: "8px",
+                    background: "#450a0a",
+                    border: "1px solid #ef4444",
+                    color: "#fecaca",
+                    fontSize: "12px",
+                  }}
+                >
+                  <strong>Failure Reason: </strong> {(summary as unknown as ExtendedSummary).failure_reason}
+                </div>
+              )}
+
+              {/* Budget and Progress Summary Metrics */}
+              <div
+                id="investigation-metrics-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+                  gap: "12px",
+                  padding: "12px",
+                  background: "#0f172a",
+                  borderRadius: "8px",
+                  border: "1px solid #334155",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Step Progress</div>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#f8fafc" }}>
+                    {summary.current_step ?? 0} / {summary.max_steps ?? 10}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Settled Spend</div>
+                  <div id="metric-spent-micros" style={{ fontSize: "14px", fontWeight: 700, color: "#38bdf8" }}>
+                    {formatMicros(summary.spent_micros ?? 0)}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Held Budget</div>
+                  <div
+                    id="metric-held-micros"
                     style={{
-                      padding: "8px 16px",
-                      borderRadius: "6px",
-                      border: "none",
-                      background: "#10b981",
-                      color: "#ffffff",
-                      fontWeight: 600,
-                      fontSize: "13px",
-                      cursor: executeMutation.isPending
-                        ? "not-allowed"
-                        : "pointer",
+                      fontSize: "14px",
+                      fontWeight: 700,
+                      color: (summary as unknown as ExtendedSummary).held_micros ? "#fbbf24" : "#94a3b8",
                     }}
                   >
-                    {executeMutation.isPending
-                      ? "Investigating..."
-                      : "Execute Short-Path"}
-                  </button>
-                )}
+                    {formatMicros((summary as unknown as ExtendedSummary).held_micros ?? 0)}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Budget Limit</div>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#a855f7" }}>
+                    {formatMicros(summary.budget_limit_micros ?? 0)}
+                  </div>
+                </div>
               </div>
 
               {/* Verdict & Summary Banner */}
@@ -780,166 +1115,351 @@ export function InvestigationsWorkbench({
               )}
 
               {/* Verified Claims Section */}
-              <div>
-                <h4
-                  style={{
-                    margin: "0 0 12px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    color: "#38bdf8",
-                  }}
-                >
-                  Evidence Claims ({detail.claims.length})
-                </h4>
-                {detail.claims.length === 0 ? (
-                  <p
-                    style={{
-                      fontSize: "13px",
-                      color: "#94a3b8",
-                      fontStyle: "italic",
-                    }}
-                  >
-                    No specific factual claims extracted yet.
-                  </p>
-                ) : (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
-                    }}
-                  >
-                    {detail.claims.map((claim) => {
-                      const badge = getClaimBadgeStyle(claim.status);
-                      return (
-                        <div
-                          key={claim.claim_id}
-                          style={{
-                            padding: "12px",
-                            background: "#0f172a",
-                            borderRadius: "6px",
-                            border: "1px solid #334155",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              marginBottom: "6px",
-                            }}
-                          >
-                            <strong
-                              style={{ fontSize: "13px", color: "#f8fafc" }}
-                            >
-                              {claim.statement}
-                            </strong>
-                            <span
-                              style={{
-                                fontSize: "10px",
-                                fontWeight: 700,
-                                padding: "2px 6px",
-                                borderRadius: "4px",
-                                background: badge.background,
-                                color: badge.color,
-                              }}
-                            >
-                              {badge.label}
-                            </span>
-                          </div>
-                          {claim.file_path && (
-                            <div
-                              style={{
-                                fontSize: "12px",
-                                color: "#94a3b8",
-                                marginBottom: "4px",
-                              }}
-                            >
-                              Source:{" "}
-                              <code>
-                                {claim.file_path}:{claim.line_start ?? 1}
-                              </code>
-                            </div>
-                          )}
-                          {claim.quoted_source && (
-                            <pre
-                              style={{
-                                margin: "6px 0",
-                                padding: "8px",
-                                background: "#020617",
-                                borderRadius: "4px",
-                                fontSize: "11px",
-                                color: "#38bdf8",
-                                overflowX: "auto",
-                              }}
-                            >
-                              {claim.quoted_source}
-                            </pre>
-                          )}
-                          {claim.verification_notes && (
-                            <div
-                              style={{
-                                fontSize: "11px",
-                                color: "#cbd5e1",
-                                fontStyle: "italic",
-                              }}
-                            >
-                              Verification check: {claim.verification_notes}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              {(() => {
+                const extDetail = detail as unknown as ExtendedDetail;
+                const claims: InvestigationClaimV1[] = Array.isArray(extDetail?.claims)
+                  ? extDetail.claims
+                  : Array.isArray(extDetail?.report?.claims)
+                    ? (extDetail.report.claims ?? [])
+                    : [];
 
-              {/* Live Events Stream & Timeline */}
-              <div>
-                <h4
-                  style={{
-                    margin: "0 0 10px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    color: "#94a3b8",
-                  }}
-                >
-                  Investigation Replay & Audit Trail ({liveEvents.length}{" "}
-                  events)
-                </h4>
-                <div
-                  id="events-timeline"
-                  style={{
-                    maxHeight: "180px",
-                    overflowY: "auto",
-                    padding: "8px",
-                    background: "#0f172a",
-                    borderRadius: "6px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "6px",
-                  }}
-                >
-                  {liveEvents.map((ev, i) => (
-                    <div
-                      key={ev.id || i}
+                const coverageNotes: string[] = Array.isArray(extDetail?.report?.coverage_notes)
+                  ? (extDetail.report.coverage_notes ?? [])
+                  : [];
+
+                const citations: CitationItem[] = Array.isArray(extDetail?.report?.citations)
+                  ? (extDetail.report.citations ?? [])
+                  : [];
+
+                return (
+                  <div>
+                    <h4
                       style={{
-                        fontSize: "11px",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        background: "#1e293b",
+                        margin: "0 0 12px",
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        color: "#38bdf8",
                       }}
                     >
-                      <span style={{ color: "#38bdf8", fontWeight: 600 }}>
-                        {ev.event_type}
-                      </span>
-                      <span style={{ color: "#94a3b8" }}>{ev.node_name}</span>
+                      Evidence Claims ({claims.length})
+                    </h4>
+                    {claims.length === 0 ? (
+                      <p
+                        style={{
+                          fontSize: "13px",
+                          color: "#94a3b8",
+                          fontStyle: "italic",
+                        }}
+                      >
+                        No specific factual claims extracted yet.
+                      </p>
+                    ) : (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "10px",
+                        }}
+                      >
+                        {claims.map((claim) => {
+                          const badge = getClaimBadgeStyle(claim.status);
+                          return (
+                            <div
+                              key={claim.claim_id}
+                              style={{
+                                padding: "12px",
+                                background: "#0f172a",
+                                borderRadius: "6px",
+                                border: "1px solid #334155",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  marginBottom: "6px",
+                                }}
+                              >
+                                <strong
+                                  style={{ fontSize: "13px", color: "#f8fafc" }}
+                                >
+                                  {claim.statement}
+                                </strong>
+                                <span
+                                  style={{
+                                    fontSize: "10px",
+                                    fontWeight: 700,
+                                    padding: "2px 6px",
+                                    borderRadius: "4px",
+                                    background: badge.background,
+                                    color: badge.color,
+                                  }}
+                                >
+                                  {badge.label}
+                                </span>
+                              </div>
+                              {claim.file_path && (
+                                <div
+                                  style={{
+                                    fontSize: "12px",
+                                    color: "#94a3b8",
+                                    marginBottom: "4px",
+                                  }}
+                                >
+                                  Source:{" "}
+                                  <code>
+                                    {claim.file_path}:{claim.line_start ?? 1}
+                                  </code>
+                                </div>
+                              )}
+                              {claim.quoted_source && (
+                                <pre
+                                  style={{
+                                    margin: "6px 0",
+                                    padding: "8px",
+                                    background: "#020617",
+                                    borderRadius: "4px",
+                                    fontSize: "11px",
+                                    color: "#38bdf8",
+                                    overflowX: "auto",
+                                  }}
+                                >
+                                  {claim.quoted_source}
+                                </pre>
+                              )}
+                              {claim.verification_notes && (
+                                <div
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "#cbd5e1",
+                                    fontStyle: "italic",
+                                  }}
+                                >
+                                  Verification check: {claim.verification_notes}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Coverage Notes */}
+                    {coverageNotes.length > 0 && (
+                      <div
+                        id="coverage-notes-section"
+                        style={{
+                          marginTop: "16px",
+                          padding: "12px",
+                          background: "#0f172a",
+                          borderRadius: "6px",
+                          border: "1px solid #334155",
+                        }}
+                      >
+                        <h5
+                          style={{
+                            margin: "0 0 8px",
+                            fontSize: "12px",
+                            color: "#38bdf8",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Coverage Notes
+                        </h5>
+                        <ul
+                          style={{
+                            margin: 0,
+                            paddingLeft: "18px",
+                            fontSize: "12px",
+                            color: "#cbd5e1",
+                          }}
+                        >
+                          {coverageNotes.map((note, idx) => (
+                            <li key={idx} style={{ marginBottom: "4px" }}>
+                              {note}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Citations */}
+                    {citations.length > 0 && (
+                      <div
+                        id="citations-section"
+                        style={{
+                          marginTop: "16px",
+                          padding: "12px",
+                          background: "#0f172a",
+                          borderRadius: "6px",
+                          border: "1px solid #334155",
+                        }}
+                      >
+                        <h5
+                          style={{
+                            margin: "0 0 8px",
+                            fontSize: "12px",
+                            color: "#38bdf8",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Citations & References ({citations.length})
+                        </h5>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
+                          }}
+                        >
+                          {citations.map((c, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                fontSize: "11px",
+                                color: "#94a3b8",
+                                padding: "6px",
+                                background: "#020617",
+                                borderRadius: "4px",
+                              }}
+                            >
+                              <code>
+                                {c.file_path || c.path || "source"}:
+                                {c.line_start ?? c.line ?? 1}
+                              </code>
+                              {c.statement && (
+                                <div style={{ color: "#f8fafc", marginTop: "2px" }}>
+                                  {c.statement}
+                                </div>
+                              )}
+                              {c.snippet && (
+                                <pre
+                                  style={{
+                                    margin: "4px 0 0",
+                                    padding: "4px 6px",
+                                    background: "#0f172a",
+                                    borderRadius: "3px",
+                                    color: "#38bdf8",
+                                    overflowX: "auto",
+                                  }}
+                                >
+                                  {c.snippet}
+                                </pre>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Events Stream & Timeline */}
+              {(() => {
+                const historicalEvents: InvestigationEvent[] = Array.isArray(
+                  eventsQuery.data,
+                )
+                  ? eventsQuery.data
+                  : (eventsQuery.data?.items ?? []);
+
+                const allEvents: InvestigationEvent[] = [...historicalEvents];
+                for (const ev of liveEvents) {
+                  if (
+                    !allEvents.some(
+                      (item) =>
+                        (item.id && item.id === ev.id) ||
+                        ("sequence" in item &&
+                          "sequence" in ev &&
+                          item.sequence === ev.sequence),
+                    )
+                  ) {
+                    allEvents.push(ev);
+                  }
+                }
+
+                return (
+                  <div>
+                    <h4
+                      style={{
+                        margin: "0 0 10px",
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        color: "#94a3b8",
+                      }}
+                    >
+                      Investigation Replay & Audit Trail ({allEvents.length} events)
+                    </h4>
+                    <div
+                      id="events-timeline"
+                      style={{
+                        maxHeight: "180px",
+                        overflowY: "auto",
+                        padding: "8px",
+                        background: "#0f172a",
+                        borderRadius: "6px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px",
+                      }}
+                    >
+                      {allEvents.length === 0 ? (
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#64748b",
+                            fontStyle: "italic",
+                            padding: "4px",
+                          }}
+                        >
+                          No replay events recorded yet.
+                        </div>
+                      ) : (
+                        allEvents.map((ev, i) => {
+                          const evShape = ev as unknown as EventShape;
+                          const evKey =
+                            "sequence" in ev && ev.sequence !== undefined
+                              ? `seq-${ev.sequence}`
+                              : evShape.id || i;
+                          const eventType =
+                            evShape.event_type ||
+                            evShape.type ||
+                            "event";
+                          const nodeName =
+                            evShape.node_name ||
+                            evShape.node ||
+                            "";
+                          const seqText =
+                            "sequence" in ev && ev.sequence !== undefined
+                              ? `#${ev.sequence} `
+                              : "";
+
+                          return (
+                            <div
+                              key={evKey}
+                              style={{
+                                fontSize: "11px",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                background: "#1e293b",
+                              }}
+                            >
+                              <span style={{ color: "#38bdf8", fontWeight: 600 }}>
+                                {seqText}
+                                {eventType}
+                              </span>
+                              <span style={{ color: "#94a3b8" }}>{nodeName}</span>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                );
+              })()}
 
               {/* Human Feedback & Verified Memory Persistence */}
               <div

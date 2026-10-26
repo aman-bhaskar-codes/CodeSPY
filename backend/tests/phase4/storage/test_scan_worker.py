@@ -10,6 +10,7 @@ from app.services.scan_jobs import ScanJobService
 from app.services.scan_publication import FindingFinalizer
 from app.services.scan_reads import ScanReadService
 from sqlalchemy import text
+
 from tests.phase4.storage.test_scan_jobs import Registry, scenario
 
 

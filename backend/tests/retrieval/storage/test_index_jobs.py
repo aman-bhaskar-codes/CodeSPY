@@ -13,6 +13,7 @@ from app.models.tables import analysis_runs, memberships, principals
 from app.ports.index_builder import IndexBuilderUnavailable
 from app.services.jobs import JobService
 from sqlalchemy import func, insert, select, text, update
+
 from tests.retrieval.storage.test_index_guards import source_case
 
 

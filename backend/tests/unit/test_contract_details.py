@@ -11,6 +11,7 @@ from app.domain.source_ranges import SourceRangeV1
 from hypothesis import given
 from hypothesis import strategies as st
 from pydantic import ValidationError
+
 from tests.support.fixtures import batch_for
 
 
