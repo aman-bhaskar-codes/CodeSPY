@@ -4,6 +4,7 @@ import pytest
 from app.domain.canonical_json import semantic_digest
 from app.scanners.dependency_adapter import DockerDependencyAdapter
 from app.scanners.ownership import ScannerOwnership
+
 from tests.phase4.unit.test_dependency_adapter import IMAGE, Controller, prepare
 from tests.phase4.unit.test_scanner_adapter import make_adapter
 

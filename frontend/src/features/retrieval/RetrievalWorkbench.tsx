@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { IndexBuildPanel } from "./IndexBuildPanel";
+import { MemoryReviewPanel } from "./MemoryReviewPanel";
 import type {
   ContextItemV1,
   EvidencePointerV1,
@@ -37,6 +38,8 @@ function RetrievalWorkbenchState({
   snapshotId,
   csrfToken,
 }: RetrievalWorkbenchProps) {
+  const queryClient = useQueryClient();
+  const proposalCommand = useRef<{ body: string; key: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"search" | "context" | "memory">(
     "search",
   );
@@ -52,6 +55,10 @@ function RetrievalWorkbenchState({
   const [preamble, setPreamble] = useState(
     "You are an expert security software engineer assisting with CodeSPY.",
   );
+  const [includeMemory, setIncludeMemory] = useState(false);
+  const [preview, setPreview] = useState<
+    import("../../api/generated/types.gen").ContextPreviewV1 | null
+  >(null);
   const [lastPacket, setLastPacket] = useState<ContextPacketV1 | null>(null);
 
   // Source View Modal
@@ -64,6 +71,9 @@ function RetrievalWorkbenchState({
 
   // Memory states
   const [memoryQuery, setMemoryQuery] = useState("");
+  const [memoryMode, setMemoryMode] = useState<
+    "off" | "current_only" | "historical_hints"
+  >("current_only");
   const [memoryDraft, setMemoryDraft] = useState("");
   const [newMemoryTopic, setNewMemoryTopic] = useState("");
   const [newMemoryKind, setNewMemoryKind] =
@@ -152,6 +162,25 @@ function RetrievalWorkbenchState({
           modality_ranks: "modality_ranks" in hit ? hit.modality_ranks : {},
         }),
       );
+      if (includeMemory) {
+        const result = await api.previewContext(
+          repositoryId,
+          snapshotId,
+          {
+            query: lastSearch?.query || query || "CodeSPY retrieval inquiry",
+            candidate_hits: hits,
+            chunk_set_id: lastSearch?.chunk_set_id,
+            budget: {
+              max_tokens: maxTokens,
+              reserved_overhead_tokens: overheadTokens,
+            },
+            memory_mode: memoryMode,
+            system_preamble: preamble || undefined,
+          },
+          csrfToken,
+        );
+        return { res: result.packet, preview: result, seq };
+      }
       const res = await api.assembleContext(
         repositoryId,
         snapshotId,
@@ -167,23 +196,30 @@ function RetrievalWorkbenchState({
         },
         csrfToken,
       );
-      return { res, seq };
+      return { res, preview: null, seq };
     },
     onSuccess: (data) => {
       if (data && data.seq === assembleSequence.current && data.res) {
         setLastPacket(data.res);
+        setPreview(data.preview);
       }
     },
   });
 
   // Memory Query
   const memoriesQuery = useQuery({
-    queryKey: ["repo_memories", repositoryId, snapshotId, memoryQuery],
+    queryKey: [
+      "repo_memories",
+      repositoryId,
+      snapshotId,
+      memoryQuery,
+      memoryMode,
+    ],
     queryFn: ({ signal }) =>
       api.queryMemories(
         repositoryId,
         snapshotId,
-        { query: memoryQuery || undefined },
+        { query: memoryQuery || undefined, history_mode: memoryMode },
         signal,
       ),
   });
@@ -191,15 +227,26 @@ function RetrievalWorkbenchState({
   // Memory Create Mutation
   const recordMemoryMutation = useMutation({
     mutationFn: async (payload: MemoryCreateRequestV1) => {
+      const body = JSON.stringify({ ...payload, request_key: undefined });
+      if (proposalCommand.current?.body !== body)
+        proposalCommand.current = { body, key: crypto.randomUUID() };
+      const key = proposalCommand.current.key;
       return await api.recordMemory(
         repositoryId,
         snapshotId,
-        payload,
+        { ...payload, request_key: key },
         csrfToken,
+        key,
       );
     },
     onSuccess: () => {
-      setMemorySuccessMsg("Grounded memory recorded successfully!");
+      proposalCommand.current = null;
+      void queryClient.invalidateQueries({
+        queryKey: ["memory-review", repositoryId, snapshotId],
+      });
+      setMemorySuccessMsg(
+        "Memory candidate submitted for review. It is not used by models yet.",
+      );
       setNewMemoryTopic("");
       setNewMemorySummary("");
       setNewMemoryEvidenceFile("");
@@ -737,6 +784,14 @@ function RetrievalWorkbenchState({
             />
           </div>
 
+          <label>
+            <input
+              type="checkbox"
+              checked={includeMemory}
+              onChange={(event) => setIncludeMemory(event.target.checked)}
+            />{" "}
+            Include reviewed memory in this preview
+          </label>
           <button
             type="button"
             className="primary"
@@ -818,6 +873,42 @@ function RetrievalWorkbenchState({
               </div>
 
               <div style={{ display: "grid", gap: 12 }}>
+                {preview && (
+                  <section aria-label="Memory context selection">
+                    <h4>Reviewed memory selection</h4>
+                    <p>
+                      Selection preview only. System instructions, tools and
+                      required history are budgeted again before model dispatch.
+                    </p>
+                    <p>
+                      {preview.memory_tokens} estimated memory tokens ·{" "}
+                      {lastPacket.total_tokens} source tokens ·{" "}
+                      {lastPacket.total_bytes} source bytes
+                    </p>
+                    <p>
+                      Selection digest: <code>{preview.selection_digest}</code>
+                    </p>
+                    {preview.memories.items.map((memory) => (
+                      <article key={memory.memory_id}>
+                        <strong>{memory.topic}</strong> · Version{" "}
+                        {memory.version} ·{" "}
+                        {memory.historical_hint
+                          ? "Historical hint; current-source validation required"
+                          : "Current snapshot"}
+                        <p>{memory.summary}</p>
+                        <p>
+                          Source correspondence: {memory.source_correspondence};
+                          expiry: {memory.expires_at}
+                        </p>
+                      </article>
+                    ))}
+                    {!!preview.memories.omission_reasons?.length && (
+                      <p>
+                        Omitted: {preview.memories.omission_reasons.join(", ")}
+                      </p>
+                    )}
+                  </section>
+                )}
                 {lastPacket.items.map((item: ContextItemV1) => (
                   <div
                     key={item.chunk_id}
@@ -928,6 +1019,33 @@ function RetrievalWorkbenchState({
             )}
           </div>
 
+          <label>
+            Memory scope
+            <select
+              value={memoryMode}
+              onChange={(event) =>
+                setMemoryMode(event.target.value as typeof memoryMode)
+              }
+            >
+              <option value="off">Memory off</option>
+              <option value="current_only">Current snapshot</option>
+              <option value="historical_hints">Include historical hints</option>
+            </select>
+          </label>
+          <MemoryReviewPanel
+            repositoryId={repositoryId}
+            snapshotId={snapshotId}
+            csrfToken={csrfToken}
+          />
+          {memoriesQuery.data?.partial && (
+            <p role="status">
+              Memory selection reached its validation limit; coverage is
+              partial.
+            </p>
+          )}
+          {!!memoriesQuery.data?.omission_reasons?.length && (
+            <p>Omitted: {memoriesQuery.data.omission_reasons.join(", ")}</p>
+          )}
           {memorySuccessMsg && (
             <p style={{ color: "#059669", fontWeight: 600, marginBottom: 12 }}>
               ✓ {memorySuccessMsg}
@@ -1194,7 +1312,12 @@ function RetrievalWorkbenchState({
                             borderRadius: 3,
                           }}
                         >
-                          {mem.memory_kind}
+                          {mem.memory_kind} ·{" "}
+                          {mem.historical_hint
+                            ? "Historical hint — revalidate current source"
+                            : "Current snapshot"}
+                          {mem.source_correspondence === "human_note" &&
+                            " · Human note; not source evidence"}
                         </span>
                       </div>
                       <span style={{ fontSize: 12, color: "var(--muted)" }}>

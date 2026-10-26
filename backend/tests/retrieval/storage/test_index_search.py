@@ -25,6 +25,7 @@ from app.services.index_publication import IndexFinalizer
 from app.services.lexical_search import LexicalSearchService
 from app.services.memory_service import MemoryService
 from sqlalchemy import func, insert, select, text, update
+
 from tests.retrieval.storage.test_index_publication import claimed
 
 
@@ -200,6 +201,7 @@ async def another_set(api, broker, ctx, scope, request_key="new-set"):
     from app.indexing.receipt import _issue
     from app.repositories.index_repository import IndexRepository
     from app.services.jobs import JobService
+
     from tests.retrieval.storage.test_index_jobs import service
     from tests.retrieval.unit.test_index_contracts import config, draft
 
@@ -310,6 +312,7 @@ async def test_qualified_empty_set_differs_from_absent_index(
     from app.indexing.receipt import _issue
     from app.repositories.index_repository import IndexRepository
     from app.services.jobs import JobService
+
     from tests.phase2.integration import test_submission_ingestion as ingestion
     from tests.phase3.integration.test_structural_publication import admitted
     from tests.retrieval.storage.test_index_jobs import service
@@ -376,6 +379,7 @@ async def test_native_redacted_index_search_and_context_keep_original_provenance
     from app.services.jobs import JobService
     from app.source_read.adapter import DockerSourceReader
     from app.workers.operations.index_snapshot import IndexOperation
+
     from tests.phase2.integration import test_submission_ingestion as ingestion
     from tests.phase3.integration.test_structural_publication import admitted
 

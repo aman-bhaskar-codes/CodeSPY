@@ -14,6 +14,7 @@ from app.models.scan_tables import finding_occurrences
 from app.models.tables import analysis_runs, cpg_edges, cpg_nodes, source_files
 from app.services.feature_trace import FeatureTraceService
 from pydantic import ValidationError
+
 from tests.phase4.unit.test_findings_authorization import AuthorityFixture
 from tests.phase4.unit.test_findings_authorization import authority as authority_fixture
 

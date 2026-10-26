@@ -18,6 +18,7 @@ from app.scanners.runtime import RuntimeManifest
 from app.services.analysis_sources import LocatedSource
 from app.services.findings import FindingMaterializer, ScanPublicationSpecV1, reviewed_catalog
 from app.services.scanner_sources import BoundScannerStager
+
 from tests.phase4.dependency_fixtures import NOW
 from tests.phase4.process.test_native_secret_format import cases
 from tests.phase4.process.test_scanner_image import settings

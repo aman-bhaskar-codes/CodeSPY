@@ -1,5 +1,6 @@
 """Durable wakeup intent, inserted in the same transaction as a job change."""
 
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -7,14 +8,32 @@ from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contracts.indexing import JobEnvelopeV5
+from app.contracts.investigation_jobs import JobEnvelopeV6
 from app.contracts.jobs import JobEnvelopeV2, JobEnvelopeV3
 from app.contracts.scan_jobs import JobEnvelopeV4
 from app.models.phase2_tables import PHASE2_TABLES
 
 
 async def enqueue_wakeup(s: AsyncSession, job: dict[str, Any]) -> None:
-    envelope: JobEnvelopeV2 | JobEnvelopeV3 | JobEnvelopeV4 | JobEnvelopeV5
-    if job["operation"] == "index_snapshot":
+    envelope: JobEnvelopeV2 | JobEnvelopeV3 | JobEnvelopeV4 | JobEnvelopeV5 | JobEnvelopeV6
+    if job["operation"] == "investigate_snapshot":
+        from app.repositories.job_repository import load_job
+
+        current = await load_job(s, job["org_id"], job["id"])
+        deadline_val = job["deadline"]
+        if isinstance(deadline_val, datetime) and deadline_val.tzinfo is None:
+            deadline_val = deadline_val.replace(tzinfo=UTC)
+        envelope = JobEnvelopeV6(
+            org_id=job["org_id"],
+            job_id=job["id"],
+            investigation_id=current["investigation_id"],
+            spec_hash=current["spec_hash"],
+            operation="investigate_snapshot",
+            dispatch_generation=job["dispatch_generation"],
+            config_hash=job["config_hash"],
+            deadline=deadline_val,
+        )
+    elif job["operation"] == "index_snapshot":
         from app.repositories.job_repository import load_job
 
         current = await load_job(s, job["org_id"], job["id"])

@@ -5,7 +5,7 @@ and checkpoints.
 import json
 import logging
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from app.contracts.investigation import (
     InvestigationClaimV1,
@@ -19,15 +19,13 @@ from app.contracts.model import (
     ModelRoutingRequirementV1,
 )
 from app.contracts.provider_budget import DisclosurePolicyV1
+from app.ports.investigation_checkpointer import InvestigationCheckpointerPort
+from app.ports.model import ModelGatewayPort
 from app.services.claim_verification import ClaimVerificationService
-from app.services.investigation_checkpointer import (
-    FencedCheckpointer,
-)
 from app.services.investigator_tools import (
     InvestigatorToolRegistry,
     ToolExecutionContext,
 )
-from app.services.model_gateway import ModelGatewayService
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +63,8 @@ class ShortPathInvestigator:
 
     def __init__(
         self,
-        model_gateway: ModelGatewayService,
-        checkpointer: FencedCheckpointer,
+        model_gateway: ModelGatewayPort,
+        checkpointer: InvestigationCheckpointerPort,
         tool_registry: InvestigatorToolRegistry | None = None,
         claim_verifier: ClaimVerificationService | None = None,
     ) -> None:
@@ -166,7 +164,7 @@ class ShortPathInvestigator:
                 investigation_id=investigation_id,
                 worker_id=worker_id,
                 fencing_token=fencing_token,
-                lease_ttl_seconds=30,
+                lease_ttl_seconds=150,
             )
 
             # Call model gateway
@@ -178,7 +176,7 @@ class ShortPathInvestigator:
                 repository_id=state.repository_id,
                 principal_id=exec_context.principal_id,
                 investigation_id=investigation_id,
-                logical_call_id=uuid4(),
+                logical_call_id=uuid5(NAMESPACE_URL, f"{org_id}:{step_idemp_key}"),
                 attempt_id=1,
                 messages=state.history,
                 tools=req_tools,
@@ -202,6 +200,7 @@ class ShortPathInvestigator:
                         role=ModelRole.ASSISTANT,
                         content=model_response.content,
                         tool_calls=model_response.tool_calls,
+                        continuation_ref=model_response.continuation_ref,
                     )
                 )
 
@@ -422,5 +421,5 @@ class ShortPathInvestigator:
             if isinstance(parsed, dict) and "verdict" in parsed:
                 return parsed
         except (json.JSONDecodeError, TypeError, KeyError):
-            logger.debug("Response content is not valid verdict JSON: %s", content[:100])
+            logger.debug("model_verdict_json_invalid")
         return None

@@ -11,6 +11,7 @@ from app.services.triage import TriageService
 from scripts import phase2_db as harness
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
+
 from tests.phase4.storage.test_scan_publication import publication_case
 
 

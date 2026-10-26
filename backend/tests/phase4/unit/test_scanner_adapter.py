@@ -9,6 +9,7 @@ from app.scanners.adapter import DockerScannerAdapter
 from app.scanners.ownership import ScannerOwnership
 from app.scanners.process import NativeProcessError, NativeResult
 from app.scanners.runtime import RuntimeManifest
+
 from tests.phase4.runtime_fixtures import runtime
 from tests.phase4.unit.test_scanner_archive import fixture_input
 

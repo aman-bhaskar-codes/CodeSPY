@@ -13,6 +13,7 @@ from app.contracts.scanners import ScannerRequestV1
 from app.scanners.commands import gitleaks_command
 from app.scanners.normalization import normalize_gitleaks
 from app.scanners.process import run_private
+
 from tests.phase4.runtime_fixtures import runtime
 
 FILE = UUID(int=1)

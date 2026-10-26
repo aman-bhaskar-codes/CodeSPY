@@ -6,6 +6,7 @@ from app.workers.consumer import JobConsumer
 from app.workers.dispatcher import OutboxDispatcher
 from app.workers.runtime import WorkerRuntime
 from sqlalchemy import func, select
+
 from tests.phase2.integration.test_submission_ingestion import chunks, submission_scenario
 
 

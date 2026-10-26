@@ -152,6 +152,11 @@ async def test_investigation_api_full_lifecycle(
                 revoked_at=None,
             )
         )
+        from app.services.model_budget import ModelBudgetService
+
+        budget_svc = ModelBudgetService(session)
+        await budget_svc.ensure_default_generation_pricing()
+        await budget_svc.ensure_budget(org_id, repo_id, initial_balance_micros=10_000_000)
 
     # 2. Configure FakeModelAdapter with canned verdict
     canned_verdict = {

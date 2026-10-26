@@ -16,26 +16,53 @@ CodeSPY turns a source archive into an immutable snapshot, a file inventory and 
 
 The central distinction is **what the source establishes, what analysis infers, and what remains unknown**. Static call candidates are not observed execution paths. A matching quotation does not prove a security claim. An empty findings list does not establish that a repository is secure.
 
-> **Development status:** a local prototype with an established intake and structural-analysis foundation. Public scan wiring and provider-backed investigations still need integration and qualification. Indexing controls, scoped API/read-only MCP status, durable publication and consistent search/context/memory reads have local qualification. The repository is not a hosted production release.
+> **Development status:** a local prototype with an established intake and structural-analysis foundation. Public scan wiring and complete investigation tool integration still need qualification. Configured model transports and budgeted investigation execution have synthetic-provider integration tests; live access remains unqualified. Indexing controls, scoped API/read-only MCP status, durable publication and consistent search/context/memory reads have local qualification. The repository is not a hosted production release.
 
 ## Capabilities
 
-| Area                      | Implemented                                                                                                                             | Current boundary                                                                                           |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Source intake             | ZIP admission, path and expansion checks, immutable snapshots, file hashes and inventory                                                | Inventory coverage is separate from analysis coverage                                                      |
-| Structural analysis       | Python, JS, JSX, TS and TSX parsing; symbols, imports, call candidates and framework-boundary reports                                   | Bounded static analysis; dynamic behavior can remain unresolved                                            |
-| Security scanning         | Isolated Semgrep and Gitleaks adapters; offline npm/uv advisory assessment; durable result storage                                      | Public scan startup and job-to-result tracking are not fully connected                                     |
-| Findings and review       | Scoped list/detail services, evidence references, append-only triage events and optimistic projections                                  | Isolated redacted excerpts and current-support views are implemented; cross-instance cursor continuity remains incomplete      |
-| Feature tracing           | Deterministic, bounded neighborhoods from one published structural run, with actual file locations and omission reasons                 | Follows retained graph edges; does not invent route-handler links or prove exploitability                  |
-| Retrieval                 | Verified source-view services, recognized-secret redaction, chunking, exact search, PostgreSQL full-text search and rank-fusion helpers | Durable publication and sealed-set reads are locally qualified; scoped API/workbench/read-only MCP controls are locally qualified; dense retrieval is not live-qualified          |
-| Memory and investigations | Memory services, typed model contracts, budget/checkpoint records, investigator loops and workbench screens                             | Investigation tools/providers are not fully connected; unconfigured execution returns unavailable |
-| MCP                       | Read-only dispatcher with a trusted server-supplied identity and scoped service calls                                                   | Standalone stdio startup and client interoperability remain unqualified                                    |
+| Area                      | Implemented                                                                                                                             | Current boundary                                                                                                                                                         |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Source intake             | ZIP admission, path and expansion checks, immutable snapshots, file hashes and inventory                                                | Inventory coverage is separate from analysis coverage                                                                                                                    |
+| Structural analysis       | Python, JS, JSX, TS and TSX parsing; symbols, imports, call candidates and framework-boundary reports                                   | Bounded static analysis; dynamic behavior can remain unresolved                                                                                                          |
+| Security scanning         | Isolated Semgrep and Gitleaks adapters; offline npm/uv advisory assessment; durable result storage                                      | Public scan startup and job-to-result tracking are not fully connected                                                                                                   |
+| Findings and review       | Scoped list/detail services, evidence references, append-only triage events and optimistic projections                                  | Isolated redacted excerpts and current-support views are implemented; cross-instance cursor continuity remains incomplete                                                |
+| Feature tracing           | Deterministic, bounded neighborhoods from one published structural run, with actual file locations and omission reasons                 | Follows retained graph edges; does not invent route-handler links or prove exploitability                                                                                |
+| Retrieval                 | Verified source-view services, recognized-secret redaction, chunking, exact search, PostgreSQL full-text search and rank-fusion helpers | Durable publication and sealed-set reads are locally qualified; scoped API/workbench/read-only MCP controls are locally qualified; dense retrieval is not live-qualified |
+| Memory and investigations | Reviewed memory services, configured model gateway, budget/checkpoint records, resumable node executor, anti-hallucination claim verification, monotonic event timeline, workbench lifecycle actions, and read-only MCP tools | Configured models use replay/synthetic fixtures in offline tests; live external model access requires operator provider credentials |
+| MCP                       | Read-only dispatcher with trusted server-supplied identity, scoped retrieval/memory tools, and investigation status/result inspection  | Standalone stdio startup and client interoperability remain unqualified                                                                                                  |
 
 ### Interface
 
 The workbench contains archive intake and inventory, structural reports, findings and triage, retrieval/context tools, repository memory and investigation views. Findings views consume generated API types so their fields match backend responses.
 
 Some screens expose components whose complete runtime workflow is still being integrated. Their presence is not evidence that every backend capability is enabled.
+
+## Repository memory
+
+Writers submit memory candidates for review. An owner or administrator with current
+repository write access can accept them for reuse, inspect history and archive or
+supersede them. Candidates expire after seven days; accepted memories expire after
+ninety days. Historical memories remain labeled hints and do not establish current
+source findings.
+
+The workbench includes review controls and a context-selection preview. Configured
+model memory is disabled by default. Provider-backed context composition has bounded
+packing and dispatch-time authority checks; complete durable investigation execution
+still needs connected qualification. See [memory and context behavior](docs/acceptance/reviewed-memory-context.md).
+
+## Security investigations
+
+Investigations run asynchronous, node-based security analysis jobs against admitted source snapshots.
+Execution is backed by PostgreSQL authority (`investigation_jobs`, `investigation_evidence`, `investigation_reports`).
+The workflow enforces:
+
+- **Resumable execution**: Node-level checkpoints and model replay prevent duplicate financial charges and duplicate API calls upon recovery.
+- **Dual budget accounting**: Bounded spending with held budget reservations and settled spend tracking.
+- **Anti-hallucination claim grounding**: Mandatory verification requiring cited quotes to match exact target snapshot bytes and line ranges; unsupported claims trigger deterministic verdict downgrades.
+- **Durable event streaming**: Strictly monotonic integer sequence timelines with gap detection and client reconnect support.
+- **Workbench & MCP operations**: React workbench supporting cancel, resume, and retry actions, along with read-only MCP status and result tools.
+
+See [investigation acceptance criteria](docs/acceptance/investigations.md) and the [operator investigation runbook](docs/operator-investigation-runbook.md).
 
 ## Architecture
 
@@ -264,3 +291,10 @@ docs/               Architecture, capability limits and qualification records
 [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [MIT license](LICENSE)
 
 Current local integration evidence and remaining retrieval/provider boundaries are recorded in [findings and retrieval checks](docs/acceptance/retrieval-boundaries.md) and [atomic index publication](docs/acceptance/index-publication.md) and [qualified index reads](docs/acceptance/index-reads.md), and [index interfaces](docs/acceptance/index-interface.md).
+
+### Model configuration
+
+Generation supports five configurable model slots through scoped routing and durable
+usage accounting. Providers remain disabled until owner configuration and
+qualification. See the [model connection runbook](docs/operator-model-runbook.md)
+and [disabled configuration example](config/models.example.json).

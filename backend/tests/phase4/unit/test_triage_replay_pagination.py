@@ -13,6 +13,7 @@ from app.models.scan_tables import finding_occurrences, finding_triage_events
 from app.models.tables import source_files
 from app.services.findings_query import FindingsQueryService
 from app.services.triage import TriageService
+
 from tests.phase4.unit.test_findings_authorization import authority as authority_fixture
 from tests.phase4.unit.test_scan_status_api import status_client as status_client_fixture
 

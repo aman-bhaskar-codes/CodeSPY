@@ -73,11 +73,17 @@ section {
 }
 form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 12px;
   max-width: 640px;
 }
 label {
   font-weight: 650;
+  min-width: 0;
+}
+code {
+  overflow-wrap: anywhere;
 }
 input,
 select,
@@ -240,4 +246,21 @@ nav {
 
 .resize-none {
   resize: none;
+}
+
+.investigation-heading {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.investigation-heading > div,
+.investigation-columns > div {
+  min-width: 0;
+}
+.investigation-columns {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+}
+@media (max-width: 700px) {
+  .investigation-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

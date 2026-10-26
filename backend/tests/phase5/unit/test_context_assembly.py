@@ -647,3 +647,24 @@ async def test_empty_context_reports_missing_index_explicitly(session, monkeypat
     assert packet.lexical_availability == "index_unavailable"
     assert packet.chunk_set_id is packet.coverage is None
     assert not packet.items
+
+
+async def test_context_digest_binds_preamble_and_budget_not_random_packet(session, monkeypatch):
+    async def unavailable(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr("app.services.context_assembly.resolve_lexical_set", unavailable)
+    req = ContextAssemblyRequestV1(
+        scope=SearchScopeV1(
+            org_id=uuid4(), repository_id=uuid4(), snapshot_id=uuid4(), principal_id=uuid4()
+        ),
+        query="stable",
+        system_preamble="preview",
+    )
+    svc = ContextAssemblyService(session)
+    a = await svc.assemble_context(req)
+    b = await svc.assemble_context(req)
+    assert a.packet_id != b.packet_id
+    assert a.packet_sha256 == b.packet_sha256
+    changed = await svc.assemble_context(req.model_copy(update={"system_preamble": "changed"}))
+    assert changed.packet_sha256 != a.packet_sha256

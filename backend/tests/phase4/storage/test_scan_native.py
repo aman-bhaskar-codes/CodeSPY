@@ -22,6 +22,7 @@ from app.services.scan_reads import ScanReadService
 from app.workers.consumer import JobConsumer
 from app.workers.dispatcher import OutboxDispatcher
 from app.workers.operations.scan_snapshot import ScanOperation
+
 from tests.phase4.process.test_scanner_image import settings
 from tests.phase4.storage.scan_fixtures import admit_contents
 from tests.phase4.unit.test_findings import matched_bundle

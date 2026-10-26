@@ -7,6 +7,7 @@ from app.domain.errors import InvalidTransition, ScopeViolation, StaleWrite
 from app.models.tables import analysis_runs, cpg_nodes, source_files, source_snapshots
 from sqlalchemy import insert, select, text, update
 from sqlalchemy.exc import DBAPIError
+
 from tests.support.fixtures import batch_for, scenario
 
 

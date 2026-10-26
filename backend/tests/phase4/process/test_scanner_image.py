@@ -7,6 +7,7 @@ import pytest
 from app.scanners.docker import DockerController, SandboxLaunch
 from app.scanners.ownership import ScannerOwnership
 from app.scanners.runtime import RuntimeManifest
+
 from tests.phase4.unit.test_scanner_archive import fixture_input
 
 

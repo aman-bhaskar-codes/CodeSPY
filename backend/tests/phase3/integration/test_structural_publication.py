@@ -19,6 +19,7 @@ from app.services.structural_analysis import StructuralAnalysisService
 from app.services.structural_finalization import StructuralFinalizer
 from app.workers.operations.analyze_structure import StructuralAnalysisOperation
 from sqlalchemy import func, select, text
+
 from tests.phase2.integration.test_submission_ingestion import chunks, submission_scenario
 
 

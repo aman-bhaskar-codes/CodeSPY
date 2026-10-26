@@ -15,6 +15,7 @@ from app.services.model_budget import ModelBudgetService
 from app.services.model_gateway import ModelGatewayService
 from app.services.model_router import ModelRouter
 from sqlalchemy import select, update
+
 from tests.phase3.integration.test_structural_publication import admitted
 
 
@@ -166,6 +167,10 @@ async def test_http_investigation_uses_independent_accounting(migration_factory,
     from app.api.application import ApiSettings, ApplicationPorts, create_app
 
     ctx, _snapshot, repo, store = await admitted(migration_factory, tmp_path)
+    async with migration_factory() as session, session.begin():
+        service = ModelBudgetService(session)
+        await service.ensure_default_generation_pricing()
+        await service.ensure_budget(ctx.org_id, repo, initial_balance_micros=10_000_000)
     adapter = FakeModelAdapter(
         default_content=(
             '{"verdict":"benign","confidence":0.9,"summary":"Synthetic verdict","claims":[]}'

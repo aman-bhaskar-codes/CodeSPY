@@ -4,6 +4,7 @@ from app.models.phase2_tables import PHASE2_TABLES
 from app.workers.cleanup import CleanupWorker
 from app.workers.recovery import RecoveryWorker
 from sqlalchemy import func, select, update
+
 from tests.phase2.integration.test_submission_ingestion import submission_scenario
 
 
@@ -43,6 +44,7 @@ async def test_admitted_quarantine_expires_while_canonical_source_remains(factor
     from app.contracts.ingestion import AdmissionPolicyV1
     from app.services.job_finalization import JobFinalizer
     from app.services.jobs import JobService
+
     from tests.phase2.integration.test_submission_ingestion import chunks
 
     service, ctx, _, sub, body, store = await submission_scenario(factory, tmp_path)
@@ -79,6 +81,7 @@ async def test_deleted_orphan_can_start_a_new_verified_intent(factory, tmp_path)
     from app.contracts.ingestion import AdmissionPolicyV1
     from app.services.job_finalization import JobFinalizer
     from app.services.jobs import JobService
+
     from tests.phase2.integration.test_submission_ingestion import chunks
 
     service, ctx, request, sub, body, store = await submission_scenario(factory, tmp_path)

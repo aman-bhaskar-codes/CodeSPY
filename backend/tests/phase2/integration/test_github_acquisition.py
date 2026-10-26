@@ -9,6 +9,7 @@ from app.models.tables import repositories
 from app.services.github_acquisition import GitHubAcquisitionService, RepositoryAccess
 from app.services.jobs import JobService
 from sqlalchemy import insert, select, update
+
 from tests.phase2.integration.test_submission_ingestion import submission_scenario
 
 

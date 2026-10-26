@@ -368,16 +368,68 @@ export const api = {
         body: JSON.stringify(body),
       },
     ),
+  previewContext: (
+    repoId: string,
+    snapshotId: string,
+    body: import("./generated/types.gen").ContextPreviewRequestV1,
+    csrf: string,
+  ) =>
+    request<import("./generated/types.gen").ContextPreviewV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/context/preview`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf),
+        body: JSON.stringify(body),
+      },
+    ),
+  memoryReviewPage: (
+    repoId: string,
+    snapshotId: string,
+    cursor?: string,
+    signal?: AbortSignal,
+  ) => {
+    const params = new URLSearchParams({ snapshot_id: snapshotId });
+    if (cursor) params.set("cursor", cursor);
+    return request<import("./generated/types.gen").MemoryManagementPageV1>(
+      `/repositories/${repoId}/memory-review?${params}`,
+      { signal },
+    );
+  },
+  memoryHistory: (repoId: string, memoryId: string, signal?: AbortSignal) =>
+    request<import("./generated/types.gen").MemoryHistoryV1>(
+      `/repositories/${repoId}/memories/${memoryId}/history`,
+      { signal },
+    ),
+  reviewMemory: (
+    repoId: string,
+    memoryId: string,
+    body: import("./generated/types.gen").MemoryReviewRequestV1,
+    csrf: string,
+  ) =>
+    request<import("./generated/types.gen").MemoryEntryV1>(
+      `/repositories/${repoId}/memories/${memoryId}/reviews`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf, body.request_key),
+        body: JSON.stringify(body),
+      },
+    ),
   queryMemories: (
     repoId: string,
     snapshotId: string,
-    params: { query?: string; memory_kind?: string; topic?: string } = {},
+    params: {
+      query?: string;
+      memory_kind?: string;
+      topic?: string;
+      history_mode?: "off" | "current_only" | "historical_hints";
+    } = {},
     signal?: AbortSignal,
   ) => {
     const q = new URLSearchParams();
     if (params.query) q.set("query", params.query);
     if (params.memory_kind) q.set("memory_kind", params.memory_kind);
     if (params.topic) q.set("topic", params.topic);
+    if (params.history_mode) q.set("history_mode", params.history_mode);
     const qs = q.toString() ? `?${q.toString()}` : "";
     return request<import("../features/retrieval/types").MemoryQueryResponseV1>(
       `/repositories/${repoId}/snapshots/${snapshotId}/memories${qs}`,
@@ -407,18 +459,20 @@ export const api = {
   },
   createInvestigation: (
     repoId: string,
-    req: import("../features/investigations/types").InvestigationCreateRequestV1,
+    req:
+      | import("../features/investigations/types").InvestigationCreateRequestV2
+      | import("../features/investigations/types").InvestigationCreateRequestV1,
     csrf: string,
     key?: string,
   ) =>
-    request<import("../features/investigations/types").InvestigationSummaryV1>(
-      `/repositories/${repoId}/investigations`,
-      {
-        method: "POST",
-        headers: mutationHeaders(csrf, key),
-        body: JSON.stringify(req),
-      },
-    ),
+    request<
+      | import("../features/investigations/types").InvestigationSummaryV2
+      | import("../features/investigations/types").InvestigationSummaryV1
+    >(`/repositories/${repoId}/investigations`, {
+      method: "POST",
+      headers: mutationHeaders(csrf, key),
+      body: JSON.stringify(req),
+    }),
   listInvestigations: (
     repoId: string,
     findingId?: string,
@@ -426,7 +480,8 @@ export const api = {
   ) => {
     const qs = findingId ? `?finding_id=${encodeURIComponent(findingId)}` : "";
     return request<
-      import("../features/investigations/types").InvestigationListResponseV1
+      | import("../features/investigations/types").InvestigationListResponseV2
+      | import("../features/investigations/types").InvestigationListResponseV1
     >(`/repositories/${repoId}/investigations${qs}`, { signal });
   },
   getInvestigation: (
@@ -435,7 +490,8 @@ export const api = {
     signal?: AbortSignal,
   ) =>
     request<
-      import("../features/investigations/types").InvestigationDetailResponseV1
+      | import("../features/investigations/types").InvestigationDetailResponseV2
+      | import("../features/investigations/types").InvestigationDetailResponseV1
     >(`/repositories/${repoId}/investigations/${investigationId}`, { signal }),
   executeInvestigation: (
     repoId: string,
@@ -444,20 +500,62 @@ export const api = {
     key?: string,
   ) =>
     request<
-      import("../features/investigations/types").InvestigationDetailResponseV1
+      | import("../features/investigations/types").InvestigationStartResponseV1
+      | import("../features/investigations/types").InvestigationDetailResponseV1
     >(`/repositories/${repoId}/investigations/${investigationId}/execute`, {
       method: "POST",
       headers: mutationHeaders(csrf, key),
     }),
+  cancelInvestigation: (
+    repoId: string,
+    investigationId: string,
+    csrf: string,
+    key?: string,
+  ) =>
+    request<
+      import("../features/investigations/types").InvestigationCancelResponseV1
+    >(`/repositories/${repoId}/investigations/${investigationId}/cancel`, {
+      method: "POST",
+      headers: mutationHeaders(csrf, key),
+    }),
+  resumeInvestigation: (
+    repoId: string,
+    investigationId: string,
+    req: import("../features/investigations/types").InvestigationResumeRequestV1,
+    csrf: string,
+    key?: string,
+  ) =>
+    request<
+      import("../features/investigations/types").InvestigationStartResponseV1
+    >(`/repositories/${repoId}/investigations/${investigationId}/resume`, {
+      method: "POST",
+      headers: mutationHeaders(csrf, key),
+      body: JSON.stringify(req),
+    }),
+  retryInvestigation: (
+    repoId: string,
+    investigationId: string,
+    req: import("../features/investigations/types").InvestigationRetryRequestV1,
+    csrf: string,
+    key?: string,
+  ) =>
+    request<
+      import("../features/investigations/types").InvestigationSummaryV2
+    >(`/repositories/${repoId}/investigations/${investigationId}/retry`, {
+      method: "POST",
+      headers: mutationHeaders(csrf, key),
+      body: JSON.stringify(req),
+    }),
   listInvestigationEvents: (
     repoId: string,
     investigationId: string,
-    afterStep?: number,
+    afterSequence?: number,
     signal?: AbortSignal,
   ) => {
-    const qs = afterStep !== undefined ? `?after_step=${afterStep}` : "";
+    const qs = afterSequence !== undefined ? `?after_sequence=${afterSequence}` : "";
     return request<
-      import("../features/investigations/types").InvestigationEventV1[]
+      | import("../features/investigations/types").InvestigationEventPageV1
+      | import("../features/investigations/types").InvestigationEvent[]
     >(`/repositories/${repoId}/investigations/${investigationId}/events${qs}`, {
       signal,
     });

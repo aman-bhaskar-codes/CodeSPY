@@ -306,6 +306,19 @@
             "title": "Content",
             "type": "string"
           },
+          "continuation_ref": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Continuation Ref"
+          },
           "name": {
             "anyOf": [
               {
@@ -473,6 +486,8 @@
             "type": "boolean"
           },
           "query": {
+            "maxLength": 4000,
+            "minLength": 1,
             "title": "Query",
             "type": "string"
           },
@@ -490,6 +505,7 @@
           "system_preamble": {
             "anyOf": [
               {
+                "maxLength": 16384,
                 "type": "string"
               },
               {
@@ -804,6 +820,7 @@
           "system_preamble": {
             "anyOf": [
               {
+                "maxLength": 16384,
                 "type": "string"
               },
               {
@@ -837,6 +854,117 @@
           "created_at"
         ],
         "title": "ContextPacketV1",
+        "type": "object"
+      },
+      "ContextPreviewRequestV1": {
+        "properties": {
+          "budget": {
+            "$ref": "#/components/schemas/ContextBudgetV1"
+          },
+          "candidate_hits": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HybridSearchHitV1"
+            },
+            "maxItems": 100,
+            "title": "Candidate Hits",
+            "type": "array"
+          },
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
+          "deduplicate_files": {
+            "default": true,
+            "title": "Deduplicate Files",
+            "type": "boolean"
+          },
+          "memory_mode": {
+            "default": "current_only",
+            "enum": [
+              "off",
+              "current_only",
+              "historical_hints"
+            ],
+            "title": "Memory Mode",
+            "type": "string"
+          },
+          "query": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SearchScopeV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "system_preamble": {
+            "anyOf": [
+              {
+                "maxLength": 16384,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "System Preamble"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "ContextPreviewRequestV1",
+        "type": "object"
+      },
+      "ContextPreviewV1": {
+        "properties": {
+          "memories": {
+            "$ref": "#/components/schemas/MemoryQueryResponseV1"
+          },
+          "memory_tokens": {
+            "title": "Memory Tokens",
+            "type": "integer"
+          },
+          "packet": {
+            "$ref": "#/components/schemas/ContextPacketV1"
+          },
+          "qualification": {
+            "const": "selection_preview",
+            "default": "selection_preview",
+            "title": "Qualification",
+            "type": "string"
+          },
+          "selection_digest": {
+            "title": "Selection Digest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "packet",
+          "memories",
+          "memory_tokens",
+          "selection_digest"
+        ],
+        "title": "ContextPreviewV1",
         "type": "object"
       },
       "CreateScanRequestV1": {
@@ -1502,6 +1630,8 @@
             "type": "integer"
           },
           "file_path": {
+            "maxLength": 1024,
+            "minLength": 1,
             "title": "File Path",
             "type": "string"
           },
@@ -1547,6 +1677,7 @@
           "sha256": {
             "anyOf": [
               {
+                "pattern": "^[0-9a-f]{64}$",
                 "type": "string"
               },
               {
@@ -1564,6 +1695,7 @@
           "symbol_name": {
             "anyOf": [
               {
+                "maxLength": 256,
                 "type": "string"
               },
               {
@@ -3449,6 +3581,44 @@
         "title": "InventoryPageV1",
         "type": "object"
       },
+      "InvestigationCancelResponseV1": {
+        "additionalProperties": false,
+        "description": "Response to a cancel command.",
+        "properties": {
+          "already_terminal": {
+            "default": false,
+            "title": "Already Terminal",
+            "type": "boolean"
+          },
+          "investigation_id": {
+            "format": "uuid",
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Job Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InvestigationStatus"
+          }
+        },
+        "required": [
+          "investigation_id",
+          "status"
+        ],
+        "title": "InvestigationCancelResponseV1",
+        "type": "object"
+      },
       "InvestigationClaimV1": {
         "additionalProperties": false,
         "properties": {
@@ -3593,6 +3763,104 @@
         "title": "InvestigationCreateRequestV1",
         "type": "object"
       },
+      "InvestigationCreateRequestV2": {
+        "additionalProperties": false,
+        "description": "Create request requiring an immutable snapshot binding.",
+        "properties": {
+          "budget_limit_micros": {
+            "default": 5000000,
+            "exclusiveMinimum": 0,
+            "title": "Budget Limit Micros",
+            "type": "integer"
+          },
+          "chunk_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk Set Id"
+          },
+          "depth": {
+            "$ref": "#/components/schemas/InvestigationDepth",
+            "default": "standard"
+          },
+          "finding_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finding Id"
+          },
+          "finding_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finding Run Id"
+          },
+          "max_steps": {
+            "default": 10,
+            "maximum": 25,
+            "minimum": 1,
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/InvestigationMode",
+            "default": "short_path"
+          },
+          "query": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "target_type": {
+            "enum": [
+              "repository",
+              "finding"
+            ],
+            "title": "Target Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "snapshot_id",
+          "query",
+          "target_type"
+        ],
+        "title": "InvestigationCreateRequestV2",
+        "type": "object"
+      },
       "InvestigationDepth": {
         "enum": [
           "quick",
@@ -3637,6 +3905,112 @@
           "summary"
         ],
         "title": "InvestigationDetailResponseV1",
+        "type": "object"
+      },
+      "InvestigationDetailResponseV2": {
+        "additionalProperties": false,
+        "description": "Extended detail response with job, report and usage information.",
+        "properties": {
+          "available_actions": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Available Actions",
+            "type": "array"
+          },
+          "claims_count": {
+            "default": 0,
+            "title": "Claims Count",
+            "type": "integer"
+          },
+          "current_support_available": {
+            "default": true,
+            "title": "Current Support Available",
+            "type": "boolean"
+          },
+          "events_count": {
+            "default": 0,
+            "title": "Events Count",
+            "type": "integer"
+          },
+          "evidence_count": {
+            "default": 0,
+            "title": "Evidence Count",
+            "type": "integer"
+          },
+          "job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestigationJobRecordV1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "report": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Report"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/InvestigationSummaryV2"
+          }
+        },
+        "required": [
+          "summary"
+        ],
+        "title": "InvestigationDetailResponseV2",
+        "type": "object"
+      },
+      "InvestigationEventPageV1": {
+        "additionalProperties": false,
+        "description": "Paginated event response with cursor support.",
+        "properties": {
+          "cursor_floor": {
+            "default": 0,
+            "title": "Cursor Floor",
+            "type": "integer"
+          },
+          "has_gap": {
+            "default": false,
+            "title": "Has Gap",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InvestigationEventV2"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "InvestigationEventPageV1",
         "type": "object"
       },
       "InvestigationEventV1": {
@@ -3693,6 +4067,78 @@
         "title": "InvestigationEventV1",
         "type": "object"
       },
+      "InvestigationEventV2": {
+        "additionalProperties": false,
+        "description": "Monotonically ordered event with sequence identity.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "investigation_id": {
+            "format": "uuid",
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "logical_event_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Logical Event Key"
+          },
+          "node_name": {
+            "title": "Node Name",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "sequence": {
+            "minimum": 0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "step_index": {
+            "title": "Step Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "org_id",
+          "investigation_id",
+          "sequence",
+          "step_index",
+          "event_type",
+          "node_name",
+          "created_at"
+        ],
+        "title": "InvestigationEventV2",
+        "type": "object"
+      },
       "InvestigationFeedbackRequestV1": {
         "additionalProperties": false,
         "properties": {
@@ -3732,6 +4178,127 @@
         "title": "InvestigationFeedbackRequestV1",
         "type": "object"
       },
+      "InvestigationJobRecordV1": {
+        "additionalProperties": false,
+        "description": "Projection of actual jobs columns for investigation operations.",
+        "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deadline": {
+            "format": "date-time",
+            "title": "Deadline",
+            "type": "string"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Failure Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "investigation_id": {
+            "format": "uuid",
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "operation": {
+            "const": "investigate_snapshot",
+            "title": "Operation",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Report Id"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "spec_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Spec Hash",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "retry_wait",
+              "cancelling",
+              "succeeded",
+              "partial",
+              "failed",
+              "cancelled"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_id",
+          "id",
+          "repository_id",
+          "investigation_id",
+          "spec_hash",
+          "operation",
+          "state",
+          "attempt_count",
+          "max_attempts",
+          "deadline",
+          "created_at"
+        ],
+        "title": "InvestigationJobRecordV1",
+        "type": "object"
+      },
       "InvestigationListResponseV1": {
         "additionalProperties": false,
         "properties": {
@@ -3754,6 +4321,41 @@
         "title": "InvestigationListResponseV1",
         "type": "object"
       },
+      "InvestigationListResponseV2": {
+        "additionalProperties": false,
+        "description": "Paginated investigation list.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InvestigationSummaryV2"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Next Cursor"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total_count"
+        ],
+        "title": "InvestigationListResponseV2",
+        "type": "object"
+      },
       "InvestigationMode": {
         "enum": [
           "short_path",
@@ -3761,6 +4363,103 @@
         ],
         "title": "InvestigationMode",
         "type": "string"
+      },
+      "InvestigationResumeRequestV1": {
+        "additionalProperties": false,
+        "description": "Resume request \u2014 only after awaiting_human_decision with resolution.",
+        "properties": {
+          "expected_failed_job_id": {
+            "format": "uuid",
+            "title": "Expected Failed Job Id",
+            "type": "string"
+          },
+          "expected_spec_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Spec Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_failed_job_id",
+          "expected_spec_hash"
+        ],
+        "title": "InvestigationResumeRequestV1",
+        "type": "object"
+      },
+      "InvestigationRetryRequestV1": {
+        "additionalProperties": false,
+        "description": "Retry request \u2014 creates a new investigation with retry_of lineage.",
+        "properties": {
+          "budget_limit_micros": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Budget Limit Micros"
+          },
+          "max_steps": {
+            "anyOf": [
+              {
+                "maximum": 25,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Steps"
+          }
+        },
+        "title": "InvestigationRetryRequestV1",
+        "type": "object"
+      },
+      "InvestigationStartResponseV1": {
+        "additionalProperties": false,
+        "description": "202 Accepted response after starting an investigation job.",
+        "properties": {
+          "events_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Events Url",
+            "type": "string"
+          },
+          "investigation_id": {
+            "format": "uuid",
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InvestigationStatus"
+          },
+          "status_url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Status Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "investigation_id",
+          "job_id",
+          "status",
+          "status_url",
+          "events_url"
+        ],
+        "title": "InvestigationStartResponseV1",
+        "type": "object"
       },
       "InvestigationStateV1": {
         "additionalProperties": false,
@@ -3918,6 +4617,19 @@
         ],
         "title": "InvestigationStateV1",
         "type": "object"
+      },
+      "InvestigationStatus": {
+        "enum": [
+          "pending",
+          "running",
+          "checkpointed",
+          "awaiting_human_decision",
+          "completed",
+          "failed",
+          "cancelled"
+        ],
+        "title": "InvestigationStatus",
+        "type": "string"
       },
       "InvestigationSummaryV1": {
         "additionalProperties": false,
@@ -4079,6 +4791,233 @@
           "updated_at"
         ],
         "title": "InvestigationSummaryV1",
+        "type": "object"
+      },
+      "InvestigationSummaryV2": {
+        "additionalProperties": false,
+        "description": "Extended summary with job/spec/report references.",
+        "properties": {
+          "budget_limit_micros": {
+            "title": "Budget Limit Micros",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Current Job Id"
+          },
+          "current_step": {
+            "title": "Current Step",
+            "type": "integer"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "string"
+          },
+          "execution_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Execution Revision"
+          },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Failure Reason"
+          },
+          "finding_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finding Id"
+          },
+          "held_micros": {
+            "default": 0,
+            "title": "Held Micros",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "max_steps": {
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Report Id"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "retry_of_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retry Of Id"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Snapshot Id"
+          },
+          "spec_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Spec Hash"
+          },
+          "spent_micros": {
+            "title": "Spent Micros",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Summary"
+          },
+          "target_type": {
+            "title": "Target Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Verdict"
+          },
+          "verdict_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Verdict Confidence"
+          }
+        },
+        "required": [
+          "id",
+          "org_id",
+          "repository_id",
+          "target_type",
+          "query",
+          "status",
+          "mode",
+          "depth",
+          "current_step",
+          "max_steps",
+          "budget_limit_micros",
+          "spent_micros",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "InvestigationSummaryV2",
         "type": "object"
       },
       "InvestigationTargetType": {
@@ -4589,6 +5528,7 @@
             "items": {
               "$ref": "#/components/schemas/EvidencePointerV1"
             },
+            "maxItems": 10,
             "title": "Evidence Pointers",
             "type": "array"
           },
@@ -4634,6 +5574,20 @@
             "default": null,
             "title": "Repository Id"
           },
+          "request_key": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Key"
+          },
           "snapshot_id": {
             "anyOf": [
               {
@@ -4670,6 +5624,31 @@
       },
       "MemoryEntryV1": {
         "properties": {
+          "accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Accepted At"
+          },
+          "content_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Content Digest"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -4680,8 +5659,27 @@
             "items": {
               "$ref": "#/components/schemas/EvidencePointerV1"
             },
+            "maxItems": 10,
             "title": "Evidence Pointers",
             "type": "array"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expires At"
+          },
+          "historical_hint": {
+            "default": false,
+            "title": "Historical Hint",
+            "type": "boolean"
           },
           "memory_id": {
             "format": "uuid",
@@ -4701,10 +5699,43 @@
             "title": "Repository Id",
             "type": "string"
           },
+          "reviewer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reviewer Id"
+          },
           "snapshot_id": {
             "format": "uuid",
             "title": "Snapshot Id",
             "type": "string"
+          },
+          "source_available": {
+            "default": true,
+            "title": "Source Available",
+            "type": "boolean"
+          },
+          "source_correspondence": {
+            "default": "original_snapshot",
+            "enum": [
+              "original_snapshot",
+              "matching_files",
+              "changed",
+              "human_note"
+            ],
+            "title": "Source Correspondence",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/MemoryState",
+            "default": "needs_review"
           },
           "summary": {
             "title": "Summary",
@@ -4718,6 +5749,12 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "version": {
+            "default": 1,
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
           }
         },
         "required": [
@@ -4734,14 +5771,77 @@
         "title": "MemoryEntryV1",
         "type": "object"
       },
+      "MemoryHistoryV1": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryReviewEventV1"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryEntryV1"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "versions",
+          "events",
+          "partial"
+        ],
+        "title": "MemoryHistoryV1",
+        "type": "object"
+      },
       "MemoryKind": {
         "enum": [
           "triage_resolution",
           "security_finding_evidence",
-          "architecture_fact"
+          "architecture_fact",
+          "investigation_episode"
         ],
         "title": "MemoryKind",
         "type": "string"
+      },
+      "MemoryManagementPageV1": {
+        "properties": {
+          "can_review": {
+            "default": false,
+            "title": "Can Review",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryEntryV1"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "MemoryManagementPageV1",
+        "type": "object"
       },
       "MemoryQueryResponseV1": {
         "properties": {
@@ -4752,10 +5852,29 @@
             "title": "Items",
             "type": "array"
           },
+          "omission_reasons": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Omission Reasons",
+            "type": "array"
+          },
+          "omitted_count": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Omitted Count",
+            "type": "integer"
+          },
           "org_id": {
             "format": "uuid",
             "title": "Org Id",
             "type": "string"
+          },
+          "partial": {
+            "default": false,
+            "title": "Partial",
+            "type": "boolean"
           },
           "query": {
             "title": "Query",
@@ -4765,6 +5884,13 @@
             "format": "uuid",
             "title": "Repository Id",
             "type": "string"
+          },
+          "scanned_count": {
+            "default": 0,
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Scanned Count",
+            "type": "integer"
           },
           "total_candidates": {
             "minimum": 0,
@@ -4780,6 +5906,201 @@
           "items"
         ],
         "title": "MemoryQueryResponseV1",
+        "type": "object"
+      },
+      "MemoryReviewEventV1": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_id": {
+            "format": "uuid",
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "actor_id",
+          "action",
+          "reason",
+          "created_at"
+        ],
+        "title": "MemoryReviewEventV1",
+        "type": "object"
+      },
+      "MemoryReviewRequestV1": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "accept",
+              "reject",
+              "archive",
+              "restore",
+              "supersede"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "replacement_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Replacement Id"
+          },
+          "request_key": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Request Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "expected_version",
+          "request_key",
+          "reason"
+        ],
+        "title": "MemoryReviewRequestV1",
+        "type": "object"
+      },
+      "MemoryState": {
+        "enum": [
+          "needs_review",
+          "candidate",
+          "accepted",
+          "rejected",
+          "archived",
+          "superseded",
+          "expired"
+        ],
+        "title": "MemoryState",
+        "type": "string"
+      },
+      "ModelAvailabilityItemV1": {
+        "additionalProperties": false,
+        "properties": {
+          "alias": {
+            "enum": [
+              "openai_fast",
+              "openai_reasoning",
+              "claude_fast",
+              "claude_reasoning",
+              "gemini_general"
+            ],
+            "title": "Alias",
+            "type": "string"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "locally_qualified": {
+            "title": "Locally Qualified",
+            "type": "boolean"
+          },
+          "owner_approved_live": {
+            "title": "Owner Approved Live",
+            "type": "boolean"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "disabled",
+              "unavailable",
+              "locally_qualified",
+              "live_unqualified"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "supports_native_schema": {
+            "title": "Supports Native Schema",
+            "type": "boolean"
+          },
+          "supports_streaming": {
+            "default": false,
+            "title": "Supports Streaming",
+            "type": "boolean"
+          },
+          "supports_tools": {
+            "title": "Supports Tools",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "alias",
+          "provider",
+          "enabled",
+          "locally_qualified",
+          "owner_approved_live",
+          "eligible",
+          "status",
+          "supports_tools",
+          "supports_native_schema"
+        ],
+        "title": "ModelAvailabilityItemV1",
+        "type": "object"
+      },
+      "ModelAvailabilityV1": {
+        "additionalProperties": false,
+        "properties": {
+          "live_access_verified": {
+            "default": false,
+            "title": "Live Access Verified",
+            "type": "boolean"
+          },
+          "profiles": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ModelAvailabilityItemV1"
+            },
+            "maxItems": 5,
+            "title": "Profiles",
+            "type": "array"
+          }
+        },
+        "title": "ModelAvailabilityV1",
         "type": "object"
       },
       "ModelRole": {
@@ -8587,10 +9908,26 @@
           },
           {
             "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
-              "default": 50,
+              "default": 20,
               "title": "Limit",
               "type": "integer"
             }
@@ -8601,7 +9938,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InvestigationListResponseV1"
+                  "$ref": "#/components/schemas/InvestigationListResponseV2"
                 }
               }
             },
@@ -8638,7 +9975,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/InvestigationCreateRequestV1"
+                "$ref": "#/components/schemas/InvestigationCreateRequestV2"
               }
             }
           },
@@ -8649,7 +9986,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InvestigationSummaryV1"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/InvestigationSummaryV2"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvestigationSummaryV1"
+                    }
+                  ],
+                  "title": "Response Create Investigation Endpoint Api V1 Repositories  Repository Id  Investigations Post"
                 }
               }
             },
@@ -8699,7 +10044,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InvestigationDetailResponseV1"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/InvestigationDetailResponseV2"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvestigationDetailResponseV1"
+                    }
+                  ],
+                  "title": "Response Get Investigation Detail Endpoint Api V1 Repositories  Repository Id  Investigations  Investigation Id  Get"
                 }
               }
             },
@@ -8717,6 +10070,56 @@
           }
         },
         "summary": "Get Investigation Detail Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/investigations/{investigation_id}/cancel": {
+      "post": {
+        "operationId": "cancel_investigation_endpoint_api_v1_repositories__repository_id__investigations__investigation_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationCancelResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Investigation Endpoint"
       }
     },
     "/api/v1/repositories/{repository_id}/investigations/{investigation_id}/events": {
@@ -8745,6 +10148,22 @@
           },
           {
             "in": "query",
+            "name": "after_sequence",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After Sequence"
+            }
+          },
+          {
+            "in": "query",
             "name": "after_step",
             "required": false,
             "schema": {
@@ -8758,19 +10177,23 @@
               ],
               "title": "After Step"
             }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/InvestigationEventV1"
-                  },
-                  "title": "Response List Investigation Events Endpoint Api V1 Repositories  Repository Id  Investigations  Investigation Id  Events Get",
-                  "type": "array"
-                }
+                "schema": {}
               }
             },
             "description": "Successful Response"
@@ -8818,9 +10241,7 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvestigationDetailResponseV1"
-                }
+                "schema": {}
               }
             },
             "description": "Successful Response"
@@ -8901,6 +10322,126 @@
         "summary": "Record Investigation Feedback Endpoint"
       }
     },
+    "/api/v1/repositories/{repository_id}/investigations/{investigation_id}/resume": {
+      "post": {
+        "operationId": "resume_investigation_endpoint_api_v1_repositories__repository_id__investigations__investigation_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestigationResumeRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationStartResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resume Investigation Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/investigations/{investigation_id}/retry": {
+      "post": {
+        "operationId": "retry_investigation_endpoint_api_v1_repositories__repository_id__investigations__investigation_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "investigation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Investigation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestigationRetryRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestigationSummaryV2"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Investigation Endpoint"
+      }
+    },
     "/api/v1/repositories/{repository_id}/investigations/{investigation_id}/stream": {
       "get": {
         "operationId": "stream_investigation_events_endpoint_api_v1_repositories__repository_id__investigations__investigation_id__stream_get",
@@ -8963,6 +10504,242 @@
           }
         },
         "summary": "Stream Investigation Events Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/memories/{memory_id}/history": {
+      "get": {
+        "operationId": "memory_history_endpoint_api_v1_repositories__repository_id__memories__memory_id__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Memory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryHistoryV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Memory History Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/memories/{memory_id}/reviews": {
+      "post": {
+        "operationId": "review_memory_endpoint_api_v1_repositories__repository_id__memories__memory_id__reviews_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Memory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryReviewRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryEntryV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review Memory Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/memory-review": {
+      "get": {
+        "operationId": "list_memory_review_endpoint_api_v1_repositories__repository_id__memory_review_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "snapshot_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Snapshot Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryManagementPageV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Memory Review Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/models": {
+      "get": {
+        "operationId": "model_availability_endpoint_api_v1_repositories__repository_id__models_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelAvailabilityV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Model Availability Endpoint"
       }
     },
     "/api/v1/repositories/{repository_id}/scans": {
@@ -9073,6 +10850,66 @@
           }
         },
         "summary": "Assemble Context Endpoint"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/context/preview": {
+      "post": {
+        "operationId": "context_preview_endpoint_api_v1_repositories__repository_id__snapshots__snapshot_id__context_preview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContextPreviewRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextPreviewV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Context Preview Endpoint"
       }
     },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/files/{file_id}/source-view": {
@@ -9832,11 +11669,26 @@
             "name": "limit",
             "required": false,
             "schema": {
-              "default": 20,
-              "maximum": 100,
+              "default": 5,
+              "maximum": 10,
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "history_mode",
+            "required": false,
+            "schema": {
+              "default": "current_only",
+              "enum": [
+                "off",
+                "current_only",
+                "historical_hints"
+              ],
+              "title": "History Mode",
+              "type": "string"
             }
           }
         ],

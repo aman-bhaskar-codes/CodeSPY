@@ -15,6 +15,7 @@ from app.contracts.structure import (
 )
 from app.domain.scope import RunRef
 from app.services.structural_results import materialize_result
+
 from tests.phase3.unit.test_source import create_test_archive
 
 

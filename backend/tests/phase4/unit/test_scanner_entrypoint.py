@@ -56,6 +56,7 @@ def test_worker_native_timeout_has_a_distinct_safe_exit(tmp_path, monkeypatch):
     from app.scanners import entrypoint
     from app.scanners.process import NativeProcessError
     from app.scanners.runtime import RuntimeManifest
+
     from tests.phase4.runtime_fixtures import runtime
     from tests.phase4.unit.test_scanner_archive import fixture_input
 

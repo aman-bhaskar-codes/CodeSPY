@@ -4,6 +4,7 @@ import pytest
 from app.contracts.ingestion import AdmissionPolicyV1
 from app.scanners.advisories import AdvisoryBundle
 from app.scanners.dependency_worker import DependencyInputV1, assess_dependencies
+
 from tests.phase4.dependency_fixtures import fixture_dependency
 
 

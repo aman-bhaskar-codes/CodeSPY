@@ -10,14 +10,16 @@ from app.contracts.memory import (
     MemoryCreateRequestV1,
     MemoryKind,
     MemoryQueryRequestV1,
+    MemoryReviewRequestV1,
 )
 from app.domain.errors import ScopeViolation
 from app.models.chunk_tables import source_chunks
-from app.models.memory_tables import repo_memories
+from app.models.memory_tables import MEMORY_TABLES, repo_memories
 from app.models.phase2_tables import PHASE2_TABLES, md
 from app.models.scan_tables import finding_occurrences
 from app.models.tables import artifacts, memberships, repositories, source_files, source_snapshots
 from app.services.memory_service import MemoryService
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 grants = PHASE2_TABLES["repository_grants"]
@@ -36,7 +38,7 @@ async def session(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[AsyncSession
         await conn.run_sync(
             lambda sync_conn: md.create_all(
                 sync_conn,
-                tables=[memberships, grants, repo_memories],
+                tables=[memberships, grants, *MEMORY_TABLES],
             )
         )
     # The unit database models storage columns only; PostgreSQL guards are not exercised.
@@ -145,6 +147,45 @@ async def seed_snapshot(session, org_id, repo_id, snap_id, state="sealed"):
     )
 
 
+async def record_reviewed(service, request):
+    entry = await service.record_memory(request)
+    role = await service.session.scalar(
+        sa.select(memberships.c.role).where(
+            memberships.c.org_id == request.org_id,
+            memberships.c.principal_id == request.principal_id,
+        )
+    )
+    await service.session.execute(
+        memberships.update()
+        .where(
+            memberships.c.org_id == request.org_id,
+            memberships.c.principal_id == request.principal_id,
+        )
+        .values(role="admin")
+    )
+    accepted = await service.review_memory(
+        request.org_id,
+        request.repository_id,
+        request.principal_id,
+        entry.memory_id,
+        MemoryReviewRequestV1(
+            action="accept",
+            expected_version=entry.version,
+            request_key=str(uuid4()),
+            reason="Reviewed synthetic fixture",
+        ),
+    )
+    await service.session.execute(
+        memberships.update()
+        .where(
+            memberships.c.org_id == request.org_id,
+            memberships.c.principal_id == request.principal_id,
+        )
+        .values(role=role)
+    )
+    return accepted
+
+
 @pytest.mark.asyncio
 async def test_record_and_query_memory_success(session: AsyncSession, monkeypatch) -> None:
     stub_qualified_reads(monkeypatch)
@@ -204,7 +245,6 @@ async def test_record_and_query_memory_success(session: AsyncSession, monkeypatc
         file_path="src/auth/service.py",
         start_line=12,
         end_line=24,
-        finding_id=finding_id,
         chunk_id=chunk_id,
         symbol_name="authenticate_user",
         sha256="a" * 64,
@@ -224,16 +264,17 @@ async def test_record_and_query_memory_success(session: AsyncSession, monkeypatc
         evidence_pointers=(pointer,),
     )
 
-    entry = await svc.record_memory(create_req)
+    entry = await record_reviewed(svc, create_req)
     assert entry.memory_id is not None
     assert entry.topic == "auth-bypass-audit"
     assert len(entry.evidence_pointers) == 1
     assert entry.evidence_pointers[0].file_path == "src/auth/service.py"
-    assert entry.evidence_pointers[0].finding_id == finding_id
+    assert entry.evidence_pointers[0].finding_id is None
 
     # Query by matching query token
     q_res = await svc.query_memory(
         MemoryQueryRequestV1(
+            snapshot_id=snap_id,
             org_id=org_id,
             repository_id=repo_id,
             principal_id=principal_id,
@@ -247,6 +288,7 @@ async def test_record_and_query_memory_success(session: AsyncSession, monkeypatc
     # Query with non-matching query
     no_res = await svc.query_memory(
         MemoryQueryRequestV1(
+            snapshot_id=snap_id,
             org_id=org_id,
             repository_id=repo_id,
             principal_id=principal_id,
@@ -277,7 +319,7 @@ async def test_record_memory_unauthorized_scope(session: AsyncSession) -> None:
 
     # 1. No membership
     with pytest.raises(ScopeViolation):
-        await svc.record_memory(req)
+        await record_reviewed(svc, req)
 
     # Add membership but no repo grant
     await session.execute(
@@ -291,7 +333,7 @@ async def test_record_memory_unauthorized_scope(session: AsyncSession) -> None:
 
     # 2. Member but no grant
     with pytest.raises(ScopeViolation):
-        await svc.record_memory(req)
+        await record_reviewed(svc, req)
 
 
 @pytest.mark.asyncio
@@ -316,7 +358,8 @@ async def test_query_memory_filtering_and_limits(session: AsyncSession) -> None:
             "LRU cache eviction policy for sessions.",
         ),
     ]:
-        await svc.record_memory(
+        await record_reviewed(
+            svc,
             MemoryCreateRequestV1(
                 org_id=org_id,
                 repository_id=repo_id,
@@ -325,12 +368,13 @@ async def test_query_memory_filtering_and_limits(session: AsyncSession) -> None:
                 memory_kind=kind,
                 topic=topic,
                 summary=summary,
-            )
+            ),
         )
 
     # Filter by memory_kind
     arch_res = await svc.query_memory(
         MemoryQueryRequestV1(
+            snapshot_id=snap_id,
             org_id=org_id,
             repository_id=repo_id,
             principal_id=principal_id,
@@ -343,6 +387,7 @@ async def test_query_memory_filtering_and_limits(session: AsyncSession) -> None:
     # Filter by topic
     topic_res = await svc.query_memory(
         MemoryQueryRequestV1(
+            snapshot_id=snap_id,
             org_id=org_id,
             repository_id=repo_id,
             principal_id=principal_id,
@@ -356,6 +401,7 @@ async def test_query_memory_filtering_and_limits(session: AsyncSession) -> None:
     # Enforce limit
     lim_res = await svc.query_memory(
         MemoryQueryRequestV1(
+            snapshot_id=snap_id,
             org_id=org_id,
             repository_id=repo_id,
             principal_id=principal_id,
@@ -363,7 +409,8 @@ async def test_query_memory_filtering_and_limits(session: AsyncSession) -> None:
             limit=1,
         )
     )
-    assert lim_res.total_candidates == 1
+    assert lim_res.total_candidates == 2
+    assert len(lim_res.items) == 1
 
 
 @pytest.mark.asyncio
@@ -402,15 +449,15 @@ async def test_memory_authority_and_snapshot_filter(session: AsyncSession) -> No
     )
     await session.execute(grants.update().values(permission="read"))
     with pytest.raises(ScopeViolation):
-        await svc.record_memory(request)
+        await record_reviewed(svc, request)
     await session.execute(grants.update().values(permission="write"))
     with pytest.raises(ScopeViolation):
-        await svc.record_memory(request.model_copy(update={"snapshot_id": uuid4()}))
+        await record_reviewed(svc, request.model_copy(update={"snapshot_id": uuid4()}))
     foreign = uuid4()
     await seed_snapshot(session, org, uuid4(), foreign)
     with pytest.raises(ScopeViolation):
-        await svc.record_memory(request.model_copy(update={"snapshot_id": foreign}))
-    entry = await svc.record_memory(request)
+        await record_reviewed(svc, request.model_copy(update={"snapshot_id": foreign}))
+    entry = await record_reviewed(svc, request)
     query = MemoryQueryRequestV1(
         org_id=org, repository_id=repo, principal_id=principal, query="retained", snapshot_id=snap
     )
@@ -420,14 +467,16 @@ async def test_memory_authority_and_snapshot_filter(session: AsyncSession) -> No
     await session.execute(
         source_snapshots.update().where(source_snapshots.c.id == snap).values(state="building")
     )
-    assert not (await svc.query_memory(query)).items
     with pytest.raises(ScopeViolation):
-        await svc.record_memory(request)
+        await svc.query_memory(query)
+    with pytest.raises(ScopeViolation):
+        await record_reviewed(svc, request)
     await session.execute(
         source_snapshots.update().where(source_snapshots.c.id == snap).values(state="sealed")
     )
     await session.execute(PHASE2_TABLES["object_records"].update().values(state="deleted"))
-    assert not (await svc.query_memory(query)).items
+    with pytest.raises(ScopeViolation):
+        await svc.query_memory(query)
     await session.execute(grants.update().values(revoked_at=sa.func.current_timestamp()))
     with pytest.raises(ScopeViolation):
         await svc.query_memory(query)
@@ -472,7 +521,7 @@ async def test_memory_pointer_identity_is_scoped(session: AsyncSession, invalid:
     )
     if invalid == "range":
         pointer = pointer.model_copy(update={"end_line": 2})
-    with pytest.raises(ScopeViolation):
+    with pytest.raises((ScopeViolation, ValidationError)):
         await MemoryService(session).record_memory(
             MemoryCreateRequestV1(
                 org_id=org,
@@ -497,7 +546,8 @@ async def test_memory_is_shared_with_current_repository_readers(session: AsyncSe
     )
     await seed_snapshot(session, org, repo, snap)
     svc = MemoryService(session)
-    entry = await svc.record_memory(
+    entry = await record_reviewed(
+        svc,
         MemoryCreateRequestV1(
             org_id=org,
             repository_id=repo,
@@ -506,10 +556,12 @@ async def test_memory_is_shared_with_current_repository_readers(session: AsyncSe
             memory_kind=MemoryKind.ARCHITECTURE_FACT,
             topic="shared",
             summary="retained",
-        )
+        ),
     )
     result = await svc.query_memory(
-        MemoryQueryRequestV1(org_id=org, repository_id=repo, principal_id=reader, query="retained")
+        MemoryQueryRequestV1(
+            snapshot_id=snap, org_id=org, repository_id=repo, principal_id=reader, query="retained"
+        )
     )
     assert result.items[0].memory_id == entry.memory_id
 
@@ -522,7 +574,8 @@ async def test_memory_matches_before_limit_and_escapes_wildcards(session: AsyncS
     await seed_authorized_principal(session, org, repo, principal)
     await seed_snapshot(session, org, repo, snap)
     svc = MemoryService(session)
-    old = await svc.record_memory(
+    old = await record_reviewed(
+        svc,
         MemoryCreateRequestV1(
             org_id=org,
             repository_id=repo,
@@ -531,7 +584,7 @@ async def test_memory_matches_before_limit_and_escapes_wildcards(session: AsyncS
             memory_kind=MemoryKind.ARCHITECTURE_FACT,
             topic="target",
             summary="100% literal_value",
-        )
+        ),
     )
     await session.execute(
         repo_memories.update()
@@ -539,7 +592,8 @@ async def test_memory_matches_before_limit_and_escapes_wildcards(session: AsyncS
         .values(created_at=datetime.now(UTC) - timedelta(days=1))
     )
     for _ in range(3):
-        await svc.record_memory(
+        await record_reviewed(
+            svc,
             MemoryCreateRequestV1(
                 org_id=org,
                 repository_id=repo,
@@ -548,10 +602,15 @@ async def test_memory_matches_before_limit_and_escapes_wildcards(session: AsyncS
                 memory_kind=MemoryKind.ARCHITECTURE_FACT,
                 topic="unrelated",
                 summary="nothing",
-            )
+            ),
         )
     query = MemoryQueryRequestV1(
-        org_id=org, repository_id=repo, principal_id=principal, query="100%", limit=1
+        snapshot_id=snap,
+        org_id=org,
+        repository_id=repo,
+        principal_id=principal,
+        query="100%",
+        limit=1,
     )
     assert (await svc.query_memory(query)).items[0].memory_id == old.memory_id
     assert not (await svc.query_memory(query.model_copy(update={"query": "missing_%"}))).items
@@ -595,7 +654,7 @@ async def test_memory_denies_stale_github_authority(session: AsyncSession, inval
         topic="test",
         summary="fact",
     )
-    await svc.record_memory(request)
+    await record_reviewed(svc, request)
     await session.execute(repositories.update().values(source_kind="github"))
     now = datetime.now(UTC)
     await session.execute(
@@ -626,7 +685,7 @@ async def test_memory_denies_stale_github_authority(session: AsyncSession, inval
         )
     )
     query = MemoryQueryRequestV1(
-        org_id=org, repository_id=repo, principal_id=principal, query="fact"
+        snapshot_id=snap, org_id=org, repository_id=repo, principal_id=principal, query="fact"
     )
     assert len((await svc.query_memory(query)).items) == 1
     if invalid == "inactive":
@@ -640,11 +699,15 @@ async def test_memory_denies_stale_github_authority(session: AsyncSession, inval
             PHASE2_TABLES["github_user_grants"].update().values(expires_at=now - timedelta(hours=1))
         )
     with pytest.raises(ScopeViolation):
-        await svc.record_memory(request)
+        await record_reviewed(svc, request)
     with pytest.raises(ScopeViolation):
         await svc.query_memory(
             MemoryQueryRequestV1(
-                org_id=org, repository_id=repo, principal_id=principal, query="fact"
+                snapshot_id=snap,
+                org_id=org,
+                repository_id=repo,
+                principal_id=principal,
+                query="fact",
             )
         )
 
@@ -719,9 +782,9 @@ async def test_memory_revalidates_qualified_evidence_on_create_and_read(
         evidence_pointers=(pointer,),
     )
     service = MemoryService(session)
-    entry = await service.record_memory(request)
+    entry = await record_reviewed(service, request)
     query = MemoryQueryRequestV1(
-        org_id=org, repository_id=repo, principal_id=principal, query="evidence"
+        snapshot_id=snap, org_id=org, repository_id=repo, principal_id=principal, query="evidence"
     )
     assert (await service.query_memory(query)).items[0].memory_id == entry.memory_id
     changes = {
@@ -746,43 +809,56 @@ async def test_memory_revalidates_qualified_evidence_on_create_and_read(
             .values(evidence_pointers=[pointer.model_dump(mode="json")])
         )
     with pytest.raises(ScopeViolation):
-        await service.record_memory(request.model_copy(update={"evidence_pointers": (pointer,)}))
+        await record_reviewed(service, request.model_copy(update={"evidence_pointers": (pointer,)}))
     assert not (await service.query_memory(query)).items
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("failure", ["validation", "cancellation"])
-async def test_memory_closes_stream_after_iteration_failure(session, monkeypatch, failure):
-    import asyncio
+async def test_memory_does_not_open_an_unbounded_result_stream(session, monkeypatch):
+    org, repo, principal, snap = (uuid4() for _ in range(4))
+    await seed_authorized_principal(session, org, repo, principal)
+    await seed_snapshot(session, org, repo, snap)
 
-    from pydantic import ValidationError
+    async def forbidden_stream(*args, **kwargs):
+        raise AssertionError("memory query must materialize a bounded SQL page")
+
+    monkeypatch.setattr(session, "stream", forbidden_stream)
+    result = await MemoryService(session).query_memory(
+        MemoryQueryRequestV1(
+            snapshot_id=snap,
+            org_id=org,
+            repository_id=repo,
+            principal_id=principal,
+            query="evidence",
+        )
+    )
+    assert result.scanned_count == 0
+
+
+@pytest.mark.asyncio
+async def test_memory_does_not_swallow_database_cancellation(session, monkeypatch):
+    import asyncio
 
     org, repo, principal, snap = (uuid4() for _ in range(4))
     await seed_authorized_principal(session, org, repo, principal)
     await seed_snapshot(session, org, repo, snap)
-    closed = []
+    original = session.execute
 
-    class FailingResult:
-        def mappings(self):
-            async def rows():
-                if failure == "cancellation":
-                    raise asyncio.CancelledError()
-                yield {"evidence_pointers": [{"file_path": "a.py"}]}
+    async def cancelled_query(statement, *args, **kwargs):
+        if getattr(statement, "is_select", False) and any(
+            t is repo_memories for t in statement.get_final_froms()
+        ):
+            raise asyncio.CancelledError()
+        return await original(statement, *args, **kwargs)
 
-            return rows()
-
-        async def close(self):
-            closed.append(True)
-
-    async def stream(*args, **kwargs):
-        return FailingResult()
-
-    monkeypatch.setattr(session, "stream", stream)
-    expected = asyncio.CancelledError if failure == "cancellation" else ValidationError
-    with pytest.raises(expected):
+    monkeypatch.setattr(session, "execute", cancelled_query)
+    with pytest.raises(asyncio.CancelledError):
         await MemoryService(session).query_memory(
             MemoryQueryRequestV1(
-                org_id=org, repository_id=repo, principal_id=principal, query="evidence"
+                snapshot_id=snap,
+                org_id=org,
+                repository_id=repo,
+                principal_id=principal,
+                query="evidence",
             )
         )
-    assert closed == [True]

@@ -556,7 +556,7 @@ table(
         uq("uq_outbox_effect", "org_id", "job_id", "kind", "generation"),
         fk("fk_outbox_job", ["org_id", "job_id"], "jobs", ["org_id", "id"]),
         ck("ck_outbox_state", "state IN ('pending','claimed','sent')"),
-        ck("ck_outbox_kind", "kind IN ('wakeup','dead_letter')"),
+        ck("ck_outbox_kind", "kind IN ('wakeup','dead_letter','memory_proposals')"),
     ],
     [("ix_outbox_due", ["state", "next_send_at"]), ("ix_outbox_claim", ["claim_expires_at"])],
 )

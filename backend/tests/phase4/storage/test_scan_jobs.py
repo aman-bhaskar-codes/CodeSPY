@@ -11,6 +11,7 @@ from app.scanners.finding_catalog import reviewed_catalog
 from app.services.analysis_sources import locate_source
 from app.services.jobs import JobService
 from sqlalchemy import func, select
+
 from tests.phase3.integration.test_structural_publication import admitted
 from tests.phase4.runtime_fixtures import runtime
 

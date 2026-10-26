@@ -1,6 +1,7 @@
 import httpx
 from app.models.phase2_tables import PHASE2_TABLES
 from sqlalchemy import update
+
 from tests.phase2.api.test_session_upload_api import fixture_api
 from tests.phase2.integration.test_submission_ingestion import zip_bytes
 

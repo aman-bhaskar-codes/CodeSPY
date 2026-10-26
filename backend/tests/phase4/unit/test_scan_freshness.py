@@ -4,6 +4,7 @@ from datetime import timedelta
 
 import pytest
 from app.services.findings import FindingMaterializer
+
 from tests.phase4.dependency_fixtures import NOW
 from tests.phase4.unit.test_findings import dependency_case, matched_bundle
 

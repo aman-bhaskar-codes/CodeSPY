@@ -1,0 +1,131 @@
+{
+  "execution_mode": "offline",
+  "allow_live_egress": false,
+  "active_prices": [],
+  "repository_policies": [],
+  "registry": {
+    "profiles": [
+      {
+        "alias": "openai_fast",
+        "provider": "openai",
+        "endpoint_kind": "openai_responses",
+        "model_id": "OWNER_SET_OPENAI_FAST",
+        "profile_revision": "owner-set-revision",
+        "enabled": false,
+        "credential_ref": "OWNER_SET_OPENAI_FAST_CREDENTIAL",
+        "processing_regions": [],
+        "max_context_tokens": 8192,
+        "max_output_tokens": 1024,
+        "price_version": "owner-set-price",
+        "allowed_task_types": [
+          "short_path"
+        ],
+        "supports_tools": false,
+        "supports_native_schema": false,
+        "supports_streaming": false,
+        "locally_qualified": false,
+        "owner_approved_live": false,
+        "input_bound_qualified": false
+      },
+      {
+        "alias": "openai_reasoning",
+        "provider": "openai",
+        "endpoint_kind": "openai_responses",
+        "model_id": "OWNER_SET_OPENAI_REASONING",
+        "profile_revision": "owner-set-revision",
+        "enabled": false,
+        "credential_ref": "OWNER_SET_OPENAI_REASONING_CREDENTIAL",
+        "processing_regions": [],
+        "max_context_tokens": 8192,
+        "max_output_tokens": 1024,
+        "price_version": "owner-set-price",
+        "allowed_task_types": [
+          "short_path"
+        ],
+        "supports_tools": false,
+        "supports_native_schema": false,
+        "supports_streaming": false,
+        "locally_qualified": false,
+        "owner_approved_live": false,
+        "input_bound_qualified": false
+      },
+      {
+        "alias": "claude_fast",
+        "provider": "bedrock_claude",
+        "endpoint_kind": "bedrock_converse",
+        "model_id": "OWNER_SET_CLAUDE_FAST",
+        "profile_revision": "owner-set-revision",
+        "enabled": false,
+        "credential_ref": "OWNER_SET_CLAUDE_FAST_CREDENTIAL",
+        "processing_regions": [],
+        "max_context_tokens": 8192,
+        "max_output_tokens": 1024,
+        "price_version": "owner-set-price",
+        "allowed_task_types": [
+          "short_path"
+        ],
+        "supports_tools": false,
+        "supports_native_schema": false,
+        "supports_streaming": false,
+        "locally_qualified": false,
+        "owner_approved_live": false,
+        "input_bound_qualified": false,
+        "source_region": "ap-south-1"
+      },
+      {
+        "alias": "claude_reasoning",
+        "provider": "bedrock_claude",
+        "endpoint_kind": "bedrock_converse",
+        "model_id": "OWNER_SET_CLAUDE_REASONING",
+        "profile_revision": "owner-set-revision",
+        "enabled": false,
+        "credential_ref": "OWNER_SET_CLAUDE_REASONING_CREDENTIAL",
+        "processing_regions": [],
+        "max_context_tokens": 8192,
+        "max_output_tokens": 1024,
+        "price_version": "owner-set-price",
+        "allowed_task_types": [
+          "short_path"
+        ],
+        "supports_tools": false,
+        "supports_native_schema": false,
+        "supports_streaming": false,
+        "locally_qualified": false,
+        "owner_approved_live": false,
+        "input_bound_qualified": false,
+        "source_region": "ap-south-1"
+      },
+      {
+        "alias": "gemini_general",
+        "provider": "google_gemini",
+        "endpoint_kind": "gemini_generate_content",
+        "model_id": "OWNER_SET_GEMINI_GENERAL",
+        "profile_revision": "owner-set-revision",
+        "enabled": false,
+        "credential_ref": "OWNER_SET_GEMINI_GENERAL_CREDENTIAL",
+        "processing_regions": [],
+        "max_context_tokens": 8192,
+        "max_output_tokens": 1024,
+        "price_version": "owner-set-price",
+        "allowed_task_types": [
+          "short_path"
+        ],
+        "supports_tools": false,
+        "supports_native_schema": false,
+        "supports_streaming": false,
+        "locally_qualified": false,
+        "owner_approved_live": false,
+        "input_bound_qualified": false,
+        "api_version": "v1beta"
+      }
+    ],
+    "task_routes": [
+      {
+        "task_type": "short_path",
+        "aliases": [
+          "openai_fast"
+        ]
+      }
+    ]
+  }
+}

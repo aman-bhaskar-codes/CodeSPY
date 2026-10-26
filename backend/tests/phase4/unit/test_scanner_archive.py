@@ -10,6 +10,7 @@ from app.contracts.ingestion import AdmissionPolicyV1
 from app.contracts.scanners import ScannerArchiveV1, ScannerRequestV1
 from app.contracts.structure import SourceDescriptorV1, SourceFileV1, SourcePolicyV1
 from app.scanners.source import read_scanner_sources
+
 from tests.phase3.unit.test_source import create_test_archive
 
 

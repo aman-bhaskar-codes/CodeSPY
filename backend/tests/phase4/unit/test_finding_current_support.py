@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from app.contracts.scan_publication import EffectiveVerificationV1
 from app.models.scan_tables import finding_occurrences, verification_decisions
 from app.services.findings_query import FindingsQueryService
+
 from tests.phase4.unit.test_findings_authorization import authority as authority_fixture
 
 authority = authority_fixture

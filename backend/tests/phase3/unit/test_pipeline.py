@@ -157,6 +157,7 @@ def test_candidate_call_components_use_enclosing_functions(tmp_path):
     import zipfile
 
     from app.contracts.structure import SourceFileV1
+
     from tests.phase3.unit.test_materialization import fixture_input
 
     source = fixture_input(tmp_path)

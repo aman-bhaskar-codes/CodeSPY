@@ -13,6 +13,7 @@ from app.services.findings_query import FindingsQueryService
 from app.services.scan_publication import FindingFinalizer
 from app.services.triage import TriageService
 from sqlalchemy import func, select, update
+
 from tests.phase4.storage.test_scan_publication import publication_case
 
 

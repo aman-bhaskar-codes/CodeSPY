@@ -1,6 +1,6 @@
 """Independent DB-time recovery; queue availability is not a prerequisite."""
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from app.db.time import database_now
@@ -15,6 +15,14 @@ from app.workers.retention import RetentionWorker
 from sqlalchemy import func, literal, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+
+def _ensure_utc(dt: datetime | None) -> datetime:
+    if dt is None:
+        return datetime.now(UTC)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt
 
 
 class RecoveryWorker:
@@ -115,7 +123,9 @@ class RecoveryWorker:
                     changed += 1
                     continue
                 now = await database_now(s)
-                if job["state"] == "queued" and job["deadline"] > now:
+                job_deadline = _ensure_utc(job["deadline"])
+                job_created = _ensure_utc(job["created_at"])
+                if job["state"] == "queued" and job_deadline > now:
                     outbox = PHASE2_TABLES["outbox"]
                     wakeup = (
                         (
@@ -133,12 +143,16 @@ class RecoveryWorker:
                         .mappings()
                         .one_or_none()
                     )
-                    stranded = (
-                        wakeup is None and job["created_at"] < now - timedelta(seconds=180)
-                    ) or (
+                    wakeup_sent = (
+                        _ensure_utc(wakeup["sent_at"])
+                        if wakeup is not None and wakeup["sent_at"] is not None
+                        else None
+                    )
+                    stranded = (wakeup is None and job_created < now - timedelta(seconds=180)) or (
                         wakeup is not None
                         and wakeup["state"] == "sent"
-                        and wakeup["sent_at"] < now - timedelta(seconds=180)
+                        and wakeup_sent is not None
+                        and wakeup_sent < now - timedelta(seconds=180)
                     )
                     if stranded:
                         refreshed = dict(

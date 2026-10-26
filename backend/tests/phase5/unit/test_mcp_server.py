@@ -299,6 +299,7 @@ async def test_mcp_tool_call_query_memory() -> None:
             "arguments": {
                 "repository_id": str(repo_id),
                 "query": "csrf",
+                "snapshot_id": str(uuid4()),
             },
         },
     }
@@ -327,6 +328,7 @@ async def test_mcp_security_scope_rejection_and_mutating_tool_forbiddance() -> N
             "arguments": {
                 "repository_id": str(uuid4()),
                 "query": "unauthorized",
+                "snapshot_id": str(uuid4()),
             },
         },
     }

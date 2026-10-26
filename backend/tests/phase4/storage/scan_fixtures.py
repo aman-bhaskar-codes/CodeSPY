@@ -13,6 +13,7 @@ from app.services.jobs import JobService
 from app.services.submissions import SubmissionService
 from scripts.phase1_fixture import scenario
 from sqlalchemy import insert
+
 from tests.phase2.integration.test_submission_ingestion import chunks
 
 

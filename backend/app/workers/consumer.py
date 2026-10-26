@@ -11,6 +11,7 @@ from app.analyzers.runner import AnalysisProcessError
 from app.analyzers.source import SourceIntegrityError
 from app.contracts.indexing import JobEnvelopeV5
 from app.contracts.ingestion import AdmissionPolicy, ArtifactManifestV1, resolve_admission_policy
+from app.contracts.investigation_jobs import JobEnvelopeV6
 from app.contracts.jobs import AttemptLeaseV2, JobEnvelopeV2, JobEnvelopeV3
 from app.contracts.scan_jobs import JobEnvelopeV4
 from app.db.transaction import transaction
@@ -28,6 +29,7 @@ from app.services.job_finalization import JobFinalizer
 from app.services.jobs import JobService
 from app.workers.operations.analyze_structure import StructuralAnalysisOperation
 from app.workers.operations.index_snapshot import IndexOperation
+from app.workers.operations.investigate_snapshot import InvestigateSnapshotOperation
 from app.workers.operations.scan_snapshot import ScanOperation
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -63,6 +65,7 @@ class JobConsumer:
         structural_operation: StructuralAnalysisOperation | None = None,
         scan_operation: ScanOperation | None = None,
         index_operation: IndexOperation | None = None,
+        investigation_operation: InvestigateSnapshotOperation | None = None,
     ) -> None:
         self.factory = factory
         self.queue = queue
@@ -71,6 +74,7 @@ class JobConsumer:
         self.structural_operation = structural_operation
         self.scan_operation = scan_operation
         self.index_operation = index_operation
+        self.investigation_operation = investigation_operation
         self.jobs = JobService(factory)
 
     async def _ack(self, receipt: str) -> None:
@@ -84,22 +88,25 @@ class JobConsumer:
             logger.warning("invalid_queue_envelope")
             await self._ack(delivery.receipt)
             return
-        envelope: JobEnvelopeV2 | JobEnvelopeV3 | JobEnvelopeV4 | JobEnvelopeV5
+        envelope: JobEnvelopeV2 | JobEnvelopeV3 | JobEnvelopeV4 | JobEnvelopeV5 | JobEnvelopeV6
         try:
-            envelope = JobEnvelopeV5.model_validate_json(delivery.body)
+            envelope = JobEnvelopeV6.model_validate_json(delivery.body)
         except ValidationError:
             try:
-                envelope = JobEnvelopeV4.model_validate_json(delivery.body)
+                envelope = JobEnvelopeV5.model_validate_json(delivery.body)
             except ValidationError:
                 try:
-                    envelope = JobEnvelopeV3.model_validate_json(delivery.body)
+                    envelope = JobEnvelopeV4.model_validate_json(delivery.body)
                 except ValidationError:
                     try:
-                        envelope = JobEnvelopeV2.model_validate_json(delivery.body)
+                        envelope = JobEnvelopeV3.model_validate_json(delivery.body)
                     except ValidationError:
-                        logger.warning("invalid_queue_envelope")
-                        await self._ack(delivery.receipt)
-                        return
+                        try:
+                            envelope = JobEnvelopeV2.model_validate_json(delivery.body)
+                        except ValidationError:
+                            logger.warning("invalid_queue_envelope")
+                            await self._ack(delivery.receipt)
+                            return
         async with transaction(self.factory) as s:
             job = await load_job(s, envelope.org_id, envelope.job_id)
             source_kind = (
@@ -124,10 +131,26 @@ class JobConsumer:
                 isinstance(envelope, JobEnvelopeV4)
                 and job.get("scan_spec_id") != envelope.scan_spec_id
             )
+            or (
+                isinstance(envelope, JobEnvelopeV6)
+                and envelope.investigation_id is not None
+                and job.get("investigation_id") is not None
+                and job["investigation_id"] != envelope.investigation_id
+            )
         ):
             logger.warning("mismatched_queue_envelope")
             await self._ack(delivery.receipt)
             return
+        if envelope.operation == "investigate_snapshot":
+            if (
+                job["state"] in {"succeeded", "partial", "failed", "cancelled"}
+                or envelope.dispatch_generation != job["dispatch_generation"]
+            ):
+                await self._ack(delivery.receipt)
+                return
+            if self.investigation_operation is None:
+                await self.queue.extend(delivery.receipt, 120)
+                return
         if envelope.operation == "index_snapshot":
             if (
                 job["state"] in {"succeeded", "partial", "failed", "cancelled"}
@@ -189,6 +212,11 @@ class JobConsumer:
             elif envelope.operation == "index_snapshot":
                 assert self.index_operation is not None
                 await self.index_operation.execute(lease, enter_finalization=enter_finalization)
+            elif envelope.operation == "investigate_snapshot":
+                assert self.investigation_operation is not None
+                await self.investigation_operation.execute(
+                    lease, enter_finalization=enter_finalization
+                )
             else:
                 raise ValueError(f"unknown operation {envelope.operation}")
 
@@ -306,6 +334,8 @@ class JobConsumer:
                 if envelope.operation == "scan_snapshot"
                 else "analysis_process_failed"
                 if envelope.operation == "analyze_structure"
+                else "investigation_process_failed"
+                if envelope.operation == "investigate_snapshot"
                 else "admission_process_failed",
                 transient=True,
             )

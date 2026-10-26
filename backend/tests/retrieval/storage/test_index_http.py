@@ -10,6 +10,7 @@ from app.models.index_tables import index_jobs, index_specs
 from app.models.phase2_tables import PHASE2_TABLES
 from app.security.sessions import SessionService
 from sqlalchemy import func, select, update
+
 from tests.phase3.integration.test_structural_publication import admitted
 from tests.retrieval.storage.test_index_jobs import ReadyCapabilities, writer
 from tests.retrieval.unit.test_index_contracts import config

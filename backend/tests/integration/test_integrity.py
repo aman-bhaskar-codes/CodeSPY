@@ -18,6 +18,7 @@ from app.repositories.graph_repository import GraphRepository
 from app.repositories.identity_repository import IdentityRepository
 from sqlalchemy import insert, text, update
 from sqlalchemy.exc import DBAPIError
+
 from tests.support.fixtures import batch_for, scenario
 
 

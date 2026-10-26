@@ -180,9 +180,32 @@ class InvestigatorToolRegistry:
     async def _exec_read_file_range(
         self, args: dict[str, Any], context: ToolExecutionContext
     ) -> dict[str, Any]:
-        file_path = args["file_path"].strip("/")
-        start_line = int(args["start_line"])
-        end_line = int(args["end_line"])
+        raw_path = args.get("file_path", "")
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            return {"status": "error", "error": "file_path must be a non-empty string"}
+
+        # Validate path safety
+        if raw_path.startswith("/") or ".." in raw_path or "\x00" in raw_path:
+            return {"status": "error", "error": "file_path must be a safe relative path"}
+
+        file_path = raw_path.strip("/")
+
+        raw_start = args.get("start_line")
+        raw_end = args.get("end_line")
+
+        if isinstance(raw_start, bool) or type(raw_start) is not int:
+            return {
+                "status": "error",
+                "error": "start_line must be an integer (booleans not accepted)",
+            }
+        if isinstance(raw_end, bool) or type(raw_end) is not int:
+            return {
+                "status": "error",
+                "error": "end_line must be an integer (booleans not accepted)",
+            }
+
+        start_line = raw_start
+        end_line = raw_end
 
         if start_line < 1:
             return {"status": "error", "error": "start_line must be at least 1"}
@@ -191,10 +214,12 @@ class InvestigatorToolRegistry:
                 "status": "error",
                 "error": "end_line must be greater than or equal to start_line",
             }
-        if (end_line - start_line) > 200:
+        if (end_line - start_line + 1) > 200:
             return {
                 "status": "error",
-                "error": "Requested range exceeds 200 line limit. Request a narrower range.",
+                "error": (
+                    "Requested range exceeds 200 line limit (inclusive). Request a narrower range."
+                ),
             }
 
         # Use mock files if provided in context (e.g. testing or local sandbox)
@@ -226,7 +251,10 @@ class InvestigatorToolRegistry:
     ) -> dict[str, Any]:
         query = args["query"]
         path_prefix = args.get("path_prefix")
-        limit = min(20, max(1, args.get("limit", 5)))
+        raw_limit = args.get("limit", 5)
+        if isinstance(raw_limit, bool) or type(raw_limit) is not int:
+            return {"status": "error", "error": "limit must be an integer (booleans not accepted)"}
+        limit = min(20, max(1, raw_limit))
 
         if context.mock_search_results is not None:
             filtered = context.mock_search_results
@@ -250,7 +278,10 @@ class InvestigatorToolRegistry:
         self, args: dict[str, Any], context: ToolExecutionContext
     ) -> dict[str, Any]:
         query = args["query"]
-        limit = min(10, max(1, args.get("limit", 5)))
+        raw_limit = args.get("limit", 5)
+        if isinstance(raw_limit, bool) or type(raw_limit) is not int:
+            return {"status": "error", "error": "limit must be an integer (booleans not accepted)"}
+        limit = min(10, max(1, raw_limit))
 
         if context.mock_memory_entries is not None:
             return {

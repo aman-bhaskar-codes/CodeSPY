@@ -9,6 +9,7 @@ from app.repositories.job_repository import worker_context
 from app.services.scan_publication import FindingFinalizer
 from sqlalchemy import insert, select, text, update
 from sqlalchemy.exc import DBAPIError
+
 from tests.phase4.storage.test_scan_publication import publication_case
 from tests.phase4.storage.test_scan_races import assert_no_publication
 
@@ -161,6 +162,7 @@ async def test_sql_rejects_attempt_runtime_differing_from_immutable_config(
     from app.contracts.scan_jobs import ScanConfigV1
     from app.services.jobs import JobService
     from app.services.scan_jobs import ScanJobService
+
     from tests.phase4.storage.test_scan_jobs import Registry, scenario
 
     ctx, snapshot, repo, _, config = await scenario(migration_factory, tmp_path)

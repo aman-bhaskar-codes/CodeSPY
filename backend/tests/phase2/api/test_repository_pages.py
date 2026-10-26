@@ -3,6 +3,7 @@ from app.contracts.persistence import RepositoryCreate
 from app.models.phase2_tables import PHASE2_TABLES
 from app.repositories.repository_repository import RepositoryRepository
 from sqlalchemy import insert
+
 from tests.phase2.api.test_session_upload_api import fixture_api
 
 

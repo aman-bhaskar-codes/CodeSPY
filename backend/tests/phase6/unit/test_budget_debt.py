@@ -13,6 +13,7 @@ from app.models.model_gateway_tables import model_spend_ledger
 from app.services.model_budget import ModelBudgetExceededError
 from app.services.provider_budget import BudgetExceededError, ProviderBudgetService
 from sqlalchemy import select
+
 from tests.phase6.unit import test_model_gateway as fixtures
 from tests.phase6.unit.test_model_budget_transitions import reserved
 

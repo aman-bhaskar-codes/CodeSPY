@@ -1,6 +1,6 @@
 """Durable jobs. Queue delivery never supplies publication or lifecycle authority."""
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -8,6 +8,7 @@ from sqlalchemy import and_, func, insert, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.contracts.indexing import EnqueueIndexJobV5, IndexJobRecordV5
+from app.contracts.investigation_jobs import EnqueueInvestigationJobV1, InvestigationJobRecordV1
 from app.contracts.jobs import AttemptLeaseV2, EnqueueJobV2, EnqueueJobV3, JobRecordV2, JobRecordV3
 from app.contracts.persistence import RunCreate
 from app.contracts.scan_jobs import EnqueueScanJobV4, ScanJobRecordV4
@@ -32,6 +33,15 @@ from app.repositories.outbox_repository import enqueue_wakeup
 from app.security.authorization import lock_scope, require_repository
 from app.services.persistence import PersistenceService
 
+
+def _ensure_utc(dt: datetime | None) -> datetime:
+    if dt is None:
+        return datetime.now(UTC)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt
+
+
 TERMINAL = {"succeeded", "partial", "failed", "cancelled"}
 # ASCII namespace CSPY2, shared by all broker processes, not an in-memory semaphore.
 CLAIM_CAPACITY_LOCK = 0x4353505932
@@ -46,8 +56,16 @@ class JobService:
         self.persistence = PersistenceService(factory)
 
     async def enqueue(
-        self, ctx: TenantContext, request: EnqueueJobV2 | EnqueueJobV3 | EnqueueScanJobV4
-    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5:
+        self,
+        ctx: TenantContext,
+        request: (
+            EnqueueJobV2
+            | EnqueueJobV3
+            | EnqueueScanJobV4
+            | EnqueueIndexJobV5
+            | EnqueueInvestigationJobV1
+        ),
+    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5 | InvestigationJobRecordV1:
         if request.request_key.startswith(("job:", "child:")):
             raise ValueError("reserved request namespace")
         async with transaction(self.factory) as s:
@@ -55,7 +73,7 @@ class JobService:
                 s, ctx.org_id, ctx.principal_id, request.repository_id, request.snapshot_id
             )
             row = await self._enqueue(s, ctx, request)
-        if row.get("operation") in {"scan_snapshot", "index_snapshot"}:
+        if row.get("operation") in {"scan_snapshot", "index_snapshot", "investigate_snapshot"}:
             return public_job_record(row)
         if isinstance(request, EnqueueJobV3) or row.get("operation") == "analyze_structure":
             return job_record_v3(row)
@@ -65,7 +83,13 @@ class JobService:
         self,
         s: AsyncSession,
         ctx: TenantContext,
-        request: EnqueueJobV2 | EnqueueJobV3 | EnqueueScanJobV4 | EnqueueIndexJobV5,
+        request: (
+            EnqueueJobV2
+            | EnqueueJobV3
+            | EnqueueScanJobV4
+            | EnqueueIndexJobV5
+            | EnqueueInvestigationJobV1
+        ),
     ) -> dict[str, Any]:
         digest = semantic_digest(request.model_dump())
         target_jobs = jobs
@@ -73,6 +97,10 @@ class JobService:
             from app.models.index_tables import index_jobs
 
             target_jobs = index_jobs
+        elif isinstance(request, EnqueueInvestigationJobV1):
+            from app.models.investigation_execution_tables import investigation_jobs
+
+            target_jobs = investigation_jobs
         elif isinstance(request, EnqueueScanJobV4):
             from app.models.scan_tables import scan_jobs
 
@@ -137,7 +165,7 @@ class JobService:
 
     async def get(
         self, ctx: TenantContext, job_id: UUID
-    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5:
+    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5 | InvestigationJobRecordV1:
         async with transaction(self.factory) as s:
             row = await load_job(s, ctx.org_id, job_id)
             await require_repository(s, ctx.org_id, ctx.principal_id, row["repository_id"])
@@ -152,7 +180,7 @@ class JobService:
                     .order_by(jobs.c.created_at.desc(), jobs.c.id.desc())
                     .limit(1)
                 )
-        if row.get("operation") in {"scan_snapshot", "index_snapshot"}:
+        if row.get("operation") in {"scan_snapshot", "index_snapshot", "investigate_snapshot"}:
             return public_job_record(row)
         if row.get("operation") == "analyze_structure":
             return job_record_v3(row)
@@ -287,6 +315,10 @@ class JobService:
                 from app.models.index_tables import index_jobs
 
                 target_jobs = index_jobs
+            elif job.get("operation") == "investigate_snapshot":
+                from app.models.investigation_execution_tables import investigation_jobs
+
+                target_jobs = investigation_jobs
             elif job.get("operation") == "scan_snapshot":
                 from app.models.scan_tables import scan_jobs
 
@@ -344,6 +376,23 @@ class JobService:
                         repository_id=job["repository_id"],
                         snapshot_id=job["snapshot_id"],
                         spec_hash=spec_hash,
+                    )
+                )
+            elif job["operation"] == "investigate_snapshot" and job.get("investigation_id"):
+                from app.models.investigation_tables import investigations
+
+                await s.execute(
+                    update(investigations)
+                    .where(
+                        investigations.c.org_id == org_id,
+                        investigations.c.id == job["investigation_id"],
+                        investigations.c.status.in_(["pending", "checkpointed"]),
+                    )
+                    .values(
+                        status="running",
+                        current_job_id=job_id,
+                        worker_id=owner,
+                        worker_lease_expires_at=row["lease_expires_at"],
                     )
                 )
             if run_id:
@@ -566,11 +615,12 @@ class JobService:
         now = await database_now(s)
         if attempt is not None:
             await self._close_attempt(s, job, attempt, code, cancel=cancel)
+        job_deadline = _ensure_utc(job["deadline"])
         retry = (
             transient
             and not cancel
             and job["attempt_count"] < job["max_attempts"]
-            and job["deadline"] > now + timedelta(seconds=5)
+            and job_deadline > now + timedelta(seconds=5)
         )
         if retry:
             delay = min(60, 5 * 2 ** max(0, job["attempt_count"] - 1))
@@ -579,6 +629,10 @@ class JobService:
                 from app.models.index_tables import index_jobs
 
                 target_jobs = index_jobs
+            elif job.get("operation") == "investigate_snapshot":
+                from app.models.investigation_execution_tables import investigation_jobs
+
+                target_jobs = investigation_jobs
             elif job.get("operation") == "scan_snapshot":
                 from app.models.scan_tables import scan_jobs
 
@@ -612,12 +666,24 @@ class JobService:
                     .where(sub.c.org_id == job["org_id"], sub.c.id == job["submission_id"])
                     .values(state="admission_queued")
                 )
+            if job.get("operation") == "investigate_snapshot" and job.get("investigation_id"):
+                from app.models.investigation_tables import investigations
+
+                await s.execute(
+                    update(investigations)
+                    .where(
+                        investigations.c.org_id == job["org_id"],
+                        investigations.c.id == job["investigation_id"],
+                        investigations.c.status == "running",
+                    )
+                    .values(status="checkpointed")
+                )
             await enqueue_wakeup(s, job)
             await append_event(s, job, "retry_scheduled", {"error_code": code})
             return
         final_code = (
             "deadline_exceeded"
-            if job["deadline"] <= now
+            if job_deadline <= now
             else ("attempts_exhausted" if transient else code)
         )
         state = "cancelled" if cancel else "failed"
@@ -634,6 +700,25 @@ class JobService:
                 else job["cancel_requested_at"],
             )
         )
+        if job.get("operation") == "investigate_snapshot" and job.get("investigation_id"):
+            from app.models.investigation_tables import investigations
+
+            inv_state = (
+                "cancelled"
+                if state == "cancelled"
+                else (
+                    "awaiting_human_decision" if final_code == "model_outcome_unknown" else "failed"
+                )
+            )
+            await s.execute(
+                update(investigations)
+                .where(
+                    investigations.c.org_id == job["org_id"],
+                    investigations.c.id == job["investigation_id"],
+                    investigations.c.status.not_in(["completed", "failed", "cancelled"]),
+                )
+                .values(status=inv_state)
+            )
         substate = (
             "cancelled"
             if cancel
@@ -689,12 +774,30 @@ class JobService:
             "index_cleanup_pending",
             "index_timeout",
             "index_runtime_unavailable",
+            "investigation_timeout",
+            "investigation_deadline_exceeded",
+            "model_outcome_unknown",
+            "model_result_unavailable",
+            "context_budget_exceeded",
+            "investigation_process_failed",
+            "investigation_runtime_unavailable",
+            "investigation_failed",
         }
         if code not in allowed:
             raise ValueError("unknown failure code")
         async with transaction(self.factory) as s:
             job, _ = await self._locked(s, lease.org_id, lease.job_id)
             if code.startswith("index_") and job["operation"] != "index_snapshot":
+                raise ValueError("unknown failure code")
+            if (
+                code.startswith("investigation_")
+                or code
+                in {
+                    "model_outcome_unknown",
+                    "model_result_unavailable",
+                    "context_budget_exceeded",
+                }
+            ) and job["operation"] != "investigate_snapshot":
                 raise ValueError("unknown failure code")
             attempt = await self._current(s, lease, job)
             await self._finish_failure(
@@ -703,7 +806,7 @@ class JobService:
 
     async def request_cancel(
         self, ctx: TenantContext, job_id: UUID
-    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5:
+    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5 | InvestigationJobRecordV1:
         """API cancellation fences work; broker alone closes an inventory run."""
         async with transaction(self.factory) as s:
             hint = await load_job(s, ctx.org_id, job_id)
@@ -751,7 +854,7 @@ class JobService:
 
     async def cancel(
         self, ctx: TenantContext, job_id: UUID
-    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5:
+    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5 | InvestigationJobRecordV1:
         async with transaction(self.factory) as s:
             hint = await load_job(s, ctx.org_id, job_id)
             await lock_scope(
@@ -806,6 +909,11 @@ class JobService:
                         jobs.c.state.not_in(TERMINAL),
                         or_(
                             jobs.c.deadline <= func.clock_timestamp(),
+                            jobs.c.state == "cancelling",
+                            and_(
+                                jobs.c.operation.in_(["index_snapshot", "investigate_snapshot"]),
+                                jobs.c.cancel_requested_at.is_not(None),
+                            ),
                             index_recovery_due(),
                             and_(
                                 jobs.c.state == "running",
@@ -839,12 +947,19 @@ class JobService:
                     .mappings()
                     .one_or_none()
                 )
+                attempt_lease_expiry = (
+                    _ensure_utc(attempt["lease_expires_at"])
+                    if attempt is not None and attempt["lease_expires_at"] is not None
+                    else None
+                )
+                job_deadline = _ensure_utc(job["deadline"])
                 expired = (
                     attempt is not None
                     and attempt["state"] == "active"
-                    and attempt["lease_expires_at"] <= now
+                    and attempt_lease_expiry is not None
+                    and attempt_lease_expiry <= now
                 )
-                if job["operation"] == "index_snapshot":
+                if job["operation"] in {"index_snapshot", "investigate_snapshot"}:
                     if job["cancel_requested_at"] is not None:
                         await self._finish_failure(
                             s,
@@ -875,13 +990,13 @@ class JobService:
                         )
                         changed += 1
                         continue
-                if job["deadline"] <= now or expired:
+                if job_deadline <= now or expired:
                     await self._finish_failure(
                         s,
                         job,
                         dict(attempt) if attempt else None,
-                        "deadline_exceeded" if job["deadline"] <= now else "lease_expired",
-                        transient=job["deadline"] > now,
+                        "deadline_exceeded" if job_deadline <= now else "lease_expired",
+                        transient=job_deadline > now,
                     )
                     changed += 1
         return changed

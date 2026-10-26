@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from app.contracts.memory import MemoryQueryResponseV1
 from app.services.investigation_checkpointer import FencedCheckpointer
 from app.services.memory_service import MemoryService
+
 from tests.phase4.unit.test_findings_authorization import authority as authority_fixture
 from tests.phase4.unit.test_scan_status_api import status_client as status_client_fixture
 

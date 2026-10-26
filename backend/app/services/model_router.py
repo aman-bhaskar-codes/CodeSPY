@@ -12,7 +12,9 @@ from app.contracts.model import (
     RoutedModelV1,
 )
 from app.contracts.provider_budget import DisclosurePolicyV1
+from app.domain.canonical_json import semantic_digest
 from app.services.model_budget import ModelBudgetService
+from app.services.model_registry import ModelRegistry, ModelRegistryError
 
 
 class ModelRoutingError(Exception):
@@ -86,9 +88,12 @@ class ModelRouter:
         self,
         budget_service: ModelBudgetService,
         catalog: Sequence[ModelCapabilityV1] = DEFAULT_MODEL_CATALOG,
+        *,
+        registry: ModelRegistry | None = None,
     ) -> None:
         self.budget_svc = budget_service
         self.catalog = list(catalog)
+        self.registry = registry
 
     async def route_and_reserve(
         self,
@@ -103,7 +108,42 @@ class ModelRouter:
         idempotency_key: str,
         preferred_provider: str | None = None,
         request_digest: str | None = None,
+        requested_alias: str | None = None,
     ) -> RoutedModelV1:
+        if self.registry is not None:
+            resolved = self.registry.resolve(requirement, disclosure_policy, requested_alias)
+            profile = resolved.profile
+            if request_digest is None or (
+                preferred_provider is not None and preferred_provider != profile.provider.value
+            ):
+                raise ModelRegistryError("model_binding_unavailable")
+            return await self._reserve_selected(
+                org_id,
+                repository_id,
+                principal_id,
+                investigation_id,
+                logical_call_id,
+                attempt_id,
+                requirement,
+                idempotency_key,
+                profile.provider.value,
+                profile.model_id,
+                preferred_provider,
+                semantic_digest(
+                    {"request_digest": request_digest, "profile_digest": resolved.profile_digest}
+                ),
+                price_version=profile.price_version,
+                model_alias=profile.alias,
+                profile_digest=resolved.profile_digest,
+                thinking_budget=(
+                    max(profile.thinking_token_budget, requirement.estimated_output_tokens)
+                    if profile.reasoning_mode != "none"
+                    else 0
+                ),
+            )
+        if requested_alias is not None:
+            raise ModelRegistryError("configured_registry_required")
+
         # Step 1: Filter candidates based on disclosure policy
         if requirement.required_region and not disclosure_policy.is_region_permitted(
             requirement.required_region
@@ -183,18 +223,51 @@ class ModelRouter:
                     selected_model = cand
                     break
 
-        # Step 4: Validate price schedule & estimate worst-case cost
-        price = await self.budget_svc.get_generation_price_schedule(
-            provider=selected_model.provider.value,
-            model_id=selected_model.model_id,
+        return await self._reserve_selected(
+            org_id,
+            repository_id,
+            principal_id,
+            investigation_id,
+            logical_call_id,
+            attempt_id,
+            requirement,
+            idempotency_key,
+            selected_model.provider.value,
+            selected_model.model_id,
+            preferred_provider,
+            request_digest,
         )
 
+    async def _reserve_selected(
+        self,
+        org_id: UUID,
+        repository_id: UUID,
+        principal_id: UUID,
+        investigation_id: UUID,
+        logical_call_id: UUID,
+        attempt_id: int,
+        requirement: ModelRoutingRequirementV1,
+        idempotency_key: str,
+        provider: str,
+        model_id: str,
+        preferred_provider: str | None,
+        request_digest: str | None,
+        *,
+        price_version: str | None = None,
+        model_alias: str | None = None,
+        profile_digest: str | None = None,
+        thinking_budget: int = 0,
+    ) -> RoutedModelV1:
+        price = await self.budget_svc.get_generation_price_schedule(
+            provider=provider,
+            model_id=model_id,
+            version=price_version,
+        )
         estimated_micros = price.calculate_cost_micros(
             input_tokens=requirement.estimated_context_tokens,
             output_tokens=requirement.estimated_output_tokens,
+            thinking_tokens=thinking_budget,
         )
-
-        # Step 5: Reserve funds atomically
         reservation_id = await self.budget_svc.reserve_generation_budget(
             org_id=org_id,
             repository_id=repository_id,
@@ -202,8 +275,8 @@ class ModelRouter:
             investigation_id=investigation_id,
             logical_call_id=logical_call_id,
             attempt_id=attempt_id,
-            provider=selected_model.provider.value,
-            model_id=selected_model.model_id,
+            provider=provider,
+            model_id=model_id,
             estimated_input_tokens=requirement.estimated_context_tokens,
             estimated_output_tokens=requirement.estimated_output_tokens,
             estimated_micros=estimated_micros,
@@ -211,14 +284,13 @@ class ModelRouter:
             request_digest=request_digest,
             price_snapshot=price if request_digest is not None else None,
         )
-
         return RoutedModelV1(
-            provider=selected_model.provider.value,
-            model_id=selected_model.model_id,
+            provider=provider,
+            model_id=model_id,
             price_schedule_version=price.version,
             reservation_id=reservation_id,
             estimated_micros=estimated_micros,
-            is_fallback=selected_model.provider.value != preferred_provider
-            if preferred_provider
-            else False,
+            is_fallback=provider != preferred_provider if preferred_provider else False,
+            model_alias=model_alias,
+            profile_digest=profile_digest,
         )

@@ -13,6 +13,7 @@ from app.services.jobs import JobService
 from app.services.scan_publication import FindingFinalizer
 from scripts import phase2_db as harness
 from sqlalchemy import func, select
+
 from tests.phase4.storage.test_scan_publication import publication_case
 
 

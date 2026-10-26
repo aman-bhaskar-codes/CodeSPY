@@ -5,6 +5,7 @@ from app.analyzers.pipeline import analyze
 from app.contracts.structure import StructuralLimitsV1
 from app.domain.scope import RunRef
 from app.services.structural_results import materialize_result
+
 from tests.phase3.unit.test_materialization import fixture_input
 
 

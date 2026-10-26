@@ -2,6 +2,7 @@ from app.analyzers.frameworks.fastapi import observe_fastapi
 from app.analyzers.frameworks.http_client import observe_http
 from app.analyzers.frameworks.matching import match_boundaries
 from app.contracts.structure import AnalysisConfigV1, ServiceBindingV1
+
 from tests.phase3.unit.test_fastapi import unit
 
 

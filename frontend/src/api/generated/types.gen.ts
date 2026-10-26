@@ -160,6 +160,10 @@ export type ChatMessageV1 = {
      */
     content?: string;
     /**
+     * Continuation Ref
+     */
+    continuation_ref?: string | null;
+    /**
      * Name
      */
     name?: string | null;
@@ -407,6 +411,58 @@ export type ContextPacketV1 = {
      * Total Tokens
      */
     total_tokens: number;
+};
+
+/**
+ * ContextPreviewRequestV1
+ */
+export type ContextPreviewRequestV1 = {
+    budget?: ContextBudgetV1;
+    /**
+     * Candidate Hits
+     */
+    candidate_hits?: Array<HybridSearchHitV1>;
+    /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    /**
+     * Deduplicate Files
+     */
+    deduplicate_files?: boolean;
+    /**
+     * Memory Mode
+     */
+    memory_mode?: 'off' | 'current_only' | 'historical_hints';
+    /**
+     * Query
+     */
+    query: string;
+    scope?: SearchScopeV1 | null;
+    /**
+     * System Preamble
+     */
+    system_preamble?: string | null;
+};
+
+/**
+ * ContextPreviewV1
+ */
+export type ContextPreviewV1 = {
+    memories: MemoryQueryResponseV1;
+    /**
+     * Memory Tokens
+     */
+    memory_tokens: number;
+    packet: ContextPacketV1;
+    /**
+     * Qualification
+     */
+    qualification?: 'selection_preview';
+    /**
+     * Selection Digest
+     */
+    selection_digest: string;
 };
 
 /**
@@ -1734,6 +1790,27 @@ export type InventoryPageV1 = {
 };
 
 /**
+ * InvestigationCancelResponseV1
+ *
+ * Response to a cancel command.
+ */
+export type InvestigationCancelResponseV1 = {
+    /**
+     * Already Terminal
+     */
+    already_terminal?: boolean;
+    /**
+     * Investigation Id
+     */
+    investigation_id: string;
+    /**
+     * Job Id
+     */
+    job_id?: string | null;
+    status: InvestigationStatus;
+};
+
+/**
  * InvestigationClaimV1
  */
 export type InvestigationClaimV1 = {
@@ -1801,6 +1878,52 @@ export type InvestigationCreateRequestV1 = {
 };
 
 /**
+ * InvestigationCreateRequestV2
+ *
+ * Create request requiring an immutable snapshot binding.
+ */
+export type InvestigationCreateRequestV2 = {
+    /**
+     * Budget Limit Micros
+     */
+    budget_limit_micros?: number;
+    /**
+     * Chunk Set Id
+     */
+    chunk_set_id?: string | null;
+    depth?: InvestigationDepth;
+    /**
+     * Finding Id
+     */
+    finding_id?: string | null;
+    /**
+     * Finding Run Id
+     */
+    finding_run_id?: string | null;
+    /**
+     * Max Steps
+     */
+    max_steps?: number;
+    mode?: InvestigationMode;
+    /**
+     * Query
+     */
+    query: string;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+    /**
+     * Target Type
+     */
+    target_type: 'repository' | 'finding';
+};
+
+/**
  * InvestigationDepth
  */
 export type InvestigationDepth = 'quick' | 'standard' | 'deep';
@@ -1819,6 +1942,66 @@ export type InvestigationDetailResponseV1 = {
     events_count?: number;
     latest_state?: InvestigationStateV1 | null;
     summary: InvestigationSummaryV1;
+};
+
+/**
+ * InvestigationDetailResponseV2
+ *
+ * Extended detail response with job, report and usage information.
+ */
+export type InvestigationDetailResponseV2 = {
+    /**
+     * Available Actions
+     */
+    available_actions?: Array<string>;
+    /**
+     * Claims Count
+     */
+    claims_count?: number;
+    /**
+     * Current Support Available
+     */
+    current_support_available?: boolean;
+    /**
+     * Events Count
+     */
+    events_count?: number;
+    /**
+     * Evidence Count
+     */
+    evidence_count?: number;
+    job?: InvestigationJobRecordV1 | null;
+    /**
+     * Report
+     */
+    report?: {
+        [key: string]: unknown;
+    } | null;
+    summary: InvestigationSummaryV2;
+};
+
+/**
+ * InvestigationEventPageV1
+ *
+ * Paginated event response with cursor support.
+ */
+export type InvestigationEventPageV1 = {
+    /**
+     * Cursor Floor
+     */
+    cursor_floor?: number;
+    /**
+     * Has Gap
+     */
+    has_gap?: boolean;
+    /**
+     * Items
+     */
+    items: Array<InvestigationEventV2>;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: number | null;
 };
 
 /**
@@ -1862,6 +2045,56 @@ export type InvestigationEventV1 = {
 };
 
 /**
+ * InvestigationEventV2
+ *
+ * Monotonically ordered event with sequence identity.
+ */
+export type InvestigationEventV2 = {
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Event Type
+     */
+    event_type: string;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Investigation Id
+     */
+    investigation_id: string;
+    /**
+     * Logical Event Key
+     */
+    logical_event_key?: string | null;
+    /**
+     * Node Name
+     */
+    node_name: string;
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Payload
+     */
+    payload?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Sequence
+     */
+    sequence: number;
+    /**
+     * Step Index
+     */
+    step_index: number;
+};
+
+/**
  * InvestigationFeedbackRequestV1
  */
 export type InvestigationFeedbackRequestV1 = {
@@ -1886,6 +2119,70 @@ export type InvestigationFeedbackRequestV1 = {
 };
 
 /**
+ * InvestigationJobRecordV1
+ *
+ * Projection of actual jobs columns for investigation operations.
+ */
+export type InvestigationJobRecordV1 = {
+    /**
+     * Attempt Count
+     */
+    attempt_count: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Deadline
+     */
+    deadline: string;
+    /**
+     * Failure Code
+     */
+    failure_code?: string | null;
+    /**
+     * Finished At
+     */
+    finished_at?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Investigation Id
+     */
+    investigation_id: string;
+    /**
+     * Max Attempts
+     */
+    max_attempts: number;
+    /**
+     * Operation
+     */
+    operation: 'investigate_snapshot';
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Report Id
+     */
+    report_id?: string | null;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Spec Hash
+     */
+    spec_hash: string;
+    /**
+     * State
+     */
+    state: 'queued' | 'running' | 'retry_wait' | 'cancelling' | 'succeeded' | 'partial' | 'failed' | 'cancelled';
+};
+
+/**
  * InvestigationListResponseV1
  */
 export type InvestigationListResponseV1 = {
@@ -1900,9 +2197,86 @@ export type InvestigationListResponseV1 = {
 };
 
 /**
+ * InvestigationListResponseV2
+ *
+ * Paginated investigation list.
+ */
+export type InvestigationListResponseV2 = {
+    /**
+     * Items
+     */
+    items: Array<InvestigationSummaryV2>;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: string | null;
+    /**
+     * Total Count
+     */
+    total_count: number;
+};
+
+/**
  * InvestigationMode
  */
 export type InvestigationMode = 'short_path' | 'two_specialist';
+
+/**
+ * InvestigationResumeRequestV1
+ *
+ * Resume request — only after awaiting_human_decision with resolution.
+ */
+export type InvestigationResumeRequestV1 = {
+    /**
+     * Expected Failed Job Id
+     */
+    expected_failed_job_id: string;
+    /**
+     * Expected Spec Hash
+     */
+    expected_spec_hash: string;
+};
+
+/**
+ * InvestigationRetryRequestV1
+ *
+ * Retry request — creates a new investigation with retry_of lineage.
+ */
+export type InvestigationRetryRequestV1 = {
+    /**
+     * Budget Limit Micros
+     */
+    budget_limit_micros?: number | null;
+    /**
+     * Max Steps
+     */
+    max_steps?: number | null;
+};
+
+/**
+ * InvestigationStartResponseV1
+ *
+ * 202 Accepted response after starting an investigation job.
+ */
+export type InvestigationStartResponseV1 = {
+    /**
+     * Events Url
+     */
+    events_url: string;
+    /**
+     * Investigation Id
+     */
+    investigation_id: string;
+    /**
+     * Job Id
+     */
+    job_id: string;
+    status: InvestigationStatus;
+    /**
+     * Status Url
+     */
+    status_url: string;
+};
 
 /**
  * InvestigationStateV1
@@ -1989,6 +2363,11 @@ export type InvestigationStateV1 = {
      */
     verdict_confidence?: number | null;
 };
+
+/**
+ * InvestigationStatus
+ */
+export type InvestigationStatus = 'pending' | 'running' | 'checkpointed' | 'awaiting_human_decision' | 'completed' | 'failed' | 'cancelled';
 
 /**
  * InvestigationSummaryV1
@@ -2078,6 +2457,118 @@ export type InvestigationSummaryV1 = {
      * Worker Id
      */
     worker_id?: string | null;
+};
+
+/**
+ * InvestigationSummaryV2
+ *
+ * Extended summary with job/spec/report references.
+ */
+export type InvestigationSummaryV2 = {
+    /**
+     * Budget Limit Micros
+     */
+    budget_limit_micros: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Current Job Id
+     */
+    current_job_id?: string | null;
+    /**
+     * Current Step
+     */
+    current_step: number;
+    /**
+     * Depth
+     */
+    depth: string;
+    /**
+     * Execution Revision
+     */
+    execution_revision?: number | null;
+    /**
+     * Failure Reason
+     */
+    failure_reason?: string | null;
+    /**
+     * Finding Id
+     */
+    finding_id?: string | null;
+    /**
+     * Held Micros
+     */
+    held_micros?: number;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Max Steps
+     */
+    max_steps: number;
+    /**
+     * Mode
+     */
+    mode: string;
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Query
+     */
+    query: string;
+    /**
+     * Report Id
+     */
+    report_id?: string | null;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Retry Of Id
+     */
+    retry_of_id?: string | null;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id?: string | null;
+    /**
+     * Spec Hash
+     */
+    spec_hash?: string | null;
+    /**
+     * Spent Micros
+     */
+    spent_micros: number;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Summary
+     */
+    summary?: string | null;
+    /**
+     * Target Type
+     */
+    target_type: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    /**
+     * Verdict
+     */
+    verdict?: string | null;
+    /**
+     * Verdict Confidence
+     */
+    verdict_confidence?: number | null;
 };
 
 /**
@@ -2334,6 +2825,10 @@ export type MemoryCreateRequestV1 = {
      */
     repository_id?: string | null;
     /**
+     * Request Key
+     */
+    request_key?: string | null;
+    /**
      * Snapshot Id
      */
     snapshot_id?: string | null;
@@ -2352,6 +2847,14 @@ export type MemoryCreateRequestV1 = {
  */
 export type MemoryEntryV1 = {
     /**
+     * Accepted At
+     */
+    accepted_at?: string | null;
+    /**
+     * Content Digest
+     */
+    content_digest?: string | null;
+    /**
      * Created At
      */
     created_at: string;
@@ -2359,6 +2862,14 @@ export type MemoryEntryV1 = {
      * Evidence Pointers
      */
     evidence_pointers?: Array<EvidencePointerV1>;
+    /**
+     * Expires At
+     */
+    expires_at?: string | null;
+    /**
+     * Historical Hint
+     */
+    historical_hint?: boolean;
     /**
      * Memory Id
      */
@@ -2373,9 +2884,22 @@ export type MemoryEntryV1 = {
      */
     repository_id: string;
     /**
+     * Reviewer Id
+     */
+    reviewer_id?: string | null;
+    /**
      * Snapshot Id
      */
     snapshot_id: string;
+    /**
+     * Source Available
+     */
+    source_available?: boolean;
+    /**
+     * Source Correspondence
+     */
+    source_correspondence?: 'original_snapshot' | 'matching_files' | 'changed' | 'human_note';
+    state?: MemoryState;
     /**
      * Summary
      */
@@ -2388,12 +2912,52 @@ export type MemoryEntryV1 = {
      * Updated At
      */
     updated_at: string;
+    /**
+     * Version
+     */
+    version?: number;
+};
+
+/**
+ * MemoryHistoryV1
+ */
+export type MemoryHistoryV1 = {
+    /**
+     * Events
+     */
+    events: Array<MemoryReviewEventV1>;
+    /**
+     * Partial
+     */
+    partial: boolean;
+    /**
+     * Versions
+     */
+    versions: Array<MemoryEntryV1>;
 };
 
 /**
  * MemoryKind
  */
-export type MemoryKind = 'triage_resolution' | 'security_finding_evidence' | 'architecture_fact';
+export type MemoryKind = 'triage_resolution' | 'security_finding_evidence' | 'architecture_fact' | 'investigation_episode';
+
+/**
+ * MemoryManagementPageV1
+ */
+export type MemoryManagementPageV1 = {
+    /**
+     * Can Review
+     */
+    can_review?: boolean;
+    /**
+     * Items
+     */
+    items: Array<MemoryEntryV1>;
+    /**
+     * Next Cursor
+     */
+    next_cursor?: string | null;
+};
 
 /**
  * MemoryQueryResponseV1
@@ -2404,9 +2968,21 @@ export type MemoryQueryResponseV1 = {
      */
     items: Array<MemoryEntryV1>;
     /**
+     * Omission Reasons
+     */
+    omission_reasons?: Array<string>;
+    /**
+     * Omitted Count
+     */
+    omitted_count?: number;
+    /**
      * Org Id
      */
     org_id: string;
+    /**
+     * Partial
+     */
+    partial?: boolean;
     /**
      * Query
      */
@@ -2416,9 +2992,130 @@ export type MemoryQueryResponseV1 = {
      */
     repository_id: string;
     /**
+     * Scanned Count
+     */
+    scanned_count?: number;
+    /**
      * Total Candidates
      */
     total_candidates: number;
+};
+
+/**
+ * MemoryReviewEventV1
+ */
+export type MemoryReviewEventV1 = {
+    /**
+     * Action
+     */
+    action: string;
+    /**
+     * Actor Id
+     */
+    actor_id: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Version
+     */
+    version: number;
+};
+
+/**
+ * MemoryReviewRequestV1
+ */
+export type MemoryReviewRequestV1 = {
+    /**
+     * Action
+     */
+    action: 'accept' | 'reject' | 'archive' | 'restore' | 'supersede';
+    /**
+     * Expected Version
+     */
+    expected_version: number;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Replacement Id
+     */
+    replacement_id?: string | null;
+    /**
+     * Request Key
+     */
+    request_key: string;
+};
+
+/**
+ * MemoryState
+ */
+export type MemoryState = 'needs_review' | 'candidate' | 'accepted' | 'rejected' | 'archived' | 'superseded' | 'expired';
+
+/**
+ * ModelAvailabilityItemV1
+ */
+export type ModelAvailabilityItemV1 = {
+    /**
+     * Alias
+     */
+    alias: 'openai_fast' | 'openai_reasoning' | 'claude_fast' | 'claude_reasoning' | 'gemini_general';
+    /**
+     * Eligible
+     */
+    eligible: boolean;
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+    /**
+     * Locally Qualified
+     */
+    locally_qualified: boolean;
+    /**
+     * Owner Approved Live
+     */
+    owner_approved_live: boolean;
+    /**
+     * Provider
+     */
+    provider: string;
+    /**
+     * Status
+     */
+    status: 'disabled' | 'unavailable' | 'locally_qualified' | 'live_unqualified';
+    /**
+     * Supports Native Schema
+     */
+    supports_native_schema: boolean;
+    /**
+     * Supports Streaming
+     */
+    supports_streaming?: boolean;
+    /**
+     * Supports Tools
+     */
+    supports_tools: boolean;
+};
+
+/**
+ * ModelAvailabilityV1
+ */
+export type ModelAvailabilityV1 = {
+    /**
+     * Live Access Verified
+     */
+    live_access_verified?: boolean;
+    /**
+     * Profiles
+     */
+    profiles?: Array<ModelAvailabilityItemV1>;
 };
 
 /**
@@ -4516,6 +5213,10 @@ export type ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigation
          */
         finding_id?: string | null;
         /**
+         * Cursor
+         */
+        cursor?: string | null;
+        /**
          * Limit
          */
         limit?: number;
@@ -4536,13 +5237,13 @@ export type ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigation
     /**
      * Successful Response
      */
-    200: InvestigationListResponseV1;
+    200: InvestigationListResponseV2;
 };
 
 export type ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigationsGetResponse = ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigationsGetResponses[keyof ListInvestigationsEndpointApiV1RepositoriesRepositoryIdInvestigationsGetResponses];
 
 export type CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostData = {
-    body: InvestigationCreateRequestV1;
+    body: InvestigationCreateRequestV2;
     path: {
         /**
          * Repository Id
@@ -4564,9 +5265,11 @@ export type CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigatio
 
 export type CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostResponses = {
     /**
+     * Response Create Investigation Endpoint Api V1 Repositories  Repository Id  Investigations Post
+     *
      * Successful Response
      */
-    201: InvestigationSummaryV1;
+    201: InvestigationSummaryV2 | InvestigationSummaryV1;
 };
 
 export type CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostResponse = CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostResponses[keyof CreateInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsPostResponses];
@@ -4598,12 +5301,48 @@ export type GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestiga
 
 export type GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetResponses = {
     /**
+     * Response Get Investigation Detail Endpoint Api V1 Repositories  Repository Id  Investigations  Investigation Id  Get
+     *
      * Successful Response
      */
-    200: InvestigationDetailResponseV1;
+    200: InvestigationDetailResponseV2 | InvestigationDetailResponseV1;
 };
 
 export type GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetResponse = GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetResponses[keyof GetInvestigationDetailEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdGetResponses];
+
+export type CancelInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdCancelPostData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Investigation Id
+         */
+        investigation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/investigations/{investigation_id}/cancel';
+};
+
+export type CancelInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdCancelPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CancelInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdCancelPostError = CancelInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdCancelPostErrors[keyof CancelInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdCancelPostErrors];
+
+export type CancelInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdCancelPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: InvestigationCancelResponseV1;
+};
+
+export type CancelInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdCancelPostResponse = CancelInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdCancelPostResponses[keyof CancelInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdCancelPostResponses];
 
 export type ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetData = {
     body?: never;
@@ -4619,9 +5358,17 @@ export type ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestig
     };
     query?: {
         /**
+         * After Sequence
+         */
+        after_sequence?: number | null;
+        /**
          * After Step
          */
         after_step?: number | null;
+        /**
+         * Limit
+         */
+        limit?: number;
     };
     url: '/api/v1/repositories/{repository_id}/investigations/{investigation_id}/events';
 };
@@ -4637,14 +5384,10 @@ export type ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestig
 
 export type ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetResponses = {
     /**
-     * Response List Investigation Events Endpoint Api V1 Repositories  Repository Id  Investigations  Investigation Id  Events Get
-     *
      * Successful Response
      */
-    200: Array<InvestigationEventV1>;
+    200: unknown;
 };
-
-export type ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetResponse = ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetResponses[keyof ListInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdEventsGetResponses];
 
 export type ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostData = {
     body?: never;
@@ -4675,10 +5418,8 @@ export type ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigati
     /**
      * Successful Response
      */
-    200: InvestigationDetailResponseV1;
+    200: unknown;
 };
-
-export type ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostResponse = ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostResponses[keyof ExecuteInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdExecutePostResponses];
 
 export type RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostData = {
     body: InvestigationFeedbackRequestV1;
@@ -4718,6 +5459,74 @@ export type RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInve
 
 export type RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostResponse = RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostResponses[keyof RecordInvestigationFeedbackEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdFeedbackPostResponses];
 
+export type ResumeInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdResumePostData = {
+    body: InvestigationResumeRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Investigation Id
+         */
+        investigation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/investigations/{investigation_id}/resume';
+};
+
+export type ResumeInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdResumePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ResumeInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdResumePostError = ResumeInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdResumePostErrors[keyof ResumeInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdResumePostErrors];
+
+export type ResumeInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdResumePostResponses = {
+    /**
+     * Successful Response
+     */
+    202: InvestigationStartResponseV1;
+};
+
+export type ResumeInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdResumePostResponse = ResumeInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdResumePostResponses[keyof ResumeInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdResumePostResponses];
+
+export type RetryInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdRetryPostData = {
+    body: InvestigationRetryRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Investigation Id
+         */
+        investigation_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/investigations/{investigation_id}/retry';
+};
+
+export type RetryInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdRetryPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RetryInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdRetryPostError = RetryInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdRetryPostErrors[keyof RetryInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdRetryPostErrors];
+
+export type RetryInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdRetryPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: InvestigationSummaryV2;
+};
+
+export type RetryInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdRetryPostResponse = RetryInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdRetryPostResponses[keyof RetryInvestigationEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdRetryPostResponses];
+
 export type StreamInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvestigationsInvestigationIdStreamGetData = {
     body?: never;
     path: {
@@ -4754,6 +5563,147 @@ export type StreamInvestigationEventsEndpointApiV1RepositoriesRepositoryIdInvest
      */
     200: unknown;
 };
+
+export type MemoryHistoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdHistoryGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Memory Id
+         */
+        memory_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/memories/{memory_id}/history';
+};
+
+export type MemoryHistoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdHistoryGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MemoryHistoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdHistoryGetError = MemoryHistoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdHistoryGetErrors[keyof MemoryHistoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdHistoryGetErrors];
+
+export type MemoryHistoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdHistoryGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: MemoryHistoryV1;
+};
+
+export type MemoryHistoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdHistoryGetResponse = MemoryHistoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdHistoryGetResponses[keyof MemoryHistoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdHistoryGetResponses];
+
+export type ReviewMemoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdReviewsPostData = {
+    body: MemoryReviewRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Memory Id
+         */
+        memory_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/memories/{memory_id}/reviews';
+};
+
+export type ReviewMemoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdReviewsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReviewMemoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdReviewsPostError = ReviewMemoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdReviewsPostErrors[keyof ReviewMemoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdReviewsPostErrors];
+
+export type ReviewMemoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdReviewsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: MemoryEntryV1;
+};
+
+export type ReviewMemoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdReviewsPostResponse = ReviewMemoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdReviewsPostResponses[keyof ReviewMemoryEndpointApiV1RepositoriesRepositoryIdMemoriesMemoryIdReviewsPostResponses];
+
+export type ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+    };
+    query?: {
+        /**
+         * Snapshot Id
+         */
+        snapshot_id?: string | null;
+        /**
+         * Cursor
+         */
+        cursor?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{repository_id}/memory-review';
+};
+
+export type ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGetError = ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGetErrors[keyof ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGetErrors];
+
+export type ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: MemoryManagementPageV1;
+};
+
+export type ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGetResponse = ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGetResponses[keyof ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGetResponses];
+
+export type ModelAvailabilityEndpointApiV1RepositoriesRepositoryIdModelsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/models';
+};
+
+export type ModelAvailabilityEndpointApiV1RepositoriesRepositoryIdModelsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ModelAvailabilityEndpointApiV1RepositoriesRepositoryIdModelsGetError = ModelAvailabilityEndpointApiV1RepositoriesRepositoryIdModelsGetErrors[keyof ModelAvailabilityEndpointApiV1RepositoriesRepositoryIdModelsGetErrors];
+
+export type ModelAvailabilityEndpointApiV1RepositoriesRepositoryIdModelsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ModelAvailabilityV1;
+};
+
+export type ModelAvailabilityEndpointApiV1RepositoriesRepositoryIdModelsGetResponse = ModelAvailabilityEndpointApiV1RepositoriesRepositoryIdModelsGetResponses[keyof ModelAvailabilityEndpointApiV1RepositoriesRepositoryIdModelsGetResponses];
 
 export type CreateScanApiV1RepositoriesRepositoryIdScansPostData = {
     body: CreateScanRequestV1;
@@ -4818,6 +5768,40 @@ export type AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapsho
 };
 
 export type AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostResponse = AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostResponses[keyof AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostResponses];
+
+export type ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextPreviewPostData = {
+    body: ContextPreviewRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/context/preview';
+};
+
+export type ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextPreviewPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextPreviewPostError = ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextPreviewPostErrors[keyof ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextPreviewPostErrors];
+
+export type ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextPreviewPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ContextPreviewV1;
+};
+
+export type ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextPreviewPostResponse = ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextPreviewPostResponses[keyof ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextPreviewPostResponses];
 
 export type GetSourceViewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFilesFileIdSourceViewGetData = {
     body?: never;
@@ -5239,6 +6223,10 @@ export type QueryMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdM
          * Limit
          */
         limit?: number;
+        /**
+         * History Mode
+         */
+        history_mode?: 'off' | 'current_only' | 'historical_hints';
     };
     url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/memories';
 };

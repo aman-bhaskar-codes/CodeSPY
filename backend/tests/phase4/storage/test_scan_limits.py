@@ -7,6 +7,7 @@ import pytest
 from app.scanners.dependency_adapter import DockerDependencyAdapter
 from app.scanners.docker import DockerController
 from app.scanners.ownership import ScannerOwnership
+
 from tests.phase4.process.test_scanner_image import settings
 from tests.phase4.process.test_scanner_pipeline import (
     test_real_store_archive_scan_preserves_findings_and_file_ids as run_native_corpus,

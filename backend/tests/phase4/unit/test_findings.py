@@ -11,6 +11,7 @@ from app.domain.canonical_json import canonical_bytes
 from app.scanners.advisories import AdvisoryBundle, AdvisoryRecord, ExactAnswer, PackageQuery
 from app.scanners.dependency_worker import DependencyInputV1, assess_dependencies
 from app.scanners.receipts import _issue
+
 from tests.phase4.dependency_fixtures import NOW, fixture_dependency
 from tests.phase4.unit.test_scanner_adapter import IMAGE, make_adapter
 
@@ -225,6 +226,7 @@ def test_secret_normalization_to_finding_never_retains_token_or_raw_diagnostics(
     import hashlib
 
     from app.contracts.scanners import ScannerRequestV1
+
     from tests.phase4.unit.test_gitleaks_normalization import FILE, TOKEN, scan
 
     module = api()

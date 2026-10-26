@@ -6,6 +6,7 @@ from app.models.phase2_tables import PHASE2_TABLES
 from app.models.tables import repositories
 from app.services.github_acquisition import GitHubAcquisitionService, RepositoryAccess
 from sqlalchemy import insert, update
+
 from tests.phase2.integration.test_submission_ingestion import submission_scenario
 
 

@@ -8,7 +8,7 @@ budget and worker lease.
 import json
 import logging
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from app.contracts.investigation import (
     InvestigationClaimV1,
@@ -22,13 +22,13 @@ from app.contracts.model import (
     ModelRoutingRequirementV1,
 )
 from app.contracts.provider_budget import DisclosurePolicyV1
+from app.ports.investigation_checkpointer import InvestigationCheckpointerPort
+from app.ports.model import ModelGatewayPort
 from app.services.claim_verification import ClaimVerificationService
-from app.services.investigation_checkpointer import FencedCheckpointer
 from app.services.investigator_tools import (
     InvestigatorToolRegistry,
     ToolExecutionContext,
 )
-from app.services.model_gateway import ModelGatewayService
 
 logger = logging.getLogger(__name__)
 
@@ -81,8 +81,8 @@ class TwoSpecialistInvestigator:
 
     def __init__(
         self,
-        model_gateway: ModelGatewayService,
-        checkpointer: FencedCheckpointer,
+        model_gateway: ModelGatewayPort,
+        checkpointer: InvestigationCheckpointerPort,
         tool_registry: InvestigatorToolRegistry | None = None,
         claim_verifier: ClaimVerificationService | None = None,
     ) -> None:
@@ -165,7 +165,7 @@ class TwoSpecialistInvestigator:
                 investigation_id=investigation_id,
                 worker_id=worker_id,
                 fencing_token=fencing_token,
-                lease_ttl_seconds=30,
+                lease_ttl_seconds=150,
             )
 
             step_key = f"inv-{investigation_id}-hypo-{current_step}"
@@ -174,11 +174,12 @@ class TwoSpecialistInvestigator:
                 repository_id=state.repository_id,
                 principal_id=exec_context.principal_id,
                 investigation_id=investigation_id,
-                logical_call_id=uuid4(),
+                logical_call_id=uuid5(NAMESPACE_URL, f"{org_id}:{step_key}"),
                 attempt_id=1,
                 messages=state.history,
                 tools=self.tools.get_tool_definitions(),
                 requirement=ModelRoutingRequirementV1(
+                    task_type="planner",
                     estimated_context_tokens=4000,
                     estimated_output_tokens=1500,
                     requires_tools=True,
@@ -245,7 +246,7 @@ class TwoSpecialistInvestigator:
                 investigation_id=investigation_id,
                 worker_id=worker_id,
                 fencing_token=fencing_token,
-                lease_ttl_seconds=30,
+                lease_ttl_seconds=150,
             )
 
             step_key = f"inv-{investigation_id}-adv-{current_step}"
@@ -254,11 +255,12 @@ class TwoSpecialistInvestigator:
                 repository_id=state.repository_id,
                 principal_id=exec_context.principal_id,
                 investigation_id=investigation_id,
-                logical_call_id=uuid4(),
+                logical_call_id=uuid5(NAMESPACE_URL, f"{org_id}:{step_key}"),
                 attempt_id=1,
                 messages=tuple(adversary_history),
                 tools=self.tools.get_tool_definitions(),
                 requirement=ModelRoutingRequirementV1(
+                    task_type="auditor",
                     estimated_context_tokens=4000,
                     estimated_output_tokens=1500,
                     requires_tools=True,
@@ -277,6 +279,7 @@ class TwoSpecialistInvestigator:
                         role=ModelRole.ASSISTANT,
                         content=resp.content,
                         tool_calls=resp.tool_calls,
+                        continuation_ref=resp.continuation_ref,
                     )
                 )
                 for call in resp.tool_calls:
@@ -351,11 +354,12 @@ class TwoSpecialistInvestigator:
             repository_id=state.repository_id,
             principal_id=exec_context.principal_id,
             investigation_id=investigation_id,
-            logical_call_id=uuid4(),
+            logical_call_id=uuid5(NAMESPACE_URL, f"{org_id}:{step_key}"),
             attempt_id=1,
             messages=tuple(arbiter_messages),
             tools=(),
             requirement=ModelRoutingRequirementV1(
+                task_type="synthesizer",
                 estimated_context_tokens=5000,
                 estimated_output_tokens=2000,
                 requires_tools=False,
@@ -494,6 +498,7 @@ class TwoSpecialistInvestigator:
                 role=ModelRole.ASSISTANT,
                 content=resp.content,
                 tool_calls=resp.tool_calls,
+                continuation_ref=resp.continuation_ref,
             )
         )
         new_tool_history = list(state.tool_history)
@@ -609,6 +614,6 @@ class TwoSpecialistInvestigator:
                 candidate = json.loads(text[start : end + 1])
                 if isinstance(candidate, dict) and "verdict" in candidate:
                     return candidate
-            except Exception as e:
-                logger.debug("Failed to extract JSON verdict payload: %s", e)
+            except Exception:
+                logger.debug("model_verdict_json_invalid")
         return None

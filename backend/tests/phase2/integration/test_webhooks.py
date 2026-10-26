@@ -8,6 +8,7 @@ from app.domain.errors import DuplicateConflict
 from app.models.phase2_tables import PHASE2_TABLES
 from app.services.webhooks import GitHubWebhookService
 from sqlalchemy import insert, select
+
 from tests.phase2.integration.test_submission_ingestion import submission_scenario
 
 

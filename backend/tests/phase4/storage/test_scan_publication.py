@@ -14,6 +14,7 @@ from app.services.findings import FindingMaterializer
 from app.services.jobs import JobService
 from app.services.scan_jobs import ScanJobService
 from sqlalchemy import func, select
+
 from tests.phase4.storage.test_scan_jobs import Registry, scenario
 
 

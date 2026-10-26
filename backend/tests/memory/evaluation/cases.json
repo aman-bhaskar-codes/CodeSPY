@@ -1,0 +1,486 @@
+{
+  "schema_version": 1,
+  "qualification": "mechanical retrieval and packing; not answer quality",
+  "cases": [
+    {
+      "id": "current_facts-00",
+      "split": "development",
+      "slice": "current_facts",
+      "query": "target000",
+      "summary": "The target000 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "current_facts-01",
+      "split": "development",
+      "slice": "current_facts",
+      "query": "target001",
+      "summary": "The target001 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "current_facts-02",
+      "split": "development",
+      "slice": "current_facts",
+      "query": "target002",
+      "summary": "The target002 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "current_facts-03",
+      "split": "development",
+      "slice": "current_facts",
+      "query": "target003",
+      "summary": "The target003 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "current_facts-04",
+      "split": "held_out",
+      "slice": "current_facts",
+      "query": "target004",
+      "summary": "The target004 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "current_facts-05",
+      "split": "held_out",
+      "slice": "current_facts",
+      "query": "target005",
+      "summary": "The target005 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "current_facts-06",
+      "split": "held_out",
+      "slice": "current_facts",
+      "query": "target006",
+      "summary": "The target006 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "current_facts-07",
+      "split": "held_out",
+      "slice": "current_facts",
+      "query": "target007",
+      "summary": "The target007 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "current_facts-08",
+      "split": "held_out",
+      "slice": "current_facts",
+      "query": "target008",
+      "summary": "The target008 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "current_facts-09",
+      "split": "held_out",
+      "slice": "current_facts",
+      "query": "target009",
+      "summary": "The target009 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "historical_hints-00",
+      "split": "development",
+      "slice": "historical_hints",
+      "query": "target100",
+      "summary": "The target100 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "historical_hints-01",
+      "split": "development",
+      "slice": "historical_hints",
+      "query": "target101",
+      "summary": "The target101 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "historical_hints-02",
+      "split": "development",
+      "slice": "historical_hints",
+      "query": "target102",
+      "summary": "The target102 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "historical_hints-03",
+      "split": "development",
+      "slice": "historical_hints",
+      "query": "target103",
+      "summary": "The target103 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "historical_hints-04",
+      "split": "held_out",
+      "slice": "historical_hints",
+      "query": "target104",
+      "summary": "The target104 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "historical_hints-05",
+      "split": "held_out",
+      "slice": "historical_hints",
+      "query": "target105",
+      "summary": "The target105 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "historical_hints-06",
+      "split": "held_out",
+      "slice": "historical_hints",
+      "query": "target106",
+      "summary": "The target106 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "historical_hints-07",
+      "split": "held_out",
+      "slice": "historical_hints",
+      "query": "target107",
+      "summary": "The target107 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "historical_hints-08",
+      "split": "held_out",
+      "slice": "historical_hints",
+      "query": "target108",
+      "summary": "The target108 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "historical_hints-09",
+      "split": "held_out",
+      "slice": "historical_hints",
+      "query": "target109",
+      "summary": "The target109 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "updates-00",
+      "split": "development",
+      "slice": "updates",
+      "query": "target200",
+      "summary": "The target200 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "updates-01",
+      "split": "development",
+      "slice": "updates",
+      "query": "target201",
+      "summary": "The target201 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "updates-02",
+      "split": "development",
+      "slice": "updates",
+      "query": "target202",
+      "summary": "The target202 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "updates-03",
+      "split": "held_out",
+      "slice": "updates",
+      "query": "target203",
+      "summary": "The target203 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "updates-04",
+      "split": "held_out",
+      "slice": "updates",
+      "query": "target204",
+      "summary": "The target204 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "updates-05",
+      "split": "held_out",
+      "slice": "updates",
+      "query": "target205",
+      "summary": "The target205 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "updates-06",
+      "split": "held_out",
+      "slice": "updates",
+      "query": "target206",
+      "summary": "The target206 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "updates-07",
+      "split": "held_out",
+      "slice": "updates",
+      "query": "target207",
+      "summary": "The target207 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "updates-08",
+      "split": "held_out",
+      "slice": "updates",
+      "query": "target208",
+      "summary": "The target208 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "updates-09",
+      "split": "held_out",
+      "slice": "updates",
+      "query": "target209",
+      "summary": "The target209 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "abstention-00",
+      "split": "development",
+      "slice": "abstention",
+      "query": "target300",
+      "summary": "The target300 adapter checks repository scope before reading source.",
+      "expect_memory": false
+    },
+    {
+      "id": "abstention-01",
+      "split": "development",
+      "slice": "abstention",
+      "query": "target301",
+      "summary": "The target301 adapter checks repository scope before reading source.",
+      "expect_memory": false
+    },
+    {
+      "id": "abstention-02",
+      "split": "development",
+      "slice": "abstention",
+      "query": "target302",
+      "summary": "The target302 adapter checks repository scope before reading source.",
+      "expect_memory": false
+    },
+    {
+      "id": "abstention-03",
+      "split": "held_out",
+      "slice": "abstention",
+      "query": "target303",
+      "summary": "The target303 adapter checks repository scope before reading source.",
+      "expect_memory": false
+    },
+    {
+      "id": "abstention-04",
+      "split": "held_out",
+      "slice": "abstention",
+      "query": "target304",
+      "summary": "The target304 adapter checks repository scope before reading source.",
+      "expect_memory": false
+    },
+    {
+      "id": "abstention-05",
+      "split": "held_out",
+      "slice": "abstention",
+      "query": "target305",
+      "summary": "The target305 adapter checks repository scope before reading source.",
+      "expect_memory": false
+    },
+    {
+      "id": "abstention-06",
+      "split": "held_out",
+      "slice": "abstention",
+      "query": "target306",
+      "summary": "The target306 adapter checks repository scope before reading source.",
+      "expect_memory": false
+    },
+    {
+      "id": "abstention-07",
+      "split": "held_out",
+      "slice": "abstention",
+      "query": "target307",
+      "summary": "The target307 adapter checks repository scope before reading source.",
+      "expect_memory": false
+    },
+    {
+      "id": "abstention-08",
+      "split": "held_out",
+      "slice": "abstention",
+      "query": "target308",
+      "summary": "The target308 adapter checks repository scope before reading source.",
+      "expect_memory": false
+    },
+    {
+      "id": "abstention-09",
+      "split": "held_out",
+      "slice": "abstention",
+      "query": "target309",
+      "summary": "The target309 adapter checks repository scope before reading source.",
+      "expect_memory": false
+    },
+    {
+      "id": "untrusted_noise-00",
+      "split": "development",
+      "slice": "untrusted_noise",
+      "query": "target400",
+      "summary": "The target400 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "untrusted_noise-01",
+      "split": "development",
+      "slice": "untrusted_noise",
+      "query": "target401",
+      "summary": "The target401 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "untrusted_noise-02",
+      "split": "development",
+      "slice": "untrusted_noise",
+      "query": "target402",
+      "summary": "The target402 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "untrusted_noise-03",
+      "split": "held_out",
+      "slice": "untrusted_noise",
+      "query": "target403",
+      "summary": "The target403 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "untrusted_noise-04",
+      "split": "held_out",
+      "slice": "untrusted_noise",
+      "query": "target404",
+      "summary": "The target404 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "untrusted_noise-05",
+      "split": "held_out",
+      "slice": "untrusted_noise",
+      "query": "target405",
+      "summary": "The target405 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "untrusted_noise-06",
+      "split": "held_out",
+      "slice": "untrusted_noise",
+      "query": "target406",
+      "summary": "The target406 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "untrusted_noise-07",
+      "split": "held_out",
+      "slice": "untrusted_noise",
+      "query": "target407",
+      "summary": "The target407 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "untrusted_noise-08",
+      "split": "held_out",
+      "slice": "untrusted_noise",
+      "query": "target408",
+      "summary": "The target408 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "untrusted_noise-09",
+      "split": "held_out",
+      "slice": "untrusted_noise",
+      "query": "target409",
+      "summary": "The target409 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "context_pressure-00",
+      "split": "development",
+      "slice": "context_pressure",
+      "query": "target500",
+      "summary": "The target500 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "context_pressure-01",
+      "split": "development",
+      "slice": "context_pressure",
+      "query": "target501",
+      "summary": "The target501 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "context_pressure-02",
+      "split": "development",
+      "slice": "context_pressure",
+      "query": "target502",
+      "summary": "The target502 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "context_pressure-03",
+      "split": "held_out",
+      "slice": "context_pressure",
+      "query": "target503",
+      "summary": "The target503 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "context_pressure-04",
+      "split": "held_out",
+      "slice": "context_pressure",
+      "query": "target504",
+      "summary": "The target504 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "context_pressure-05",
+      "split": "held_out",
+      "slice": "context_pressure",
+      "query": "target505",
+      "summary": "The target505 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "context_pressure-06",
+      "split": "held_out",
+      "slice": "context_pressure",
+      "query": "target506",
+      "summary": "The target506 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "context_pressure-07",
+      "split": "held_out",
+      "slice": "context_pressure",
+      "query": "target507",
+      "summary": "The target507 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "context_pressure-08",
+      "split": "held_out",
+      "slice": "context_pressure",
+      "query": "target508",
+      "summary": "The target508 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    },
+    {
+      "id": "context_pressure-09",
+      "split": "held_out",
+      "slice": "context_pressure",
+      "query": "target509",
+      "summary": "The target509 adapter checks repository scope before reading source.",
+      "expect_memory": true
+    }
+  ]
+}
