@@ -52,9 +52,10 @@ class PublicationExecutor:
                 session = self.factory()
                 await session.begin()
                 conn = await session.connection()
-                if conn.dialect.name == "postgresql":
+                dialect_name = getattr(getattr(conn, "dialect", None), "name", None)
+                if dialect_name != "sqlite":
                     raw = await conn.get_raw_connection()
-                    driver = raw.driver_connection
+                    driver = getattr(raw, "driver_connection", None)
                     assert driver is not None
                     terminate_driver: Callable[[], None] = driver.terminate
 
@@ -65,6 +66,7 @@ class PublicationExecutor:
                             raw.detach()
 
                     terminate = discard
+                if dialect_name == "postgresql":
                     await session.execute(
                         text(f"SET LOCAL statement_timeout='{self.statement_seconds}s'")
                     )
