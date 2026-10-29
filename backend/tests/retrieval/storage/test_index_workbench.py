@@ -110,7 +110,11 @@ async def test_real_index_workbench_browser(
     if not all((image, source_hash, reader_image)):
         pytest.skip("owned qualified reader/indexer images required")
     frontend = ROOT / "frontend"
-    node_dir = Path("/Users/amanbhaskar/.local/share/fnm/node-versions/v22.23.3/installation/bin")
+    import shutil
+
+    node_binary = os.environ.get("CODESPY_TEST_NODE_BINARY") or shutil.which("node")
+    assert node_binary, "Node runtime required for owned browser tests"
+    node_dir = Path(node_binary).parent
     cli = frontend / "node_modules/@playwright/test/cli.js"
     assert cli.is_file(), "Restore the project's locked Node test dependencies first"
     archive = io.BytesIO()
@@ -193,6 +197,14 @@ async def test_real_index_workbench_browser(
             CODESPY_E2E_SNAPSHOT=str(snapshot),
             CODESPY_E2E_CANARY=canary,
         )
+        vite_config = tmp_path / "vite.config.mjs"
+        vite_config.write_text(
+            "import base from "
+            + json.dumps((frontend / "vite.config.ts").as_uri())
+            + "; export default {...base, root: "
+            + json.dumps(str(frontend))
+            + ", envDir: false};\n"
+        )
         vite = await asyncio.create_subprocess_exec(
             str(node_dir / "node"),
             str(frontend / "node_modules/vite/bin/vite.js"),
@@ -201,6 +213,8 @@ async def test_real_index_workbench_browser(
             "--port",
             "5173",
             "--strictPort",
+            "--config",
+            str(vite_config),
             cwd=frontend,
             env=environment,
             stdout=log,

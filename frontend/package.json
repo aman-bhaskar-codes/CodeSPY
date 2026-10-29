@@ -16,6 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "dev:fixture": "vite --config vite.config.fixture.ts",
+    "test:e2e:fixture": "playwright test --config playwright.fixture.config.ts",
     "codegen:api": "openapi-ts -i ../backend/openapi.json -o src/api/generated -c @hey-api/client-fetch"
   },
   "dependencies": {

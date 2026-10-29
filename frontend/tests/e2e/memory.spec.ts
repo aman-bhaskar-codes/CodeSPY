@@ -1,18 +1,10 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-test.use({
-  baseURL: process.env.CODESPY_MEMORY_UI_URL ?? "http://127.0.0.1:5173",
-  channel: process.env.CODESPY_PLAYWRIGHT_CHANNEL,
-});
 for (const width of [390, 1280]) {
   test(`memory review keyboard flow at ${width}px with mocked HTTP`, async ({
     page,
   }) => {
-    test.skip(
-      !process.env.CODESPY_MEMORY_UI_URL,
-      "Owned frontend server required",
-    );
     await page.setViewportSize({ width, height: 900 });
     const repository = "00000000-0000-0000-0000-000000000001";
     const snapshot = "00000000-0000-0000-0000-000000000002";
@@ -83,12 +75,9 @@ for (const width of [390, 1280]) {
         json: { code: "provider_unconfigured" },
       });
     });
-    await page.goto(`/?snapshot=${snapshot}`);
+    await page.goto(`/?repository=${repository}&snapshot=${snapshot}#retrieval-title`);
     await page
-      .getByLabel("Repository", { exact: true })
-      .selectOption(repository);
-    await page
-      .getByRole("button", { name: "Repository Memory", exact: false })
+      .getByRole("tab", { name: "Memory", exact: false })
       .click();
     await page
       .getByRole("button", { name: "Accept Scoped routing", exact: true })
