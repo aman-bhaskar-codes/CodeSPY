@@ -10,6 +10,8 @@ export default tseslint.config(
       ".tools/**",
       "dist/**",
       "coverage/**",
+      "playwright-report/**",
+      "test-results/**",
       "src/api/generated/**", // Generator-owned SDK; tsc checks its contracts.
     ],
   },

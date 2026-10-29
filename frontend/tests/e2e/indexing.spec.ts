@@ -7,8 +7,7 @@ test("published source index survives context assembly and reload", async ({ pag
   const snapshot = process.env.CODESPY_E2E_SNAPSHOT;
   test.skip(!repository || !snapshot, "Owned real-backend fixture required");
   const prefix = `/api/v1/repositories/${repository}/snapshots/${snapshot}`;
-  await page.goto(`/?snapshot=${snapshot}`);
-  await page.getByLabel("Repository", { exact: true }).selectOption(repository!);
+  await page.goto(`/?repository=${repository}&snapshot=${snapshot}#retrieval-title`);
   await expect(page.getByRole("heading", { name: "Source index", exact: true })).toBeVisible();
   const createdResponse = page.waitForResponse(
     (response) => response.url().endsWith(`${prefix}/indexes`) && response.request().method() === "POST",
@@ -39,7 +38,6 @@ test("published source index survives context assembly and reload", async ({ pag
   expect(JSON.stringify(context)).not.toContain(process.env.CODESPY_E2E_CANARY!);
 
   await page.reload();
-  await page.getByLabel("Repository", { exact: true }).selectOption(repository!);
   await expect(page.getByText(published.receipt.chunk_set_id, { exact: true }).first()).toBeVisible();
   const secondResponse = page.waitForResponse(
     (response) => response.url().endsWith(`${prefix}/indexes`) && response.request().method() === "POST",
