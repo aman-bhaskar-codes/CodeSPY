@@ -1,3 +1,4 @@
+import { Modal } from "../../ui/Modal";
 import { useRef, useState } from "react";
 import type {
   FindingSummaryV1,
@@ -83,26 +84,11 @@ export function TriageModal({ finding, isOpen, onClose, onSubmit }: Props) {
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="triage-modal-title"
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(15, 23, 42, 0.6)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        padding: "16px",
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isSubmitting) onClose();
-      }}
+    <Modal
+      open={isOpen}
+      title="Triage Finding"
+      onClose={onClose}
+      busy={isSubmitting}
     >
       <div
         style={{
@@ -112,15 +98,9 @@ export function TriageModal({ finding, isOpen, onClose, onSubmit }: Props) {
           maxWidth: "520px",
           width: "100%",
           padding: "24px",
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+          boxShadow: "var(--cs-shadow)",
         }}
       >
-        <h3
-          id="triage-modal-title"
-          style={{ margin: "0 0 8px", fontSize: "18px", color: "var(--ink)" }}
-        >
-          Triage Finding
-        </h3>
         <p className="muted" style={{ margin: "0 0 16px", fontSize: "13px" }}>
           <code>{finding.rule_id}</code> at{" "}
           <code>
@@ -134,7 +114,7 @@ export function TriageModal({ finding, isOpen, onClose, onSubmit }: Props) {
             role="alert"
             style={{
               padding: "10px 14px",
-              background: "#fde8e8",
+              background: "var(--cs-danger-bg)",
               border: "1px solid var(--danger)",
               borderRadius: "6px",
               color: "var(--danger)",
@@ -262,7 +242,7 @@ export function TriageModal({ finding, isOpen, onClose, onSubmit }: Props) {
               disabled={isSubmitting || isReasonInvalid}
               style={{
                 background: isReasonInvalid ? "var(--muted)" : "var(--action)",
-                color: "#fff",
+                color: "var(--cs-text)",
                 border: "none",
                 fontWeight: 600,
               }}
@@ -272,6 +252,6 @@ export function TriageModal({ finding, isOpen, onClose, onSubmit }: Props) {
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,3 +1,6 @@
+import * as Tabs from "@radix-ui/react-tabs";
+import { Modal } from "../../ui/Modal";
+import { InlineNotice } from "../../ui/InlineNotice";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -45,11 +48,13 @@ function RetrievalWorkbenchState({
   );
   const [searchMode, setSearchMode] = useState<SearchMode>("hybrid");
   const [query, setQuery] = useState("");
+  const [copyStatus, setCopyStatus] = useState("");
   const searchInput = useRef<HTMLInputElement>(null);
+  const composingSearch = useRef(false);
   const [limit, setLimit] = useState(10);
   const [denseIndexId, setDenseIndexId] = useState("");
 
-  // Context Engineering states
+  // Context states
   const [maxTokens, setMaxTokens] = useState(2048);
   const [overheadTokens, setOverheadTokens] = useState(128);
   const [preamble, setPreamble] = useState(
@@ -255,7 +260,6 @@ function RetrievalWorkbenchState({
       setNewMemorySymbol("");
       setPinnedEvidence(null);
       memoriesQuery.refetch();
-      setTimeout(() => setMemorySuccessMsg(""), 4000);
     },
   });
 
@@ -310,45 +314,30 @@ function RetrievalWorkbenchState({
     });
   };
 
-  const copyCitation = (citation: string) => {
-    navigator.clipboard.writeText(citation);
+  const copyCitation = async (citation: string) => {
+    try { await navigator.clipboard.writeText(citation); setCopyStatus("Citation copied."); }
+    catch { setCopyStatus("Copying is unavailable. Select the citation text to copy it manually."); }
   };
 
   return (
+    <Tabs.Root value={activeTab} onValueChange={value => { if(value === "search" || value === "context" || value === "memory") setActiveTab(value); }} asChild>
     <section aria-labelledby="retrieval-title" style={{ marginTop: 24 }}>
       <div className="section-heading" style={{ marginBottom: 18 }}>
         <div>
-          <h2 id="retrieval-title">Source Retrieval & Grounding Workbench</h2>
+          <h2 id="retrieval-title" tabIndex={-1}>Search, context & memory</h2>
           <span className="muted">
             Search published source, assemble bounded context and retain cited
             evidence
           </span>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <button
-            type="button"
-            className={activeTab === "search" ? "primary" : ""}
-            onClick={() => setActiveTab("search")}
-          >
-            Multi-Modal Search
-          </button>
-          <button
-            type="button"
-            className={activeTab === "context" ? "primary" : ""}
-            onClick={() => setActiveTab("context")}
-          >
-            Context Engineering
-          </button>
-          <button
-            type="button"
-            className={activeTab === "memory" ? "primary" : ""}
-            onClick={() => setActiveTab("memory")}
-          >
-            Repository Memory
-          </button>
-        </div>
+        <Tabs.List aria-label="Source workbench views" className="workbench-tabs">
+          <Tabs.Trigger value="search" className={activeTab === "search" ? "primary" : ""}>Code search</Tabs.Trigger>
+          <Tabs.Trigger value="context" className={activeTab === "context" ? "primary" : ""}>Context</Tabs.Trigger>
+          <Tabs.Trigger value="memory" className={activeTab === "memory" ? "primary" : ""}>Memory</Tabs.Trigger>
+        </Tabs.List>
       </div>
 
+      {copyStatus && <InlineNotice>{copyStatus}</InlineNotice>}
       <IndexBuildPanel
         repositoryId={repositoryId}
         snapshotId={snapshotId}
@@ -357,7 +346,7 @@ function RetrievalWorkbenchState({
 
       {/* TAB 1: MULTI-MODAL SEARCH */}
       {activeTab === "search" && (
-        <div>
+        <Tabs.Content value="search" asChild><div>
           <div
             style={{
               display: "flex",
@@ -366,7 +355,7 @@ function RetrievalWorkbenchState({
               alignItems: "center",
               marginBottom: 16,
               padding: 12,
-              background: "#e8effc",
+              background: "var(--cs-info-bg)",
               borderRadius: 6,
             }}
           >
@@ -413,6 +402,7 @@ function RetrievalWorkbenchState({
             noValidate
             onSubmit={(e) => {
               e.preventDefault();
+                if (composingSearch.current) return;
               searchMutation.mutate();
             }}
             style={{
@@ -436,6 +426,8 @@ function RetrievalWorkbenchState({
               onChange={(e) => setQuery(e.target.value)}
               style={{ flex: 1 }}
               ref={searchInput}
+              onCompositionStart={() => { composingSearch.current = true; }}
+              onCompositionEnd={() => { composingSearch.current = false; }}
               aria-label="Search admitted source"
             />
             {query && (
@@ -564,7 +556,7 @@ function RetrievalWorkbenchState({
                             border: "1px solid var(--border)",
                             borderRadius: 6,
                             padding: 14,
-                            background: "#fff",
+                            background: "var(--cs-panel)",
                           }}
                         >
                           <div
@@ -586,7 +578,7 @@ function RetrievalWorkbenchState({
                               <span
                                 style={{
                                   fontWeight: 700,
-                                  fontFamily: "monospace",
+                                  fontFamily: "var(--cs-mono)",
                                   fontSize: 14,
                                   color: "var(--ink)",
                                 }}
@@ -599,11 +591,11 @@ function RetrievalWorkbenchState({
                               {hit.symbol_name && (
                                 <span
                                   style={{
-                                    background: "#f0f4f8",
+                                    background: "var(--cs-raised)",
                                     padding: "2px 8px",
                                     borderRadius: 4,
                                     fontSize: 12,
-                                    fontFamily: "monospace",
+                                    fontFamily: "var(--cs-mono)",
                                     color: "var(--action)",
                                   }}
                                 >
@@ -616,16 +608,16 @@ function RetrievalWorkbenchState({
                                   style={{
                                     background:
                                       m === "exact"
-                                        ? "#d1fae5"
+                                        ? "var(--cs-success-bg)"
                                         : m === "dense"
-                                          ? "#ede9fe"
-                                          : "#e0f2fe",
+                                          ? "var(--cs-info-bg)"
+                                          : "var(--cs-info-bg)",
                                     color:
                                       m === "exact"
-                                        ? "#065f46"
+                                        ? "var(--cs-success)"
                                         : m === "dense"
-                                          ? "#5b21b6"
-                                          : "#075985",
+                                          ? "var(--cs-action)"
+                                          : "var(--cs-action)",
                                     fontSize: 11,
                                     fontWeight: 600,
                                     padding: "1px 6px",
@@ -696,8 +688,8 @@ function RetrievalWorkbenchState({
 
                           <pre
                             style={{
-                              background: "#0f172a",
-                              color: "#e2e8f0",
+                              background: "var(--cs-panel)",
+                              color: "var(--cs-text)",
                               padding: 12,
                               borderRadius: 4,
                               overflowX: "auto",
@@ -716,12 +708,12 @@ function RetrievalWorkbenchState({
               )}
             </div>
           )}
-        </div>
+        </div></Tabs.Content>
       )}
 
       {/* TAB 2: CONTEXT ENGINEERING */}
       {activeTab === "context" && (
-        <div>
+        <Tabs.Content value="context" asChild><div>
           <div
             style={{
               display: "grid",
@@ -808,7 +800,7 @@ function RetrievalWorkbenchState({
             <div>
               <div
                 style={{
-                  background: "#f8fafc",
+                  background: "var(--cs-raised)",
                   border: "1px solid var(--border)",
                   borderRadius: 6,
                   padding: 16,
@@ -830,7 +822,7 @@ function RetrievalWorkbenchState({
                   <span
                     style={{
                       fontSize: 12,
-                      fontFamily: "monospace",
+                      fontFamily: "var(--cs-mono)",
                       color: "var(--muted)",
                     }}
                   >
@@ -848,7 +840,7 @@ function RetrievalWorkbenchState({
                 <div
                   style={{
                     height: 8,
-                    background: "#e2e8f0",
+                    background: "var(--cs-border)",
                     borderRadius: 4,
                     overflow: "hidden",
                     marginBottom: 12,
@@ -860,7 +852,7 @@ function RetrievalWorkbenchState({
                       width: `${Math.min(100, (lastPacket.total_tokens / maxTokens) * 100)}%`,
                       background:
                         lastPacket.total_tokens > maxTokens * 0.9
-                          ? "#ef4444"
+                          ? "var(--cs-danger)"
                           : "var(--action)",
                     }}
                   />
@@ -916,7 +908,7 @@ function RetrievalWorkbenchState({
                       border: "1px solid var(--border)",
                       borderRadius: 6,
                       padding: 14,
-                      background: "#fff",
+                      background: "var(--cs-panel)",
                     }}
                   >
                     <div
@@ -941,9 +933,9 @@ function RetrievalWorkbenchState({
                             padding: "2px 8px",
                             fontSize: 12,
                             fontWeight: 700,
-                            fontFamily: "monospace",
-                            background: "#e0e7ff",
-                            color: "#3730a3",
+                            fontFamily: "var(--cs-mono)",
+                            background: "var(--cs-info-bg)",
+                            color: "var(--cs-action)",
                             borderRadius: 4,
                             cursor: "pointer",
                           }}
@@ -968,8 +960,8 @@ function RetrievalWorkbenchState({
 
                     <pre
                       style={{
-                        background: "#0f172a",
-                        color: "#e2e8f0",
+                        background: "var(--cs-panel)",
+                        color: "var(--cs-text)",
                         padding: 12,
                         borderRadius: 4,
                         overflowX: "auto",
@@ -985,19 +977,19 @@ function RetrievalWorkbenchState({
               </div>
             </div>
           )}
-        </div>
+        </div></Tabs.Content>
       )}
 
       {/* TAB 3: REPOSITORY MEMORY */}
       {activeTab === "memory" && (
-        <div>
-          <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
+        <Tabs.Content value="memory" asChild><div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
             <input
               type="text"
               placeholder="Query repository memories by topic or semantic phrase…"
               value={memoryDraft}
               onChange={(e) => setMemoryDraft(e.target.value)}
-              style={{ flex: 1 }}
+              style={{ flex: "1 1 180px", minWidth: 0 }}
             />
             <button
               type="button"
@@ -1047,7 +1039,13 @@ function RetrievalWorkbenchState({
             <p>Omitted: {memoriesQuery.data.omission_reasons.join(", ")}</p>
           )}
           {memorySuccessMsg && (
-            <p style={{ color: "#059669", fontWeight: 600, marginBottom: 12 }}>
+            <p
+              style={{
+                color: "var(--cs-success)",
+                fontWeight: 600,
+                marginBottom: 12,
+              }}
+            >
               ✓ {memorySuccessMsg}
             </p>
           )}
@@ -1059,7 +1057,7 @@ function RetrievalWorkbenchState({
               border: "1px solid var(--border)",
               borderRadius: 6,
               padding: 16,
-              background: "#fdfefe",
+              background: "var(--cs-panel)",
               marginBottom: 20,
             }}
           >
@@ -1164,7 +1162,7 @@ function RetrievalWorkbenchState({
                   className="resize-none"
                   required
                   rows={2}
-                  placeholder="Record deterministic fact or architectural invariant established during analysis..."
+                  placeholder="Describe the observation to propose for review..."
                   value={newMemorySummary}
                   onChange={(e) => setNewMemorySummary(e.target.value)}
                   style={{
@@ -1256,7 +1254,7 @@ function RetrievalWorkbenchState({
                 }
                 style={{ width: 200, marginTop: 4 }}
               >
-                {recordMemoryMutation.isPending ? "Recording…" : "Save Memory"}
+                {recordMemoryMutation.isPending ? "Recording…" : "Submit memory for review"}
               </button>
             </form>
           </div>
@@ -1270,7 +1268,7 @@ function RetrievalWorkbenchState({
               <p className="muted">Loading memories…</p>
             ) : memoriesQuery.data?.items.length === 0 ? (
               <p className="muted">
-                No grounded memories recorded for this repository yet.
+                No eligible reviewed memories recorded for this repository yet.
               </p>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
@@ -1281,7 +1279,7 @@ function RetrievalWorkbenchState({
                       border: "1px solid var(--border)",
                       borderRadius: 6,
                       padding: 12,
-                      background: "#fff",
+                      background: "var(--cs-panel)",
                     }}
                   >
                     <div
@@ -1304,8 +1302,8 @@ function RetrievalWorkbenchState({
                         </span>
                         <span
                           style={{
-                            background: "#ede9fe",
-                            color: "#5b21b6",
+                            background: "var(--cs-info-bg)",
+                            color: "var(--cs-action)",
                             fontSize: 11,
                             fontWeight: 600,
                             padding: "2px 6px",
@@ -1345,9 +1343,9 @@ function RetrievalWorkbenchState({
                           <span
                             key={i}
                             style={{
-                              fontFamily: "monospace",
+                              fontFamily: "var(--cs-mono)",
                               fontSize: 12,
-                              background: "#f1f5f9",
+                              background: "var(--cs-raised)",
                               padding: "1px 6px",
                               borderRadius: 3,
                             }}
@@ -1366,32 +1364,15 @@ function RetrievalWorkbenchState({
               </div>
             )}
           </div>
-        </div>
+        </div></Tabs.Content>
       )}
 
       {/* SOURCE VIEW MODAL */}
       {selectedFileForView && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(15, 23, 42, 0.6)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: 24,
-          }}
-        >
+        <Modal open title="Source evidence" onClose={() => setSelectedFileForView(null)} variant="drawer">
           <div
             style={{
-              background: "#fff",
+              background: "var(--cs-panel)",
               borderRadius: 8,
               maxWidth: 900,
               width: "100%",
@@ -1400,7 +1381,7 @@ function RetrievalWorkbenchState({
               flexDirection: "column",
               padding: 20,
               boxShadow:
-                "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                "var(--cs-shadow), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
             }}
           >
             <div
@@ -1421,7 +1402,7 @@ function RetrievalWorkbenchState({
                   style={{
                     fontSize: 12,
                     color: "var(--muted)",
-                    fontFamily: "monospace",
+                    fontFamily: "var(--cs-mono)",
                   }}
                 >
                   {selectedFileForView.filePath}
@@ -1482,8 +1463,8 @@ function RetrievalWorkbenchState({
                   {sourceViewQuery.data.is_omitted ? (
                     <p
                       style={{
-                        color: "#b45309",
-                        background: "#fef3c7",
+                        color: "var(--cs-warning)",
+                        background: "var(--cs-warning-bg)",
                         padding: 12,
                         borderRadius: 4,
                       }}
@@ -1494,8 +1475,8 @@ function RetrievalWorkbenchState({
                   ) : (
                     <pre
                       style={{
-                        background: "#0f172a",
-                        color: "#e2e8f0",
+                        background: "var(--cs-panel)",
+                        color: "var(--cs-text)",
                         padding: 14,
                         borderRadius: 6,
                         overflowX: "auto",
@@ -1511,8 +1492,8 @@ function RetrievalWorkbenchState({
               ) : null}
             </div>
           </div>
-        </div>
+        </Modal>
       )}
-    </section>
+    </section></Tabs.Root>
   );
 }

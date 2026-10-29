@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -33,16 +34,16 @@ describe("RetrievalWorkbench", () => {
     renderWithClient(<RetrievalWorkbench {...defaultProps} />);
 
     expect(
-      screen.getByText(/Source Retrieval & Grounding Workbench/i),
+      screen.getByText(/Search, context & memory/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Multi-Modal Search/i }),
+      screen.getByRole("tab", { name: /Code search/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Context Engineering/i }),
+      screen.getByRole("tab", { name: /Context/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Repository Memory/i }),
+      screen.getByRole("tab", { name: /Memory/i }),
     ).toBeInTheDocument();
   });
 
@@ -63,13 +64,14 @@ describe("RetrievalWorkbench", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders context engineering controls when switching to Context tab", () => {
+  it("renders context engineering controls when switching to Context tab", async () => {
     renderWithClient(<RetrievalWorkbench {...defaultProps} />);
 
-    const contextTab = screen.getByRole("button", {
-      name: /Context Engineering/i,
+    const contextTab = screen.getByRole("tab", {
+      name: /Context/i,
     });
-    fireEvent.click(contextTab);
+    await userEvent.click(contextTab);
+    expect(contextTab).toHaveAttribute("aria-selected", "true");
 
     expect(screen.getByText(/Max Token Budget/i)).toBeInTheDocument();
     expect(screen.getByText(/Reserved Overhead Tokens/i)).toBeInTheDocument();
@@ -78,13 +80,14 @@ describe("RetrievalWorkbench", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders repository memory creation form and query input when switching to Memory tab", () => {
+  it("renders repository memory creation form and query input when switching to Memory tab", async () => {
     renderWithClient(<RetrievalWorkbench {...defaultProps} />);
 
-    const memoryTab = screen.getByRole("button", {
-      name: /Repository Memory/i,
+    const memoryTab = screen.getByRole("tab", {
+      name: /Memory/i,
     });
-    fireEvent.click(memoryTab);
+    await userEvent.click(memoryTab);
+    expect(memoryTab).toHaveAttribute("aria-selected", "true");
 
     expect(
       screen.getByPlaceholderText(/Query repository memories by topic/i),
@@ -94,7 +97,7 @@ describe("RetrievalWorkbench", () => {
       screen.getByPlaceholderText(/e\.g\. auth-timing-invariance/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Save Memory/i }),
+      screen.getByRole("button", { name: /Submit memory for review/i }),
     ).toBeInTheDocument();
   });
 });

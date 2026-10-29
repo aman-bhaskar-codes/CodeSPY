@@ -56,6 +56,7 @@ from app.contracts.investigation import (
     InvestigationMode,
     InvestigationSummaryV1,
 )
+from app.contracts.investigation_execution import InvestigationReportV1
 from app.contracts.investigation_jobs import (
     InvestigationCancelResponseV1,
     InvestigationCreateRequestV2,
@@ -162,6 +163,7 @@ from app.security.authorization import require_repository, require_snapshot
 from app.security.cursors import CursorCodec
 from app.security.oauth import OAuthRejected, OAuthService
 from app.security.sessions import SessionService, token_digest
+from app.services.analysis_sources import locate_source
 from app.services.configured_model_gateway import ModelConnectionError
 from app.services.context_assembly import ContextAssemblyService
 from app.services.dense_search import DenseSearchService
@@ -202,6 +204,7 @@ from app.services.output_validator import OutputValidationError
 from app.services.persistence import PersistenceService
 from app.services.retries import RetryService
 from app.services.scan_jobs import ScanJobService
+from app.services.scan_selection import ScanConfigurationV1, choose_scan_configuration
 from app.services.short_path_investigator import ShortPathInvestigator
 from app.services.source_view import SourceViewService
 from app.services.stream_buffer import InvestigationStreamBuffer
@@ -282,6 +285,7 @@ class ApplicationPorts:
     embedding_port: EmbeddingPort | None = None
     index_config: IndexBuildConfigV1 | None = None
     index_builder: IndexJobCapabilities | None = None
+    scan_defaults: ScanConfigV1 | None = None
 
 
 def legacy_job_record(
@@ -342,7 +346,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     indexes = IndexJobService(
         ports.factory, ports.index_builder if ports.index_config is not None else None
     )
-    retries = RetryService(ports.factory, ports.store)
+    retries = RetryService(ports.factory, ports.store, scan_capabilities=ports.scan_capabilities)
     submissions = SubmissionService(ports.factory, ports.store, policy=ports.admission_policy)
     structural = StructuralAnalysisService(ports.factory)
     cursors = CursorCodec(secrets.token_bytes(32))
@@ -749,6 +753,18 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             ),
         )
 
+    @app.get("/api/v1/repositories/{repository_id}/metadata")
+    async def repository_metadata(request: Request, repository_id: UUID) -> RepositoryListItemV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as session:
+            record = await RepositoryRepository(session).get(ctx, repository_id)
+        return RepositoryListItemV1(
+            id=record.id,
+            org_id=record.org_id,
+            display_name=record.display_name,
+            source_kind=record.source_kind,
+        )
+
     @app.post("/api/v1/repositories", status_code=201)
     async def create_repository(request: Request) -> RepositoryRecord:
         user = await principal(request)
@@ -1030,6 +1046,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         after: str | None = None,
         limit: int = 50,
         eligible: bool | None = None,
+        repository_id: UUID | None = None,
     ) -> InventoryPageV1:
         if not 1 <= limit <= 200:
             raise HTTPException(422)
@@ -1046,6 +1063,15 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         except ValueError:
             raise HTTPException(422) from None
         async with transaction(ports.factory) as s:
+            if repository_id is not None:
+                actual_repository = await s.scalar(
+                    select(source_snapshots.c.repository_id).where(
+                        source_snapshots.c.org_id == ctx.org_id,
+                        source_snapshots.c.id == snapshot_id,
+                    )
+                )
+                if actual_repository != repository_id:
+                    raise HTTPException(404, detail="snapshot_not_found")
             query = (
                 select(
                     source_files.c.id,
@@ -1451,6 +1477,39 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             raise HTTPException(503, detail="index_unavailable")
         return await indexes.retry(ctx, repository_id, job_id, body.request_key)
 
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-configuration")
+    async def scan_configuration(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> ScanConfigurationV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as session:
+            exists = await session.scalar(
+                select(source_snapshots.c.id).where(
+                    source_snapshots.c.org_id == ctx.org_id,
+                    source_snapshots.c.repository_id == repository_id,
+                    source_snapshots.c.id == snapshot_id,
+                    source_snapshots.c.state == "sealed",
+                )
+            )
+            if exists is None:
+                raise HTTPException(404, detail="snapshot_not_found")
+            if ports.scan_capabilities is None:
+                return ScanConfigurationV1(configured=False, reason="scanner_unavailable")
+            if ports.scan_defaults is None:
+                return ScanConfigurationV1(configured=False, reason="policy_unavailable")
+            try:
+                located = await locate_source(session, ctx.org_id, repository_id, snapshot_id)
+            except NoResultFound:
+                raise HTTPException(404, detail="source_unavailable") from None
+        try:
+            ports.scan_capabilities.validate(ports.scan_defaults)
+            result = choose_scan_configuration(ports.scan_defaults, located.files)
+            if result.config is not None:
+                ports.scan_capabilities.validate(result.config)
+            return result
+        except ValueError:
+            raise HTTPException(503, detail="scan_policy_unavailable") from None
+
     @app.post(
         "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans",
         status_code=202,
@@ -1508,6 +1567,32 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         ):
             raise HTTPException(404, detail="scan_job_not_found")
         return job
+
+    @app.post(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-jobs/{job_id}/cancel"
+    )
+    async def cancel_scan_job(
+        request: Request, repository_id: UUID, snapshot_id: UUID, job_id: UUID
+    ) -> ScanJobRecordV4:
+        ctx = await repository_context(request, repository_id, write=True)
+        await get_scan_job(request, repository_id, snapshot_id, job_id)
+        key(request)
+        result = await jobs.cancel(ctx, job_id)
+        assert isinstance(result, ScanJobRecordV4)
+        return result
+
+    @app.post(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-jobs/{job_id}/retry",
+        status_code=202,
+    )
+    async def retry_scan_job(
+        request: Request, repository_id: UUID, snapshot_id: UUID, job_id: UUID
+    ) -> RetryScanResponseV3:
+        ctx = await repository_context(request, repository_id, write=True)
+        await get_scan_job(request, repository_id, snapshot_id, job_id)
+        result = await retries.retry(ctx, job_id, key(request))
+        assert isinstance(result, RetryScanResponseV3)
+        return result
 
     @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans/{run_id}/summary")
     async def get_scan_summary(
@@ -2517,6 +2602,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 InvestigationSummaryV2,
                 InvestigationDetailResponseV1,
                 InvestigationDetailResponseV2,
+                InvestigationReportV1,
                 InvestigationEventV1,
                 InvestigationEventV2,
                 InvestigationEventPageV1,

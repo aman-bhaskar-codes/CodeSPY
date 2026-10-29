@@ -99,7 +99,7 @@ export function FindingsTable({
           flexWrap: "wrap",
           gap: "12px",
           alignItems: "center",
-          background: "#fafbfc",
+          background: "var(--cs-raised)",
         }}
       >
         <div>
@@ -250,7 +250,7 @@ export function FindingsTable({
           <thead>
             <tr
               style={{
-                background: "#f1f5f9",
+                background: "var(--cs-raised)",
                 textAlign: "left",
                 borderBottom: "1px solid var(--border)",
               }}
@@ -311,7 +311,7 @@ export function FindingsTable({
                     transition: "background 0.15s ease",
                   }}
                   onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = "#f8fafc")
+                    (e.currentTarget.style.background = "var(--cs-text)")
                   }
                   onMouseLeave={(e) =>
                     (e.currentTarget.style.background = "transparent")
@@ -328,15 +328,15 @@ export function FindingsTable({
                         borderRadius: "4px",
                         background:
                           item.severity === "critical"
-                            ? "#fde8e8"
+                            ? "var(--cs-danger-bg)"
                             : item.severity === "high"
-                              ? "#feeedb"
-                              : "#f1f5f9",
+                              ? "var(--cs-warning-bg)"
+                              : "var(--cs-raised)",
                         color:
                           item.severity === "critical"
-                            ? "#9c2929"
+                            ? "var(--cs-danger)"
                             : item.severity === "high"
-                              ? "#a55307"
+                              ? "var(--cs-warning)"
                               : "var(--ink)",
                       }}
                     >
@@ -391,15 +391,15 @@ export function FindingsTable({
                         borderRadius: "4px",
                         background:
                           item.triage_state === "confirmed"
-                            ? "#fde8e8"
+                            ? "var(--cs-danger-bg)"
                             : item.triage_state === "false_positive"
-                              ? "#f0fdf4"
-                              : "#f1f5f9",
+                              ? "var(--cs-success-bg)"
+                              : "var(--cs-raised)",
                         color:
                           item.triage_state === "confirmed"
-                            ? "#9c2929"
+                            ? "var(--cs-danger)"
                             : item.triage_state === "false_positive"
-                              ? "#166534"
+                              ? "var(--cs-success)"
                               : "var(--muted)",
                       }}
                     >
@@ -441,7 +441,7 @@ export function FindingsTable({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          background: "#fafbfc",
+          background: "var(--cs-raised)",
           borderTop: "1px solid var(--border)",
         }}
       >
@@ -457,7 +457,7 @@ export function FindingsTable({
             fontSize: "13px",
             minHeight: "32px",
             background: hasNextPage ? "var(--action)" : "transparent",
-            color: hasNextPage ? "#fff" : "var(--muted)",
+            color: hasNextPage ? "var(--cs-panel)" : "var(--muted)",
             border: hasNextPage ? "none" : "1px solid var(--border)",
             borderRadius: "4px",
             cursor: hasNextPage ? "pointer" : "default",

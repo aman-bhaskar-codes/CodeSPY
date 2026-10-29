@@ -1,8 +1,145 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
+
+it("loads findings from the published scan run rather than the job identity", async () => {
+  const repo = "10000000-0000-4000-8000-000000000001",
+    snapshot = "10000000-0000-4000-8000-000000000002",
+    job = "10000000-0000-4000-8000-000000000003",
+    run = "10000000-0000-4000-8000-000000000004";
+  window.history.replaceState(
+    {},
+    "",
+    `/?repository=${repo}&snapshot=${snapshot}&scan=${job}#findings-title`,
+  );
+  const fetcher = vi
+    .fn()
+    .mockImplementation((url: string) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            url.endsWith("/session")
+              ? {
+                  principal_id: "fixture",
+                  csrf_token: "fixture",
+                  auth_backend: "local_fixture",
+                }
+              : url.endsWith("/repositories")
+                ? {
+                    items: [
+                      {
+                        id: repo,
+                        display_name: "Fixture",
+                        source_kind: "archive",
+                      },
+                    ],
+                  }
+                : url.includes("/inventory")
+                  ? { items: [] }
+                  : url.endsWith(`/scan-jobs/${job}`)
+                    ? { id: job, state: "succeeded", result_run_id: run }
+                    : { code: "fixture_unavailable" },
+          ),
+          {
+            status:
+              url.includes("/scan-jobs/") ||
+              url.endsWith("/session") ||
+              url.endsWith("/repositories") ||
+              url.includes("/inventory")
+                ? 200
+                : 503,
+          },
+        ),
+      ),
+    );
+  vi.stubGlobal("fetch", fetcher);
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <App />
+    </QueryClientProvider>,
+  );
+  await waitFor(() =>
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringContaining(`/scans/${run}/summary`),
+      expect.anything(),
+    ),
+  );
+});
+
+it("restores repository context on reload and browser history navigation", async () => {
+  const first = "10000000-0000-4000-8000-000000000011";
+  const second = "10000000-0000-4000-8000-000000000012";
+  window.history.replaceState({}, "", `/?repository=${first}#upload-title`);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            url.endsWith("session")
+              ? {
+                  principal_id: "fixture",
+                  csrf_token: "fixture-csrf",
+                  auth_backend: "local_fixture",
+                }
+              : url.includes("/inventory")
+                ? { items: [], next_cursor: null }
+                : {
+                    items: [first, second].map((id) => ({
+                      id,
+                      display_name: id === first ? "Alpha" : "Beta",
+                      source_kind: "archive",
+                    })),
+                  },
+          ),
+        ),
+      ),
+    ),
+  );
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <App />
+    </QueryClientProvider>,
+  );
+  const selector = await screen.findByRole("combobox", { name: "Repository" });
+  await waitFor(() => expect(selector).toHaveValue(first));
+  act(() => {
+    window.history.pushState({}, "", `/?repository=${second}#upload-title`);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+  await waitFor(() => expect(selector).toHaveValue(second));
+  expect(window.location.hash).toBe("#upload-title");
+  act(() => {
+    window.history.pushState(
+      {},
+      "",
+      `/?repository=${second}&snapshot=10000000-0000-4000-8000-000000000099&scan=10000000-0000-4000-8000-000000000098#upload-title`,
+    );
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+  fireEvent.change(selector, { target: { value: first } });
+  await waitFor(() =>
+    expect(window.location.search).not.toContain("snapshot="),
+  );
+  expect(window.location.search).not.toContain("scan=");
+});
 
 afterEach(() => {
   cleanup();
@@ -32,7 +169,7 @@ it("explains an unavailable session without exposing server details", async () =
     "Sign-in is unavailable",
   );
   expect(
-    screen.getByRole("heading", { name: "Source inventory" }),
+    screen.getByRole("heading", { name: "Workspace overview" }),
   ).toBeVisible();
 });
 it("shows the authorized empty repository state", async () => {
@@ -72,41 +209,39 @@ it("follows the inventory child after admission succeeds", async () => {
   const parent = "10000000-0000-4000-8000-000000000001";
   const child = "10000000-0000-4000-8000-000000000002";
   window.history.replaceState({}, "", `/?job=${parent}`);
-  const fetcher = vi
-    .fn()
-    .mockImplementation((url: string) =>
-      Promise.resolve(
-        new Response(
-          JSON.stringify(
-            url.endsWith("session")
+  const fetcher = vi.fn().mockImplementation((url: string) =>
+    Promise.resolve(
+      new Response(
+        JSON.stringify(
+          url.endsWith("session")
+            ? {
+                principal_id: "fixture",
+                csrf_token: "fixture-csrf",
+                auth_backend: "local_fixture",
+              }
+            : url.endsWith(parent)
               ? {
-                  principal_id: "fixture",
-                  csrf_token: "fixture-csrf",
-                  auth_backend: "local_fixture",
+                  id: parent,
+                  operation: "admit_source",
+                  state: "succeeded",
+                  inventory_job_id: child,
+                  attempt_count: 1,
+                  max_attempts: 3,
                 }
-              : url.endsWith(parent)
+              : url.endsWith(child)
                 ? {
-                    id: parent,
-                    operation: "admit_source",
-                    state: "succeeded",
-                    inventory_job_id: child,
+                    id: child,
+                    operation: "inventory_snapshot",
+                    state: "failed",
                     attempt_count: 1,
                     max_attempts: 3,
+                    failure_code: "storage_unavailable",
                   }
-                : url.endsWith(child)
-                  ? {
-                      id: child,
-                      operation: "inventory_snapshot",
-                      state: "failed",
-                      attempt_count: 1,
-                      max_attempts: 3,
-                      failure_code: "storage_unavailable",
-                    }
-                  : { items: [] },
-          ),
+                : { items: [] },
         ),
       ),
-    );
+    ),
+  );
   vi.stubGlobal("fetch", fetcher);
   render(
     <QueryClientProvider
@@ -126,30 +261,28 @@ it("allows corrected input after a terminal upload rejection without a job", asy
   window.history.replaceState({}, "", `/?submission=${id}`);
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockImplementation((url: string) =>
-        Promise.resolve(
-          new Response(
-            JSON.stringify(
-              url.endsWith("session")
+    vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            url.endsWith("session")
+              ? {
+                  principal_id: "fixture",
+                  csrf_token: "fixture-csrf",
+                  auth_backend: "local_fixture",
+                }
+              : url.includes("submissions")
                 ? {
-                    principal_id: "fixture",
-                    csrf_token: "fixture-csrf",
-                    auth_backend: "local_fixture",
+                    id,
+                    state: "rejected",
+                    job_id: null,
+                    error_code: "unsupported_format",
                   }
-                : url.includes("submissions")
-                  ? {
-                      id,
-                      state: "rejected",
-                      job_id: null,
-                      error_code: "unsupported_format",
-                    }
-                  : { items: [] },
-            ),
+                : { items: [] },
           ),
         ),
       ),
+    ),
   );
   render(
     <QueryClientProvider
@@ -239,7 +372,11 @@ it("displays structural architecture section and allows triggering analysis", as
   const user = userEvent.setup();
   const repoId = "10000000-0000-4000-8000-000000000010";
   const snapId = "10000000-0000-4000-8000-000000000020";
-  window.history.replaceState({}, "", `/?snapshot=${snapId}`);
+  window.history.replaceState(
+    {},
+    "",
+    `/?repository=${repoId}&snapshot=${snapId}#structural-title`,
+  );
 
   let analysisCreated = false;
   const fetcher = vi
@@ -276,23 +413,21 @@ it("displays structural architecture section and allows triggering analysis", as
         );
       }
       if (url.includes("/investigations")) {
-        return Promise.resolve(
-          new Response(JSON.stringify({ items: [] })),
-        );
+        return Promise.resolve(new Response(JSON.stringify({ items: [] })));
       }
       if (url.includes("/repositories")) {
         return Promise.resolve(
           new Response(
             JSON.stringify({
-              items: [{ id: repoId, display_name: "repo-1", default_branch: "main" }],
+              items: [
+                { id: repoId, display_name: "repo-1", default_branch: "main" },
+              ],
             }),
           ),
         );
       }
       if (url.includes("/inventory")) {
-        return Promise.resolve(
-          new Response(JSON.stringify({ items: [] })),
-        );
+        return Promise.resolve(new Response(JSON.stringify({ items: [] })));
       }
       return Promise.resolve(new Response(JSON.stringify({})));
     });
@@ -308,11 +443,6 @@ it("displays structural architecture section and allows triggering analysis", as
     </QueryClientProvider>,
   );
 
-  // Wait for repository option to be loaded and select it
-  await screen.findByRole("option", { name: /repo-1/ });
-  const select = screen.getByRole("combobox", { name: "Repository" });
-  await user.selectOptions(select, repoId);
-
   // Structural Architecture section should appear
   expect(
     await screen.findByRole("heading", { name: "Structural Architecture" }),
@@ -325,4 +455,68 @@ it("displays structural architecture section and allows triggering analysis", as
   await user.click(analyzeBtn);
 
   expect(analysisCreated).toBe(true);
+});
+
+it("does not install a scan result after history changes the source context", async () => {
+  const repo = "10000000-0000-4000-8000-000000000071",
+    snapshot = "10000000-0000-4000-8000-000000000072",
+    other = "10000000-0000-4000-8000-000000000073",
+    job = "10000000-0000-4000-8000-000000000074";
+  window.history.replaceState(
+    {},
+    "",
+    `/?repository=${repo}&snapshot=${snapshot}#findings-title`,
+  );
+  let complete!: (value: Response) => void;
+  const fetcher = vi.fn((url: string, options?: RequestInit) => {
+    if (
+      url.endsWith(`/snapshots/${snapshot}/scans`) &&
+      options?.method === "POST"
+    )
+      return new Promise<Response>((resolve) => {
+        complete = resolve;
+      });
+    return Promise.resolve(
+      new Response(
+        JSON.stringify(
+          url.endsWith("/session")
+            ? { principal_id: "fixture", csrf_token: "fixture" }
+            : url.endsWith("/repositories")
+              ? {
+                  items: [repo, other].map((id) => ({
+                    id,
+                    display_name: id,
+                    source_kind: "archive",
+                  })),
+                }
+              : url.endsWith("scan-configuration")
+                ? { configured: true, config: {}, live_access_verified: false }
+                : { items: [] },
+        ),
+      ),
+    );
+  });
+  vi.stubGlobal("fetch", fetcher);
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <App />
+    </QueryClientProvider>,
+  );
+  const start = await screen.findByRole("button", { name: "Scan repository" });
+  await waitFor(() => expect(start).toBeEnabled());
+  fireEvent.click(start);
+  await waitFor(() => expect(complete).toBeDefined());
+  act(() => {
+    window.history.pushState({}, "", `/?repository=${other}#upload-title`);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+  await act(async () =>
+    complete(new Response(JSON.stringify({ job_id: job }))),
+  );
+  expect(window.location.search).toContain(other);
+  expect(window.location.search).not.toContain(job);
 });

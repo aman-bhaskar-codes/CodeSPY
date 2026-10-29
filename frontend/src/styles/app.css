@@ -1,14 +1,10 @@
+@import "./tokens.css";
+
 :root {
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  color: #18304b;
-  background: #f2f5fa;
-  --ink: #18304b;
-  --action: #2459c5;
-  --surface: #fff;
-  --muted: #52647a;
-  --border: #c7d2e1;
-  --danger: #9c2929;
-  scrollbar-color: #52647a #f2f5fa;
+  font-family: var(--cs-font);
+  color: var(--cs-text);
+  background: var(--cs-canvas);
+  scrollbar-color: var(--cs-scrollbar) var(--cs-canvas);
   scrollbar-width: auto;
   font-synthesis: none;
   line-height: 1.6;
@@ -45,7 +41,7 @@ header {
   color: var(--muted);
 }
 h1 {
-  font-size: clamp(32px, 5vw, 48px);
+  font-size: clamp(26px, 3vw, 36px);
   letter-spacing: -0.04em;
   margin: 0;
 }
@@ -54,7 +50,7 @@ h2 {
   margin: 0 0 12px;
 }
 .eyebrow {
-  font-family: ui-monospace, monospace;
+  font-family: var(--cs-mono);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -111,10 +107,10 @@ button {
   margin: 6px 12px 6px 0;
 }
 button:hover {
-  background: #e8eef8;
+  background: var(--cs-raised);
 }
 button:active {
-  background: #dbe5f7;
+  background: var(--cs-raised);
 }
 button:disabled {
   cursor: not-allowed;
@@ -122,11 +118,11 @@ button:disabled {
 }
 .primary {
   background: var(--action);
-  color: white;
+  color: var(--cs-action-ink);
   border-color: var(--action);
 }
 .primary:hover {
-  background: #1b459b;
+  background: var(--cs-action-hover);
 }
 a {
   color: var(--action);
@@ -184,7 +180,7 @@ tbody th {
   min-width: 180px;
 }
 .hash {
-  font-family: ui-monospace, monospace;
+  font-family: var(--cs-mono);
   font-size: 12px;
   max-width: 300px;
   overflow-wrap: anywhere;
@@ -200,18 +196,18 @@ nav {
   height: 12px;
 }
 ::-webkit-scrollbar-track {
-  background: #f2f5fa;
+  background: var(--cs-canvas);
 }
 ::-webkit-scrollbar-thumb {
-  background: #52647a;
-  border: 3px solid #f2f5fa;
+  background: var(--cs-scrollbar);
+  border: 3px solid var(--cs-canvas);
   border-radius: 8px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #18304b;
+  background: var(--cs-text);
 }
 ::-webkit-scrollbar-thumb:active {
-  background: #2459c5;
+  background: var(--cs-action);
 }
 @media (max-width: 600px) {
   header,
@@ -247,11 +243,20 @@ nav {
 .resize-none {
   resize: none;
 }
+.inline-notice { padding: 16px; border: 1px solid var(--cs-control-border); border-radius: var(--cs-radius); background: var(--cs-info-bg); color: var(--cs-text); }
+.inline-notice--danger { border-color: var(--cs-danger); color: var(--cs-danger); background: var(--cs-danger-bg); }
+.inline-notice--success { border-color: var(--cs-success); color: var(--cs-success); background: var(--cs-success-bg); }
 
 .investigation-heading {
   flex-wrap: wrap;
   gap: 12px;
 }
+.feedback-actions { flex-wrap: wrap; gap: 12px; }
+.trace-node { width: 100%; margin: 0; text-align: left; }
+.repository-create { padding: 16px 0; margin-bottom: 16px; border-bottom: 1px solid var(--cs-border); }
+summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
+.workbench-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.workbench-tabs button { margin: 0; min-width: 0; font-size: 14px; }
 .investigation-heading > div,
 .investigation-columns > div {
   min-width: 0;
@@ -263,4 +268,86 @@ nav {
   .investigation-columns {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+input,
+select,
+button,
+textarea {
+  border-color: var(--cs-control-border);
+}
+textarea {
+  font: inherit;
+  background: var(--cs-panel);
+  color: var(--cs-text);
+  border: 1px solid var(--cs-control-border);
+  border-radius: var(--cs-radius);
+  padding: 12px;
+  min-height: 112px;
+  max-width: 100%;
+  width: 100%;
+}
+.model-profiles {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.model-profiles li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius);
+}
+.model-profiles li > div {
+  display: grid;
+  min-width: 140px;
+}
+.card {
+  padding: 16px;
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius);
+  margin: 12px 0;
+}
+pre {
+  max-width: 100%;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--cs-mono);
+  background: var(--cs-canvas);
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius);
+  padding: 16px;
+}
+p,
+li,
+h2,
+h3,
+h4 {
+  overflow-wrap: anywhere;
+}
+button,
+a,
+input,
+select,
+textarea {
+  scroll-margin: 24px;
+}
+button:hover:not(:disabled) {
+  background: var(--cs-raised);
+}
+button.primary:hover:not(:disabled) {
+  background: var(--cs-action-hover);
 }

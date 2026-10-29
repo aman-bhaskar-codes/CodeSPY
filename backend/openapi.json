@@ -373,6 +373,93 @@
         "title": "ChunkKind",
         "type": "string"
       },
+      "ClaimVerificationStatus": {
+        "description": "Verification outcome for a claim.",
+        "enum": [
+          "source_correspondence_confirmed",
+          "unsupported",
+          "refuted",
+          "location_valid_quote_missing",
+          "evidence_unavailable"
+        ],
+        "title": "ClaimVerificationStatus",
+        "type": "string"
+      },
+      "ClaimVerificationV1": {
+        "additionalProperties": false,
+        "description": "Server-side verification result for a single claim.",
+        "properties": {
+          "claim_id": {
+            "format": "uuid",
+            "title": "Claim Id",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 1024,
+            "title": "Notes",
+            "type": "string"
+          },
+          "resolved_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Resolved File"
+          },
+          "resolved_line_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Resolved Line End"
+          },
+          "resolved_line_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Resolved Line Start"
+          },
+          "source_digest": {
+            "anyOf": [
+              {
+                "pattern": "^([0-9a-f]{64})?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Digest"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ClaimVerificationStatus"
+          }
+        },
+        "required": [
+          "claim_id",
+          "status"
+        ],
+        "title": "ClaimVerificationV1",
+        "type": "object"
+      },
       "ComponentSectionV1": {
         "additionalProperties": false,
         "properties": {
@@ -3619,6 +3706,16 @@
         "title": "InvestigationCancelResponseV1",
         "type": "object"
       },
+      "InvestigationClaimKind": {
+        "description": "Typed claim categories for evidence grounding.",
+        "enum": [
+          "source_observation",
+          "security_hypothesis",
+          "coverage_statement"
+        ],
+        "title": "InvestigationClaimKind",
+        "type": "string"
+      },
       "InvestigationClaimV1": {
         "additionalProperties": false,
         "properties": {
@@ -3701,6 +3798,94 @@
           "statement"
         ],
         "title": "InvestigationClaimV1",
+        "type": "object"
+      },
+      "InvestigationClaimV2": {
+        "additionalProperties": false,
+        "description": "Typed claim with evidence binding for report grounding.",
+        "properties": {
+          "claim_id": {
+            "format": "uuid",
+            "title": "Claim Id",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/InvestigationClaimKind"
+          },
+          "statement": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Statement",
+            "type": "string"
+          },
+          "suggested_file": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Suggested File"
+          },
+          "suggested_line_end": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Suggested Line End"
+          },
+          "suggested_line_start": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Suggested Line Start"
+          },
+          "suggested_quote": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Suggested Quote"
+          }
+        },
+        "required": [
+          "claim_id",
+          "statement",
+          "kind"
+        ],
+        "title": "InvestigationClaimV2",
         "type": "object"
       },
       "InvestigationCreateRequestV1": {
@@ -4364,6 +4549,135 @@
         "title": "InvestigationMode",
         "type": "string"
       },
+      "InvestigationReportV1": {
+        "additionalProperties": false,
+        "description": "Immutable final investigation report.",
+        "properties": {
+          "claims": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/InvestigationClaimV2"
+            },
+            "title": "Claims",
+            "type": "array"
+          },
+          "coverage_notes": {
+            "default": "",
+            "maxLength": 4096,
+            "title": "Coverage Notes",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_support_available": {
+            "default": true,
+            "title": "Current Support Available",
+            "type": "boolean"
+          },
+          "evidence_refs": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evidence Refs",
+            "type": "array"
+          },
+          "held_usage_micros": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Held Usage Micros",
+            "type": "integer"
+          },
+          "investigation_id": {
+            "format": "uuid",
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "limitations": {
+            "default": "",
+            "maxLength": 4096,
+            "title": "Limitations",
+            "type": "string"
+          },
+          "report_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Report Digest",
+            "type": "string"
+          },
+          "report_id": {
+            "format": "uuid",
+            "title": "Report Id",
+            "type": "string"
+          },
+          "runtime_revision": {
+            "minimum": 1,
+            "title": "Runtime Revision",
+            "type": "integer"
+          },
+          "settled_usage_micros": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Settled Usage Micros",
+            "type": "integer"
+          },
+          "spec_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Spec Hash",
+            "type": "string"
+          },
+          "stop_reason": {
+            "$ref": "#/components/schemas/InvestigationStopReason"
+          },
+          "summary": {
+            "maxLength": 8192,
+            "title": "Summary",
+            "type": "string"
+          },
+          "unknowns": {
+            "default": "",
+            "maxLength": 4096,
+            "title": "Unknowns",
+            "type": "string"
+          },
+          "verdict": {
+            "maxLength": 64,
+            "title": "Verdict",
+            "type": "string"
+          },
+          "verdict_confidence": {
+            "default": 1.0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Verdict Confidence",
+            "type": "number"
+          },
+          "verifications": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ClaimVerificationV1"
+            },
+            "title": "Verifications",
+            "type": "array"
+          }
+        },
+        "required": [
+          "report_id",
+          "investigation_id",
+          "spec_hash",
+          "runtime_revision",
+          "verdict",
+          "summary",
+          "stop_reason",
+          "report_digest",
+          "created_at"
+        ],
+        "title": "InvestigationReportV1",
+        "type": "object"
+      },
       "InvestigationResumeRequestV1": {
         "additionalProperties": false,
         "description": "Resume request \u2014 only after awaiting_human_decision with resolution.",
@@ -4629,6 +4943,26 @@
           "cancelled"
         ],
         "title": "InvestigationStatus",
+        "type": "string"
+      },
+      "InvestigationStopReason": {
+        "description": "Why an investigation execution stopped.",
+        "enum": [
+          "completed",
+          "partial_coverage",
+          "step_budget_exhausted",
+          "tool_budget_exhausted",
+          "context_budget_exceeded",
+          "spending_budget_exhausted",
+          "deadline_exceeded",
+          "model_outcome_unknown",
+          "cancelled",
+          "access_revoked",
+          "configuration_missing",
+          "integrity_failure",
+          "nonresumable"
+        ],
+        "title": "InvestigationStopReason",
         "type": "string"
       },
       "InvestigationSummaryV1": {
@@ -6525,6 +6859,39 @@
         "title": "RetryResponseV2",
         "type": "object"
       },
+      "RetryScanResponseV3": {
+        "additionalProperties": false,
+        "properties": {
+          "retry_job_id": {
+            "format": "uuid",
+            "title": "Retry Job Id",
+            "type": "string"
+          },
+          "retry_of_job_id": {
+            "format": "uuid",
+            "title": "Retry Of Job Id",
+            "type": "string"
+          },
+          "scan_spec_id": {
+            "format": "uuid",
+            "title": "Scan Spec Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 3,
+            "default": 3,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "retry_job_id",
+          "retry_of_job_id",
+          "scan_spec_id"
+        ],
+        "title": "RetryScanResponseV3",
+        "type": "object"
+      },
       "RouteObservationV1": {
         "additionalProperties": false,
         "properties": {
@@ -6772,6 +7139,71 @@
           "catalog_digest"
         ],
         "title": "ScanConfigV1",
+        "type": "object"
+      },
+      "ScanConfigurationV1": {
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanConfigV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "live_access_verified": {
+            "const": false,
+            "default": false,
+            "title": "Live Access Verified",
+            "type": "boolean"
+          },
+          "omitted_lockfiles": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Omitted Lockfiles",
+            "type": "integer"
+          },
+          "omitted_source_files": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Omitted Source Files",
+            "type": "integer"
+          },
+          "reason": {
+            "enum": [
+              "configured",
+              "scanner_unavailable",
+              "policy_unavailable",
+              "no_eligible_files"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "selected_lockfiles": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Selected Lockfiles",
+            "type": "integer"
+          },
+          "selected_source_files": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Selected Source Files",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "configured",
+          "reason"
+        ],
+        "title": "ScanConfigurationV1",
         "type": "object"
       },
       "ScanJobRecordV4": {
@@ -10702,6 +11134,46 @@
         "summary": "List Memory Review Endpoint"
       }
     },
+    "/api/v1/repositories/{repository_id}/metadata": {
+      "get": {
+        "operationId": "repository_metadata_api_v1_repositories__repository_id__metadata_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryListItemV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Repository Metadata"
+      }
+    },
     "/api/v1/repositories/{repository_id}/models": {
       "get": {
         "operationId": "model_availability_endpoint_api_v1_repositories__repository_id__models_get",
@@ -11775,6 +12247,56 @@
         "summary": "Record Memory Endpoint"
       }
     },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-configuration": {
+      "get": {
+        "operationId": "scan_configuration_api_v1_repositories__repository_id__snapshots__snapshot_id__scan_configuration_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanConfigurationV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scan Configuration"
+      }
+    },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-jobs/{job_id}": {
       "get": {
         "operationId": "get_scan_job_api_v1_repositories__repository_id__snapshots__snapshot_id__scan_jobs__job_id__get",
@@ -11833,6 +12355,126 @@
           }
         },
         "summary": "Get Scan Job"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-jobs/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_scan_job_api_v1_repositories__repository_id__snapshots__snapshot_id__scan_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanJobRecordV4"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Scan Job"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-jobs/{job_id}/retry": {
+      "post": {
+        "operationId": "retry_scan_job_api_v1_repositories__repository_id__snapshots__snapshot_id__scan_jobs__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetryScanResponseV3"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Scan Job"
       }
     },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scans": {
@@ -12528,6 +13170,23 @@
                 }
               ],
               "title": "Eligible"
+            }
+          },
+          {
+            "in": "query",
+            "name": "repository_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repository Id"
             }
           }
         ],

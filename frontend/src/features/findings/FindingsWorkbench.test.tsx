@@ -20,8 +20,19 @@ describe("FindingsSummaryCard", () => {
       created_at: new Date().toISOString(),
       by_severity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
       by_category: { sast: 0, secrets: 0, sca: 0, iac: 0 },
-      by_disposition: { proposed: 0, "supported-static": 0, contradicted: 0, unresolved: 0 },
-      by_triage: { unreviewed: 0, confirmed: 0, false_positive: 0, mitigated: 0, accepted_risk: 0 },
+      by_disposition: {
+        proposed: 0,
+        "supported-static": 0,
+        contradicted: 0,
+        unresolved: 0,
+      },
+      by_triage: {
+        unreviewed: 0,
+        confirmed: 0,
+        false_positive: 0,
+        mitigated: 0,
+        accepted_risk: 0,
+      },
       total_findings: 0,
     };
 
@@ -49,8 +60,19 @@ describe("FindingsSummaryCard", () => {
       created_at: new Date().toISOString(),
       by_severity: { critical: 2, high: 5, medium: 8, low: 1, info: 0 },
       by_category: { sast: 10, secrets: 4, sca: 2, iac: 0 },
-      by_disposition: { proposed: 6, "supported-static": 10, contradicted: 0, unresolved: 0 },
-      by_triage: { unreviewed: 14, confirmed: 2, false_positive: 0, mitigated: 0, accepted_risk: 0 },
+      by_disposition: {
+        proposed: 6,
+        "supported-static": 10,
+        contradicted: 0,
+        unresolved: 0,
+      },
+      by_triage: {
+        unreviewed: 14,
+        confirmed: 2,
+        false_positive: 0,
+        mitigated: 0,
+        accepted_risk: 0,
+      },
       total_findings: 16,
     };
 

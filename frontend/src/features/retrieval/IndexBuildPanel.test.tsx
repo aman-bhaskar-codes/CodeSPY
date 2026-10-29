@@ -163,13 +163,11 @@ it("resumes a stored job and offers retry only when the server authorizes it", a
         can_retry: job === "failed-job",
       }) as never,
   );
-  const retry = vi
-    .spyOn(api, "retryIndex")
-    .mockResolvedValue({
-      retry_job_id: "retry-job",
-      retry_of_job_id: "failed-job",
-      index_spec_id: "spec",
-    } as never);
+  const retry = vi.spyOn(api, "retryIndex").mockResolvedValue({
+    retry_job_id: "retry-job",
+    retry_of_job_id: "failed-job",
+    index_spec_id: "spec",
+  } as never);
   mount();
   fireEvent.click(
     await screen.findByRole("button", { name: "Retry index build" }),
