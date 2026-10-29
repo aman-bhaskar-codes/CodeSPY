@@ -14,14 +14,14 @@ The path under test is LocalObjectStore -> authenticated admitted archive/manife
 
 ## Observed checks
 
-| Check | Observed result |
-|---|---|
-| Supported Python 3.12.12 local regression selection | 450 passed, 55 opt-in checks skipped, 7.55 seconds |
-| Strict mypy without incremental cache | No issues in 132 application source files |
-| Pinned Ruff | All checks passed |
-| TypeScript analyzer on Node 22.23.3 / TypeScript 5.9.3 | 11 tests passed; strict typing passed |
-| Frontend on Node 22.23.3 | 8 tests passed; typing, lint and production build passed |
-| Reviewed-image Linux integration | 10 passed in 226.24 seconds, including both maximum-profile runs and owned recovery |
+| Check                                                  | Observed result                                                                     |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Supported Python 3.12.12 local regression selection    | 450 passed, 55 opt-in checks skipped, 7.55 seconds                                  |
+| Strict mypy without incremental cache                  | No issues in 132 application source files                                           |
+| Pinned Ruff                                            | All checks passed                                                                   |
+| TypeScript analyzer on Node 22.23.3 / TypeScript 5.9.3 | 11 tests passed; strict typing passed                                               |
+| Frontend on Node 22.23.3                               | 8 tests passed; typing, lint and production build passed                            |
+| Reviewed-image Linux integration                       | 10 passed in 226.24 seconds, including both maximum-profile runs and owned recovery |
 
 The Python selection includes shared source reconstruction, exact request identity, runtime binding, advisory/dependency contracts, native report normalization, process output/deadline/cancellation guards, source staging and ownership recovery. Mocked controller tests establish contracts only. The skipped checks require separate owned database/admission images or explicit native opt-in. They are not passing checks.
 
@@ -40,3 +40,22 @@ The declared MCP 1.29.0 transitive dependency has a known advisory affecting sta
 ## Remaining qualification
 
 Durable scan-job/database publication, application API/UI integration, independently curated detector evaluation, precise peak-resource measurement, broader crash-window testing and provider-backed execution require their own implementation and evidence. Existing fixture/provider mocks are not live-service qualification. No AWS access, credentials, paid calls, deployment or GitHub writes occurred during these checks.
+
+## Dependency advisories — 29 October 2026
+
+GitHub reports two moderate advisories in the unchanged isolated scanner manifest:
+
+- `mcp==1.29.0`: [stateful StreamableHTTP session accumulation](https://github.com/advisories/GHSA-84m7-p3x7-pcfv). The fixed scanner CLI does not start this server transport. The application MCP runtime is separately pinned to `mcp==2.3.0`.
+- `opentelemetry-api==1.37.0`: [unbounded tracestate-header parsing](https://github.com/advisories/GHSA-xcq7-p3pf-p88h). The documented trigger is inbound trace-context extraction; the scanner path accepts files through a fixed CLI, not an instrumented inbound HTTP endpoint.
+
+The scanner container uses `--network none`, read-only mounts, process/resource
+bounds and a fixed argument/environment allowlist. Semgrep metrics and version
+checks are disabled. These controls limit the documented exposure; they do not
+patch the dependencies or establish that every possible invocation is safe.
+Do not reuse the image as an HTTP/MCP service. The wider application dependency
+closure and any enabled tracing instrumentation need their own review.
+
+The alerts remain open. Updating this pinned scanner toolchain requires native
+requalification before production use; no dependency upgrade or new scanner
+qualification was performed for this delivery. Existing local/container results
+above retain their original scope.
