@@ -1,0 +1,21 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--cs-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: var(--cs-muted);
+  background: var(--cs-panel);
+  font: 500 12px/1.3 var(--cs-font);
+  white-space: nowrap;
+}
+.badge[data-tone="success"] {
+  color: var(--cs-success);
+}
+.badge[data-tone="warning"] {
+  color: var(--cs-warning);
+}
+.badge[data-tone="danger"] {
+  color: var(--cs-danger);
+}

@@ -1,0 +1,121 @@
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/fonts/IBMPlexSans-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/fonts/IBMPlexSans-Medium.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/fonts/IBMPlexSans-SemiBold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("/fonts/IBMPlexMono-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+  --cs-font: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --cs-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --cs-canvas: #11151b;
+  --cs-panel: #171d26;
+  --cs-raised: #202938;
+  --cs-border: #344154;
+  --cs-control-border: #6b7f9b;
+  --cs-text: #e7edf5;
+  --cs-muted: #a2afc1;
+  --cs-action: #91b4ff;
+  --cs-action-hover: #b4ccff;
+  --cs-action-ink: #11151b;
+  --cs-evidence: #6bc7bc;
+  --cs-success: #8fdbb1;
+  --cs-warning: #f4ce86;
+  --cs-danger: #ffabb0;
+  --cs-info-bg: #202f48;
+  --cs-action-soft-border: #6b7f9b;
+  --cs-success-bg: #193629;
+  --cs-warning-bg: #392f1d;
+  --cs-danger-bg: #3e242b;
+  --cs-overlay: rgb(0 0 0 / 65%);
+  --cs-shadow: 0 16px 64px rgb(0 0 0 / 30%);
+  --cs-radius: 6px;
+  --cs-space-1: 4px;
+  --cs-space-2: 8px;
+  --cs-space-3: 12px;
+  --cs-space-4: 16px;
+  --cs-space-6: 24px;
+  --cs-space-8: 32px;
+  --cs-control-height: 40px;
+  --cs-motion: 120ms;
+  --cs-scrollbar: #718198;
+  --ink: var(--cs-text);
+  --action: var(--cs-action);
+  --surface: var(--cs-panel);
+  --muted: var(--cs-muted);
+  --border: var(--cs-border);
+  --danger: var(--cs-danger);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --cs-canvas: #f3f5f8;
+  --cs-panel: #ffffff;
+  --cs-raised: #e9eef5;
+  --cs-border: #c5cfdc;
+  --cs-control-border: #7e8da1;
+  --cs-text: #1b2533;
+  --cs-muted: #526174;
+  --cs-action: #254fc7;
+  --cs-action-hover: #193d9e;
+  --cs-action-ink: #ffffff;
+  --cs-evidence: #0f766e;
+  --cs-success: #166b45;
+  --cs-warning: #865500;
+  --cs-danger: #ab2338;
+  --cs-info-bg: #e9efff;
+  --cs-action-soft-border: #7e8da1;
+  --cs-success-bg: #e0f3e9;
+  --cs-warning-bg: #fff0d2;
+  --cs-danger-bg: #ffe7eb;
+  --cs-scrollbar: #6d7d92;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --cs-motion: 0ms;
+  }
+}
+@media (forced-colors: active) {
+  :root,
+  :root[data-theme="light"] {
+    --cs-canvas: Canvas;
+    --cs-panel: Canvas;
+    --cs-raised: Canvas;
+    --cs-text: CanvasText;
+    --cs-muted: CanvasText;
+    --cs-border: ButtonText;
+    --cs-control-border: ButtonText;
+    --cs-action: LinkText;
+    --cs-action-hover: LinkText;
+    --cs-action-ink: Canvas;
+    --cs-evidence: CanvasText;
+    --cs-success: CanvasText;
+    --cs-warning: CanvasText;
+    --cs-danger: CanvasText;
+    --cs-scrollbar: ButtonText;
+  }
+}

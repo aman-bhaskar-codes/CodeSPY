@@ -11,6 +11,7 @@ interface Props {
   snapshotId: string;
   runId: string;
   csrfToken: string;
+  onInvestigate?: (findingId: string, runId: string) => void;
 }
 
 export function FindingsWorkbench({
@@ -18,6 +19,7 @@ export function FindingsWorkbench({
   snapshotId,
   runId,
   csrfToken,
+  onInvestigate,
 }: Props) {
   const [selectedFindingId, setSelectedFindingId] = useState<string | null>(
     null,
@@ -127,7 +129,7 @@ export function FindingsWorkbench({
           role="alert"
           style={{
             padding: "16px",
-            background: "#fde8e8",
+            background: "var(--cs-danger-bg)",
             border: "1px solid var(--danger)",
             borderRadius: "6px",
             color: "var(--danger)",
@@ -162,6 +164,7 @@ export function FindingsWorkbench({
           snapshotId={snapshotId}
           findingId={selectedFindingId}
           csrfToken={csrfToken}
+          onInvestigate={onInvestigate}
           isOpen={true}
           onClose={() => setSelectedFindingId(null)}
           onTriageUpdated={() => {

@@ -56,7 +56,7 @@ export function FindingsSummaryCard({ summary }: Props) {
               fontWeight: 600,
               padding: "4px 10px",
               borderRadius: "4px",
-              background: "#e8effc",
+              background: "var(--cs-info-bg)",
               color: "var(--action)",
             }}
           >
@@ -70,7 +70,7 @@ export function FindingsSummaryCard({ summary }: Props) {
           role="status"
           style={{
             padding: "12px 16px",
-            background: "#f0f4f8",
+            background: "var(--cs-raised)",
             border: "1px solid var(--border)",
             borderRadius: "6px",
             fontSize: "13px",
@@ -94,13 +94,16 @@ export function FindingsSummaryCard({ summary }: Props) {
         {severities.map((sev) => {
           const count = summary.by_severity?.[sev] ?? 0;
           const colors: Record<string, { bg: string; text: string }> = {
-            critical: { bg: "#fde8e8", text: "#9c2929" },
-            high: { bg: "#feeedb", text: "#a55307" },
-            medium: { bg: "#fef8e7", text: "#876400" },
-            low: { bg: "#eef2f7", text: "#334155" },
-            info: { bg: "#eef5fc", text: "#1d4ed8" },
+            critical: { bg: "var(--cs-danger-bg)", text: "var(--cs-danger)" },
+            high: { bg: "var(--cs-warning-bg)", text: "var(--cs-warning)" },
+            medium: { bg: "var(--cs-warning-bg)", text: "var(--cs-warning)" },
+            low: { bg: "var(--cs-raised)", text: "var(--cs-border)" },
+            info: { bg: "var(--cs-info-bg)", text: "var(--cs-action)" },
           };
-          const color = colors[sev] ?? { bg: "#f1f5f9", text: "#475569" };
+          const color = colors[sev] ?? {
+            bg: "var(--cs-raised)",
+            text: "var(--cs-control-border)",
+          };
           return (
             <div
               key={sev}

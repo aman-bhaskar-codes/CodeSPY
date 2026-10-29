@@ -1,0 +1,23 @@
+.panel {
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius);
+  padding: var(--cs-space-6);
+  background: var(--cs-panel);
+  color: var(--cs-text);
+}
+.heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.heading h2 {
+  color: var(--cs-text);
+  font-size: 18px;
+  font-weight: 600;
+}
+@media (max-width: 600px) {
+  .panel {
+    padding: var(--cs-space-4);
+  }
+}

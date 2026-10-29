@@ -1,4 +1,7 @@
-import type { FindingSummaryV1, TriageTransitionV1 } from "../../api/generated/types.gen";
+import type {
+  FindingSummaryV1,
+  TriageTransitionV1,
+} from "../../api/generated/types.gen";
 
 export type {
   FeatureTraceV1,

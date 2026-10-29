@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { InlineNotice } from "../../ui/InlineNotice";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../../api/client";
 import type {
@@ -114,7 +115,7 @@ function ReviewState({ repositoryId, snapshotId, csrfToken }: Props) {
           <button onClick={() => queue.refetch()}>Retry review list</button>
         </p>
       )}
-      {notice && <p role="status">{notice}</p>}
+      {notice && <InlineNotice tone="success">{notice}</InlineNotice>}
       {queue.data?.items.length === 0 && <p>No memories on this page.</p>}
       {queue.data?.items.map((entry) => (
         <article key={entry.memory_id} className="card">
@@ -212,6 +213,7 @@ function ReviewState({ repositoryId, snapshotId, csrfToken }: Props) {
       ))}
       {intent && (
         <form
+          noValidate
           onSubmit={(event) => {
             event.preventDefault();
             review.mutate();
@@ -223,6 +225,7 @@ function ReviewState({ repositoryId, snapshotId, csrfToken }: Props) {
           <label>
             Review reason
             <textarea
+              className="resize-none"
               disabled={review.isPending}
               value={reason}
               maxLength={1024}

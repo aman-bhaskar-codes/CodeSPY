@@ -19,24 +19,113 @@ export class ApiError extends Error {
     super(code);
   }
 }
+let accessRevision = 0;
+/** Invalidate responses initiated under the previous workspace identity. */
+export function invalidateAccessResponses() {
+  accessRevision += 1;
+}
 export async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const revision = accessRevision;
   const response = await fetch(`/api/v1${path}`, {
     ...options,
     credentials: "same-origin",
     redirect: "error",
   });
+  if (revision !== accessRevision)
+    throw new ApiError(409, "access_context_changed");
   if (!response.ok) {
+    if (
+      typeof window !== "undefined" &&
+      path !== "/session" &&
+      response.status === 401
+    )
+      window.dispatchEvent(new Event("codespy:access-required"));
     const value = (await response.json().catch(() => ({}))) as {
       code?: string;
     };
     throw new ApiError(response.status, value.code ?? "request_failed");
   }
-  return (await response.json()) as T;
+  const value = response.status === 204 ? undefined : await response.json();
+  if (revision !== accessRevision)
+    throw new ApiError(409, "access_context_changed");
+  return value as T;
 }
 export const api = {
+  repositoryMetadata: (repoId: string, signal?: AbortSignal) =>
+    request<import("./generated/types.gen").RepositoryListItemV1>(
+      `/repositories/${repoId}/metadata`,
+      { signal },
+    ),
+  logout: (csrf: string) =>
+    request<void>("/session/logout", {
+      method: "POST",
+      headers: mutationHeaders(csrf),
+    }),
+  acquireGitHub: (repoId: string, ref: string, csrf: string, key: string) =>
+    request<SubmissionRecordV1>(`/repositories/${repoId}/github-acquisitions`, {
+      method: "POST",
+      headers: mutationHeaders(csrf, key),
+      body: JSON.stringify({ requested_ref: ref }),
+    }),
+  scanConfiguration: (
+    repoId: string,
+    snapshotId: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("./generated/types.gen").ScanConfigurationV1>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/scan-configuration`,
+      { signal },
+    ),
+  scanJob: (
+    repoId: string,
+    snapshotId: string,
+    jobId: string,
+    signal?: AbortSignal,
+  ) =>
+    request<import("./generated/types.gen").ScanJobRecordV4>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/scan-jobs/${jobId}`,
+      { signal },
+    ),
+  cancelScan: (
+    repoId: string,
+    snapshotId: string,
+    jobId: string,
+    csrf: string,
+    key: string,
+  ) =>
+    request<import("./generated/types.gen").ScanJobRecordV4>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/scan-jobs/${jobId}/cancel`,
+      { method: "POST", headers: mutationHeaders(csrf, key) },
+    ),
+  retryScan: (
+    repoId: string,
+    snapshotId: string,
+    jobId: string,
+    csrf: string,
+    key: string,
+  ) =>
+    request<import("./generated/types.gen").RetryScanResponseV3>(
+      `/repositories/${repoId}/snapshots/${snapshotId}/scan-jobs/${jobId}/retry`,
+      { method: "POST", headers: mutationHeaders(csrf, key) },
+    ),
+  createRepository: (
+    body: import("./generated/types.gen").RepositoryCreate,
+    csrf: string,
+    key: string,
+  ) =>
+    request<import("./generated/types.gen").RepositoryRecord>("/repositories", {
+      method: "POST",
+      headers: mutationHeaders(csrf, key),
+      body: JSON.stringify(body),
+    }),
+  modelAvailability: (repoId: string, signal?: AbortSignal) =>
+    request<import("./generated/types.gen").ModelAvailabilityV1>(
+      `/repositories/${repoId}/models`,
+      { signal },
+    ),
   session: (signal?: AbortSignal) => request<SessionV1>("/session", { signal }),
   repositories: (signal?: AbortSignal, cursor: string | null = null) =>
     request<RepositoryPageV1>(
@@ -47,9 +136,14 @@ export const api = {
     request<JobRecordV2 | JobRecordV3>(`/jobs/${id}`, { signal }),
   submission: (id: string, signal?: AbortSignal) =>
     request<SubmissionRecordV1>(`/submissions/${id}`, { signal }),
-  inventory: (id: string, cursor: string | null, signal?: AbortSignal) =>
+  inventory: (
+    id: string,
+    cursor: string | null,
+    signal?: AbortSignal,
+    repositoryId?: string,
+  ) =>
     request<InventoryPageV1>(
-      `/snapshots/${id}/inventory?limit=50${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}`,
+      `/snapshots/${id}/inventory?limit=50${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}${repositoryId ? `&repository_id=${encodeURIComponent(repositoryId)}` : ""}`,
       { signal },
     ),
   createAnalysis: (
@@ -87,7 +181,7 @@ export const api = {
     snapshotId: string,
     csrf: string,
     key?: string,
-    config?: unknown,
+    config?: import("./generated/types.gen").ScanConfigV1,
   ) =>
     request<{
       spec_id: string;
@@ -477,8 +571,12 @@ export const api = {
     repoId: string,
     findingId?: string,
     signal?: AbortSignal,
+    cursor?: string,
   ) => {
-    const qs = findingId ? `?finding_id=${encodeURIComponent(findingId)}` : "";
+    const params = new URLSearchParams();
+    if (findingId) params.set("finding_id", findingId);
+    if (cursor) params.set("cursor", cursor);
+    const qs = params.size ? `?${params}` : "";
     return request<
       | import("../features/investigations/types").InvestigationListResponseV2
       | import("../features/investigations/types").InvestigationListResponseV1
@@ -539,20 +637,22 @@ export const api = {
     csrf: string,
     key?: string,
   ) =>
-    request<
-      import("../features/investigations/types").InvestigationSummaryV2
-    >(`/repositories/${repoId}/investigations/${investigationId}/retry`, {
-      method: "POST",
-      headers: mutationHeaders(csrf, key),
-      body: JSON.stringify(req),
-    }),
+    request<import("../features/investigations/types").InvestigationSummaryV2>(
+      `/repositories/${repoId}/investigations/${investigationId}/retry`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf, key),
+        body: JSON.stringify(req),
+      },
+    ),
   listInvestigationEvents: (
     repoId: string,
     investigationId: string,
     afterSequence?: number,
     signal?: AbortSignal,
   ) => {
-    const qs = afterSequence !== undefined ? `?after_sequence=${afterSequence}` : "";
+    const qs =
+      afterSequence !== undefined ? `?after_sequence=${afterSequence}` : "";
     return request<
       | import("../features/investigations/types").InvestigationEventPageV1
       | import("../features/investigations/types").InvestigationEvent[]

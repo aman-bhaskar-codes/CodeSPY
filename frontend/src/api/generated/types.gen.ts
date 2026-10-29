@@ -184,6 +184,46 @@ export type ChatMessageV1 = {
 export type ChunkKind = 'module' | 'class' | 'function' | 'method' | 'window' | 'file';
 
 /**
+ * ClaimVerificationStatus
+ *
+ * Verification outcome for a claim.
+ */
+export type ClaimVerificationStatus = 'source_correspondence_confirmed' | 'unsupported' | 'refuted' | 'location_valid_quote_missing' | 'evidence_unavailable';
+
+/**
+ * ClaimVerificationV1
+ *
+ * Server-side verification result for a single claim.
+ */
+export type ClaimVerificationV1 = {
+    /**
+     * Claim Id
+     */
+    claim_id: string;
+    /**
+     * Notes
+     */
+    notes?: string;
+    /**
+     * Resolved File
+     */
+    resolved_file?: string | null;
+    /**
+     * Resolved Line End
+     */
+    resolved_line_end?: number | null;
+    /**
+     * Resolved Line Start
+     */
+    resolved_line_start?: number | null;
+    /**
+     * Source Digest
+     */
+    source_digest?: string | null;
+    status: ClaimVerificationStatus;
+};
+
+/**
  * ComponentSectionV1
  */
 export type ComponentSectionV1 = {
@@ -1811,6 +1851,13 @@ export type InvestigationCancelResponseV1 = {
 };
 
 /**
+ * InvestigationClaimKind
+ *
+ * Typed claim categories for evidence grounding.
+ */
+export type InvestigationClaimKind = 'source_observation' | 'security_hypothesis' | 'coverage_statement';
+
+/**
  * InvestigationClaimV1
  */
 export type InvestigationClaimV1 = {
@@ -1846,6 +1893,43 @@ export type InvestigationClaimV1 = {
      * Verification Notes
      */
     verification_notes?: string | null;
+};
+
+/**
+ * InvestigationClaimV2
+ *
+ * Typed claim with evidence binding for report grounding.
+ */
+export type InvestigationClaimV2 = {
+    /**
+     * Claim Id
+     */
+    claim_id: string;
+    /**
+     * Evidence Ids
+     */
+    evidence_ids?: Array<string>;
+    kind: InvestigationClaimKind;
+    /**
+     * Statement
+     */
+    statement: string;
+    /**
+     * Suggested File
+     */
+    suggested_file?: string | null;
+    /**
+     * Suggested Line End
+     */
+    suggested_line_end?: number | null;
+    /**
+     * Suggested Line Start
+     */
+    suggested_line_start?: number | null;
+    /**
+     * Suggested Quote
+     */
+    suggested_quote?: string | null;
 };
 
 /**
@@ -2222,6 +2306,87 @@ export type InvestigationListResponseV2 = {
 export type InvestigationMode = 'short_path' | 'two_specialist';
 
 /**
+ * InvestigationReportV1
+ *
+ * Immutable final investigation report.
+ */
+export type InvestigationReportV1 = {
+    /**
+     * Claims
+     */
+    claims?: Array<InvestigationClaimV2>;
+    /**
+     * Coverage Notes
+     */
+    coverage_notes?: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Current Support Available
+     */
+    current_support_available?: boolean;
+    /**
+     * Evidence Refs
+     */
+    evidence_refs?: Array<string>;
+    /**
+     * Held Usage Micros
+     */
+    held_usage_micros?: number;
+    /**
+     * Investigation Id
+     */
+    investigation_id: string;
+    /**
+     * Limitations
+     */
+    limitations?: string;
+    /**
+     * Report Digest
+     */
+    report_digest: string;
+    /**
+     * Report Id
+     */
+    report_id: string;
+    /**
+     * Runtime Revision
+     */
+    runtime_revision: number;
+    /**
+     * Settled Usage Micros
+     */
+    settled_usage_micros?: number;
+    /**
+     * Spec Hash
+     */
+    spec_hash: string;
+    stop_reason: InvestigationStopReason;
+    /**
+     * Summary
+     */
+    summary: string;
+    /**
+     * Unknowns
+     */
+    unknowns?: string;
+    /**
+     * Verdict
+     */
+    verdict: string;
+    /**
+     * Verdict Confidence
+     */
+    verdict_confidence?: number;
+    /**
+     * Verifications
+     */
+    verifications?: Array<ClaimVerificationV1>;
+};
+
+/**
  * InvestigationResumeRequestV1
  *
  * Resume request — only after awaiting_human_decision with resolution.
@@ -2368,6 +2533,13 @@ export type InvestigationStateV1 = {
  * InvestigationStatus
  */
 export type InvestigationStatus = 'pending' | 'running' | 'checkpointed' | 'awaiting_human_decision' | 'completed' | 'failed' | 'cancelled';
+
+/**
+ * InvestigationStopReason
+ *
+ * Why an investigation execution stopped.
+ */
+export type InvestigationStopReason = 'completed' | 'partial_coverage' | 'step_budget_exhausted' | 'tool_budget_exhausted' | 'context_budget_exceeded' | 'spending_budget_exhausted' | 'deadline_exceeded' | 'model_outcome_unknown' | 'cancelled' | 'access_revoked' | 'configuration_missing' | 'integrity_failure' | 'nonresumable';
 
 /**
  * InvestigationSummaryV1
@@ -3346,6 +3518,28 @@ export type RetryResponseV2 = {
 };
 
 /**
+ * RetryScanResponseV3
+ */
+export type RetryScanResponseV3 = {
+    /**
+     * Retry Job Id
+     */
+    retry_job_id: string;
+    /**
+     * Retry Of Job Id
+     */
+    retry_of_job_id: string;
+    /**
+     * Scan Spec Id
+     */
+    scan_spec_id: string;
+    /**
+     * Schema Version
+     */
+    schema_version?: 3;
+};
+
+/**
  * RouteObservationV1
  */
 export type RouteObservationV1 = {
@@ -3458,6 +3652,41 @@ export type ScanConfigV1 = {
      * Schema Version
      */
     schema_version?: 1;
+};
+
+/**
+ * ScanConfigurationV1
+ */
+export type ScanConfigurationV1 = {
+    config?: ScanConfigV1 | null;
+    /**
+     * Configured
+     */
+    configured: boolean;
+    /**
+     * Live Access Verified
+     */
+    live_access_verified?: false;
+    /**
+     * Omitted Lockfiles
+     */
+    omitted_lockfiles?: number;
+    /**
+     * Omitted Source Files
+     */
+    omitted_source_files?: number;
+    /**
+     * Reason
+     */
+    reason: 'configured' | 'scanner_unavailable' | 'policy_unavailable' | 'no_eligible_files';
+    /**
+     * Selected Lockfiles
+     */
+    selected_lockfiles?: number;
+    /**
+     * Selected Source Files
+     */
+    selected_source_files?: number;
 };
 
 /**
@@ -5675,6 +5904,36 @@ export type ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGet
 
 export type ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGetResponse = ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGetResponses[keyof ListMemoryReviewEndpointApiV1RepositoriesRepositoryIdMemoryReviewGetResponses];
 
+export type RepositoryMetadataApiV1RepositoriesRepositoryIdMetadataGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/metadata';
+};
+
+export type RepositoryMetadataApiV1RepositoriesRepositoryIdMetadataGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RepositoryMetadataApiV1RepositoriesRepositoryIdMetadataGetError = RepositoryMetadataApiV1RepositoriesRepositoryIdMetadataGetErrors[keyof RepositoryMetadataApiV1RepositoriesRepositoryIdMetadataGetErrors];
+
+export type RepositoryMetadataApiV1RepositoriesRepositoryIdMetadataGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoryListItemV1;
+};
+
+export type RepositoryMetadataApiV1RepositoriesRepositoryIdMetadataGetResponse = RepositoryMetadataApiV1RepositoriesRepositoryIdMetadataGetResponses[keyof RepositoryMetadataApiV1RepositoriesRepositoryIdMetadataGetResponses];
+
 export type ModelAvailabilityEndpointApiV1RepositoriesRepositoryIdModelsGetData = {
     body?: never;
     path: {
@@ -6283,6 +6542,40 @@ export type RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotId
 
 export type RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostResponse = RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostResponses[keyof RecordMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesPostResponses];
 
+export type ScanConfigurationApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanConfigurationGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-configuration';
+};
+
+export type ScanConfigurationApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanConfigurationGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ScanConfigurationApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanConfigurationGetError = ScanConfigurationApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanConfigurationGetErrors[keyof ScanConfigurationApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanConfigurationGetErrors];
+
+export type ScanConfigurationApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanConfigurationGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ScanConfigurationV1;
+};
+
+export type ScanConfigurationApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanConfigurationGetResponse = ScanConfigurationApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanConfigurationGetResponses[keyof ScanConfigurationApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanConfigurationGetResponses];
+
 export type GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetData = {
     body?: never;
     path: {
@@ -6320,6 +6613,82 @@ export type GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJo
 };
 
 export type GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetResponse = GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetResponses[keyof GetScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdGetResponses];
+
+export type CancelScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdCancelPostData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-jobs/{job_id}/cancel';
+};
+
+export type CancelScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdCancelPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CancelScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdCancelPostError = CancelScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdCancelPostErrors[keyof CancelScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdCancelPostErrors];
+
+export type CancelScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdCancelPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ScanJobRecordV4;
+};
+
+export type CancelScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdCancelPostResponse = CancelScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdCancelPostResponses[keyof CancelScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdCancelPostResponses];
+
+export type RetryScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdRetryPostData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-jobs/{job_id}/retry';
+};
+
+export type RetryScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdRetryPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RetryScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdRetryPostError = RetryScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdRetryPostErrors[keyof RetryScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdRetryPostErrors];
+
+export type RetryScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdRetryPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: RetryScanResponseV3;
+};
+
+export type RetryScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdRetryPostResponse = RetryScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdRetryPostResponses[keyof RetryScanJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScanJobsJobIdRetryPostResponses];
 
 export type CreateSnapshotScanApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdScansPostData = {
     body: CreateScanRequestV1;
@@ -6709,6 +7078,10 @@ export type InventoryApiV1SnapshotsSnapshotIdInventoryGetData = {
          * Eligible
          */
         eligible?: boolean | null;
+        /**
+         * Repository Id
+         */
+        repository_id?: string | null;
     };
     url: '/api/v1/snapshots/{snapshot_id}/inventory';
 };

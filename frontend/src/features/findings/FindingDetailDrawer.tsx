@@ -1,3 +1,4 @@
+import { Modal } from "../../ui/Modal";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -18,6 +19,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onTriageUpdated: () => void;
+  onInvestigate?: (findingId: string, runId: string) => void;
 }
 
 export function FindingDetailDrawer({
@@ -28,6 +30,7 @@ export function FindingDetailDrawer({
   isOpen,
   onClose,
   onTriageUpdated,
+  onInvestigate,
 }: Props) {
   const [isTriageOpen, setIsTriageOpen] = useState(false);
   const [showTrace, setShowTrace] = useState(false);
@@ -123,24 +126,11 @@ export function FindingDetailDrawer({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="finding-detail-title"
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(15, 23, 42, 0.6)",
-        display: "flex",
-        justifyContent: "flex-end",
-        zIndex: 900,
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Modal
+      open={isOpen}
+      title="Finding details"
+      onClose={onClose}
+      variant="drawer"
     >
       <div
         style={{
@@ -149,7 +139,7 @@ export function FindingDetailDrawer({
           maxWidth: "760px",
           height: "100%",
           overflowY: "auto",
-          boxShadow: "-8px 0 25px rgba(0, 0, 0, 0.15)",
+          boxShadow: "var(--cs-shadow)",
           display: "flex",
           flexDirection: "column",
         }}
@@ -188,15 +178,15 @@ export function FindingDetailDrawer({
                   borderRadius: "4px",
                   background:
                     finding?.severity === "critical"
-                      ? "#fde8e8"
+                      ? "var(--cs-danger-bg)"
                       : finding?.severity === "high"
-                        ? "#feeedb"
-                        : "#f1f5f9",
+                        ? "var(--cs-warning-bg)"
+                        : "var(--cs-raised)",
                   color:
                     finding?.severity === "critical"
-                      ? "#9c2929"
+                      ? "var(--cs-danger)"
                       : finding?.severity === "high"
-                        ? "#a55307"
+                        ? "var(--cs-warning)"
                         : "var(--ink)",
                 }}
               >
@@ -209,7 +199,7 @@ export function FindingDetailDrawer({
                   textTransform: "uppercase",
                   padding: "2px 8px",
                   borderRadius: "4px",
-                  background: "#e8effc",
+                  background: "var(--cs-info-bg)",
                   color: "var(--action)",
                 }}
               >
@@ -221,7 +211,7 @@ export function FindingDetailDrawer({
                   fontWeight: 600,
                   padding: "2px 8px",
                   borderRadius: "4px",
-                  background: "#f1f5f9",
+                  background: "var(--cs-raised)",
                   color: "var(--muted)",
                 }}
               >
@@ -271,7 +261,7 @@ export function FindingDetailDrawer({
               role="alert"
               style={{
                 padding: "16px",
-                background: "#fde8e8",
+                background: "var(--cs-danger-bg)",
                 border: "1px solid var(--danger)",
                 borderRadius: "6px",
                 color: "var(--danger)",
@@ -292,7 +282,7 @@ export function FindingDetailDrawer({
                 <div
                   style={{
                     padding: "12px",
-                    background: "#f8fafc",
+                    background: "var(--cs-raised)",
                     border: "1px solid var(--border)",
                     borderRadius: "6px",
                     fontSize: "13px",
@@ -329,11 +319,11 @@ export function FindingDetailDrawer({
                   <div
                     style={{
                       padding: "12px",
-                      background: "#f0fdf4",
-                      border: "1px solid #bbf7d0",
+                      background: "var(--cs-success-bg)",
+                      border: "1px solid var(--cs-success-bg)",
                       borderRadius: "6px",
                       fontSize: "13px",
-                      color: "#166534",
+                      color: "var(--cs-success)",
                     }}
                   >
                     {recommendation}
@@ -359,11 +349,22 @@ export function FindingDetailDrawer({
                 </div>
               )}
 
+              {onInvestigate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onInvestigate(finding.id, finding.run_id);
+                    onClose();
+                  }}
+                >
+                  Investigate this finding
+                </button>
+              )}
               {/* Triage Status & Controls */}
               <div
                 style={{
                   padding: "16px",
-                  background: "#f8fafc",
+                  background: "var(--cs-raised)",
                   border: "1px solid var(--border)",
                   borderRadius: "8px",
                 }}
@@ -400,7 +401,7 @@ export function FindingDetailDrawer({
                     onClick={() => setIsTriageOpen(true)}
                     style={{
                       background: "var(--action)",
-                      color: "#fff",
+                      color: "var(--cs-action-ink)",
                       border: "none",
                       padding: "8px 16px",
                       borderRadius: "6px",
@@ -540,7 +541,7 @@ export function FindingDetailDrawer({
                         role="alert"
                         style={{
                           padding: "12px",
-                          background: "#fde8e8",
+                          background: "var(--cs-danger-bg)",
                           border: "1px solid var(--danger)",
                           borderRadius: "6px",
                           color: "var(--danger)",
@@ -562,7 +563,7 @@ export function FindingDetailDrawer({
       </div>
 
       {/* Triage Action Modal */}
-      {triageFinding && (
+      {triageFinding && isTriageOpen && (
         <TriageModal
           finding={triageFinding}
           isOpen={isTriageOpen}
@@ -570,6 +571,6 @@ export function FindingDetailDrawer({
           onSubmit={handleTriageSubmit}
         />
       )}
-    </div>
+    </Modal>
   );
 }

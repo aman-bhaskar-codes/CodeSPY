@@ -1,13 +1,25 @@
+import { SessionBoundary } from "./workspace/SessionBoundary";
+import { GitHubImportForm } from "./features/intake/GitHubImportForm";
+import { RepositoryCreateForm } from "./features/intake/RepositoryCreateForm";
 import { useEffect, useRef, useState } from "react";
+import {
+  WorkspaceHeading,
+  WorkspacePane,
+  WorkspaceShell,
+} from "./workspace/WorkspaceShell";
+import { Panel } from "./ui/Panel";
+import { Button } from "./ui/Button";
 import {
   useMutation,
   useQuery,
   useQueryClient,
   useInfiniteQuery,
+  type InfiniteData,
 } from "@tanstack/react-query";
 import { api, ApiError, mutationHeaders, request } from "./api/client";
 import type {
   SubmissionRecordV1,
+  RepositoryPageV1,
   RetryResponseV1,
   RetryResponseV2,
 } from "./api/generated/types.gen";
@@ -26,10 +38,19 @@ function selectedId(name: string): string | null {
     ? value
     : null;
 }
+function findingTargetFromUrl() {
+  const repositoryId = selectedId("repository"),
+    snapshotId = selectedId("snapshot"),
+    findingId = selectedId("finding"),
+    runId = selectedId("finding_run");
+  return repositoryId && snapshotId && findingId && runId
+    ? { repositoryId, snapshotId, findingId, runId }
+    : null;
+}
 const label = (value: string) => value.replaceAll("_", " ");
 function problem(error: unknown): string {
   if (error instanceof ApiError && error.status === 401)
-    return "Your session expired. Sign in again; your selected file is kept here.";
+    return "Your session expired. Sign in again before resubmitting sources.";
   if (error instanceof ApiError && error.status === 403)
     return "Access changed. Reload your session and repository list.";
   if (error instanceof ApiError && error.code === "analysis_unavailable")
@@ -44,8 +65,20 @@ function problem(error: unknown): string {
 }
 
 export default function App() {
+  return (
+    <SessionBoundary>
+      <WorkspaceApp />
+    </SessionBoundary>
+  );
+}
+
+function WorkspaceApp() {
   const client = useQueryClient();
-  const [repository, setRepository] = useState("");
+  const [findingTarget, setFindingTarget] = useState(findingTargetFromUrl);
+  const [creatingRepository, setCreatingRepository] = useState(false);
+  const [repository, setRepository] = useState(
+    () => selectedId("repository") ?? "",
+  );
   const [file, setFile] = useState<File | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(() =>
     selectedId("submission"),
@@ -65,9 +98,37 @@ export default function App() {
   const cancelButton = useRef<HTMLButtonElement>(null);
   const uploadKey = useRef(crypto.randomUUID());
   const retryKeys = useRef(new Map<string, string>());
+  const locationSearch = useRef(window.location.search);
+  const navigationRevision = useRef(0);
+  const responseIsCurrent = () => {
+    const revision = navigationRevision.current;
+    return () => revision === navigationRevision.current;
+  };
+  useEffect(() => {
+    const restore = () => {
+      if (locationSearch.current === window.location.search) return;
+      navigationRevision.current += 1;
+      locationSearch.current = window.location.search;
+      setRepository(selectedId("repository") ?? "");
+      setSubmissionId(selectedId("submission"));
+      setJobId(selectedId("job"));
+      setScanJobId(selectedId("scan"));
+      setRestoredSnapshot(selectedId("snapshot"));
+      setFindingTarget(findingTargetFromUrl());
+      setAnalysisJobId(null);
+      setPages([null]);
+      setConfirmCancel(false);
+    };
+    window.addEventListener("popstate", restore);
+    return () => {
+      navigationRevision.current += 1;
+      window.removeEventListener("popstate", restore);
+    };
+  }, []);
   useEffect(() => {
     const url = new URL(window.location.href);
     for (const [name, value] of [
+      ["repository", repository],
       ["submission", submissionId],
       ["job", jobId],
       ["scan", scanJobId],
@@ -75,12 +136,17 @@ export default function App() {
       if (value) url.searchParams.set(name!, value);
       else url.searchParams.delete(name!);
     }
-    window.history.replaceState({}, "", url);
-  }, [submissionId, jobId, scanJobId]);
+    window.history.replaceState(window.history.state, "", url);
+    locationSearch.current = url.search;
+  }, [repository, submissionId, jobId, scanJobId]);
   const session = useQuery({
     queryKey: ["session"],
     queryFn: ({ signal }) => api.session(signal),
     retry: false,
+  });
+  const logout = useMutation({
+    mutationFn: () => api.logout(session.data!.csrf_token),
+    onSuccess: () => window.dispatchEvent(new Event("codespy:access-required")),
   });
   const repositories = useInfiniteQuery({
     queryKey: ["repositories"],
@@ -89,8 +155,23 @@ export default function App() {
     getNextPageParam: (last) => last.next_cursor ?? undefined,
     enabled: !!session.data,
   });
-  const repositoryItems =
+  const pagedRepositories =
     repositories.data?.pages.flatMap((page) => page.items) ?? [];
+  const selectedMetadata = useQuery({
+    queryKey: ["repository-metadata", repository],
+    queryFn: ({ signal }) => api.repositoryMetadata(repository, signal),
+    enabled:
+      !!repository &&
+      !!session.data &&
+      repositories.isSuccess &&
+      !pagedRepositories.some((item) => item.id === repository),
+    retry: false,
+  });
+  const repositoryItems =
+    selectedMetadata.data?.id === repository &&
+    !pagedRepositories.some((item) => item.id === repository)
+      ? [...pagedRepositories, selectedMetadata.data]
+      : pagedRepositories;
   const submission = useQuery({
     queryKey: ["submission", submissionId],
     queryFn: ({ signal }) => api.submission(submissionId!, signal),
@@ -125,12 +206,18 @@ export default function App() {
     const url = new URL(window.location.href);
     if (snapshot) url.searchParams.set("snapshot", snapshot);
     else url.searchParams.delete("snapshot");
-    window.history.replaceState({}, "", url);
+    window.history.replaceState(window.history.state, "", url);
+    locationSearch.current = url.search;
   }, [snapshot]);
   const inventory = useQuery({
-    queryKey: ["inventory", snapshot, pages.at(-1)],
+    queryKey: ["inventory", repository, snapshot, pages.at(-1)],
     queryFn: ({ signal }) =>
-      api.inventory(snapshot!, pages.at(-1) ?? null, signal),
+      api.inventory(
+        snapshot!,
+        pages.at(-1) ?? null,
+        signal,
+        repository || undefined,
+      ),
     enabled: !!snapshot && !!session.data,
   });
   const structuralReport = useQuery({
@@ -159,6 +246,7 @@ export default function App() {
   }, [analysisJob.data?.state, client, repository, snapshot]);
   const analyze = useMutation({
     mutationFn: async () => {
+      const isCurrent = responseIsCurrent();
       if (!repository || !snapshot || !session.data)
         throw new Error("missing input");
       const res = await api.createAnalysis(
@@ -166,7 +254,7 @@ export default function App() {
         snapshot,
         session.data.csrf_token,
       );
-      setAnalysisJobId(res.job_id);
+      if (isCurrent()) setAnalysisJobId(res.job_id);
     },
   });
   const cancelAnalysis = useMutation({
@@ -181,6 +269,7 @@ export default function App() {
   });
   const retryAnalysis = useMutation({
     mutationFn: async () => {
+      const isCurrent = responseIsCurrent();
       if (!analysisJobId || !session.data) throw new Error("missing analysis");
       let key = retryKeys.current.get(analysisJobId);
       if (!key) {
@@ -194,58 +283,107 @@ export default function App() {
           headers: mutationHeaders(session.data.csrf_token, key),
         },
       );
-      setAnalysisJobId(result.retry_job_id);
+      if (isCurrent()) setAnalysisJobId(result.retry_job_id);
     },
   });
+  const scanConfiguration = useQuery({
+    queryKey: ["scan-configuration", repository, snapshot],
+    queryFn: ({ signal }) =>
+      api.scanConfiguration(repository, snapshot!, signal),
+    enabled: !!repository && !!snapshot && !!session.data,
+    retry: false,
+  });
   const scanJob = useQuery({
-    queryKey: ["job", scanJobId],
-    queryFn: ({ signal }) => api.job(scanJobId!, signal),
-    enabled: !!scanJobId && !!session.data,
+    queryKey: ["scan-job", repository, snapshot, scanJobId],
+    queryFn: ({ signal }) =>
+      api.scanJob(repository, snapshot!, scanJobId!, signal),
+    enabled: !!repository && !!snapshot && !!scanJobId && !!session.data,
     refetchInterval: (query) =>
-      query.state.data && terminal.has(query.state.data.state) ? false : 1500,
+      terminal.has(query.state.data?.state ?? "") ? false : 1500,
   });
   const startScan = useMutation({
     mutationFn: async () => {
-      if (!repository || !snapshot || !session.data)
-        throw new Error("missing input");
-      const res = await api.createScan(
+      const isCurrent = responseIsCurrent();
+      if (
+        !repository ||
+        !snapshot ||
+        !session.data ||
+        !scanConfiguration.data?.config
+      )
+        throw new Error("scan_configuration_unavailable");
+      const key = `scan:${repository}:${snapshot}`;
+      if (!retryKeys.current.has(key))
+        retryKeys.current.set(key, crypto.randomUUID());
+      const result = await api.createScan(
         repository,
         snapshot,
         session.data.csrf_token,
+        retryKeys.current.get(key),
+        scanConfiguration.data.config,
       );
-      setScanJobId(res.job_id);
+      if (isCurrent()) setScanJobId(result.job_id);
+      retryKeys.current.delete(key);
     },
   });
   const cancelScan = useMutation({
     mutationFn: async () => {
-      if (!scanJobId || !session.data) throw new Error("missing scan");
-      await request(`/jobs/${scanJobId}/cancel`, {
-        method: "POST",
-        headers: mutationHeaders(session.data.csrf_token),
+      if (!scanJobId || !snapshot || !session.data)
+        throw new Error("missing scan");
+      await api.cancelScan(
+        repository,
+        snapshot,
+        scanJobId,
+        session.data.csrf_token,
+        `cancel-${scanJobId}`,
+      );
+      await client.invalidateQueries({
+        queryKey: ["scan-job", repository, snapshot, scanJobId],
       });
-      await client.invalidateQueries({ queryKey: ["job", scanJobId] });
     },
   });
   const retryScan = useMutation({
     mutationFn: async () => {
-      if (!scanJobId || !session.data) throw new Error("missing scan");
-      let key = retryKeys.current.get(scanJobId);
-      if (!key) {
-        key = crypto.randomUUID();
-        retryKeys.current.set(scanJobId, key);
-      }
-      const result = await request<RetryResponseV2>(
-        `/jobs/${scanJobId}/retry`,
-        {
-          method: "POST",
-          headers: mutationHeaders(session.data.csrf_token, key),
-        },
+      const isCurrent = responseIsCurrent();
+      if (!scanJobId || !snapshot || !session.data)
+        throw new Error("missing scan");
+      if (!retryKeys.current.has(scanJobId))
+        retryKeys.current.set(scanJobId, crypto.randomUUID());
+      const result = await api.retryScan(
+        repository,
+        snapshot,
+        scanJobId,
+        session.data.csrf_token,
+        retryKeys.current.get(scanJobId)!,
       );
-      setScanJobId(result.retry_job_id);
+      if (isCurrent()) setScanJobId(result.retry_job_id);
+    },
+  });
+  const acquire = useMutation({
+    mutationFn: async (ref: string) => {
+      if (!session.data) throw new Error("missing session");
+      const intent = `github:${repository}:${ref}`;
+      if (!retryKeys.current.has(intent))
+        retryKeys.current.set(intent, crypto.randomUUID());
+      const isCurrent = responseIsCurrent();
+      const record = await api.acquireGitHub(
+        repository,
+        ref,
+        session.data.csrf_token,
+        retryKeys.current.get(intent)!,
+      );
+      return { record, isCurrent };
+    },
+    onSuccess: ({ record, isCurrent }) => {
+      if (!isCurrent()) return;
+      setSubmissionId(record.id);
+      setJobId(record.job_id ?? null);
+      setRestoredSnapshot(null);
+      setPages([null]);
     },
   });
   const upload = useMutation({
     mutationFn: async () => {
+      const isCurrent = responseIsCurrent();
       if (!file || !repository || !session.data)
         throw new Error("missing input");
       setRestoredSnapshot(null);
@@ -261,7 +399,7 @@ export default function App() {
           }),
         },
       );
-      setSubmissionId(reserved.id);
+      if (isCurrent()) setSubmissionId(reserved.id);
       const result = await request<SubmissionRecordV1>(
         `/submissions/${reserved.id}/content`,
         {
@@ -273,12 +411,13 @@ export default function App() {
           body: file,
         },
       );
-      setJobId(result.job_id ?? null);
+      if (isCurrent()) setJobId(result.job_id ?? null);
       await client.invalidateQueries({ queryKey: ["submission", reserved.id] });
     },
   });
   const action = useMutation({
     mutationFn: async (kind: "cancel" | "retry") => {
+      const isCurrent = responseIsCurrent();
       if (!selectedJob || !session.data) throw new Error("missing job");
       const storageKey = `codespy:retry:${selectedJob}`;
       let commandKey = retryKeys.current.get(selectedJob);
@@ -303,7 +442,7 @@ export default function App() {
           headers: mutationHeaders(session.data.csrf_token, commandKey),
         },
       );
-      if (kind === "retry" && "retry_job_id" in result) {
+      if (isCurrent() && kind === "retry" && "retry_job_id" in result) {
         const retried = result as RetryResponseV1;
         setRestoredSnapshot(null);
         setJobId(retried.retry_job_id);
@@ -316,42 +455,92 @@ export default function App() {
       await client.invalidateQueries({ queryKey: ["submission"] });
     },
   });
-  const busy = upload.isPending || action.isPending;
+  const busy =
+    creatingRepository ||
+    upload.isPending ||
+    action.isPending ||
+    analyze.isPending ||
+    startScan.isPending ||
+    acquire.isPending ||
+    retryScan.isPending ||
+    cancelScan.isPending ||
+    retryAnalysis.isPending ||
+    cancelAnalysis.isPending;
   return (
-    <>
-      <header>
-        <a href="/" className="brand">
-          CodeSPY <span>source desk</span>
-        </a>
-        <span>{session.data ? "Session active" : "Session unavailable"}</span>
-      </header>
-      <main>
-        <div className="intro">
-          <p className="eyebrow">Source intake</p>
-          <h1>Source inventory</h1>
+    <WorkspaceShell
+      onSignOut={session.data ? () => logout.mutate() : undefined}
+      signingOut={logout.isPending}
+      sessionState={
+        session.isPending
+          ? "checking"
+          : session.data
+            ? "available"
+            : "unavailable"
+      }
+      repositoryLabel={
+        repositoryItems.find((item) => item.id === repository)?.display_name
+      }
+      snapshotId={snapshot}
+      destinations={[
+        { id: "workspace-home", label: "Overview", enabled: true },
+        { id: "upload-title", label: "Add codebase", enabled: !!session.data },
+        {
+          id: "inventory-title",
+          label: "Files",
+          enabled: !!session.data && !!snapshot,
+        },
+        {
+          id: "structural-title",
+          label: "Structure",
+          enabled: !!snapshot && !!repository,
+        },
+        {
+          id: "findings-title",
+          label: "Findings",
+          enabled: !!snapshot && !!repository,
+        },
+        {
+          id: "retrieval-title",
+          label: "Search & memory",
+          enabled: !!snapshot && !!repository,
+        },
+        {
+          id: "workbench-title",
+          label: "Investigations",
+          enabled: !!snapshot && !!repository,
+        },
+      ]}
+    >
+      <WorkspaceHeading />
+      {logout.isError && (
+        <p role="alert">Sign-out could not be confirmed. Retry signing out.</p>
+      )}
+      {session.isPending && <p role="status">Checking your session…</p>}
+      {session.isError && (
+        <Panel
+          id="session-unavailable"
+          title="Sign-in is unavailable"
+          role="alert"
+        >
           <p>
-            Inspect the files in a ZIP archive, their byte hashes, and what can
-            be analyzed next.
+            The local fixture or GitHub sign-in provider must be configured
+            before you can submit sources.
           </p>
-        </div>
-        {session.isPending && <p role="status">Checking your session…</p>}
-        {session.isError && (
-          <section role="alert">
-            <h2>Sign-in is unavailable</h2>
-            <p>
-              The local fixture or GitHub sign-in provider must be configured
-              before you can submit sources.
-            </p>
-            <button onClick={() => void session.refetch()}>
+          <div className="session-actions">
+            <Button onClick={() => void session.refetch()}>
               Retry session
-            </button>
+            </Button>
             <a href="/api/v1/auth/github/start">Sign in with GitHub</a>
-          </section>
-        )}
-        {session.data && (
-          <>
+          </div>
+        </Panel>
+      )}
+      {session.data && (
+        <>
+          <WorkspacePane id="upload-title" overview>
             <section aria-labelledby="upload-title">
-              <h2 id="upload-title">Add a source archive</h2>
+              <h2 id="upload-title" tabIndex={-1}>
+                Add a source archive
+              </h2>
               <p>
                 ZIP only, up to 100 MiB. Archive contents are inventoried
                 without executing source files.
@@ -367,9 +556,53 @@ export default function App() {
                   </button>
                 </p>
               )}
+              {selectedMetadata.isError && (
+                <p role="alert">
+                  The selected repository is unavailable. Choose another
+                  authorized repository.
+                </p>
+              )}
               {repositories.isSuccess && repositoryItems.length === 0 && (
                 <p>No repositories are available.</p>
               )}
+              <RepositoryCreateForm
+                disabled={(busy && !creatingRepository) || !!submissionId}
+                onPendingChange={setCreatingRepository}
+                csrfToken={session.data.csrf_token}
+                onCreated={(record) => {
+                  client.setQueryData<InfiniteData<RepositoryPageV1>>(
+                    ["repositories"],
+                    (current) =>
+                      current
+                        ? {
+                            ...current,
+                            pages: [
+                              {
+                                ...current.pages[0],
+                                items: [
+                                  {
+                                    id: record.id,
+                                    org_id: record.org_id,
+                                    display_name: record.display_name,
+                                    source_kind: record.source_kind,
+                                  },
+                                  ...(current.pages[0]?.items ?? []),
+                                ],
+                              },
+                              ...current.pages.slice(1),
+                            ],
+                          }
+                        : current,
+                  );
+                  setRepository(record.id);
+                  setRestoredSnapshot(null);
+                  setSubmissionId(null);
+                  setJobId(null);
+                  setScanJobId(null);
+                  setAnalysisJobId(null);
+                  setPages([null]);
+                }}
+              />
               <form
                 noValidate
                 onSubmit={(event) => {
@@ -397,18 +630,28 @@ export default function App() {
                   value={repository}
                   disabled={busy || !!submissionId}
                   onChange={(event) => {
+                    if (event.target.value === repository) return;
+                    navigationRevision.current += 1;
                     setRepository(event.target.value);
+                    setRestoredSnapshot(null);
+                    setSubmissionId(null);
+                    setJobId(null);
+                    setScanJobId(null);
+                    setAnalysisJobId(null);
+                    setPages([null]);
+                    setConfirmCancel(false);
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete("investigation");
+                    window.history.replaceState(window.history.state, "", url);
                     uploadKey.current = crypto.randomUUID();
                   }}
                 >
                   <option value="">Choose a repository</option>
-                  {repositoryItems
-                    .filter((repo) => repo.source_kind !== "github")
-                    .map((repo) => (
-                      <option key={repo.id} value={repo.id}>
-                        {repo.display_name}
-                      </option>
-                    ))}
+                  {repositoryItems.map((repo) => (
+                    <option key={repo.id} value={repo.id}>
+                      {repo.display_name}
+                    </option>
+                  ))}
                 </select>
                 {repositories.hasNextPage && (
                   <button
@@ -425,7 +668,12 @@ export default function App() {
                   id="archive"
                   type="file"
                   accept=".zip,application/zip"
-                  disabled={busy || !!submissionId}
+                  disabled={
+                    busy ||
+                    !!submissionId ||
+                    repositoryItems.find((item) => item.id === repository)
+                      ?.source_kind === "github"
+                  }
                   aria-invalid={!!validation}
                   aria-describedby="upload-help"
                   onChange={(event) => {
@@ -443,6 +691,8 @@ export default function App() {
                   disabled={
                     busy ||
                     !repositoryItems.length ||
+                    repositoryItems.find((item) => item.id === repository)
+                      ?.source_kind === "github" ||
                     (!!submissionId && !upload.isError)
                   }
                   aria-busy={upload.isPending}
@@ -450,8 +700,18 @@ export default function App() {
                   {upload.isPending ? "Uploading…" : "Upload archive"}
                 </button>
               </form>
+              {repositoryItems.find((item) => item.id === repository)
+                ?.source_kind === "github" && (
+                <GitHubImportForm
+                  pending={busy}
+                  onImport={(ref) => acquire.mutate(ref)}
+                />
+              )}
+              {acquire.isError && <p role="alert">{problem(acquire.error)}</p>}
               {upload.isError && <p role="alert">{problem(upload.error)}</p>}
             </section>
+          </WorkspacePane>
+          <WorkspacePane id="upload-title" overview>
             <section aria-labelledby="job-title">
               <h2 id="job-title">Current work</h2>
               <div role="status" aria-live="polite" className="status-line">
@@ -525,14 +785,15 @@ export default function App() {
                 <button
                   disabled={busy}
                   onClick={() => {
-                    window.history.replaceState(
-                      {},
-                      "",
-                      window.location.pathname,
-                    );
+                    const url = new URL(window.location.href);
+                    for (const key of ["submission", "job", "scan", "snapshot"])
+                      url.searchParams.delete(key);
+                    window.history.replaceState(window.history.state, "", url);
+                    locationSearch.current = url.search;
                     setRestoredSnapshot(null);
                     setSubmissionId(null);
                     setJobId(null);
+                    setScanJobId(null);
                     setFile(null);
                     setPages([null]);
                     setAnalysisJobId(null);
@@ -547,9 +808,13 @@ export default function App() {
                 </button>
               )}
             </section>
+          </WorkspacePane>
+          <WorkspacePane id="inventory-title">
             <section aria-labelledby="inventory-title">
               <div className="section-heading">
-                <h2 id="inventory-title">File inventory</h2>
+                <h2 id="inventory-title" tabIndex={-1}>
+                  File inventory
+                </h2>
                 <span className="muted">
                   Byte evidence · no semantic analysis
                 </span>
@@ -639,10 +904,14 @@ export default function App() {
                 </>
               )}
             </section>
-            {snapshot && repository && (
+          </WorkspacePane>
+          {snapshot && repository && (
+            <WorkspacePane id="structural-title">
               <section aria-labelledby="structural-title">
                 <div className="section-heading">
-                  <h2 id="structural-title">Structural Architecture</h2>
+                  <h2 id="structural-title" tabIndex={-1}>
+                    Structural Architecture
+                  </h2>
                   <span className="muted">
                     Deterministic syntax & graph analysis
                   </span>
@@ -710,15 +979,51 @@ export default function App() {
                   </div>
                 )}
               </section>
-            )}
-            {snapshot && repository && (
+            </WorkspacePane>
+          )}
+          {snapshot && repository && (
+            <WorkspacePane id="findings-title">
               <section aria-labelledby="findings-title">
                 <div className="section-heading">
-                  <h2 id="findings-title">Deterministic Security Findings</h2>
+                  <h2 id="findings-title" tabIndex={-1}>
+                    Deterministic Security Findings
+                  </h2>
                   <span className="muted">
                     Multi-scanner static analysis & human triage
                   </span>
                 </div>
+                {scanConfiguration.isPending && (
+                  <p role="status">Checking server scan policy…</p>
+                )}
+                {scanConfiguration.isError && (
+                  <p role="alert">
+                    Scan configuration could not be loaded.{" "}
+                    <button
+                      type="button"
+                      onClick={() => void scanConfiguration.refetch()}
+                    >
+                      Retry scan configuration
+                    </button>
+                  </p>
+                )}
+                {scanConfiguration.data && (
+                  <p className="muted">
+                    {scanConfiguration.data.configured
+                      ? `Selected scope: ${scanConfiguration.data.selected_source_files} source files and ${scanConfiguration.data.selected_lockfiles} lockfiles. Omitted by limits: ${scanConfiguration.data.omitted_source_files} source files and ${scanConfiguration.data.omitted_lockfiles} lockfiles. Configuration does not prove runtime health.`
+                      : `Scanning is unavailable: ${scanConfiguration.data.reason?.replaceAll("_", " ") ?? "configuration unavailable"}. Configure the qualified scanner and server policy before starting.`}
+                  </p>
+                )}
+                {scanJob.isError && (
+                  <p role="alert">
+                    Scan status is unavailable.{" "}
+                    <button
+                      type="button"
+                      onClick={() => void scanJob.refetch()}
+                    >
+                      Reload scan status
+                    </button>
+                  </p>
+                )}
                 {scanJob.data && !terminal.has(scanJob.data.state) && (
                   <button
                     type="button"
@@ -743,11 +1048,27 @@ export default function App() {
                     {problem(cancelScan.error ?? retryScan.error)}
                   </p>
                 )}
-                {scanJob.data?.state === "succeeded" || scanJobId ? (
+                {scanJob.data?.result_run_id ? (
                   <FindingsWorkbench
                     repositoryId={repository}
                     snapshotId={snapshot}
-                    runId={scanJobId!}
+                    runId={scanJob.data.result_run_id}
+                    onInvestigate={(findingId, runId) => {
+                      if (!snapshot) return;
+                      setFindingTarget({
+                        repositoryId: repository,
+                        snapshotId: snapshot,
+                        findingId,
+                        runId,
+                      });
+                      const url = new URL(window.location.href);
+                      url.searchParams.set("finding", findingId);
+                      url.searchParams.set("finding_run", runId);
+                      url.searchParams.delete("investigation");
+                      url.hash = "workbench-title";
+                      window.history.pushState(window.history.state, "", url);
+                      window.dispatchEvent(new PopStateEvent("popstate"));
+                    }}
                     csrfToken={session.data?.csrf_token ?? ""}
                   />
                 ) : (
@@ -760,12 +1081,17 @@ export default function App() {
                     (scanJob.data && !terminal.has(scanJob.data.state)) ? (
                       <p role="status">
                         Running security scan (
-                        {scanJob.data?.state ?? "starting"})…
+                        {scanJob.data?.state ?? "starting"}
+                        )…
                       </p>
                     ) : (
                       <button
                         type="button"
-                        disabled={busy || startScan.isPending}
+                        disabled={
+                          busy ||
+                          startScan.isPending ||
+                          !scanConfiguration.data?.configured
+                        }
                         onClick={() => startScan.mutate()}
                       >
                         Scan repository
@@ -783,25 +1109,41 @@ export default function App() {
                   </div>
                 )}
               </section>
-            )}
-            {snapshot && repository && (
+            </WorkspacePane>
+          )}
+          {snapshot && repository && (
+            <WorkspacePane id="retrieval-title">
               <RetrievalWorkbench
                 repositoryId={repository}
                 snapshotId={snapshot}
                 csrfToken={session.data?.csrf_token ?? ""}
               />
-            )}
-            {snapshot && repository && (
+            </WorkspacePane>
+          )}
+          {snapshot && repository && (
+            <WorkspacePane id="workbench-title">
               <InvestigationsWorkbench
+                findingId={
+                  findingTarget?.repositoryId === repository &&
+                  findingTarget?.snapshotId === snapshot
+                    ? findingTarget.findingId
+                    : undefined
+                }
+                findingRunId={
+                  findingTarget?.repositoryId === repository &&
+                  findingTarget?.snapshotId === snapshot
+                    ? findingTarget.runId
+                    : undefined
+                }
+                key={`${repository}:${snapshot}`}
                 repositoryId={repository}
                 snapshotId={snapshot}
                 csrfToken={session.data?.csrf_token ?? ""}
               />
-            )}
-          </>
-        )}
-      </main>
-      <footer>CodeSPY · Source admission and inventory</footer>
-    </>
+            </WorkspacePane>
+          )}
+        </>
+      )}
+    </WorkspaceShell>
   );
 }

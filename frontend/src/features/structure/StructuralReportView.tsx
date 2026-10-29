@@ -22,7 +22,7 @@ export function StructuralReportView({ report, repositoryId }: Props) {
 
   const handleExport = (format: "json" | "markdown") => {
     const url = `/api/v1/repositories/${repositoryId}/analyses/${report.run_ref.run_id}/export?format=${format}`;
-    window.open(url, "_blank");
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -119,7 +119,7 @@ export function StructuralReportView({ report, repositoryId }: Props) {
           style={{
             margin: "16px 0",
             padding: "12px",
-            background: "#f8fafc",
+            background: "var(--cs-raised)",
             borderLeft: "4px solid var(--action)",
             borderRadius: "4px",
           }}
@@ -244,8 +244,11 @@ export function StructuralReportView({ report, repositoryId }: Props) {
         {selectedExcerpt && (
           <div role="region" aria-label="Source excerpt">
             <p>
-              File {report.symbols?.find(s => s.location.file_id === selectedExcerpt.location.file_id)?.path ?? selectedExcerpt.location.file_id} · bytes{" "}
-              {selectedExcerpt.location.range.start_byte}–
+              File{" "}
+              {report.symbols?.find(
+                (s) => s.location.file_id === selectedExcerpt.location.file_id,
+              )?.path ?? selectedExcerpt.location.file_id}{" "}
+              · bytes {selectedExcerpt.location.range.start_byte}–
               {selectedExcerpt.location.range.end_byte} · SHA256{" "}
               {selectedExcerpt.location.sha256}
             </p>

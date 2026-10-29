@@ -37,11 +37,7 @@ import type {
 } from "../../api/generated/types.gen";
 
 export type InvestigationVerdict =
-  | "true_positive"
-  | "false_positive"
-  | "benign"
-  | "inconclusive"
-  | string;
+  "true_positive" | "false_positive" | "benign" | "inconclusive" | string;
 
 export interface InvestigationClaimV1 {
   claim_id: string;
@@ -54,6 +50,9 @@ export interface InvestigationClaimV1 {
   verification_notes?: string | null;
 }
 
-export type InvestigationEvent = GeneratedInvestigationEventV1 | InvestigationEventV2;
-export type InvestigationSummary = InvestigationSummaryV1 | InvestigationSummaryV2;
-export type InvestigationDetail = InvestigationDetailResponseV1 | InvestigationDetailResponseV2;
+export type InvestigationEvent =
+  GeneratedInvestigationEventV1 | InvestigationEventV2;
+export type InvestigationSummary =
+  InvestigationSummaryV1 | InvestigationSummaryV2;
+export type InvestigationDetail =
+  InvestigationDetailResponseV1 | InvestigationDetailResponseV2;

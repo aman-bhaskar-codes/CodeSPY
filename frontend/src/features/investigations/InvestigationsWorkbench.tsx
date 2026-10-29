@@ -1,6 +1,14 @@
-import { useEffect, useState } from "react";
+import {
+  selectedInvestigation,
+  rememberInvestigation,
+} from "../../workspace/location";
+import { reportClaims, reportCaveats, type ClaimView } from "./reportView";
+import { Modal } from "../../ui/Modal";
+import { useEffect, useRef, useState } from "react";
+import { ModelAvailabilityPanel } from "./ModelAvailabilityPanel";
+import { InlineNotice } from "../../ui/InlineNotice";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../../api/client";
+import { api, ApiError } from "../../api/client";
 import type {
   InvestigationClaimV1,
   InvestigationDetail,
@@ -51,35 +59,119 @@ interface Props {
   repositoryId: string;
   snapshotId?: string;
   findingId?: string;
+  findingRunId?: string;
   csrfToken: string;
   onFindingTriageRequested?: (findingId: string) => void;
+}
+
+function operationProblem(error: unknown) {
+  if (error instanceof ApiError) {
+    if (error.status === 401)
+      return "Your session expired. Sign in again before continuing.";
+    if (error.status === 403)
+      return "Access changed. Reload your repository permissions.";
+    if (error.status === 409)
+      return "The investigation changed. Reload its status before retrying.";
+    if (error.status === 429)
+      return "A usage limit was reached. Check the budget and try again later.";
+    if (error.status === 503)
+      return "Investigation execution is unavailable. Check the configured worker and model runtime.";
+  }
+  return "The request could not be confirmed. Retry the same action to check its outcome.";
 }
 
 export function InvestigationsWorkbench({
   repositoryId,
   snapshotId,
   findingId: initialFindingId,
+  findingRunId: initialFindingRunId,
   csrfToken,
 }: Props) {
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
-  const [findingId, setFindingId] = useState(initialFindingId || "");
+  const targetKey = `${initialFindingId ?? ""}:${initialFindingRunId ?? ""}`;
+  const [findingOverride, setFindingOverride] = useState<{
+    targetKey: string;
+    id: string;
+    run: string;
+  }>();
+  const findingId =
+    findingOverride?.targetKey === targetKey
+      ? findingOverride.id
+      : (initialFindingId ?? "");
+  const findingRunId =
+    findingOverride?.targetKey === targetKey
+      ? findingOverride.run
+      : (initialFindingRunId ?? "");
+  const setFindingId = (id: string) =>
+    setFindingOverride({
+      targetKey,
+      id,
+      run: id === findingId ? findingRunId : "",
+    });
+  const setFindingRunId = (run: string) =>
+    setFindingOverride({ targetKey, id: findingId, run });
+  const uuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const invalidFinding =
+    !!findingId.trim() &&
+    (!uuid.test(findingId.trim()) ||
+      (!!snapshotId && !uuid.test(findingRunId.trim())));
   const [mode, setMode] = useState<InvestigationMode>("short_path");
   const [maxSteps, setMaxSteps] = useState(10);
   const [budgetMicros, setBudgetMicros] = useState(5_000_000); // $5.00
-  const [selectedInvId, setSelectedInvId] = useState<string | null>(null);
+  const [selectedInvId, setSelection] = useState<string | null>(() =>
+    selectedInvestigation(repositoryId, snapshotId),
+  );
   const [feedbackNotes, setFeedbackNotes] = useState("");
   const [feedbackType, setFeedbackType] = useState<
     "agree" | "disagree" | "needs_review"
   >("agree");
   const [saveToMemory, setSaveToMemory] = useState(true);
+  const [cancelIntent, setCancelIntent] = useState<string | null>(null);
   const [liveEvents, setLiveEvents] = useState<InvestigationEvent[]>([]);
+  const [eventCursor, setEventCursor] = useState<number | undefined>();
+  const [historyCursor, setHistoryCursor] = useState<string | undefined>();
+  const commandKeys = useRef(
+    new Map<string, { signature: string; key: string }>(),
+  );
+  function commandKey(operation: string, payload: unknown) {
+    const signature = JSON.stringify(payload);
+    if (commandKeys.current.get(operation)?.signature !== signature)
+      commandKeys.current.set(operation, {
+        signature,
+        key: crypto.randomUUID(),
+      });
+    return commandKeys.current.get(operation)!.key;
+  }
+
+  function setSelectedInvId(id: string) {
+    setEventCursor(undefined);
+    setSelection(id);
+    rememberInvestigation(id);
+    setLiveEvents([]);
+    setFeedbackNotes("");
+    setCancelIntent(null);
+  }
+  useEffect(() => {
+    const restore = () => {
+      const next = selectedInvestigation(repositoryId, snapshotId);
+      if (next === selectedInvId) return;
+      setEventCursor(undefined);
+      setSelection(next);
+      setLiveEvents([]);
+      setFeedbackNotes("");
+      setCancelIntent(null);
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, [repositoryId, snapshotId, selectedInvId]);
 
   // List past investigations
   const listQuery = useQuery({
-    queryKey: ["investigations", repositoryId],
+    queryKey: ["investigations", repositoryId, historyCursor],
     queryFn: ({ signal }) =>
-      api.listInvestigations(repositoryId, undefined, signal),
+      api.listInvestigations(repositoryId, undefined, signal, historyCursor),
     enabled: !!repositoryId,
     refetchInterval: 5000,
   });
@@ -96,23 +188,41 @@ export function InvestigationsWorkbench({
       const data = query.state.data as InvestigationDetail | null;
       const status = data?.summary?.status;
       if (!status) return false;
-      return status === "running" || status === "pending" || status === "checkpointed" ? 2000 : false;
+      return status === "running" ||
+        status === "pending" ||
+        status === "checkpointed"
+        ? 2000
+        : false;
     },
   });
 
   // Query events list for selected investigation
   const eventsQuery = useQuery({
-    queryKey: ["investigation-events", repositoryId, selectedInvId],
+    queryKey: [
+      "investigation-events",
+      repositoryId,
+      selectedInvId,
+      eventCursor,
+    ],
     queryFn: ({ signal }) =>
       selectedInvId
-        ? api.listInvestigationEvents(repositoryId, selectedInvId, undefined, signal)
+        ? api.listInvestigationEvents(
+            repositoryId,
+            selectedInvId,
+            eventCursor,
+            signal,
+          )
         : null,
     enabled: !!selectedInvId && !!repositoryId,
     refetchInterval: () => {
       const data = detailQuery.data;
       const status = data?.summary?.status;
       if (!status) return false;
-      return status === "running" || status === "pending" || status === "checkpointed" ? 2000 : false;
+      return status === "running" ||
+        status === "pending" ||
+        status === "checkpointed"
+        ? 2000
+        : false;
     },
   });
 
@@ -122,6 +232,16 @@ export function InvestigationsWorkbench({
       const trimmedQuery = query.trim();
       const trimmedFindingId = findingId.trim() || undefined;
       const targetType = trimmedFindingId ? "finding" : "repository";
+      const key = commandKey("create", [
+        repositoryId,
+        snapshotId,
+        trimmedQuery,
+        trimmedFindingId,
+        findingRunId,
+        mode,
+        maxSteps,
+        budgetMicros,
+      ]);
 
       if (snapshotId) {
         return await api.createInvestigation(
@@ -132,11 +252,15 @@ export function InvestigationsWorkbench({
             target_type: targetType,
             query: trimmedQuery,
             finding_id: trimmedFindingId,
+            finding_run_id: trimmedFindingId
+              ? findingRunId.trim() || undefined
+              : undefined,
             mode,
             max_steps: maxSteps,
             budget_limit_micros: budgetMicros,
           },
           csrfToken,
+          key,
         );
       }
       return await api.createInvestigation(
@@ -150,9 +274,11 @@ export function InvestigationsWorkbench({
           budget_limit_micros: budgetMicros,
         },
         csrfToken,
+        key,
       );
     },
     onSuccess: (newInv) => {
+      commandKeys.current.delete("create");
       setSelectedInvId(newInv.id);
       setLiveEvents([]);
       queryClient.invalidateQueries({
@@ -164,20 +290,25 @@ export function InvestigationsWorkbench({
   // Execute mutation
   const executeMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await api.executeInvestigation(repositoryId, id, csrfToken);
+      return await api.executeInvestigation(
+        repositoryId,
+        id,
+        csrfToken,
+        commandKey("execute", [repositoryId, id]),
+      );
     },
-    onSuccess: (result) => {
+    onSuccess: (result, submittedId) => {
       if ("summary" in result) {
         queryClient.setQueryData(
-          ["investigation-detail", repositoryId, selectedInvId],
+          ["investigation-detail", repositoryId, submittedId],
           result,
         );
       }
       queryClient.invalidateQueries({
-        queryKey: ["investigation-detail", repositoryId, selectedInvId],
+        queryKey: ["investigation-detail", repositoryId, submittedId],
       });
       queryClient.invalidateQueries({
-        queryKey: ["investigation-events", repositoryId, selectedInvId],
+        queryKey: ["investigation-events", repositoryId, submittedId],
       });
       queryClient.invalidateQueries({
         queryKey: ["investigations", repositoryId],
@@ -188,9 +319,15 @@ export function InvestigationsWorkbench({
   // Cancel mutation
   const cancelMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await api.cancelInvestigation(repositoryId, id, csrfToken);
+      return await api.cancelInvestigation(
+        repositoryId,
+        id,
+        csrfToken,
+        commandKey("cancel", [repositoryId, id]),
+      );
     },
     onSuccess: () => {
+      setCancelIntent(null);
       queryClient.invalidateQueries({
         queryKey: ["investigation-detail", repositoryId, selectedInvId],
       });
@@ -207,7 +344,8 @@ export function InvestigationsWorkbench({
   const resumeMutation = useMutation({
     mutationFn: async () => {
       if (!summary) return;
-      const currentJobId = (summary as InvestigationSummaryV2).current_job_id ?? "";
+      const currentJobId =
+        (summary as InvestigationSummaryV2).current_job_id ?? "";
       const specHash = (summary as InvestigationSummaryV2).spec_hash ?? "";
       return await api.resumeInvestigation(
         repositoryId,
@@ -217,6 +355,12 @@ export function InvestigationsWorkbench({
           expected_spec_hash: specHash,
         },
         csrfToken,
+        commandKey("resume", [
+          repositoryId,
+          summary.id,
+          currentJobId,
+          specHash,
+        ]),
       );
     },
     onSuccess: () => {
@@ -244,6 +388,7 @@ export function InvestigationsWorkbench({
           budget_limit_micros: budgetMicros,
         },
         csrfToken,
+        commandKey("retry", [repositoryId, summary.id, maxSteps, budgetMicros]),
       );
     },
     onSuccess: (newSummary) => {
@@ -271,6 +416,7 @@ export function InvestigationsWorkbench({
         selectedInvId,
         fb,
         csrfToken,
+        commandKey("feedback", [repositoryId, selectedInvId, fb]),
       );
     },
     onSuccess: () => {
@@ -295,7 +441,7 @@ export function InvestigationsWorkbench({
         const parsed = JSON.parse(e.data) as InvestigationEvent;
         setLiveEvents((prev) => {
           if (prev.some((item) => item.id === parsed.id)) return prev;
-          return [...prev, parsed];
+          return [...prev, parsed].slice(-200);
         });
       } catch {
         // Ignored unparsable SSE ping
@@ -305,7 +451,7 @@ export function InvestigationsWorkbench({
     eventSource.addEventListener("step_started", (e: MessageEvent) => {
       try {
         const parsed = JSON.parse(e.data) as InvestigationEvent;
-        setLiveEvents((prev) => [...prev, parsed]);
+        setLiveEvents((prev) => [...prev, parsed].slice(-200));
       } catch {
         // Ignored unparsable SSE ping
       }
@@ -335,6 +481,10 @@ export function InvestigationsWorkbench({
 
   const detail = detailQuery.data;
   const summary = detail?.summary;
+  const actionAvailable = (action: string, legacy: boolean) =>
+    detail && "available_actions" in detail
+      ? (detail.available_actions ?? []).includes(action)
+      : legacy;
 
   const formatMicros = (micros: number) => {
     return `$${(micros / 1_000_000).toFixed(4)}`;
@@ -344,53 +494,60 @@ export function InvestigationsWorkbench({
     switch (verdict) {
       case "true_positive":
         return {
-          background: "#fee2e2",
-          color: "#991b1b",
-          border: "1px solid #f87171",
+          background: "var(--cs-danger-bg)",
+          color: "var(--cs-danger)",
+          border: "1px solid var(--cs-danger)",
         };
       case "false_positive":
         return {
-          background: "#dcfce7",
-          color: "#166534",
-          border: "1px solid #4ade80",
+          background: "var(--cs-success-bg)",
+          color: "var(--cs-success)",
+          border: "1px solid var(--cs-success)",
         };
       case "benign":
         return {
-          background: "#e0f2fe",
-          color: "#0369a1",
-          border: "1px solid #38bdf8",
+          background: "var(--cs-info-bg)",
+          color: "var(--cs-action)",
+          border: "1px solid var(--cs-action)",
         };
       default:
         return {
-          background: "#fef3c7",
-          color: "#92400e",
-          border: "1px solid #fcd34d",
+          background: "var(--cs-warning-bg)",
+          color: "var(--cs-warning)",
+          border: "1px solid var(--cs-warning)",
         };
     }
   };
 
-  const getClaimBadgeStyle = (status: InvestigationClaimV1["status"]) => {
+  const getClaimBadgeStyle = (status: ClaimView["status"]) => {
     switch (status) {
+      case "source_correspondence_confirmed":
       case "verified":
         return {
-          background: "#dcfce7",
-          color: "#166534",
-          label: "VERIFIED GROUNDING",
+          background: "var(--cs-success-bg)",
+          color: "var(--cs-success)",
+          label: "SOURCE CORRESPONDENCE (AT PUBLICATION)",
         };
       case "refuted":
         return {
-          background: "#fee2e2",
-          color: "#991b1b",
+          background: "var(--cs-danger-bg)",
+          color: "var(--cs-danger)",
           label: "REFUTED CITATION",
         };
+      case "location_valid_quote_missing":
+      case "evidence_unavailable":
       case "unsupported":
         return {
-          background: "#fef3c7",
-          color: "#92400e",
-          label: "UNSUPPORTED",
+          background: "var(--cs-warning-bg)",
+          color: "var(--cs-warning)",
+          label: status.replaceAll("_", " ").toUpperCase(),
         };
       default:
-        return { background: "#f1f5f9", color: "#475569", label: "PENDING" };
+        return {
+          background: "var(--cs-raised)",
+          color: "var(--cs-muted)",
+          label: "PENDING",
+        };
     }
   };
 
@@ -402,12 +559,73 @@ export function InvestigationsWorkbench({
         display: "flex",
         flexDirection: "column",
         gap: "24px",
-        background: "#0f172a",
-        color: "#f8fafc",
+        background: "var(--cs-panel)",
+        color: "var(--cs-text)",
         borderRadius: "12px",
-        fontFamily: "Inter, system-ui, sans-serif",
+        fontFamily: "var(--cs-font)",
       }}
     >
+      <Modal
+        open={!!cancelIntent}
+        title="Cancel investigation"
+        onClose={() => setCancelIntent(null)}
+        busy={cancelMutation.isPending}
+        description="This stops further work. A model call already sent may still settle usage."
+      >
+        <button
+          type="button"
+          disabled={cancelMutation.isPending}
+          onClick={() => cancelMutation.mutate(cancelIntent!)}
+        >
+          Confirm cancellation
+        </button>
+        <button
+          type="button"
+          disabled={cancelMutation.isPending}
+          onClick={() => setCancelIntent(null)}
+        >
+          Keep running
+        </button>
+      </Modal>
+      <ModelAvailabilityPanel repositoryId={repositoryId} />
+      {[
+        createMutation,
+        executeMutation,
+        cancelMutation,
+        resumeMutation,
+        retryMutation,
+        feedbackMutation,
+      ]
+        .filter((mutation) => mutation.isError)
+        .map((mutation, index) => (
+          <InlineNotice key={index} tone="danger">
+            {operationProblem(mutation.error)}
+          </InlineNotice>
+        ))}
+      {listQuery.isError && (
+        <InlineNotice tone="danger">
+          Investigations could not be loaded.{" "}
+          <button type="button" onClick={() => void listQuery.refetch()}>
+            Retry investigations
+          </button>
+        </InlineNotice>
+      )}
+      {detailQuery.isError && (
+        <InlineNotice tone="danger">
+          {operationProblem(detailQuery.error)}{" "}
+          <button type="button" onClick={() => void detailQuery.refetch()}>
+            Reload investigation
+          </button>
+        </InlineNotice>
+      )}
+      {eventsQuery.isError && (
+        <InlineNotice tone="danger">
+          The event timeline could not be refreshed.{" "}
+          <button type="button" onClick={() => void eventsQuery.refetch()}>
+            Retry timeline
+          </button>
+        </InlineNotice>
+      )}
       {/* Header Banner */}
       <div
         className="investigation-heading"
@@ -415,39 +633,53 @@ export function InvestigationsWorkbench({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderBottom: "1px solid #334155",
+          borderBottom: "1px solid var(--cs-border)",
           paddingBottom: "16px",
         }}
       >
         <div>
           <h2
             id="workbench-title"
+            tabIndex={-1}
             style={{
               margin: 0,
               fontSize: "20px",
               fontWeight: 700,
-              color: "#38bdf8",
+              color: "var(--cs-action)",
             }}
           >
-            Agentic Security Investigations
+            Investigation workbench
           </h2>
-          <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#94a3b8" }}>
-            Evidence-grounded model orchestration, anti-hallucination claim
-            verification, and durable fenced execution.
+          <p
+            style={{
+              margin: "4px 0 0",
+              fontSize: "13px",
+              color: "var(--cs-muted)",
+            }}
+          >
+            Investigate questions with source evidence, bounded tools and saved
+            results.
           </p>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "12px",
+            alignItems: "center",
+          }}
+        >
           <div
             style={{
               padding: "6px 12px",
-              background: "#1e293b",
+              background: "var(--cs-raised)",
               borderRadius: "6px",
               fontSize: "12px",
-              border: "1px solid #334155",
+              border: "1px solid var(--cs-border)",
             }}
           >
-            <span style={{ color: "#94a3b8" }}>Mode: </span>
-            <strong style={{ color: "#38bdf8" }}>
+            <span style={{ color: "var(--cs-muted)" }}>Mode: </span>
+            <strong style={{ color: "var(--cs-action)" }}>
               {mode === "short_path" ? "Short Path" : "Two Specialist"}
             </strong>
           </div>
@@ -455,14 +687,14 @@ export function InvestigationsWorkbench({
             <div
               style={{
                 padding: "6px 12px",
-                background: "#1e293b",
+                background: "var(--cs-raised)",
                 borderRadius: "6px",
                 fontSize: "12px",
-                border: "1px solid #334155",
+                border: "1px solid var(--cs-border)",
               }}
             >
-              <span style={{ color: "#94a3b8" }}>Snapshot: </span>
-              <strong style={{ color: "#f8fafc" }}>
+              <span style={{ color: "var(--cs-muted)" }}>Snapshot: </span>
+              <strong style={{ color: "var(--cs-text)" }}>
                 {snapshotId.slice(0, 8)}
               </strong>
             </div>
@@ -470,14 +702,14 @@ export function InvestigationsWorkbench({
           <div
             style={{
               padding: "6px 12px",
-              background: "#1e293b",
+              background: "var(--cs-raised)",
               borderRadius: "6px",
               fontSize: "12px",
-              border: "1px solid #334155",
+              border: "1px solid var(--cs-border)",
             }}
           >
-            <span style={{ color: "#94a3b8" }}>Budget Limit: </span>
-            <strong style={{ color: "#a855f7" }}>
+            <span style={{ color: "var(--cs-muted)" }}>Budget Limit: </span>
+            <strong style={{ color: "var(--cs-action)" }}>
               {formatMicros(budgetMicros)}
             </strong>
           </div>
@@ -498,9 +730,9 @@ export function InvestigationsWorkbench({
           <div
             style={{
               padding: "16px",
-              background: "#1e293b",
+              background: "var(--cs-raised)",
               borderRadius: "8px",
-              border: "1px solid #334155",
+              border: "1px solid var(--cs-border)",
               display: "flex",
               flexDirection: "column",
               gap: "12px",
@@ -511,10 +743,10 @@ export function InvestigationsWorkbench({
                 margin: 0,
                 fontSize: "14px",
                 fontWeight: 600,
-                color: "#f1f5f9",
+                color: "var(--cs-text)",
               }}
             >
-              Launch New Investigation
+              New investigation
             </h3>
 
             <div>
@@ -523,16 +755,17 @@ export function InvestigationsWorkbench({
                 style={{
                   display: "block",
                   fontSize: "12px",
-                  color: "#94a3b8",
+                  color: "var(--cs-muted)",
                   marginBottom: "4px",
                 }}
               >
-                Security Hypothesis or Finding to Investigate:
+                Question or Finding to Investigate:
               </label>
               <textarea
                 className="resize-none"
                 id="investigation-query-input"
                 value={query}
+                maxLength={4000}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="e.g. Verify potential hardcoded API key in auth handler or validate SSRF path"
                 rows={3}
@@ -540,9 +773,9 @@ export function InvestigationsWorkbench({
                   width: "100%",
                   padding: "8px",
                   borderRadius: "6px",
-                  border: "1px solid #475569",
-                  background: "#0f172a",
-                  color: "#f8fafc",
+                  border: "1px solid var(--cs-control-border)",
+                  background: "var(--cs-panel)",
+                  color: "var(--cs-text)",
                   fontSize: "13px",
                   boxSizing: "border-box",
                 }}
@@ -552,7 +785,8 @@ export function InvestigationsWorkbench({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                 gap: "12px",
               }}
             >
@@ -562,7 +796,7 @@ export function InvestigationsWorkbench({
                   style={{
                     display: "block",
                     fontSize: "12px",
-                    color: "#94a3b8",
+                    color: "var(--cs-muted)",
                     marginBottom: "4px",
                   }}
                 >
@@ -576,9 +810,9 @@ export function InvestigationsWorkbench({
                     width: "100%",
                     padding: "6px 8px",
                     borderRadius: "6px",
-                    border: "1px solid #475569",
-                    background: "#0f172a",
-                    color: "#f8fafc",
+                    border: "1px solid var(--cs-control-border)",
+                    background: "var(--cs-panel)",
+                    color: "var(--cs-text)",
                     fontSize: "12px",
                   }}
                 >
@@ -597,12 +831,34 @@ export function InvestigationsWorkbench({
                   style={{
                     display: "block",
                     fontSize: "12px",
-                    color: "#94a3b8",
+                    color: "var(--cs-muted)",
                     marginBottom: "4px",
                   }}
                 >
                   Target Finding ID (Optional):
                 </label>
+                {findingId.trim() && (
+                  <>
+                    <label htmlFor="finding-scan-run">
+                      Finding scan run ID
+                    </label>
+                    <input
+                      id="finding-scan-run"
+                      value={findingRunId}
+                      onChange={(event) => setFindingRunId(event.target.value)}
+                      aria-invalid={invalidFinding}
+                      aria-describedby="finding-binding-hint"
+                    />
+                    <p
+                      id="finding-binding-hint"
+                      className={invalidFinding ? "error" : "muted"}
+                    >
+                      Provide the exact finding and published scan run UUIDs.
+                      Use “Investigate this finding” from a finding's detail
+                      view to fill them automatically.
+                    </p>
+                  </>
+                )}
                 <input
                   id="investigation-finding-id-input"
                   type="text"
@@ -613,9 +869,9 @@ export function InvestigationsWorkbench({
                     width: "100%",
                     padding: "6px 8px",
                     borderRadius: "6px",
-                    border: "1px solid #475569",
-                    background: "#0f172a",
-                    color: "#f8fafc",
+                    border: "1px solid var(--cs-control-border)",
+                    background: "var(--cs-panel)",
+                    color: "var(--cs-text)",
                     fontSize: "12px",
                     boxSizing: "border-box",
                   }}
@@ -626,7 +882,8 @@ export function InvestigationsWorkbench({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
                 gap: "12px",
               }}
             >
@@ -636,7 +893,7 @@ export function InvestigationsWorkbench({
                   style={{
                     display: "block",
                     fontSize: "12px",
-                    color: "#94a3b8",
+                    color: "var(--cs-muted)",
                     marginBottom: "4px",
                   }}
                 >
@@ -651,15 +908,15 @@ export function InvestigationsWorkbench({
                     width: "100%",
                     padding: "6px 8px",
                     borderRadius: "6px",
-                    border: "1px solid #475569",
-                    background: "#0f172a",
-                    color: "#f8fafc",
+                    border: "1px solid var(--cs-control-border)",
+                    background: "var(--cs-panel)",
+                    color: "var(--cs-text)",
                     fontSize: "12px",
                   }}
                 >
                   <option value={250_000}>$0.25 (Test)</option>
                   <option value={1_000_000}>$1.00 (Standard)</option>
-                  <option value={5_000_000}>$5.00 (Deep)</option>
+                  <option value={5_000_000}>$5.00</option>
                   <option value={10_000_000}>$10.00 (Comprehensive)</option>
                 </select>
               </div>
@@ -670,27 +927,27 @@ export function InvestigationsWorkbench({
                   style={{
                     display: "block",
                     fontSize: "12px",
-                    color: "#94a3b8",
+                    color: "var(--cs-muted)",
                     marginBottom: "4px",
                   }}
                 >
-                  Max Tool Steps:
+                  Maximum investigation steps:
                 </label>
                 <input
                   id="investigation-max-steps-input"
-                  aria-label="Max Tool Steps"
+                  aria-label="Maximum investigation steps"
                   type="number"
                   min={1}
-                  max={30}
+                  max={25}
                   value={maxSteps}
                   onChange={(e) => setMaxSteps(Number(e.target.value))}
                   style={{
                     width: "100%",
                     padding: "6px 8px",
                     borderRadius: "6px",
-                    border: "1px solid #475569",
-                    background: "#0f172a",
-                    color: "#f8fafc",
+                    border: "1px solid var(--cs-control-border)",
+                    background: "var(--cs-panel)",
+                    color: "var(--cs-text)",
                     fontSize: "12px",
                     boxSizing: "border-box",
                   }}
@@ -701,15 +958,22 @@ export function InvestigationsWorkbench({
             <button
               id="start-investigation-btn"
               type="button"
-              disabled={createMutation.isPending || !query.trim()}
+              disabled={
+                createMutation.isPending ||
+                !query.trim() ||
+                !Number.isInteger(maxSteps) ||
+                maxSteps < 1 ||
+                maxSteps > 25 ||
+                invalidFinding
+              }
               onClick={() => createMutation.mutate()}
               style={{
                 marginTop: "8px",
                 padding: "8px 16px",
                 borderRadius: "6px",
                 border: "none",
-                background: "#0284c7",
-                color: "#ffffff",
+                background: "var(--cs-action)",
+                color: "var(--cs-action-ink)",
                 fontWeight: 600,
                 fontSize: "13px",
                 cursor:
@@ -721,17 +985,21 @@ export function InvestigationsWorkbench({
             >
               {createMutation.isPending
                 ? "Initializing..."
-                : "Run Investigation"}
+                : "Create investigation"}
             </button>
+            <p className="muted">
+              Creation saves the request. Execute starts budgeted investigation
+              work.
+            </p>
           </div>
 
           {/* Past Investigations List */}
           <div
             style={{
               padding: "16px",
-              background: "#1e293b",
+              background: "var(--cs-raised)",
               borderRadius: "8px",
-              border: "1px solid #334155",
+              border: "1px solid var(--cs-border)",
             }}
           >
             <h3
@@ -739,7 +1007,7 @@ export function InvestigationsWorkbench({
                 margin: "0 0 12px",
                 fontSize: "14px",
                 fontWeight: 600,
-                color: "#f1f5f9",
+                color: "var(--cs-text)",
               }}
             >
               Investigations ({listQuery.data?.total_count || 0})
@@ -753,16 +1021,47 @@ export function InvestigationsWorkbench({
                 overflowY: "auto",
               }}
             >
+              <div className="session-actions">
+                {historyCursor && (
+                  <button
+                    type="button"
+                    onClick={() => setHistoryCursor(undefined)}
+                  >
+                    Newest investigations
+                  </button>
+                )}
+                {listQuery.data &&
+                  "next_cursor" in listQuery.data &&
+                  listQuery.data.next_cursor && (
+                    <button
+                      type="button"
+                      disabled={listQuery.isFetching}
+                      onClick={() =>
+                        setHistoryCursor(
+                          listQuery.data && "next_cursor" in listQuery.data
+                            ? (listQuery.data.next_cursor ?? undefined)
+                            : undefined,
+                        )
+                      }
+                    >
+                      Older investigations
+                    </button>
+                  )}
+              </div>
               {listQuery.data?.items.map((inv) => (
-                <div
+                <button
+                  type="button"
+                  aria-pressed={selectedInvId === inv.id}
                   key={inv.id}
                   onClick={() => setSelectedInvId(inv.id)}
                   style={{
                     padding: "10px",
                     borderRadius: "6px",
                     background:
-                      selectedInvId === inv.id ? "#334155" : "#0f172a",
-                    border: `1px solid ${selectedInvId === inv.id ? "#38bdf8" : "#1e293b"}`,
+                      selectedInvId === inv.id
+                        ? "var(--cs-raised)"
+                        : "var(--cs-panel)",
+                    border: `1px solid ${selectedInvId === inv.id ? "var(--cs-action)" : "var(--cs-raised)"}`,
                     cursor: "pointer",
                     display: "flex",
                     flexDirection: "column",
@@ -780,7 +1079,7 @@ export function InvestigationsWorkbench({
                       style={{
                         fontSize: "12px",
                         fontWeight: 600,
-                        color: "#38bdf8",
+                        color: "var(--cs-action)",
                       }}
                     >
                       {(inv.query || "").slice(0, 36)}...
@@ -803,7 +1102,7 @@ export function InvestigationsWorkbench({
                       display: "flex",
                       justifyContent: "space-between",
                       fontSize: "11px",
-                      color: "#94a3b8",
+                      color: "var(--cs-muted)",
                       flexWrap: "wrap",
                       gap: "4px",
                     }}
@@ -813,12 +1112,15 @@ export function InvestigationsWorkbench({
                     </span>
                     <span>Spent: {formatMicros(inv.spent_micros ?? 0)}</span>
                     {(inv as unknown as ExtendedSummary).held_micros ? (
-                      <span style={{ color: "#fbbf24" }}>
-                        Held: {formatMicros((inv as unknown as ExtendedSummary).held_micros ?? 0)}
+                      <span style={{ color: "var(--cs-warning)" }}>
+                        Held:{" "}
+                        {formatMicros(
+                          (inv as unknown as ExtendedSummary).held_micros ?? 0,
+                        )}
                       </span>
                     ) : null}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -828,9 +1130,9 @@ export function InvestigationsWorkbench({
         <div
           style={{
             padding: "20px",
-            background: "#1e293b",
+            background: "var(--cs-raised)",
             borderRadius: "8px",
-            border: "1px solid #334155",
+            border: "1px solid var(--cs-border)",
             display: "flex",
             flexDirection: "column",
             gap: "20px",
@@ -844,7 +1146,7 @@ export function InvestigationsWorkbench({
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "flex-start",
-                  borderBottom: "1px solid #334155",
+                  borderBottom: "1px solid var(--cs-border)",
                   paddingBottom: "16px",
                   gap: "16px",
                 }}
@@ -868,41 +1170,65 @@ export function InvestigationsWorkbench({
                         borderRadius: "4px",
                         background:
                           summary.status === "completed"
-                            ? "#065f46"
+                            ? "var(--cs-success-bg)"
                             : summary.status === "awaiting_human_decision"
-                              ? "#78350f"
-                              : summary.status === "failed" || summary.status === "cancelled"
-                                ? "#7f1d1d"
-                                : "#1e3a8a",
+                              ? "var(--cs-warning-bg)"
+                              : summary.status === "failed" ||
+                                  summary.status === "cancelled"
+                                ? "var(--cs-danger-bg)"
+                                : "var(--cs-info-bg)",
                         color:
                           summary.status === "completed"
-                            ? "#34d399"
+                            ? "var(--cs-success)"
                             : summary.status === "awaiting_human_decision"
-                              ? "#fde047"
-                              : summary.status === "failed" || summary.status === "cancelled"
-                                ? "#fca5a5"
-                                : "#60a5fa",
+                              ? "var(--cs-warning)"
+                              : summary.status === "failed" ||
+                                  summary.status === "cancelled"
+                                ? "var(--cs-danger)"
+                                : "var(--cs-action)",
                       }}
                     >
                       {summary.status.toUpperCase()}
                     </span>
-                    <span style={{ fontSize: "12px", color: "#64748b" }}>
+                    <span
+                      style={{ fontSize: "12px", color: "var(--cs-muted)" }}
+                    >
                       ID: {summary.id.slice(0, 8)}
                     </span>
                     {(summary as unknown as ExtendedSummary).current_job_id && (
-                      <span style={{ fontSize: "11px", color: "#64748b" }}>
-                        Job: {String((summary as unknown as ExtendedSummary).current_job_id).slice(0, 8)}
+                      <span
+                        style={{ fontSize: "11px", color: "var(--cs-muted)" }}
+                      >
+                        Job:{" "}
+                        {String(
+                          (summary as unknown as ExtendedSummary)
+                            .current_job_id,
+                        ).slice(0, 8)}
                       </span>
                     )}
                   </div>
-                  <h4 style={{ margin: 0, fontSize: "16px", color: "#f8fafc" }}>
+                  <h4
+                    style={{
+                      margin: 0,
+                      fontSize: "16px",
+                      color: "var(--cs-text)",
+                    }}
+                  >
                     {summary.query}
                   </h4>
                 </div>
 
                 {/* Header Action Buttons */}
-                <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-                  {(summary.status === "pending" || summary.status === "queued") && (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "8px",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {(summary.status === "pending" ||
+                    summary.status === "queued") && (
                     <button
                       id="execute-investigation-btn"
                       type="button"
@@ -912,43 +1238,57 @@ export function InvestigationsWorkbench({
                         padding: "8px 16px",
                         borderRadius: "6px",
                         border: "none",
-                        background: "#10b981",
-                        color: "#ffffff",
+                        background: "var(--cs-success-bg)",
+                        color: "var(--cs-text)",
                         fontWeight: 600,
                         fontSize: "13px",
-                        cursor: executeMutation.isPending ? "not-allowed" : "pointer",
+                        cursor: executeMutation.isPending
+                          ? "not-allowed"
+                          : "pointer",
                       }}
                     >
-                      {executeMutation.isPending ? "Starting..." : "Execute Investigation"}
+                      {executeMutation.isPending
+                        ? "Starting..."
+                        : "Execute Investigation"}
                     </button>
                   )}
 
-                  {(summary.status === "running" ||
-                    summary.status === "pending" ||
-                    summary.status === "queued" ||
-                    summary.status === "checkpointed" ||
-                    summary.status === "awaiting_human_decision") && (
+                  {actionAvailable(
+                    "cancel",
+                    [
+                      "running",
+                      "pending",
+                      "queued",
+                      "checkpointed",
+                      "awaiting_human_decision",
+                    ].includes(summary.status),
+                  ) && (
                     <button
                       id="cancel-investigation-btn"
                       type="button"
                       disabled={cancelMutation.isPending}
-                      onClick={() => cancelMutation.mutate(summary.id)}
+                      onClick={() => setCancelIntent(summary.id)}
                       style={{
                         padding: "8px 16px",
                         borderRadius: "6px",
                         border: "none",
-                        background: "#ef4444",
-                        color: "#ffffff",
+                        background: "var(--cs-danger-bg)",
+                        color: "var(--cs-text)",
                         fontWeight: 600,
                         fontSize: "13px",
-                        cursor: cancelMutation.isPending ? "not-allowed" : "pointer",
+                        cursor: cancelMutation.isPending
+                          ? "not-allowed"
+                          : "pointer",
                       }}
                     >
                       {cancelMutation.isPending ? "Cancelling..." : "Cancel"}
                     </button>
                   )}
 
-                  {summary.status === "awaiting_human_decision" && (
+                  {actionAvailable(
+                    "resume",
+                    summary.status === "awaiting_human_decision",
+                  ) && (
                     <button
                       id="resume-investigation-btn"
                       type="button"
@@ -958,18 +1298,23 @@ export function InvestigationsWorkbench({
                         padding: "8px 16px",
                         borderRadius: "6px",
                         border: "none",
-                        background: "#f59e0b",
-                        color: "#ffffff",
+                        background: "var(--cs-warning-bg)",
+                        color: "var(--cs-text)",
                         fontWeight: 600,
                         fontSize: "13px",
-                        cursor: resumeMutation.isPending ? "not-allowed" : "pointer",
+                        cursor: resumeMutation.isPending
+                          ? "not-allowed"
+                          : "pointer",
                       }}
                     >
                       {resumeMutation.isPending ? "Resuming..." : "Resume"}
                     </button>
                   )}
 
-                  {(summary.status === "failed" || summary.status === "cancelled") && (
+                  {actionAvailable(
+                    "retry",
+                    ["failed", "cancelled"].includes(summary.status),
+                  ) && (
                     <button
                       id="retry-investigation-btn"
                       type="button"
@@ -979,14 +1324,18 @@ export function InvestigationsWorkbench({
                         padding: "8px 16px",
                         borderRadius: "6px",
                         border: "none",
-                        background: "#8b5cf6",
-                        color: "#ffffff",
+                        background: "var(--cs-action)",
+                        color: "var(--cs-action-ink)",
                         fontWeight: 600,
                         fontSize: "13px",
-                        cursor: retryMutation.isPending ? "not-allowed" : "pointer",
+                        cursor: retryMutation.isPending
+                          ? "not-allowed"
+                          : "pointer",
                       }}
                     >
-                      {retryMutation.isPending ? "Retrying..." : "Retry Investigation"}
+                      {retryMutation.isPending
+                        ? "Retrying..."
+                        : "Retry Investigation"}
                     </button>
                   )}
                 </div>
@@ -999,9 +1348,9 @@ export function InvestigationsWorkbench({
                   style={{
                     padding: "14px",
                     borderRadius: "8px",
-                    background: "#78350f",
-                    border: "1px solid #f59e0b",
-                    color: "#fef3c7",
+                    background: "var(--cs-warning-bg)",
+                    border: "1px solid var(--cs-warning)",
+                    color: "var(--cs-warning)",
                     fontSize: "13px",
                   }}
                 >
@@ -1009,7 +1358,9 @@ export function InvestigationsWorkbench({
                     Human Decision Required
                   </div>
                   <div>
-                    This investigation has reached a decision checkpoint that requires operator authorization or resolution before proceeding. Click Resume to continue execution.
+                    This investigation has reached a decision checkpoint that
+                    requires operator authorization or resolution before
+                    proceeding. Click Resume to continue execution.
                   </div>
                 </div>
               )}
@@ -1021,13 +1372,14 @@ export function InvestigationsWorkbench({
                   style={{
                     padding: "12px",
                     borderRadius: "8px",
-                    background: "#450a0a",
-                    border: "1px solid #ef4444",
-                    color: "#fecaca",
+                    background: "var(--cs-danger-bg)",
+                    border: "1px solid var(--cs-danger)",
+                    color: "var(--cs-danger)",
                     fontSize: "12px",
                   }}
                 >
-                  <strong>Failure Reason: </strong> {(summary as unknown as ExtendedSummary).failure_reason}
+                  <strong>Failure Reason: </strong>{" "}
+                  {(summary as unknown as ExtendedSummary).failure_reason}
                 </div>
               )}
 
@@ -1039,39 +1391,70 @@ export function InvestigationsWorkbench({
                   gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
                   gap: "12px",
                   padding: "12px",
-                  background: "#0f172a",
+                  background: "var(--cs-panel)",
                   borderRadius: "8px",
-                  border: "1px solid #334155",
+                  border: "1px solid var(--cs-border)",
                 }}
               >
                 <div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Step Progress</div>
-                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#f8fafc" }}>
+                  <div style={{ fontSize: "11px", color: "var(--cs-muted)" }}>
+                    Step Progress
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: 700,
+                      color: "var(--cs-text)",
+                    }}
+                  >
                     {summary.current_step ?? 0} / {summary.max_steps ?? 10}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Settled Spend</div>
-                  <div id="metric-spent-micros" style={{ fontSize: "14px", fontWeight: 700, color: "#38bdf8" }}>
+                  <div style={{ fontSize: "11px", color: "var(--cs-muted)" }}>
+                    Settled Spend
+                  </div>
+                  <div
+                    id="metric-spent-micros"
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: 700,
+                      color: "var(--cs-action)",
+                    }}
+                  >
                     {formatMicros(summary.spent_micros ?? 0)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Held Budget</div>
+                  <div style={{ fontSize: "11px", color: "var(--cs-muted)" }}>
+                    Held Budget
+                  </div>
                   <div
                     id="metric-held-micros"
                     style={{
                       fontSize: "14px",
                       fontWeight: 700,
-                      color: (summary as unknown as ExtendedSummary).held_micros ? "#fbbf24" : "#94a3b8",
+                      color: (summary as unknown as ExtendedSummary).held_micros
+                        ? "var(--cs-warning)"
+                        : "var(--cs-muted)",
                     }}
                   >
-                    {formatMicros((summary as unknown as ExtendedSummary).held_micros ?? 0)}
+                    {formatMicros(
+                      (summary as unknown as ExtendedSummary).held_micros ?? 0,
+                    )}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>Budget Limit</div>
-                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#a855f7" }}>
+                  <div style={{ fontSize: "11px", color: "var(--cs-muted)" }}>
+                    Budget Limit
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: 700,
+                      color: "var(--cs-action)",
+                    }}
+                  >
                     {formatMicros(summary.budget_limit_micros ?? 0)}
                   </div>
                 </div>
@@ -1103,7 +1486,7 @@ export function InvestigationsWorkbench({
                         id="verdict-confidence-badge"
                         style={{ fontSize: "13px", fontWeight: 600 }}
                       >
-                        Calibrated Confidence:{" "}
+                        Reported confidence:{" "}
                         {(summary.verdict_confidence * 100).toFixed(0)}%
                       </span>
                     )}
@@ -1117,28 +1500,52 @@ export function InvestigationsWorkbench({
               {/* Verified Claims Section */}
               {(() => {
                 const extDetail = detail as unknown as ExtendedDetail;
-                const claims: InvestigationClaimV1[] = Array.isArray(extDetail?.claims)
+                const claims: ClaimView[] = Array.isArray(extDetail?.claims)
                   ? extDetail.claims
-                  : Array.isArray(extDetail?.report?.claims)
-                    ? (extDetail.report.claims ?? [])
+                  : reportClaims(
+                      detail && "report" in detail ? detail.report : undefined,
+                      !("current_support_available" in (detail ?? {})) ||
+                        (detail &&
+                          "current_support_available" in detail &&
+                          detail.current_support_available === true),
+                    );
+
+                const coverageNotes: string[] = Array.isArray(
+                  extDetail?.report?.coverage_notes,
+                )
+                  ? (extDetail.report.coverage_notes ?? [])
+                  : typeof extDetail?.report?.coverage_notes === "string"
+                    ? [extDetail.report.coverage_notes]
                     : [];
 
-                const coverageNotes: string[] = Array.isArray(extDetail?.report?.coverage_notes)
-                  ? (extDetail.report.coverage_notes ?? [])
-                  : [];
+                const evidenceRefs =
+                  detail &&
+                  "report" in detail &&
+                  Array.isArray(detail.report?.evidence_refs)
+                    ? detail.report.evidence_refs.filter(
+                        (value): value is string => typeof value === "string",
+                      )
+                    : [];
 
-                const citations: CitationItem[] = Array.isArray(extDetail?.report?.citations)
+                const citations: CitationItem[] = Array.isArray(
+                  extDetail?.report?.citations,
+                )
                   ? (extDetail.report.citations ?? [])
                   : [];
 
                 return (
                   <div>
+                    <p className="muted">
+                      Source correspondence checks a citation against retained
+                      evidence at publication. It does not establish that a
+                      security conclusion is true or remains current.
+                    </p>
                     <h4
                       style={{
                         margin: "0 0 12px",
                         fontSize: "14px",
                         fontWeight: 600,
-                        color: "#38bdf8",
+                        color: "var(--cs-action)",
                       }}
                     >
                       Evidence Claims ({claims.length})
@@ -1147,7 +1554,7 @@ export function InvestigationsWorkbench({
                       <p
                         style={{
                           fontSize: "13px",
-                          color: "#94a3b8",
+                          color: "var(--cs-muted)",
                           fontStyle: "italic",
                         }}
                       >
@@ -1168,9 +1575,9 @@ export function InvestigationsWorkbench({
                               key={claim.claim_id}
                               style={{
                                 padding: "12px",
-                                background: "#0f172a",
+                                background: "var(--cs-panel)",
                                 borderRadius: "6px",
-                                border: "1px solid #334155",
+                                border: "1px solid var(--cs-border)",
                               }}
                             >
                               <div
@@ -1182,7 +1589,10 @@ export function InvestigationsWorkbench({
                                 }}
                               >
                                 <strong
-                                  style={{ fontSize: "13px", color: "#f8fafc" }}
+                                  style={{
+                                    fontSize: "13px",
+                                    color: "var(--cs-text)",
+                                  }}
                                 >
                                   {claim.statement}
                                 </strong>
@@ -1203,7 +1613,7 @@ export function InvestigationsWorkbench({
                                 <div
                                   style={{
                                     fontSize: "12px",
-                                    color: "#94a3b8",
+                                    color: "var(--cs-muted)",
                                     marginBottom: "4px",
                                   }}
                                 >
@@ -1218,10 +1628,10 @@ export function InvestigationsWorkbench({
                                   style={{
                                     margin: "6px 0",
                                     padding: "8px",
-                                    background: "#020617",
+                                    background: "var(--cs-canvas)",
                                     borderRadius: "4px",
                                     fontSize: "11px",
-                                    color: "#38bdf8",
+                                    color: "var(--cs-action)",
                                     overflowX: "auto",
                                   }}
                                 >
@@ -1232,7 +1642,7 @@ export function InvestigationsWorkbench({
                                 <div
                                   style={{
                                     fontSize: "11px",
-                                    color: "#cbd5e1",
+                                    color: "var(--cs-muted)",
                                     fontStyle: "italic",
                                   }}
                                 >
@@ -1252,16 +1662,16 @@ export function InvestigationsWorkbench({
                         style={{
                           marginTop: "16px",
                           padding: "12px",
-                          background: "#0f172a",
+                          background: "var(--cs-panel)",
                           borderRadius: "6px",
-                          border: "1px solid #334155",
+                          border: "1px solid var(--cs-border)",
                         }}
                       >
                         <h5
                           style={{
                             margin: "0 0 8px",
                             fontSize: "12px",
-                            color: "#38bdf8",
+                            color: "var(--cs-action)",
                             fontWeight: 600,
                           }}
                         >
@@ -1272,7 +1682,7 @@ export function InvestigationsWorkbench({
                             margin: 0,
                             paddingLeft: "18px",
                             fontSize: "12px",
-                            color: "#cbd5e1",
+                            color: "var(--cs-muted)",
                           }}
                         >
                           {coverageNotes.map((note, idx) => (
@@ -1284,6 +1694,30 @@ export function InvestigationsWorkbench({
                       </div>
                     )}
 
+                    {reportCaveats(
+                      detail && "report" in detail ? detail.report : undefined,
+                    ).map((group) => (
+                      <section key={group.label} aria-label={group.label}>
+                        <h4>{group.label}</h4>
+                        <ul>
+                          {group.items.map((item, index) => (
+                            <li key={index}>{item}</li>
+                          ))}
+                        </ul>
+                      </section>
+                    ))}
+                    {evidenceRefs.length > 0 && (
+                      <div>
+                        <h4>Evidence references ({evidenceRefs.length})</h4>
+                        <ul>
+                          {evidenceRefs.map((id) => (
+                            <li key={id}>
+                              <code>{id}</code>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     {/* Citations */}
                     {citations.length > 0 && (
                       <div
@@ -1291,16 +1725,16 @@ export function InvestigationsWorkbench({
                         style={{
                           marginTop: "16px",
                           padding: "12px",
-                          background: "#0f172a",
+                          background: "var(--cs-panel)",
                           borderRadius: "6px",
-                          border: "1px solid #334155",
+                          border: "1px solid var(--cs-border)",
                         }}
                       >
                         <h5
                           style={{
                             margin: "0 0 8px",
                             fontSize: "12px",
-                            color: "#38bdf8",
+                            color: "var(--cs-action)",
                             fontWeight: 600,
                           }}
                         >
@@ -1318,9 +1752,9 @@ export function InvestigationsWorkbench({
                               key={idx}
                               style={{
                                 fontSize: "11px",
-                                color: "#94a3b8",
+                                color: "var(--cs-muted)",
                                 padding: "6px",
-                                background: "#020617",
+                                background: "var(--cs-canvas)",
                                 borderRadius: "4px",
                               }}
                             >
@@ -1329,7 +1763,12 @@ export function InvestigationsWorkbench({
                                 {c.line_start ?? c.line ?? 1}
                               </code>
                               {c.statement && (
-                                <div style={{ color: "#f8fafc", marginTop: "2px" }}>
+                                <div
+                                  style={{
+                                    color: "var(--cs-text)",
+                                    marginTop: "2px",
+                                  }}
+                                >
                                   {c.statement}
                                 </div>
                               )}
@@ -1338,9 +1777,9 @@ export function InvestigationsWorkbench({
                                   style={{
                                     margin: "4px 0 0",
                                     padding: "4px 6px",
-                                    background: "#0f172a",
+                                    background: "var(--cs-panel)",
                                     borderRadius: "3px",
-                                    color: "#38bdf8",
+                                    color: "var(--cs-action)",
                                     overflowX: "auto",
                                   }}
                                 >
@@ -1365,7 +1804,7 @@ export function InvestigationsWorkbench({
                   : (eventsQuery.data?.items ?? []);
 
                 const allEvents: InvestigationEvent[] = [...historicalEvents];
-                for (const ev of liveEvents) {
+                for (const ev of eventCursor === undefined ? liveEvents : []) {
                   if (
                     !allEvents.some(
                       (item) =>
@@ -1386,18 +1825,51 @@ export function InvestigationsWorkbench({
                         margin: "0 0 10px",
                         fontSize: "14px",
                         fontWeight: 600,
-                        color: "#94a3b8",
+                        color: "var(--cs-muted)",
                       }}
                     >
-                      Investigation Replay & Audit Trail ({allEvents.length} events)
+                      Investigation Replay & Audit Trail ({allEvents.length}{" "}
+                      events)
                     </h4>
+                    <p className="muted">
+                      This view shows one saved event page and up to 200 recent
+                      live events. It is not the complete audit history.
+                    </p>
+                    <div className="session-actions">
+                      {eventCursor !== undefined && (
+                        <button
+                          type="button"
+                          onClick={() => setEventCursor(undefined)}
+                        >
+                          First event page
+                        </button>
+                      )}
+                      {eventsQuery.data &&
+                        !Array.isArray(eventsQuery.data) &&
+                        eventsQuery.data.next_cursor != null && (
+                          <button
+                            type="button"
+                            disabled={eventsQuery.isFetching}
+                            onClick={() =>
+                              setEventCursor(
+                                eventsQuery.data &&
+                                  !Array.isArray(eventsQuery.data)
+                                  ? (eventsQuery.data.next_cursor ?? undefined)
+                                  : undefined,
+                              )
+                            }
+                          >
+                            Next event page
+                          </button>
+                        )}
+                    </div>
                     <div
                       id="events-timeline"
                       style={{
                         maxHeight: "180px",
                         overflowY: "auto",
                         padding: "8px",
-                        background: "#0f172a",
+                        background: "var(--cs-panel)",
                         borderRadius: "6px",
                         display: "flex",
                         flexDirection: "column",
@@ -1408,7 +1880,7 @@ export function InvestigationsWorkbench({
                         <div
                           style={{
                             fontSize: "12px",
-                            color: "#64748b",
+                            color: "var(--cs-muted)",
                             fontStyle: "italic",
                             padding: "4px",
                           }}
@@ -1423,13 +1895,9 @@ export function InvestigationsWorkbench({
                               ? `seq-${ev.sequence}`
                               : evShape.id || i;
                           const eventType =
-                            evShape.event_type ||
-                            evShape.type ||
-                            "event";
+                            evShape.event_type || evShape.type || "event";
                           const nodeName =
-                            evShape.node_name ||
-                            evShape.node ||
-                            "";
+                            evShape.node_name || evShape.node || "";
                           const seqText =
                             "sequence" in ev && ev.sequence !== undefined
                               ? `#${ev.sequence} `
@@ -1444,14 +1912,21 @@ export function InvestigationsWorkbench({
                                 justifyContent: "space-between",
                                 padding: "4px 8px",
                                 borderRadius: "4px",
-                                background: "#1e293b",
+                                background: "var(--cs-raised)",
                               }}
                             >
-                              <span style={{ color: "#38bdf8", fontWeight: 600 }}>
+                              <span
+                                style={{
+                                  color: "var(--cs-action)",
+                                  fontWeight: 600,
+                                }}
+                              >
                                 {seqText}
                                 {eventType}
                               </span>
-                              <span style={{ color: "#94a3b8" }}>{nodeName}</span>
+                              <span style={{ color: "var(--cs-muted)" }}>
+                                {nodeName}
+                              </span>
                             </div>
                           );
                         })
@@ -1465,9 +1940,9 @@ export function InvestigationsWorkbench({
               <div
                 style={{
                   padding: "16px",
-                  background: "#0f172a",
+                  background: "var(--cs-panel)",
                   borderRadius: "8px",
-                  border: "1px solid #334155",
+                  border: "1px solid var(--cs-border)",
                 }}
               >
                 <h4
@@ -1475,16 +1950,18 @@ export function InvestigationsWorkbench({
                     margin: "0 0 10px",
                     fontSize: "13px",
                     fontWeight: 600,
-                    color: "#f8fafc",
+                    color: "var(--cs-text)",
                   }}
                 >
                   Human Review & Repository Memory
                 </h4>
                 <div
+                  className="feedback-actions"
                   style={{ display: "flex", gap: "8px", marginBottom: "10px" }}
                 >
                   <button
                     id="feedback-agree-btn"
+                    aria-pressed={feedbackType === "agree"}
                     type="button"
                     onClick={() => setFeedbackType("agree")}
                     style={{
@@ -1492,8 +1969,10 @@ export function InvestigationsWorkbench({
                       borderRadius: "4px",
                       border: "none",
                       background:
-                        feedbackType === "agree" ? "#16a34a" : "#334155",
-                      color: "#fff",
+                        feedbackType === "agree"
+                          ? "var(--cs-success-bg)"
+                          : "var(--cs-raised)",
+                      color: "var(--cs-text)",
                       fontSize: "12px",
                       cursor: "pointer",
                     }}
@@ -1502,6 +1981,7 @@ export function InvestigationsWorkbench({
                   </button>
                   <button
                     id="feedback-disagree-btn"
+                    aria-pressed={feedbackType === "disagree"}
                     type="button"
                     onClick={() => setFeedbackType("disagree")}
                     style={{
@@ -1509,8 +1989,10 @@ export function InvestigationsWorkbench({
                       borderRadius: "4px",
                       border: "none",
                       background:
-                        feedbackType === "disagree" ? "#dc2626" : "#334155",
-                      color: "#fff",
+                        feedbackType === "disagree"
+                          ? "var(--cs-danger-bg)"
+                          : "var(--cs-raised)",
+                      color: "var(--cs-text)",
                       fontSize: "12px",
                       cursor: "pointer",
                     }}
@@ -1519,6 +2001,7 @@ export function InvestigationsWorkbench({
                   </button>
                   <button
                     id="feedback-needs-review-btn"
+                    aria-pressed={feedbackType === "needs_review"}
                     type="button"
                     onClick={() => setFeedbackType("needs_review")}
                     style={{
@@ -1526,8 +2009,10 @@ export function InvestigationsWorkbench({
                       borderRadius: "4px",
                       border: "none",
                       background:
-                        feedbackType === "needs_review" ? "#d97706" : "#334155",
-                      color: "#fff",
+                        feedbackType === "needs_review"
+                          ? "var(--cs-warning-bg)"
+                          : "var(--cs-raised)",
+                      color: "var(--cs-text)",
                       fontSize: "12px",
                       cursor: "pointer",
                     }}
@@ -1536,6 +2021,7 @@ export function InvestigationsWorkbench({
                   </button>
                 </div>
 
+                <label htmlFor="feedback-notes-input">Review notes</label>
                 <textarea
                   className="resize-none"
                   id="feedback-notes-input"
@@ -1547,9 +2033,9 @@ export function InvestigationsWorkbench({
                     width: "100%",
                     padding: "6px 8px",
                     borderRadius: "4px",
-                    border: "1px solid #475569",
-                    background: "#1e293b",
-                    color: "#f8fafc",
+                    border: "1px solid var(--cs-control-border)",
+                    background: "var(--cs-raised)",
+                    color: "var(--cs-text)",
                     fontSize: "12px",
                     boxSizing: "border-box",
                     marginBottom: "8px",
@@ -1557,6 +2043,7 @@ export function InvestigationsWorkbench({
                 />
 
                 <div
+                  className="feedback-actions"
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
@@ -1566,7 +2053,7 @@ export function InvestigationsWorkbench({
                   <label
                     style={{
                       fontSize: "12px",
-                      color: "#94a3b8",
+                      color: "var(--cs-muted)",
                       display: "flex",
                       alignItems: "center",
                       gap: "6px",
@@ -1578,8 +2065,7 @@ export function InvestigationsWorkbench({
                       checked={saveToMemory}
                       onChange={(e) => setSaveToMemory(e.target.checked)}
                     />
-                    Persist to Verified Security Memory for future
-                    investigations
+                    Propose a memory for human review
                   </label>
 
                   <button
@@ -1599,8 +2085,8 @@ export function InvestigationsWorkbench({
                       padding: "6px 14px",
                       borderRadius: "4px",
                       border: "none",
-                      background: "#38bdf8",
-                      color: "#0f172a",
+                      background: "var(--cs-action)",
+                      color: "var(--cs-action-ink)",
                       fontWeight: 600,
                       fontSize: "12px",
                       cursor:
@@ -1625,7 +2111,7 @@ export function InvestigationsWorkbench({
               style={{
                 padding: "48px 0",
                 textAlign: "center",
-                color: "#64748b",
+                color: "var(--cs-muted)",
               }}
             >
               Select an investigation from the left or launch a new hypothesis

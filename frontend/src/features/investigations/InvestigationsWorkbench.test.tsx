@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { api } from "../../api/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InvestigationsWorkbench } from "./InvestigationsWorkbench";
@@ -7,6 +8,7 @@ import { InvestigationsWorkbench } from "./InvestigationsWorkbench";
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 function renderWithClient(ui: React.ReactElement) {
@@ -28,6 +30,30 @@ describe("InvestigationsWorkbench", () => {
     csrfToken: "csrf-token-test",
   };
 
+  it("binds a finding investigation to its published scan run", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [] }))));
+    const create = vi.spyOn(api, "createInvestigation").mockRejectedValue(new Error("fixture stop"));
+    const finding = "10000000-0000-4000-8000-000000000001", run = "10000000-0000-4000-8000-000000000002";
+    renderWithClient(<InvestigationsWorkbench {...defaultProps} findingId={finding} findingRunId={run} />);
+    fireEvent.change(screen.getByLabelText(/Question or Finding/i), { target: { value: "Review this source observation" } });
+    fireEvent.click(screen.getByRole("button", { name: /Create investigation/i }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith(defaultProps.repositoryId, expect.objectContaining({ target_type: "finding", finding_id: finding, finding_run_id: run }), defaultProps.csrfToken, expect.any(String)));
+  });
+
+  it("reuses a creation request key after an uncertain response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [] }))));
+    const create = vi.spyOn(api, "createInvestigation").mockRejectedValue(new Error("Network uncertain"));
+    renderWithClient(<InvestigationsWorkbench {...defaultProps} />);
+    fireEvent.change(screen.getByLabelText(/Question/i), { target: { value: "Check retained source" } });
+    fireEvent.click(screen.getByRole("button", { name: /Create investigation/i }));
+    await waitFor(() => expect(create).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByRole("button", { name: /Create investigation/i })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: /Create investigation/i }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+    expect(create.mock.calls[0][3]).toEqual(expect.any(String));
+    expect(create.mock.calls[1][3]).toBe(create.mock.calls[0][3]);
+  });
+
   it("renders the workbench heading, description, and action controls", () => {
     vi.stubGlobal(
       "fetch",
@@ -44,15 +70,15 @@ describe("InvestigationsWorkbench", () => {
     renderWithClient(<InvestigationsWorkbench {...defaultProps} />);
 
     expect(
-      screen.getByText(/Agentic Security Investigations/i),
+      screen.getByText(/Investigation workbench/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Evidence-grounded model orchestration, anti-hallucination claim verification/i,
+        /Investigate questions with source evidence/i,
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Run Investigation/i }),
+      screen.getByRole("button", { name: /Create investigation/i }),
     ).toBeInTheDocument();
   });
 
@@ -154,7 +180,9 @@ describe("InvestigationsWorkbench", () => {
           ),
         );
       }
-      return Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ items: [] }), { status: 200 }),
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -174,6 +202,8 @@ describe("InvestigationsWorkbench", () => {
 
     // Click cancel
     fireEvent.click(cancelBtn);
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining(`/investigations/${invId}/cancel`), expect.anything());
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm cancellation" }));
 
     // Verify cancel endpoint was called
     await vi.waitFor(() => {
@@ -244,7 +274,9 @@ describe("InvestigationsWorkbench", () => {
           ),
         );
       }
-      return Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ items: [] }), { status: 200 }),
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -255,7 +287,9 @@ describe("InvestigationsWorkbench", () => {
     fireEvent.click(item);
 
     // Verify human decision banner and resume button
-    expect(await screen.findByText(/Human Decision Required/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Human Decision Required/i),
+    ).toBeInTheDocument();
     const resumeBtn = screen.getByRole("button", { name: /Resume/i });
     expect(resumeBtn).toBeInTheDocument();
 
@@ -338,7 +372,9 @@ describe("InvestigationsWorkbench", () => {
           ),
         );
       }
-      return Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ items: [] }), { status: 200 }),
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -349,8 +385,12 @@ describe("InvestigationsWorkbench", () => {
     fireEvent.click(item);
 
     // Verify failure banner and retry button
-    expect(await screen.findByText(/Model budget exhaustion/i)).toBeInTheDocument();
-    const retryBtn = screen.getByRole("button", { name: /Retry Investigation/i });
+    expect(
+      await screen.findByText(/Model budget exhaustion/i),
+    ).toBeInTheDocument();
+    const retryBtn = screen.getByRole("button", {
+      name: /Retry Investigation/i,
+    });
     expect(retryBtn).toBeInTheDocument();
 
     // Click retry
@@ -396,7 +436,12 @@ describe("InvestigationsWorkbench", () => {
                     quoted_source: "const SECRET = 'dev-secret';",
                   },
                 ],
-                coverage_notes: ["Checked auth controller", "Checked token validation middleware"],
+                verifications: [{ claim_id: "claim-1", status: "source_correspondence_confirmed", resolved_file: "src/auth.ts", resolved_line_start: 42 }],
+                evidence_refs: ["evidence-1"],
+                coverage_notes: [
+                  "Checked auth controller",
+                  "Checked token validation middleware",
+                ],
                 citations: [
                   {
                     path: "src/auth.ts",
@@ -432,7 +477,9 @@ describe("InvestigationsWorkbench", () => {
           ),
         );
       }
-      return Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ items: [] }), { status: 200 }),
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -443,19 +490,27 @@ describe("InvestigationsWorkbench", () => {
     fireEvent.click(item);
 
     // Check verdict and confidence
-    expect(await screen.findByText(/VERDICT: TRUE POSITIVE/i)).toBeInTheDocument();
-    expect(screen.getByText(/Calibrated Confidence: 95%/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/VERDICT: TRUE POSITIVE/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Reported confidence: 95%/i)).toBeInTheDocument();
 
     // Check claims
-    expect(screen.getByText(/JWT signing secret is hardcoded/i)).toBeInTheDocument();
-    expect(screen.getByText(/VERIFIED GROUNDING/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/JWT signing secret is hardcoded/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText("SOURCE CORRESPONDENCE (AT PUBLICATION)")).toBeInTheDocument();
 
     // Check coverage notes
     expect(screen.getByText(/Checked auth controller/i)).toBeInTheDocument();
-    expect(screen.getByText(/Checked token validation middleware/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Checked token validation middleware/i),
+    ).toBeInTheDocument();
 
     // Check citations
-    expect(screen.getByText(/Citations & References \(1\)/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Citations & References \(1\)/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Secret literal declared/i)).toBeInTheDocument();
   });
 });

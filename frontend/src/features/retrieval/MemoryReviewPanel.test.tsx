@@ -60,6 +60,10 @@ describe("memory review", () => {
     expect(
       screen.getByRole("button", { name: "Confirm accept" }),
     ).toBeDisabled();
+    expect(
+      screen.getByLabelText("Review reason").closest("form"),
+    ).toHaveAttribute("novalidate");
+    expect(screen.getByLabelText("Review reason")).toHaveClass("resize-none");
     fireEvent.change(screen.getByLabelText("Review reason"), {
       target: { value: "Checked source" },
     });
