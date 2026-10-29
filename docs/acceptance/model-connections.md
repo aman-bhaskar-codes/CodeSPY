@@ -1,5 +1,7 @@
 # Configured model connections
 
+> **Status reconciliation — 28 October 2026:** Later [investigation](investigations.md) and [accounting](model-accounting.md) records cover worker composition and shared embedding authority/recovery. The transport results below remain synthetic and scoped to their original schema/environment; they do not qualify live providers or the complete product journey. No tests were rerun for this documentation update.
+
 ## Implemented behavior
 
 Five independently configured slots route to direct OpenAI Responses, asynchronous
@@ -41,18 +43,18 @@ funding, model IDs, processing-region policy and live approval separately.
 Baseline HEAD: `66109e610ac5d9ff7aac99143bf28aed558177b6`, with preserved prior
 uncommitted work. Results apply to the local working tree, not a published commit.
 
-| Check | Observed result |
-| --- | --- |
-| Affected backend regression | 1,117 passed in 31.74 seconds |
-| Owned PostgreSQL accounting/model/checkpoint integration | 50 passed in 63.90 seconds |
-| Strict application typing | Passed, 253 files |
-| Ruff on application, new model tests and additive model migrations | Passed |
-| OpenAPI export and frontend generation | Passed |
-| Frontend tests | 32 passed, 10 files |
-| Frontend typing, lint and production build | Passed |
-| Exact public lockfile dependency audit | No known vulnerabilities found |
-| Whitespace validation | Passed |
-| Owned PostgreSQL cleanup | Container and network removed; developer volumes untouched |
+| Check                                                              | Observed result                                            |
+| ------------------------------------------------------------------ | ---------------------------------------------------------- |
+| Affected backend regression                                        | 1,117 passed in 31.74 seconds                              |
+| Owned PostgreSQL accounting/model/checkpoint integration           | 50 passed in 63.90 seconds                                 |
+| Strict application typing                                          | Passed, 253 files                                          |
+| Ruff on application, new model tests and additive model migrations | Passed                                                     |
+| OpenAPI export and frontend generation                             | Passed                                                     |
+| Frontend tests                                                     | 32 passed, 10 files                                        |
+| Frontend typing, lint and production build                         | Passed                                                     |
+| Exact public lockfile dependency audit                             | No known vulnerabilities found                             |
+| Whitespace validation                                              | Passed                                                     |
+| Owned PostgreSQL cleanup                                           | Container and network removed; developer volumes untouched |
 
 Backend commands used the project's Python 3.12 disposable runtime and an explicitly
 mirrored source tree; the final authored Python sources were synchronized before

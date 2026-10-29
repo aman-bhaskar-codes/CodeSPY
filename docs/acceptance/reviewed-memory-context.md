@@ -69,17 +69,22 @@ It measures mechanical retrieval, trust filtering and context packing. Its notes
 are synthetic human-note fixtures, not independently established code facts.
 It does not establish answer-quality improvements or official LongMemEval scores.
 
-Durable investigation executor and worker-operation code now exists. Gateway responses
-carry manifest references into checkpoints and encrypted response replay. The combined
-executor still has incompatible tool/disclosure arguments at the gateway boundary;
-its real connected execution is unqualified. Automatic report-to-candidate outbox
-processing and the complete upload-to-saved-investigation browser journey remain
-unqualified dependencies. Keep reviewed memory disabled for that workflow until
-these boundaries and recovery tests pass. The legacy loop is not a substitute.
-No AWS configuration or live-provider qualification is included.
+Durable worker composition connects the configured gateway, scoped encrypted model
+results, node effects, source-support checks and atomic report publication. Tool
+results and provider continuation references survive checkpoint recovery. Report
+observations become candidates through an opt-in outbox consumer; they never
+become accepted memory without human review.
 
-Latest local verification: nine disposable PostgreSQL memory/source-reader/accounting
-cases completed successfully, and 193 focused memory/model/executor unit cases
-passed. Frontend unit tests passed 34 cases. The frontend typecheck and production build pass. Frontend lint and combined
-executor typing still report integration errors; the broad backend run was
-not green. The six selected memory/gateway service files pass strict typing. These results do not establish the connected completion gate.
+Connected tests exercise both investigation modes using real PostgreSQL, an
+isolated Linux source reader and synthetic OpenAI-shaped HTTP responses. They
+interrupt execution after a committed tool result and after the draft checkpoint,
+then verify retained-result reuse, a single report and one review candidate.
+These tests do not qualify live answer quality or the complete browser journey
+from upload through saved investigation. Reviewed model memory remains disabled
+by default. Public hosting and real provider activation remain owner-managed.
+
+The current regression evidence is recorded in the investigation and accounting
+acceptance documents. Historical migration tests run at explicitly declared schema
+boundaries; current authority tests use the latest additive revisions. No
+unrestricted backend-suite or live-provider success is inferred from selected
+suite results.

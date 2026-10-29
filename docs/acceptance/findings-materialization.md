@@ -1,5 +1,7 @@
 # Findings materialization
 
+> **Status reconciliation — 28 October 2026:** Read this component record with [durable findings](durable-findings.md), [findings/retrieval checks](retrieval-boundaries.md) and [workspace verification](frontend-workspace.md). Later scoped APIs and UI exist; this materializer record alone is not their qualification. No tests were rerun for this documentation update.
+
 The broker can pass verified offline scanner and dependency results to a pure typed materializer. This does not enable public scanner jobs, API routes or triage. Durable storage integration is recorded separately in [durable findings](durable-findings.md).
 
 ## Contracts and integration

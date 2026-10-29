@@ -1,5 +1,7 @@
 # Privacy-safe lexical materialization
 
+> **Status reconciliation — 28 October 2026:** Read this component record with the later [index interfaces](index-interface.md) and [workspace verification](frontend-workspace.md). Preparation/materialization evidence alone does not qualify current API controls or the full product journey. No tests were rerun for this documentation update.
+
 The materializer verifies each selected file's full admitted size and SHA-256,
 rejects identity mismatches, and transforms the complete strict UTF-8 file before
 chunking. Sensitive paths and unsupported encodings produce explicit omissions.

@@ -1,212 +1,148 @@
-# Agentic Security Investigations Operator Runbook
+# Investigation operations
 
-This runbook provides operational instructions for managing the lifecycle, worker operations,
-financial budget controls, and recovery mechanisms of CodeSPY's Agentic Security Investigations subsystem.
+Investigations bind a request to an admitted immutable snapshot. Creation, execution,
+report publication and model accounting are separate operations. This guide describes
+current HTTP contracts and injected worker composition; it does not activate a runtime.
 
----
+## Authority and prerequisites
 
-## 1. Permission and Role Architecture
+Use authenticated same-origin requests with the session cookie, current repository
+write permission, `Origin`, `X-CSRF-Token` and an `Idempotency-Key` for each lifecycle
+command. A matching replay returns the stored command result; conflicting replay
+is rejected. Start, resume and retry retain the original requesting principal.
+Another authorized writer creates a separate investigation. Current writers can
+request cancellation.
 
-The investigation subsystem enforces strict database role boundaries in PostgreSQL:
+The API runtime uses the restricted API role; worker/finalization uses the broker
+role. Operator funding and usage reconciliation require separate authority. Shared
+SQL service logins do not independently authenticate end users. Never give the
+application migration-owner credentials to avoid a denied operation.
 
-- **API Runtime (`p2_api`)**:
-  - Creates investigation records and job envelopes.
-  - Subscribes to events and serves read-only queries.
-  - Can trigger `cancel`, `resume`, and `retry` commands.
-  - Cannot alter published reports, bypass tenancy, or acquire worker execution leases.
-- **Worker Broker (`p2_broker`)**:
-  - Leases queued jobs with transactional fences and database time checks.
-  - Records step checkpoints, model replays, and verified evidence receipts.
-  - Commits atomic final report publication.
-  - Cannot create user-facing accounts or execute unleased modifications.
-- **Operator Role (`p2_operator`)**:
-  - Administrative role used for inspection, manual dead-letter resolution, and audited reconciliations.
+Required components are a retained source snapshot, configured source reader,
+model runtime, funded budget, installed price version, authorized disclosure policy
+and registered transport. Model availability is metadata, not a live provider test.
+A missing runtime/adapter returns `inference_unavailable` before execution starts.
 
----
+## Create and execute
 
-## 2. Enqueueing and Starting an Investigation
-
-All investigations target an immutable snapshot of an admitted code repository.
-
-### Step 1: Create Investigation Record
+The route has no `/v2` suffix. Supplying `snapshot_id` selects the durable request
+contract; the older request-driven contract remains a compatibility path.
 
 ```http
-POST /api/v1/repositories/{repository_id}/investigations/v2
+POST /api/v1/repositories/{repository_id}/investigations
 Content-Type: application/json
+Idempotency-Key: create-example-001
+X-CSRF-Token: {session_csrf}
+Origin: {application_origin}
 
 {
-  "repository_id": "9f8b4a2e-4b6c-482a-a71f-0e1d8892a014",
-  "snapshot_id": "3c5f2b8a-9e1d-482a-a71f-2e1d8892a099",
+  "repository_id": "10000000-0000-4000-8000-000000000001",
+  "snapshot_id": "10000000-0000-4000-8000-000000000002",
   "target_type": "repository",
-  "query": "Investigate potential SSRF in webhook delivery handlers",
-  "mode": "deep",
+  "query": "Inspect the source checks used by request handlers",
+  "mode": "short_path",
   "depth": "standard",
   "max_steps": 10,
   "budget_limit_micros": 5000000
 }
 ```
 
-*Response (201 Created)*: Returns `InvestigationSummaryV2` with `status: "queued"`.
-
-### Step 2: Enqueue Execution Job
+Replace the example identities with authorized retained resources. Creation returns
+201 and an `InvestigationSummaryV2` with pending state. It does not start inference.
+Modes are `short_path` and `two_specialist`; depth is `quick`, `standard` or `deep`.
+Step count is 1–25. A finding target also requires its `finding_id` and persisted
+`finding_run_id`; optional `chunk_set_id` binds a stored retrieval selection.
 
 ```http
 POST /api/v1/repositories/{repository_id}/investigations/{investigation_id}/execute
-Content-Type: application/json
-Idempotency-Key: req-2026-10-26-001
-
-{
-  "request_key": "req-2026-10-26-001"
-}
+Idempotency-Key: execute-example-001
+X-CSRF-Token: {session_csrf}
+Origin: {application_origin}
 ```
 
-*Response (202 Accepted)*: Returns `InvestigationStartResponseV1` with `job_id`, `status: "queued"`, and `request_key`.
-Synchronous execution is rejected; the job is processed asynchronously by leased background workers.
+No JSON request body is required. Durable execution returns 202 with
+`investigation_id`, `job_id`, `status`, `status_url` and `events_url`. Follow those
+references; investigation status and queue-job state have different vocabularies.
+The compatibility request-driven path can return 200 and does not establish durable
+worker qualification.
 
----
+## Status, history and streaming
 
-## 3. Monitoring Lifecycle and Events
+- `GET /api/v1/repositories/{repository_id}/investigations?cursor={cursor}&limit=20`
+  returns a bounded history page and its next cursor.
+- `GET /api/v1/repositories/{repository_id}/investigations/{investigation_id}`
+  returns the scoped detail projection, including available actions and current
+  source-support availability for durable results.
+- `GET /api/v1/repositories/{repository_id}/investigations/{investigation_id}/events?after_sequence=0&limit=100`
+  returns durable sequence-paginated JSON. Continue with the returned `next_cursor`.
+- `GET /api/v1/repositories/{repository_id}/investigations/{investigation_id}/stream?after_step=0`
+  is the separate live SSE compatibility endpoint. It is not a `/events/v2` route
+  and does not accept a durable sequence cursor.
 
-### Fetch Status & Detail
+Use durable pages for replay and gap recovery. The workbench shows one saved event
+page and up to 200 recent live events, with explicit coverage text. Persisted source
+correspondence describes publication-time checks, not proof of a security conclusion.
 
-```http
-GET /api/v1/repositories/{repository_id}/investigations/{investigation_id}/v2
-```
+## Cancel, resume and retry
 
-Returns `InvestigationDetailResponseV2` containing:
-- `summary`: Current status, step progress, verdict, spent/held micros.
-- `job`: Worker state (`queued`, `running`, etc.), attempt count, deadline.
-- `available_actions`: Tuple of permitted actions based on current state (e.g. `["cancel"]`).
-- `claims_count` & `evidence_count`: Counts of verified findings and supporting artifacts.
+All commands below use the same session, Origin, CSRF and idempotency headers.
 
-### Stream Real-Time Events (SSE)
+| Command                              | Body                                                                                            | Result and boundary                                                                                                             |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `POST .../{investigation_id}/cancel` | None                                                                                            | 200 cancel receipt. Request cancellation and then reread durable status; an in-flight provider exchange may still finish.       |
+| `POST .../{investigation_id}/resume` | `expected_failed_job_id` and `expected_spec_hash` from current detail                           | 202 start receipt. Requires awaiting-human-decision state and exact stored job/spec identity.                                   |
+| `POST .../{investigation_id}/retry`  | Optional `max_steps` and `budget_limit_micros`; `{}` retains defaults from the original request | 201 new investigation with retry lineage. It is not an in-place reset of the old audit history and must be explicitly executed. |
 
-```http
-GET /api/v1/repositories/{repository_id}/investigations/{investigation_id}/events/v2?cursor=0
-Accept: text/event-stream
-```
+Cancellation is not an immediate refund or proof that a network request stopped.
+Known usage settles; ambiguous dispatch retains an uncertain hold. Never release a
+possibly spent reservation merely because the job is cancelled or its lease expired.
+See [accounting operations](operator-budget-runbook.md).
 
-Streams events with strictly monotonic sequences. If client reconnects after a disconnect, provide the last received `sequence` as the `cursor` query parameter.
+## Worker composition and recovery
 
----
+The application composition root supplies database factories, queue, object store,
+admission processor and optional structural/scan/index operations to
+`app.workers.composition.build_worker_runtime`. Passing `model_runtime` connects
+investigation execution, scoped tool services, encrypted results and maintenance.
+It requires encrypted continuation storage. The factory reads no credential files
+and creates no cloud resources.
 
-## 4. Lifecycle Interventions
+Use the same source reader, scanner capabilities, disclosure policies and model
+registry across API and workers. Enable `propose_report_memory` only with the required
+model/source configuration. The opt-in consumer proposes candidates; it cannot
+accept memory without current owner/admin review.
 
-### Cancel a Running or Queued Investigation
+Run the returned runtime through its existing lifecycle. It owns and joins its
+background tasks on shutdown. Current authority tests use additive revisions through
+`0040_investigation_runtime_permissions`; historical tests may pin older revisions.
+Database `clock_timestamp()` is the lease authority. A Python clock advance does
+not establish PostgreSQL expiry.
 
-When an investigation must be halted immediately (e.g. user requested, or excessive step count):
+Recovery reads durable attempts, checkpoints, dispatch receipts and report drafts.
+It must not invent provider outcomes or resend under an ambiguous paid-call identity.
+Encrypted execution payloads expire after seven days; retain the owner-managed key
+for the required lifetime. Missing or expired mandatory history requires a new
+investigation rather than reconstructing a paid call under its old identity.
 
-```http
-POST /api/v1/repositories/{repository_id}/investigations/{investigation_id}/cancel
-Content-Type: application/json
+Embedding dispatch claims must commit before external I/O. Maintenance converts
+stale markers to uncertain holds; it does not release funds based on elapsed time.
+No external embedding client is activated by this worker composition.
 
-{
-  "reason": "Operator cancelled due to erroneous query"
-}
-```
+## Diagnostics, cleanup and qualification
 
-*Action*: Immediately revokes the job lease fence, sets investigation status to `cancelled`, and releases held budget reserves.
+Safe offline diagnostics are configuration validation and the existing synthetic
+unit tests; see [model configuration](operator-model-runbook.md). Do not probe a
+provider to investigate an unavailable UI state. For offline indexing checks,
+`TIKTOKEN_CACHE_DIR` must identify the verified pinned tokenizer vocabulary.
 
-### Resume an Investigation Awaiting Human Decision
+Stop only owned processes and use the corresponding ownership-manifest cleanup
+harness for disposable containers. Preserve ownership records if cleanup fails.
+Never remove developer volumes, keys or unrelated containers.
 
-When an investigation encounters an ambiguous branching decision, it pauses in `awaiting_human_decision`:
-
-```http
-POST /api/v1/repositories/{repository_id}/investigations/{investigation_id}/resume
-Content-Type: application/json
-
-{
-  "decision": "proceed_with_deep_inspection"
-}
-```
-
-*Action*: Verifies the caller matches the original initiating principal or holds repository ownership, advances the node state, and re-enqueues execution.
-
-### Retry a Failed or Cancelled Investigation
-
-To rerun an investigation that failed or was cancelled:
-
-```http
-POST /api/v1/repositories/{repository_id}/investigations/{investigation_id}/retry
-Content-Type: application/json
-Idempotency-Key: retry-2026-10-26-002
-
-{
-  "request_key": "retry-2026-10-26-002"
-}
-```
-
-*Action*: Creates a new job record with `retry_of_job_id` pointing to the previous attempt, resetting step execution while preserving previous audit events.
-
----
-
-## 5. Budget Management and Accounting
-
-Investigations enforce dual-ledger financial controls:
-
-1. **Held Budget (`held_micros`)**: Funds reserved in advance before initiating model calls or tool executions.
-2. **Spent Budget (`spent_micros`)**: Actual financial expenditure settled upon receiving and verifying model responses.
-3. **Budget Limit (`budget_limit_micros`)**: The hard cap defined at investigation creation (default USD 5.00 / 5,000,000 micros).
-
-### Handling Budget Exhaustion
-
-If an investigation reaches its `budget_limit_micros`:
-- The executor halts further model requests.
-- The investigation transitions to `failed` with `failure_reason: "budget_exceeded"`.
-- All unspent held budget is returned to the repository's available balance.
-- To continue, the operator must fund the repository budget and trigger a new retry attempt with an adjusted budget limit.
-
----
-
-## 6. Worker Daemon and Failure Recovery
-
-Background workers execute `InvestigateSnapshotOperation` via the unified job consumer.
-
-### Lease Mechanics and Heartbeats
-
-- Workers lease jobs for a configured attempt duration (e.g., 90 seconds).
-- The worker runtime continuously updates the lease heartbeat in PostgreSQL.
-- Database clock (`CURRENT_TIMESTAMP`) is the sole authority for lease expiration.
-
-### Automatic Recovery Daemon
-
-The `RecoveryWorker` scans for orphan or expired jobs:
-- If a worker crashes or loses network connectivity, its lease expires.
-- `RecoveryWorker` detects expired leases whose deadline has passed:
-  - If `attempt_count < max_attempts`: resets the job to `retry_wait` for another worker to claim.
-  - If `attempt_count >= max_attempts`: marks the job as `failed` and sets investigation status to `failed`.
-- Unused budget reservations for expired attempts are reclaimed automatically during reconciliation.
-
----
-
-## 7. Model-Context Protocol (MCP) Read Inspection
-
-Authorized AI agents and scripts can inspect investigation states via the read-only MCP server:
-
-### Tool: `get_investigation_status`
-
-```json
-{
-  "name": "get_investigation_status",
-  "arguments": {
-    "repository_id": "9f8b4a2e-4b6c-482a-a71f-0e1d8892a014",
-    "investigation_id": "3c5f2b8a-9e1d-482a-a71f-2e1d8892a099"
-  }
-}
-```
-
-Returns bounded status JSON including status, step progress, spent/held micros, verdict, and available actions.
-
-### Tool: `get_investigation_result`
-
-```json
-{
-  "name": "get_investigation_result",
-  "arguments": {
-    "repository_id": "9f8b4a2e-4b6c-482a-a71f-0e1d8892a014",
-    "investigation_id": "3c5f2b8a-9e1d-482a-a71f-2e1d8892a099"
-  }
-}
-```
-
-Returns final report payload, verified claims count, evidence count, verdict, and summary text.
+[Investigation evidence](acceptance/investigations.md),
+[reviewed-memory evidence](acceptance/reviewed-memory-context.md) and
+[workspace evidence](acceptance/frontend-workspace.md) distinguish real PostgreSQL
+and isolated-reader checks from synthetic provider responses. No new tests were run
+for this documentation reconciliation. Live quality, the complete single
+upload-to-saved-result browser journey and hosted deployment remain unqualified.
+MCP investigation inspection is read-only; see its [runbook](operator-mcp-runbook.md).

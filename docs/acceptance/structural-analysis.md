@@ -39,7 +39,7 @@ Qualified Linux image: `sha256:818d737dde5ff0da44c09c1d1790ec45a0af9ecf21b969070
 
 ## Evaluation provenance
 
-[Fixture manifest](../../evals/structural analysis/manifest.json) records source hashes, lineage and splits. `development-v1` was promoted after an overload-mapping failure; it is not held out. `heldout-v2` has 80 static call sites per Python and JS/TS group: 30 positive, 40 negative and 10 ambiguous. Each group produced TP30/FP0/FN0, all 10 ambiguous labels correct and zero falsely unique negative calls. Each FastAPI, Express and HTTP-link synthetic task produced TP20/FP0/FN0 from 20 positive and 20 negative cases.
+[Fixture manifest](../../evals/phase3/manifest.json) records source hashes, lineage and splits. `development-v1` was promoted after an overload-mapping failure; it is not held out. `heldout-v2` has 80 static call sites per Python and JS/TS group: 30 positive, 40 negative and 10 ambiguous. Each group produced TP30/FP0/FN0, all 10 ambiguous labels correct and zero falsely unique negative calls. Each FastAPI, Express and HTTP-link synthetic task produced TP20/FP0/FN0 from 20 positive and 20 negative cases.
 
 These are agent-authored labels and repeated synthetic template variants. They establish narrow regression thresholds, not independent human evaluation, runtime ground truth, general repository accuracy or security correctness.
 

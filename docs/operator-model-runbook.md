@@ -73,10 +73,15 @@ calls. No external reconciliation endpoint or automatic inference from elapsed t
 is added. Shared embedding accounting is separate from generation transport code.
 
 Inject `runtime.maintenance_tick` into the existing worker's
-`WorkerRuntime.run(..., model_maintenance=runtime.maintenance_tick)`. It conservatively
-holds abandoned dispatched calls after 300 seconds and removes at most 100 expired
-continuations per pass, using database time. The worker owns cancellation of its
-periodic task. No background task starts merely by importing or validating config.
+`WorkerRuntime.run(..., model_maintenance=runtime.maintenance_tick)`. The callback
+performs bounded retention cleanup, including at most 100 expired continuations
+per pass, using database time. Stale-call recovery remains disabled by default:
+configure `accounting_recovery.enabled` and a bounded provider duration before
+that part of maintenance can conservatively hold abandoned dispatched calls.
+The default stale threshold is 300 seconds and must exceed the configured call
+duration plus recovery margin. See [budget recovery settings](operator-budget-runbook.md#bounded-recovery).
+The worker owns cancellation of its periodic task. No background task starts
+merely by importing or validating config.
 A process dying while a reservation is still unsent/reserved may require operator
 release; this maintenance pass never guesses that an ambiguous dispatch was free.
 
@@ -107,10 +112,11 @@ and owned PostgreSQL. They establish no paid model access, live quality, real
 pricing, provider residency, real Bedrock transport cancellation or hard wire limits.
 Investigation checkpoint operations use short authorized transactions with database-time
 lease checks; the HTTP handler holds no checkpoint transaction during inference.
-Distributed investigation job scheduling and live crash/resume quality remain separate
-qualification work. Shared embedding mutation routines/role wiring inherited from the
-accounting dependency are not qualified by generation transport tests; deployment
-requires that separate role integration to pass.
+Durable investigation scheduling and synthetic-provider crash/recovery checks are
+recorded in [investigation evidence](acceptance/investigations.md). Shared embedding
+authority/recovery has separate [accounting evidence](acceptance/model-accounting.md);
+generation transport tests alone do not establish it. Live crash/resume behavior
+and deployment role grants still require owner qualification.
 
 Before live activation, the owner must verify exact model IDs and API parameters,
 account permissions, pricing/counter interpretation, input bounds, processing

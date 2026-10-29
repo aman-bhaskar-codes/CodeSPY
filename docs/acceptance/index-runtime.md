@@ -1,5 +1,7 @@
 # Offline index preparation runtime
 
+> **Status reconciliation — 28 October 2026:** The preparation-only limitations below describe this runtime qualification. Durable jobs, publication, sealed reads and API/UI/MCP integration have later records: [index jobs](index-jobs.md), [publication](index-publication.md), [reads](index-reads.md) and [interfaces](index-interface.md). Runtime activation still requires explicit configuration. No tests were rerun for this documentation update.
+
 The request-bound correction is recorded in [Durable indexing requests and recovery](index-jobs.md). The latest image and worker qualification are recorded in [Atomic index publication](index-publication.md).
 
 The typed builder accepts an index specification and trusted owned file
@@ -75,7 +77,8 @@ containers and the prior owned PostgreSQL container/network were removed.
 Final owned indexer and database container inventories were empty. The idle
 image is retained for subsequent worker tests.
 
-Durable creation/retries, consumer execution, atomic publication, sealed-set
-read visibility and UI/MCP integration still require implementation. The database
+At this preparation-only qualification, durable creation/retries, consumer execution,
+atomic publication, sealed-set reads and UI/MCP integration still required implementation.
+Later implementation and evidence are linked in the status reconciliation above. The database
 finalization budget has not been qualified by these preparation tests. No cloud,
 provider, deployment or end-to-end product readiness is claimed.
