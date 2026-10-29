@@ -1,5 +1,7 @@
 # Atomic index publication
 
+> **Status reconciliation — 28 October 2026:** Later [index reads](index-reads.md) and [index interfaces](index-interface.md) implement the read/API/UI/MCP work listed as pending at the time of this publication qualification. The results below remain scoped to their original test selection. No tests were rerun for this documentation update.
+
 Indexing can run through the existing queue consumer when an `IndexOperation`
 is explicitly injected. Unconfigured workers defer valid indexing deliveries
 without claiming them. The operation loads the immutable attempt specification,
@@ -79,11 +81,11 @@ source reading reused image
 No dependencies, historical migrations, API keys or provider configuration were
 changed. No AWS, model/provider, deployment or GitHub calls were made.
 
-## Remaining integration
+## Historical remaining integration
 
 Qualified-set selection for search/context/memory is covered by
 [qualified index reads](index-reads.md). Public indexing routes, workbench
-controls and read-only MCP status remain pending. Default activation
+controls and read-only MCP status were pending at this publication-only qualification. Default activation
 stays disabled. Maximum canonical-draft/provenance edge cases and the complete
 search-to-context/UI journey require further qualification before public
 activation. This evidence does not establish a deployed or complete MVP.

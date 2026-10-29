@@ -1,5 +1,7 @@
 # Index storage and publication guards
 
+> **Status reconciliation — 28 October 2026:** This storage record predates the connected index workflow. Later [publication](index-publication.md), [reads](index-reads.md) and [interface](index-interface.md) evidence supersedes its integration-pending statements; its original test results remain unchanged. No tests were rerun for this documentation update.
+
 Local qualification on 24 October 2026 used reference
 `83767b105f0eb0870c79f84402241d729084120b` plus the uncommitted storage changes.
 Historical revisions were preserved; `0023_index_publication` is additive.
@@ -67,5 +69,5 @@ alone does not activate durable indexing.
 
 Full-size runtime/publication capacity, timeout and ambiguous-commit recovery
 through the indexing finalizer, source-to-chunk execution, public status/search
-integration and UI/MCP flows remain pending. No new model/provider behavior,
+integration and UI/MCP flows were pending at this storage-only qualification. No new model/provider behavior,
 credentials, AWS access, provisioning, deployment or Git publishing was used.

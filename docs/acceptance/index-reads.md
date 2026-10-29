@@ -1,5 +1,7 @@
 # Qualified index reads
 
+> **Status reconciliation — 28 October 2026:** The later [index interface record](index-interface.md) covers API, workbench and read-only MCP wiring. Public operations are implemented but require explicitly configured index runtimes; the older activation-pending statements below describe their original verification boundary. No tests were rerun for this documentation update.
+
 Exact, lexical, dense and hybrid services select one committed lexical chunk set
 with a scoped publication receipt. Results identify the set, configuration,
 materialization, safe-content digest and admitted-file coverage. A qualified
@@ -54,9 +56,10 @@ On 24 October 2026, reference
   authority.
 
 The current work has passed an independent scoped read review. The whole-change
-review and final qualification gate remain pending. No new dependencies,
+review and final qualification gate were pending at this read-only qualification. No new dependencies,
 credentials, providers, AWS access, GitHub changes or deployment were performed.
-Changes remain local. Public indexing activation stays disabled.
+Changes were local. Public indexing activation was disabled at this qualification;
+the later interface record distinguishes implemented controls from runtime activation.
 
 The final focused gate passed **213 tests** in 32.15 seconds, including real
 PostgreSQL/native retrieval, contract, channel, context, memory, API and synthetic

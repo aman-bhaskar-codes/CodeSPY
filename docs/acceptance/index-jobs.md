@@ -1,5 +1,7 @@
 # Durable indexing requests and recovery
 
+> **Status reconciliation — 28 October 2026:** The later [index interface record](index-interface.md) covers the API, workbench and MCP integration listed as pending below. These earlier job/runtime results do not independently qualify that later integration. No tests were rerun for this documentation update.
+
 Indexing uses the existing PostgreSQL jobs, attempts, outbox and recovery owner.
 Creation commits the immutable admitted-input specification, job, wakeup and
 queued event together. Concurrent identical request keys return one job; keys
@@ -71,5 +73,6 @@ On 24 October 2026, reference
 These checks qualify these synthetic fixtures, not every possible repository.
 Consumer execution and atomic finalization are now covered by the
 [worker publication qualification](index-publication.md). Sealed-result reads are covered by [qualified index reads](index-reads.md);
-indexing controls and API/UI/MCP integration remain pending. No provider, AWS or deployment calls
+indexing controls and API/UI/MCP integration were pending at this qualification;
+see the later interface record linked above. No provider, AWS or deployment calls
 were made. Changes remain local and uncommitted.

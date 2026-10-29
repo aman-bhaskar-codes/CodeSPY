@@ -1,6 +1,8 @@
 # Durable findings
 
-Internal scan jobs connect admitted, immutable source snapshots to isolated offline scanners and dependency assessment. Public scan submission and findings routes remain disabled. No model, provider, cloud account or credential is required by this increment.
+> **Status reconciliation — 28 October 2026:** Scoped scan configuration/start/status/cancel/retry, findings reads and triage UI now exist. See [workspace verification](frontend-workspace.md) and [findings/retrieval checks](retrieval-boundaries.md). The public-surface exclusions below describe the original storage qualification; activation still needs registered runtimes, catalogs and advisory inputs. No tests were rerun for this documentation update.
+
+Internal scan jobs connect admitted, immutable source snapshots to isolated offline scanners and dependency assessment. At the time of this storage qualification, public scan submission and findings routes were disabled. No model, provider, cloud account or credential is required by this increment.
 
 Reusable configurations are separate from run-bound attempt specifications. Seven additive tables retain configuration, attempt binding, reports, observations, finding occurrences, support and verification decisions. Jobs, outbox dispatch, leases, fencing, cancellation and recovery reuse the existing services. Manual retries retain the original requesting principal and require current write permission; another writer must create a new analysis.
 
@@ -18,17 +20,17 @@ Verification uses synthetic archives and frozen advisory fixtures. Native qualif
 
 Observed on 21 October 2026 against the [recorded implementation and test source hashes](durable-findings-sources.json):
 
-| Gate | Observed result |
-|---|---|
-| Complete owned PostgreSQL/native suite | 40 passed, no skips, 211.62 seconds |
-| Broad local Python regression suite | 531 passed, 105 opt-in skips, 8.28 seconds |
-| Ruff | Passed |
-| Strict mypy | Passed, 149 application files |
-| Generated OpenAPI comparison | Unchanged |
-| Whitespace/diff check | Passed |
-| Legacy persistence integration | 21 passed, 2.54 seconds |
-| Legacy migration compatibility | 3 passed, 1.18 seconds |
-| Legacy publication concurrency | 4 passed, 0.80 seconds |
+| Gate                                   | Observed result                            |
+| -------------------------------------- | ------------------------------------------ |
+| Complete owned PostgreSQL/native suite | 40 passed, no skips, 211.62 seconds        |
+| Broad local Python regression suite    | 531 passed, 105 opt-in skips, 8.28 seconds |
+| Ruff                                   | Passed                                     |
+| Strict mypy                            | Passed, 149 application files              |
+| Generated OpenAPI comparison           | Unchanged                                  |
+| Whitespace/diff check                  | Passed                                     |
+| Legacy persistence integration         | 21 passed, 2.54 seconds                    |
+| Legacy migration compatibility         | 3 passed, 1.18 seconds                     |
+| Legacy publication concurrency         | 4 passed, 0.80 seconds                     |
 
 The 40-case gate covers actual admitted source → queue → both native tools plus matched advisory assessment → atomic publication → authorized read, retained-bundle loss, native 128-file/16-MiB ceilings for both tools, dependency 32-file/2-MiB ceiling, 1,000-finding SQL publication, scoped EXPLAIN row counts, actual database lease expiry, coordinated cancellation/revocation, exact replay, rollback, aggregate statement budget, lost commit acknowledgement and post-commit cancellation. Direct SQL regressions exercise omitted configured operations, wrong request/selection/coverage, immutable attempt configuration, incomplete publication, mutated payloads, duplicate evidence and sealed-record mutation. The 7,000-observation composite ceiling and exact 4-MiB payload boundary are enforced but were not separately saturated in the database/native suite.
 
@@ -38,8 +40,8 @@ A single independent review identified two database-boundary defects: omitted co
 
 Compatibility checks observed during this increment: 222 structural tests passed with three older image-dependent cases skipped; 44 ingestion/HTTP tests passed with one admission-image case skipped; two historical migration tests passed. These skips remain distinct from passes. The generated OpenAPI contract is unchanged. No frontend source is changed by durable storage, and frontend gates were not rerun for this increment.
 
-## Remaining product boundary
+## Boundary at the original qualification
 
-Public scan admission, findings HTTP/UI surfaces and triage remain disabled. Eventual activation must inject qualified runtime, catalog, bundle and recovered-owner configuration explicitly. AWS access, provider keys, hosted execution, deployment and production load qualification remain outside this capability. Fixture timings are not production latency or peak-memory measurements.
+At this original qualification boundary, public scan admission, findings HTTP/UI surfaces and triage were disabled. Later surfaces are linked above; runtime activation must inject qualified runtime, catalog, bundle and recovered-owner configuration explicitly. AWS access, provider keys, hosted execution, deployment and production load qualification remain outside this capability. Fixture timings are not production latency or peak-memory measurements.
 
 Owned scan and legacy PostgreSQL containers, networks and volumes were removed through marker-validated cleanup. Final Docker inspection found no scanner-owned containers or containers from either test project. Both disposable credential/ownership files are gone. Docker itself remains under the owner's control. Implementation source hashes match the recorded evidence; Git HEAD is unchanged and all changes remain uncommitted.

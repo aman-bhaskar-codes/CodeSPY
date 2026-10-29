@@ -67,12 +67,40 @@ call, request/profile identity and database expiry. Bounded result cleanup uses 
 constrained routine. Shared SQL logins still trust application-supplied authenticated
 identity; this is not arbitrary-SQL end-user isolation.
 
-A real restricted-role test runs the composition through one synthetic provider
-response, checkpoints and an indeterminate published result. It does not establish
-tool-continuation or crash/restart qualification. Both workflow modes, public process
-startup configuration and full crash/recovery journeys remain open gates. Do not infer a working uploaded-repository
-investigation from unit tests or from a report finalizer passing in isolation.
+Restricted-role tests run both short and specialist workflows against a synthetic
+HTTP provider and the real isolated source reader. Encrypted effects bind each
+model/tool/draft record to actor, repository, snapshot, spec and execution identity.
+Checkpoints contain reference IDs and digests. Recovery after committed tool output
+and after a saved draft reuses the same records without another model dispatch,
+then publishes one report and proposes one review candidate.
+
+Delivered excerpt verification checks the exact receipt hash, scope, line range
+and quote. Unverified claims remain unsupported; a true-positive label cannot
+bypass grounding. Retention is seven days, with bounded payload purge preserving
+minimal digests. Missing legacy execution history requires an explicit restart.
+
+`build_worker_runtime` connects existing operations, model maintenance and the
+optional report-candidate consumer through injected configuration. It does not
+read keys or discover cloud access. The API role can lock an authorized sealed
+snapshot through a scoped routine without receiving snapshot UPDATE permission.
+The complete upload-to-investigation browser journey remains unqualified.
 
 Model transports are qualified offline with synthetic responses. No live provider
 quality, AWS access, account entitlements, deployment or complete product readiness
 is established here. The owner supplies credentials and performs live activation.
+
+## Local regression evidence
+
+The owned PostgreSQL accounting, model-connection and memory suites passed 77
+cases. After the final proposal-expiry repair, four source/proposal and connected
+investigation cases passed again. The investigation/memory/accounting follow-up
+passed 263 cases with five guarded cases skipped. Strict application typing
+passed for 280 files; touched Python lint and diff whitespace checks passed.
+
+Proposal ownership includes database expiry. Renewal cannot revive an expired
+claim, processing has a thirty-second total budget, and a missed acknowledgment
+rolls back candidate effects. Completion counts represent committed effects.
+Independent review was unavailable because the review agent hit a usage limit;
+these changes have author self-review and test evidence, not an independent
+security verdict. Live providers and the complete browser journey remain outside
+this qualification.

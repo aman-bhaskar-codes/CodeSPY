@@ -1,5 +1,7 @@
 # Findings and retrieval boundary checks
 
+> **Status reconciliation — 28 October 2026:** Durable indexing, snapshot-bound investigations, worker tools and provider/accounting adapters were added after the results below. See [index interfaces](index-interface.md), [investigations](investigations.md), [model connections](model-connections.md) and [MCP integration](mcp-integration.md). The older remaining-integration list is historical, not the current backlog. No tests were rerun for this documentation update.
+
 Qualification on 24 October 2026 used reference `83767b105f0eb0870c79f84402241d729084120b` plus the current uncommitted changes. The original checkout intermittently stalled on cached runtime reads. Tests ran from an exact public-reference reconstruction with individually hash-checked current-source overlays, Python 3.12.12 and the frozen dependency export. This is local evidence, not hosted readiness.
 
 ## Connected behavior
@@ -24,6 +26,11 @@ Qualification on 24 October 2026 used reference `83767b105f0eb0870c79f84402241d7
 
 A public tokenizer vocabulary was fetched over verified TLS and matched the SHA-256 pinned by the installed tokenizer library before offline regression. No model invocation, credentials, AWS access, provisioning, deployment or Git publishing occurred. Raw logs and source hashes stay in ignored local work files.
 
-## Remaining integration
+## Historical remaining integration
 
-Durable source-to-index jobs, snapshot-bound durable investigations, real investigation tools and provider/budget/disclosure adapters remain incomplete. Gateway cancellation and settlement still need independent transaction durability; a request transaction is insufficient evidence. Standalone MCP initialization/transport/client interoperability, complete browser journeys, evaluation, observability and deployment remain unqualified. The current changes do not establish a complete deployed MVP.
+At the time of the checks above, durable source-to-index jobs, snapshot-bound
+investigations, real investigation tools and provider/budget/disclosure adapters
+were incomplete. Independent cancellation/settlement durability and standalone MCP
+transport qualification were also pending. Later records linked at the top supersede
+those implementation gaps. The complete product browser journey, live quality and
+deployment remain unqualified; the historical results alone do not establish a deployed MVP.

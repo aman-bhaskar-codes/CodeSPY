@@ -1,25 +1,105 @@
 # CodeSPY interaction contract
 
-Sources: backend/openapi.json, backend/app/contracts/ingestion.py and backend/app/contracts/jobs.py. Application services and database guards enforce lifecycle and permissions.
+## Product context
+
+CodeSPY helps developers inspect admitted source, review findings and investigate
+questions using traceable evidence. English is the current interface language.
+The target is WCAG 2.2 AA. This contract describes interface behavior; the backend
+contracts and current authorization remain authoritative for permissions and data.
+
+## Authority and source contracts
+
+- `backend/openapi.json`: public transport shapes and operations.
+- `backend/app/security/authorization.py`: current repository and snapshot authority.
+- `backend/app/contracts/memory.py`: reviewed-memory lifecycle and provenance.
+- `backend/app/contracts/investigation_jobs.py`: durable job and recovery behavior.
+- `backend/app/contracts/source_view.py`: safe source representations and ranges.
+- `DESIGN.md`: visual intent and runtime token ownership.
+
+Do not infer permissions, completed work or financial certainty from visual state.
+Do not expose credentials, raw provider payloads or source-bearing diagnostics.
 
 ## Canonical UI Map
 
-| Capability     | Canonical owner                         | Source of truth      | Allowed variants                 | Verification                     |
-| -------------- | --------------------------------------- | -------------------- | -------------------------------- | -------------------------------- |
-| Select/Listbox | Native select in App                    | DESIGN.md            | Native platform popup            | App.test.tsx; browser unexecuted |
-| Form           | App upload form                         | Generated API contract  | ZIP upload                       | App.test.tsx                     |
-| Scrollbar      | styles/app.css                          | DESIGN.md            | Global visible baseline          | Static audit; browser unexecuted |
-| Toast          | App persistent status and alert regions | UX-CONTRACT.md       | Status, error                    | App.test.tsx                     |
-| CRUD           | api/client.ts and App                   | backend/openapi.json | Submit, cancel, retry, inventory | Backend API tests                |
+| Capability                    | Canonical owner                                          | Source of truth                                      | Allowed variants                                           | Verification                                              |
+| ----------------------------- | -------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------- |
+| Appearance                    | `frontend/src/theme/ThemeProvider.tsx`                   | `frontend/src/styles/tokens.css`                     | Dark default, light; storage optional                      | Theme component and browser tests                         |
+| Workspace chrome              | `frontend/src/workspace/WorkspaceShell.tsx`              | This navigation contract                             | Enabled links or explained unavailable destinations        | Shell component and browser tests                         |
+| Selection restoration         | `frontend/src/App.tsx`                                   | Validated URL identifiers; backend authority         | Repository, snapshot, submission, job, scan                | App restoration and browser tests                         |
+| Buttons                       | `frontend/src/ui/Button.tsx`                             | `DESIGN.md`                                          | Neutral, primary, danger; pending                          | Button component tests                                    |
+| Panels                        | `frontend/src/ui/Panel.tsx`                              | `DESIGN.md`                                          | Labelled section, optional actions                         | Browser checks of session recovery                        |
+| Status                        | `frontend/src/ui/StatusBadge.tsx`                        | `DESIGN.md`                                          | Neutral, success, warning, danger                          | Shell and browser checks                                  |
+| Global scrollbar              | `frontend/src/styles/app.css`                            | Runtime tokens                                       | Theme and forced colors                                    | Narrow browser layout checks; forced colors remain manual |
+| Existing form/table workflows | Current feature components                               | Existing feature contracts                           | Shared semantic tokens; existing transport contracts       | Feature tests and browser checks                          |
+| Select/Listbox                | Native HTML select, used in App and feature forms        | Browser/OS keyboard and popup behavior               | OS-owned popup; labels required                            | App and workbench tests                                   |
+| Form                          | Native forms in App and feature components               | Generated API constraints and local field validation | noValidate, inline correction, disabled pending submission | Upload, triage and memory tests                           |
+| Scrollbar                     | frontend/src/styles/app.css                              | frontend/src/styles/tokens.css                       | Document scroll, table overflow, forced colors             | Narrow browser and layout checks                          |
+| Toast                         | frontend/src/ui/InlineNotice.tsx                         | This interaction contract                            | Persistent inline notices; no ephemeral toast subsystem    | Memory and investigation tests                            |
+| CRUD                          | frontend/src/api/client.ts and scoped feature components | backend/openapi.json and current authorization       | Explicit commands, request keys and recovery views         | Frontend contract tests and connected browser checks      |
 
-Session unavailable: show sign-in/retry and no write controls. Repository list empty: explain no accessible repositories. Upload: reserve, stream raw ZIP, observe job; idempotency key belongs to one command. Unknown completion: retain identifiers and reload before offering a fresh command. Job terminal state ends polling; inventory child is separate. Inventory uses scoped cursor pages and explicit Next/Previous. Cancel requires a labeled in-page confirmation; focus returns to the action. No hard deletion UI.
+New dialogs, notifications, selects and route transitions require a named shared
+owner and keyboard tests before they are introduced. Do not create equivalent
+screen-local owners. Existing feature controls are not automatically certified by
+this foundation contract.
 
-Async requests receive AbortSignal; job/repository changes isolate query keys. Session expiration preserves the selected file, disables writes and offers sign-in. Selected submission, job and snapshot UUIDs persist in URL parameters. Retry command keys persist in sessionStorage to recover ambiguous responses; source bytes and tokens do not. Empty, loading, partial and excluded states use plain text. Inventory is not analysis coverage. Keyboard/browser/zoom checks remain pending until authorized.
+## Navigation and context
 
-## Source indexing and retrieval
+Section links point only to mounted, focusable headings. Unavailable views must not
+start hidden operations. The shell does not fabricate repository or snapshot data;
+it uses actual selected values, or states that no value is selected.
 
-Sources: backend/app/contracts/indexing.py, backend/app/services/index_jobs.py, and the generated OpenAPI index endpoints. The source-index panel reuses the existing panel, native button, inline confirmation, status and alert conventions. Server-returned `can_build`, `can_cancel` and `can_retry` flags control available actions; the browser does not infer ownership or role permissions.
+Repository, submission, job, scan and snapshot identifiers restore from validated
+URL parameters. Browser history restores those selections and resets inventory
+pagination; section navigation preserves local form input. The home link targets
+the mounted overview rather than reloading the application. URLs never contain
+source, questions or memory text. Backend authorization remains authoritative.
+Browser navigation alone must not cancel durable jobs. Pane links use validated hashes; dedicated repository paths and resizable panels
+are not implemented. Saved investigation and finding/run identifiers also restore
+from the URL, scoped to the selected repository and snapshot.
 
-Build and retry commands retain one request key until a response confirms the job identity. Only command keys and job UUIDs are retained in sessionStorage; no source text, query, provider credentials or evidence content is stored there. Terminal jobs stop polling, refresh index availability and preserve existing result sets. Failed refreshes show a reload action rather than indefinite polling. Cancellation requires an in-page confirmation and does not remove a published index.
+## Interaction and failure
 
-Published set identity, coverage and omissions appear before search. An unavailable index differs from an available set with no matches. Search and context results display their own set identities, including while a newer index builds. Pinning a search hit as memory carries its qualified chunk identity and content digests. Editing its file or range clears that chunk association. Search queries and draft memory text remain transient because analyzed source identifiers may be sensitive; they are not persisted in URLs. Generated API types own transport fields and supported memory/chunk kinds.
+- Buttons default to `type="button"`; submit is explicit.
+- Busy buttons preserve their accessible name and prevent duplicate activation.
+- Disable unavailable navigation with a visible reason; never treat UI state as authorization.
+- Existing uncertain mutations keep their request/status recovery behavior.
+- A session failure shows an actionable inline error and a sign-in/retry path.
+- Stable loading, empty and error states must not replace the main navigation.
+- Avoid native product alert/confirm/prompt dialogs; use an approved accessible shared owner.
+- Critical errors remain inline rather than appearing only in a toast.
+
+## Sensitive state
+
+Persist only theme and other explicitly approved harmless presentation preferences.
+Do not put credentials, source excerpts, retrieval queries, model prompts, memory
+text or cached results in local storage. Session expiry clears private caches and unmounts the workspace. Responses started
+under the previous access revision are rejected before publication. Failed scoped
+reads remove previously cached data; write denial does not globally sign out. Appearance preferences do not establish a session.
+
+## Responsive and focus behavior
+
+The workspace uses normal document scrolling. Navigation remains visible and
+labelled at narrow widths, with horizontal scrolling limited to its own strip.
+Long forms and table panels keep separate scroll responsibilities. Focus styles
+remain visible, including on skip links and controls. Route/pane migrations must
+verify 200% zoom, keyboard access and phone layouts before being called complete.
+
+## Dialogs, progress and bounded history
+
+`frontend/src/ui/Modal.tsx` owns focus containment, Escape, busy dismissal guards
+and return focus for drawers and dialogs. Triage is mounted per opening so a
+cancelled draft cannot silently carry into a later review version. Investigation
+creation saves the request; execution is explicit and may use a configured model.
+Model availability describes configuration, never live access qualification.
+
+Investigation history and events use server cursors. The timeline shows one saved
+page and at most 200 recent live events, with an explicit coverage notice. Report
+source correspondence describes checks at publication; it does not establish a
+security conclusion or continuing source availability.
+
+## Qualification boundary
+
+See [workspace verification](docs/acceptance/frontend-workspace.md) for the recorded
+component/browser results and remaining manual accessibility checks. This document
+describes implemented design and interaction contracts, not a hosted release or
+complete upload-to-investigation qualification.

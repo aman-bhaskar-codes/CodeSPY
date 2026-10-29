@@ -1,5 +1,7 @@
 # Model accounting transitions
 
+> **Status reconciliation — 28 October 2026:** This record is chronological. Later sections on least-privilege recovery, configured generation and shared embedding dispatch supersede earlier statements that those mechanisms were absent. See [investigations](investigations.md), [model connections](model-connections.md) and the [budget runbook](../operator-budget-runbook.md). Automatic stale-call recovery preserves uncertain holds; it is not automatic usage reconciliation or a billing feed. No tests were rerun for this documentation update.
+
 The existing generation budget service now rejects request-key replay with changed
 principal, repository, call identity, provider/model or reserved usage. Replays are
 rechecked after the repository budget lock. Release and uncertainty transitions
@@ -222,8 +224,8 @@ and SKIP LOCKED batches. Stale candidates transition conservatively to uncertain
 protecting committed capacity without releasing spendable budget or re-dispatching
 inference.
 
-Observed checks: **87 accounting and Phase 6 unit/integration tests passed in 1.87
-seconds**; **580 Phase 2, 4, and 5 unit tests passed in 14.24 seconds**; strict typing
+Observed checks: **87 accounting and investigation unit/integration tests passed in 1.87
+seconds**; **580 ingestion, findings and retrieval unit tests passed in 14.24 seconds**; strict typing
 passed for 233 application files with zero errors; Ruff formatting and linting passed
 for all modified files. Storage tests against unprovisioned Docker environments were
 safely skipped. Live provider adapters, token normalization, external billing feeds,
@@ -235,6 +237,21 @@ Configured provider execution now uses constrained generation routines, immutabl
 numeric receipts and encrypted scoped continuation state. An additive repair corrects
 SQL charge arithmetic, exact replay comparison and concurrent dispatch claims.
 Restricted generation roles, cancellation and request replay are qualified by the
-[model connection checks](model-connections.md). These results do not qualify the
-older shared embedding authority routines or their runtime-role wiring. That remains
-a deployment gate; no real inference or account access was enabled.
+[model connection checks](model-connections.md). Embedding authority now has restricted-role tests for request replay, captured
+prices, cancellation identity and shared generation/embedding holds. The dispatch
+claim is durable and has one winner. Callers must commit it before external I/O;
+losing or unknown claims must never redispatch. Both the cancellation entrypoint
+and the database history guard prevent releasing possibly spent capacity.
+
+The existing accounting maintenance pass also sweeps stale embedding markers
+using database time and bounded SKIP LOCKED batches. Recovery preserves reserved
+capacity as uncertain holds; late known settlement uses captured pricing and
+retains other holds. It never guesses usage or frees a hold because a timeout
+elapsed. No external embedding client, billing-feed integration or real inference
+was enabled. Operational funding, credentials and activation remain owner-managed.
+
+The final owned PostgreSQL accounting/model/memory selection passed 77 cases.
+Known earlier tokenizer-related unit failures were caused by an unset offline
+cache path; the selected unit qualification passed with the verified pinned
+vocabulary. Historical downgrade tests use their declared migration boundaries;
+current authority tests retain the latest forward-only protections.
