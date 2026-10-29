@@ -94,6 +94,7 @@ jobs:
               'backend/tests/mcp/storage',
               'backend/tests/phase4/storage/test_scan_workbench_http.py',
               'backend/tests/retrieval/storage/test_index_workbench.py',
+              'backend/tests/journey/test_connected_journey.py',
           ]
           raise SystemExit(subprocess.run([
               sys.executable, '-m', 'pytest', '-c', 'backend/pyproject.toml',

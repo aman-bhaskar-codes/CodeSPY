@@ -101,7 +101,6 @@ from app.workers.operations.index_snapshot import IndexOperation
 from app.workers.operations.scan_snapshot import ScanOperation
 from pydantic import SecretStr
 from sqlalchemy import func, select
-
 from tests.model_connections.storage.test_configured_gateway import configured
 from tests.phase2.integration.test_submission_ingestion import chunks
 from tests.phase4.storage.test_scan_jobs import Registry
