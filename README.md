@@ -151,6 +151,8 @@ These are admitted resource limits, not throughput or latency benchmarks. Timeou
 
 Source is untrusted. CodeSPY does not execute uploaded application code or install its dependencies. Analysis is limited to supported languages, detector profiles and selected files. Omitted, unavailable and unresolved results must remain visible.
 
+The isolated scanner toolchain has [documented dependency advisories](docs/acceptance/offline-scanner.md#dependency-advisories--29-october-2026). Isolation limits exposure; it is not a vulnerability-free guarantee or production activation approval.
+
 Recognized-secret redaction is heuristic. Unusual, encoded or split secrets may remain undetected. A model-safe representation is a derived view, not permission to disclose it to an external provider.
 
 ## Local development
