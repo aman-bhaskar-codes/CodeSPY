@@ -1,0 +1,113 @@
+name: Application integration
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  workspace-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci --prefix frontend
+      - run: cd frontend && npx playwright install --with-deps chromium
+      - run: npm --prefix frontend run test:e2e:fixture
+        env:
+          CODESPY_PLAYWRIGHT_CHANNEL: chromium
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: workspace-browser-failures
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+  application-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: uv sync --all-packages --all-groups --frozen
+      - run: npm ci --prefix frontend
+      - run: cd frontend && npx playwright install --with-deps chromium
+      - name: Fetch and verify pinned public tokenizer vocabulary
+        run: |
+          mkdir -p work/tokenizer
+          curl --fail --location --retry 2 https://openaipublic.blob.core.windows.net/encodings/cl100k_base.tiktoken -o work/tokenizer/cl100k_base.tiktoken
+          echo '223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7  work/tokenizer/cl100k_base.tiktoken' | sha256sum --check
+          cp work/tokenizer/cl100k_base.tiktoken work/tokenizer/9b5ad71b2ce5302211f9c61530b329a4922fc6a4
+      - name: Qualify offline application contracts
+        env:
+          TIKTOKEN_CACHE_DIR: ${{ github.workspace }}/work/tokenizer
+        run: >-
+          uv run --frozen --all-packages --all-groups python -m pytest
+          -c backend/pyproject.toml --import-mode=importlib -o addopts='-ra --strict-markers'
+          backend/tests/accounting/unit backend/tests/investigations/unit
+          backend/tests/model_connections/unit backend/tests/memory/unit
+          backend/tests/mcp/unit backend/tests/retrieval/unit
+          --junitxml=work/offline-application.xml -q
+      - run: uv run --frozen --all-packages --all-groups python scripts/build_source_reader_image.py --image-out work/reader-image.id
+      - run: uv run --frozen --all-packages --all-groups python scripts/build_indexer_image.py --image-out work/indexer-image.id --vocabulary work/tokenizer/cl100k_base.tiktoken | tee work/indexer-build.log
+      - run: uv run --frozen --all-packages --all-groups python scripts/scan_db.py prepare --env-out work/application-ci.env
+      - name: Qualify PostgreSQL authority, recovery, MCP and indexing
+        env:
+          CODESPY_PLAYWRIGHT_CHANNEL: chromium
+        run: |
+          uv run --frozen --all-packages --all-groups python - <<'PY'
+          import json, os, shutil, subprocess, sys
+          from pathlib import Path
+          from scripts.phase2_db import read_env, verify_marker
+          root = Path.cwd()
+          values = read_env(root / 'work/application-ci.env')
+          verify_marker(values, values['CODESPY_TEST_DATABASE'])
+          metadata = json.loads((root / 'work/indexer-build.log').read_text().splitlines()[-1])
+          env = {k: v for k, v in os.environ.items() if not k.startswith(('AWS_', 'OPENAI_', 'ANTHROPIC_', 'GEMINI_', 'VITE_'))}
+          env.update(values)
+          env.update(
+              PYTHONPATH=str(root / 'backend') + os.pathsep + str(root),
+              CODESPY_TEST_SCHEMA_TARGET='head',
+              CODESPY_SOURCE_READER_IMAGE=(root / 'work/reader-image.id').read_text().strip(),
+              CODESPY_INDEXER_IMAGE=metadata['image_id'],
+              CODESPY_INDEXER_SOURCE_HASH=metadata['source_hash'],
+              CODESPY_MCP_DOCKER_EXECUTABLE=shutil.which('docker'),
+              CODESPY_MCP_DOCKER_SOCKET='/var/run/docker.sock',
+              CODESPY_TEST_NODE_BINARY=shutil.which('node'),
+              CODESPY_RUN_INDEX_WORKBENCH='1',
+              TIKTOKEN_CACHE_DIR=str(root / 'work/tokenizer'),
+          )
+          paths = [
+              'backend/tests/accounting/storage',
+              'backend/tests/accounting/security',
+              'backend/tests/model_connections/storage',
+              'backend/tests/investigations/storage',
+              'backend/tests/memory/storage',
+              'backend/tests/mcp/storage',
+              'backend/tests/phase4/storage/test_scan_workbench_http.py',
+              'backend/tests/retrieval/storage/test_index_workbench.py',
+          ]
+          raise SystemExit(subprocess.run([
+              sys.executable, '-m', 'pytest', '-c', 'backend/pyproject.toml',
+              '--import-mode=importlib', '-o', 'addopts=-ra --strict-markers',
+              *paths, '--junitxml=work/connected-application.xml', '-q', '--tb=short',
+          ], env=env).returncode)
+          PY
+      - name: Clean up owned database
+        if: always() && hashFiles('work/application-ci.env') != ''
+        run: uv run --frozen --all-packages --all-groups python scripts/scan_db.py cleanup --env-file work/application-ci.env
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: application-integration-results
+          path: |
+            work/offline-application.xml
+            work/connected-application.xml
