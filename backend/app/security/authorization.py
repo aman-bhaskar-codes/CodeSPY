@@ -7,7 +7,7 @@ from app.domain.errors import ScopeViolation
 from app.domain.scope import OrgRole, TenantContext
 from app.models.phase2_tables import PHASE2_TABLES
 from app.models.tables import memberships, repositories, source_snapshots
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -139,6 +139,25 @@ async def lock_scope(
     if repo is None:
         raise ScopeViolation("repository unavailable")
     if snapshot_id is not None:
+        if (
+            session.bind is not None
+            and session.bind.dialect.name == "postgresql"
+            and await session.scalar(
+                text("SELECT to_regproc('public.codespy_lock_scoped_snapshot')")
+            )
+        ):
+            found = await session.scalar(
+                text("SELECT public.codespy_lock_scoped_snapshot(:org,:actor,:repo,:snapshot)"),
+                {
+                    "org": org_id,
+                    "actor": principal_id,
+                    "repo": repository_id,
+                    "snapshot": snapshot_id,
+                },
+            )
+            if not found:
+                raise ScopeViolation("snapshot unavailable")
+            return ctx
         snap = await session.scalar(
             select(source_snapshots.c.id)
             .where(

@@ -8,6 +8,12 @@ from app.db.session import build_engine, build_session_factory
 from sqlalchemy.engine import URL
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "schema_revision(name): qualify an owned historical migration boundary"
+    )
+
+
 @pytest.fixture
 def db_values():
     keys = [

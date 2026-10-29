@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+from datetime import timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -143,6 +144,24 @@ async def test_report_candidates_are_reviewed_deduplicated_and_separate_from_que
     assert await OutboxDispatcher(broker_factory, Queue()).dispatch_once() == 0
     worker = ReportMemoryProposalWorker(broker_factory, reader)
     try:
+        original_process = worker._process
+
+        async def expire_before_processing(row, token):
+            async with migration_factory() as session, session.begin():
+                await session.execute(
+                    update(outbox)
+                    .where(outbox.c.org_id == row["org_id"], outbox.c.id == row["id"])
+                    .values(claim_expires_at=func.clock_timestamp() - timedelta(seconds=1))
+                )
+            return await original_process(row, token)
+
+        worker._process = expire_before_processing
+        assert await worker.tick() == 0
+        async with broker_factory() as session:
+            assert (
+                await session.scalar(select(func.count()).select_from(report_memory_receipts)) == 0
+            )
+        worker._process = original_process
         results = await asyncio.gather(worker.tick(), worker.tick())
         assert sum(results) == 1
         async with broker_factory() as session:

@@ -87,3 +87,45 @@ def test_cross_snapshot_evidence_is_never_proposed():
     report, records, org, repo, snapshot, actor = fixture()
     records = (records[0].model_copy(update={"snapshot_id": UUID(int=999)}),)
     assert derive_report_memories(report, records, org, repo, snapshot, actor) == ()
+
+
+def test_proposals_preserve_quoted_source_whitespace():
+    from app.services.report_memory import derive_report_memories
+
+    report, records, org, repo, snapshot, actor = fixture()
+    statement = 'The source literal is "a  b".'
+    report = report.model_copy(
+        update={"claims": (report.claims[0].model_copy(update={"statement": statement}),)}
+    )
+    assert (
+        derive_report_memories(report, records, org, repo, snapshot, actor)[0].summary == statement
+    )
+
+
+def test_unsupported_or_stale_support_produces_zero_proposals():
+    from app.services.report_memory import derive_report_memories
+
+    report, records, org, repo, snapshot, actor = fixture(3)
+    # Stale support
+    stale_report = report.model_copy(update={"current_support_available": False})
+    assert derive_report_memories(stale_report, records, org, repo, snapshot, actor) == ()
+
+    # Refuted verification
+    refuted_checks = tuple(
+        ClaimVerificationV1(
+            claim_id=c.claim_id,
+            status=ClaimVerificationStatus.REFUTED,
+        )
+        for c in report.claims
+    )
+    refuted_report = report.model_copy(update={"verifications": refuted_checks})
+    assert derive_report_memories(refuted_report, records, org, repo, snapshot, actor) == ()
+
+
+def test_proposals_require_evidence_ref_present_in_report():
+    from app.services.report_memory import derive_report_memories
+
+    report, records, org, repo, snapshot, actor = fixture(2)
+    # Evidence refs in report empty -> no evidence allowed
+    unreferenced_report = report.model_copy(update={"evidence_refs": ()})
+    assert derive_report_memories(unreferenced_report, records, org, repo, snapshot, actor) == ()

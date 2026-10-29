@@ -58,8 +58,8 @@ def derive_report_memories(
             )
             for i in ids
         )
-        summary = " ".join(claim.statement.split())
-        if not summary:
+        summary = claim.statement
+        if not summary.strip():
             continue
         key = semantic_digest(
             [
