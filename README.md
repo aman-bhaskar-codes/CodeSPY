@@ -16,7 +16,7 @@ CodeSPY turns a source archive into an immutable snapshot, a file inventory and 
 
 The central distinction is **what the source establishes, what analysis infers, and what remains unknown**. Static call candidates are not observed execution paths. A matching quotation does not prove a security claim. An empty findings list does not establish that a repository is secure.
 
-> **Development status:** Development is temporarily paused. CodeSPY is a local prototype with implemented source-analysis, retrieval, reviewed-memory, investigation and read-only MCP workflows. Live provider quality, the complete upload-to-saved-investigation journey and hosted deployment remain unqualified.
+> **Development status:** Development is temporarily paused. CodeSPY is a local prototype with implemented source-analysis, retrieval, reviewed-memory, investigation and read-only MCP workflows. Connected local journey qualification passed against real PostgreSQL and isolated Docker runtimes (`test_connected_journey.py`). Live provider quality and hosted deployment remain unqualified.
 
 ## Capabilities
 
@@ -270,7 +270,7 @@ MCP connections remain disabled.
 | Investigations and memory | [Investigation recovery](docs/acceptance/investigations.md) and [reviewed memory](docs/acceptance/reviewed-memory-context.md): scoped database/container checks with synthetic providers                    |
 | MCP                       | [MCP evidence](docs/acceptance/mcp-integration.md): recorded protocol, subprocess and connected storage/reader checks; manual host acceptance pending                                                       |
 | Accounting and models     | [Accounting](docs/acceptance/model-accounting.md) and [model connections](docs/acceptance/model-connections.md): recorded constrained-role and synthetic transport results; live access remains unqualified |
-| Complete product journey  | Single upload-to-saved-investigation browser journey, live model quality and hosted operation remain unqualified                                                                                            |
+| Complete product journey  | Single connected local journey (upload, structural analysis, scanning, retrieval, memory, investigation execution and recovery) passed against PostgreSQL and isolated Docker runtimes (`test_connected_journey.py`); live model quality and hosted deployment remain unqualified |
 
 SQLite service tests do not establish PostgreSQL locking or publication guarantees. Mocked models and embeddings do not qualify real provider behavior. Historical acceptance records describe the commands and revisions they tested; they are not blanket guarantees for later changes.
 

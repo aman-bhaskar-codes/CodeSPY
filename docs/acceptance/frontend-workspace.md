@@ -41,6 +41,7 @@ Real connected checks observed during this work:
 | Scoped scan lifecycle HTTP    | One passed                                                      | Real PostgreSQL; scanner capability registry is synthetic, no native scanner-quality claim                                         |
 | Investigation/memory recovery | Six passed                                                      | Real PostgreSQL, encrypted execution effects and isolated source reader; provider exchanges are synthetic                          |
 | MCP connected checks          | Seven passed plus one separately qualified isolated-reader case | Real PostgreSQL; some index preparation is synthetic                                                                               |
+| Complete local journey        | One passed                                                      | Real PostgreSQL 16, isolated Docker source reader and indexer; single end-to-end journey from archive upload and admission through structural analysis, security scanning, exact/dense retrieval, reviewed-memory promotion to saved investigation execution and recovery (`backend/tests/integration/test_connected_journey.py`) |
 | Backend strict typing         | Passed, 289 source files                                        | Separate verification environment restored from the unchanged frozen lockfile                                                      |
 
 The broader offline backend suite passed; eight guarded storage checks in that run were skipped and qualified separately where listed above. Mocked provider tests establish plumbing and recovery, not answer quality.
@@ -51,7 +52,7 @@ Browser tests with intercepted HTTP cover both themes, narrow layouts, keyboard/
 
 Scan controls require a registered server-owned `scan_defaults` template and matching capabilities; absence is an explicit unavailable state. A configuration response never probes scanner or model health. GitHub acquisition requires an existing authorized server-side binding.
 
-The complete single upload → native analysis/scan → index → investigation → saved-result browser journey has not been demonstrated in one connected environment. Cloud services, live model access/quality, manual screen-reader review and deployment remain unqualified. No owner credentials, AWS access, paid model calls, deployment or GitHub mutation were used.
+The single connected backend journey (upload → native analysis/scan → index → investigation → saved-result) is qualified against real PostgreSQL and isolated Docker runtimes (`test_connected_journey.py`). Cloud services, live model access/quality, manual screen-reader review and deployment remain unqualified. No owner credentials, AWS access, paid model calls, deployment or GitHub mutation were used.
 
 ## Delivery verification — 29 October 2026
 
@@ -66,6 +67,5 @@ from lint, not from source control checks alone.
 Frontend typing, lint, production build and API generation consistency passed.
 Affected offline backend suites passed 824 cases; strict application typing passed
 for 289 files and changed-file Ruff passed. These local results do not replace the
-new Linux PostgreSQL/container integration gate. Live providers and the complete
-single upload-to-saved-investigation journey remain unqualified. Development is
+new Linux PostgreSQL/container integration gate. Live providers and hosted deployment remain unqualified. Development is
 paused after reviewed delivery; the owner handles credentials and deployment.
