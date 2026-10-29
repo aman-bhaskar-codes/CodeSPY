@@ -10,6 +10,7 @@ from sqlalchemy.exc import DBAPIError
 from tests.accounting.storage.test_budget_debt import calls
 
 
+@pytest.mark.schema_revision("0027_model_reconciliation")
 async def test_cache_usage_persists_and_guards_downgrade(migration_factory, db_values, tmp_path):
     args, first, second = await calls(migration_factory, tmp_path)
     async with migration_factory() as session, session.begin():

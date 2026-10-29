@@ -13,7 +13,7 @@ from app.models.model_gateway_tables import model_reservations
 from app.services.model_accounting_authority import (
     AuthorityModelBudgetService as ModelBudgetService,
 )
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 logger = logging.getLogger(__name__)
@@ -77,7 +77,23 @@ class AccountingRecoveryWorker:
                     extra={"error_category": "dispatch_recovery_exception"},
                 )
 
-        continuation = len(scopes) >= batch_limit
+        embedding_held = 0
+        try:
+            async with transaction(self.factory) as session:
+                if session.bind is not None and session.bind.dialect.name == "postgresql":
+                    embedding_held = int(
+                        await session.scalar(
+                            text("SELECT public.codespy_recover_embedding_dispatches(:age,:limit)"),
+                            {"age": stale_age, "limit": batch_limit},
+                        )
+                        or 0
+                    )
+                    held += embedding_held
+                    scanned += embedding_held
+        except Exception:
+            failed_scopes += 1
+            logger.warning("embedding_recovery_failed")
+        continuation = len(scopes) >= batch_limit or embedding_held >= batch_limit
         return AccountingRecoverySummaryV1(
             scanned=scanned,
             held=held,

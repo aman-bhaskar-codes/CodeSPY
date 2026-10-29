@@ -584,6 +584,7 @@ class AccountingRepository:
                 "SELECT public.codespy_transition_embedding_v2(:org,:id,CAST(:request AS jsonb))"
             ),
             "cancel": "SELECT public.codespy_cancel_embedding_v3(:org,:id,:reason)",
+            "dispatch": "SELECT public.codespy_claim_embedding_dispatch(:org,:id)",
         }
         try:
             value = await self.s.scalar(text(statements[name]), payload)
@@ -599,6 +600,10 @@ class AccountingRepository:
                 raise ReservationNotFoundError("embedding reservation unavailable") from None
             raise InvalidReservationTransitionError("embedding transition rejected") from None
         return dict(value)
+
+    async def claim_embedding_dispatch(self, org: UUID, identity: UUID) -> bool:
+        value = await self._embedding_operation("dispatch", {"org": org, "id": identity})
+        return value["claimed"] is True
 
     async def reserve_embedding_request(
         self, request: BudgetReservationRequestV1
