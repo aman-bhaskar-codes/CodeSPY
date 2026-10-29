@@ -50,6 +50,7 @@ embedding_reservations = sa.Table(
     sa.Column("captured_input_rate", sa.BigInteger, nullable=True),
     sa.Column("actual_tokens", sa.BigInteger, nullable=True),
     sa.Column("outcome_digest", sa.Text, nullable=True),
+    sa.Column("dispatch_intent_at", sa.TIMESTAMP(timezone=True), nullable=True),
     created(),
     sa.Column(
         "updated_at",

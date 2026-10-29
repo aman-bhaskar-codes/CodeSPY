@@ -51,6 +51,7 @@ async def test_bound_identity_rejects_raw_mutation(migration_factory, tmp_path, 
         assert captured.version == before["price_snapshot"]["version"]
 
 
+@pytest.mark.schema_revision("0027_model_reconciliation")
 async def test_legacy_rows_survive_migration_roundtrip(migration_factory, db_values, tmp_path):
     args = await prepared(migration_factory, tmp_path)
     async with migration_factory() as session, session.begin():
@@ -126,6 +127,7 @@ async def test_reserved_price_survives_global_schedule_change(migration_factory,
         assert price == captured
 
 
+@pytest.mark.schema_revision("0027_model_reconciliation")
 async def test_downgrade_refuses_to_erase_bound_identity(migration_factory, db_values, tmp_path):
     await bound_call(migration_factory, tmp_path)
     with pytest.raises(DBAPIError, match="cannot downgrade bound model accounting history"):

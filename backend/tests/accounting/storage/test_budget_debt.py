@@ -53,6 +53,7 @@ async def test_concurrent_overruns_record_exact_total(migration_factory, tmp_pat
         assert await session.scalar(select(func.sum(model_spend_ledger.c.charged_micros))) == 2200
 
 
+@pytest.mark.schema_revision("0027_model_reconciliation")
 async def test_debt_blocks_lossy_downgrade_and_invalid_values(
     migration_factory, db_values, tmp_path
 ):
@@ -110,6 +111,7 @@ async def test_embedding_overrun_and_generation_release_share_debt(migration_fac
         assert budget["balance_micros"] == budget["reserved_micros"] == 0
 
 
+@pytest.mark.schema_revision("0027_model_reconciliation")
 async def test_zero_debt_roundtrip_preserves_cash_and_holds(migration_factory, db_values, tmp_path):
     args = await setup(migration_factory, tmp_path)
     async with migration_factory() as session, session.begin():

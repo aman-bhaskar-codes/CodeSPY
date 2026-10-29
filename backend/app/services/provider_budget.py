@@ -478,6 +478,14 @@ class ProviderBudgetService:
             failure_reason=fail_msg,
         )
 
+    async def mark_dispatched(self, org_id: UUID, reservation_id: UUID) -> bool:
+        """Commit the returned claim before I/O; false forbids another dispatch."""
+        if self.s.bind is None or self.s.bind.dialect.name != "postgresql":
+            raise InvalidReservationTransitionError("durable dispatch requires PostgreSQL")
+        from app.repositories.accounting_repository import AccountingRepository
+
+        return await AccountingRepository(self.s).claim_embedding_dispatch(org_id, reservation_id)
+
     async def cancel(
         self,
         org_id: UUID,

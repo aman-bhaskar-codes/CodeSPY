@@ -116,6 +116,40 @@ async def test_restricted_embedding_replay_settle_and_uncertain_hold(
                 expires_at=now + timedelta(days=1),
             )
         )
+    from app.contracts.accounting_recovery import AccountingRecoverySettingsV1
+    from app.workers.accounting_recovery import AccountingRecoveryWorker
+    from sqlalchemy import text
+
+    async def claim_dispatch():
+        async with broker_factory() as session, session.begin():
+            return await ProviderBudgetService(session).mark_dispatched(
+                ctx.org_id, second.reservation_id
+            )
+
+    assert sorted(await asyncio.gather(claim_dispatch(), claim_dispatch())) == [False, True]
+    async with api_factory() as session, session.begin():
+        with pytest.raises(InvalidReservationTransitionError):
+            await ProviderBudgetService(session).cancel(ctx.org_id, second.reservation_id)
+    # Set an initially empty marker relative to actual database time, without weakening guards.
+    async with migration_factory() as session, session.begin():
+        await session.execute(
+            text(
+                "UPDATE embedding_reservations SET dispatch_intent_at="
+                "clock_timestamp()-interval '600 seconds' WHERE org_id=:org AND reservation_id=:id"
+            ),
+            {"org": ctx.org_id, "id": first.reservation_id},
+        )
+    worker = AccountingRecoveryWorker(
+        broker_factory,
+        AccountingRecoverySettingsV1(
+            enabled=True, stale_age_seconds=120, max_provider_call_duration_seconds=60
+        ),
+    )
+    assert (await worker.tick()).held == 1
+    assert (await worker.tick()).held == 0
+    async with api_factory() as session:
+        position = await ProviderBudgetService(session).get_budget(ctx.org_id, source.repository_id)
+        assert position["reserved_micros"] == 300 and position["balance_micros"] == 1000
     async with broker_factory() as session, session.begin():
         settled = await ProviderBudgetService(session).settle(
             ctx.org_id,

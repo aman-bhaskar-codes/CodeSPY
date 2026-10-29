@@ -143,6 +143,7 @@ FOR EACH ROW EXECUTE FUNCTION reject_test_receipt();
         )
 
 
+@pytest.mark.schema_revision("0027_model_reconciliation")
 async def test_reconciliation_uses_captured_price_and_preserves_history(
     migration_factory, db_values, tmp_path
 ):
