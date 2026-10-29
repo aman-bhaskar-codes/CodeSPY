@@ -1,7 +1,9 @@
 """Verified SourceViewService: authorized, byte-exact, privacy-transformed source views."""
 
 import hashlib
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -44,11 +46,17 @@ class SourceViewService:
     """Provides authorized, verified source views with byte-exact privacy transforms."""
 
     def __init__(
-        self, session: AsyncSession, store: ObjectStore, *, reader: SourceReaderPort | None = None
+        self,
+        session: AsyncSession,
+        store: ObjectStore,
+        *,
+        reader: SourceReaderPort | None = None,
+        persist_metadata: bool = True,
     ) -> None:
         self.s = session
         self.store = store
         self.reader = reader
+        self.persist_metadata = persist_metadata
 
     async def get(
         self,
@@ -299,8 +307,9 @@ class SourceViewService:
             "interval_map_json": [m.model_dump() for m in transform_output.mappings],
             "transformation_status": "ready",
         }
-        cached_row = (await self.s.execute(query)).mappings().one_or_none()
-        if cached_row is None:
+        raw_cached = (await self.s.execute(query)).mappings().one_or_none()
+        cached_row: Mapping[str, Any] | None = dict(raw_cached) if raw_cached else None
+        if cached_row is None and self.persist_metadata:
             try:
                 async with self.s.begin_nested():
                     await self.s.execute(
@@ -317,7 +326,12 @@ class SourceViewService:
                     )
             except IntegrityError:
                 pass
-            cached_row = (await self.s.execute(query)).mappings().one_or_none()
+            raw_cached = (await self.s.execute(query)).mappings().one_or_none()
+            cached_row = dict(raw_cached) if raw_cached else None
+        if cached_row is None and not self.persist_metadata:
+            # Read-only clients compute the same deterministic representation without
+            # creating a cache record. Existing conflicting/expired records still deny.
+            cached_row = {**expected, "expires_at": None}
         if cached_row is None or any(cached_row[key] != value for key, value in expected.items()):
             raise SourceReaderUnavailable("source_representation_unavailable")
         expires = cached_row["expires_at"]
