@@ -6,7 +6,7 @@
 
 A source-code inspection workbench for Python, JavaScript and TypeScript repositories.
 
-[Architecture](#architecture) · [Capabilities](#capabilities) · [Local development](#local-development) · [Verification](#verification) · [Technical records](#technical-records)
+[Capabilities](#capabilities) · [Architecture](#architecture) · [Quick start](#local-development) · [Documentation](docs/README.md) · [Evidence](#verification)
 
 </div>
 
@@ -16,7 +16,15 @@ CodeSPY turns a source archive into an immutable snapshot, a file inventory and 
 
 The central distinction is **what the source establishes, what analysis infers, and what remains unknown**. Static call candidates are not observed execution paths. A matching quotation does not prove a security claim. An empty findings list does not establish that a repository is secure.
 
-> **Development status:** Development is temporarily paused. CodeSPY is a local prototype with implemented source-analysis, retrieval, reviewed-memory, investigation and read-only MCP workflows. Connected local journey qualification passed against real PostgreSQL and isolated Docker runtimes (`test_connected_journey.py`). Live provider quality and hosted deployment remain unqualified.
+> **Development status:** Development is temporarily paused. CodeSPY is a local prototype with implemented source-analysis, retrieval, reviewed-memory, investigation and read-only MCP workflows. A connected backend journey is recorded as passing with PostgreSQL and isolated source-reader/indexer containers; scanner and model responses are synthetic. The complete browser journey remains unqualified. Live provider quality and hosted deployment remain unqualified.
+
+## Start here
+
+- **Explore the product:** read the capability table and [workspace behavior](docs/acceptance/frontend-workspace.md).
+- **Understand the implementation:** follow the [component guide](docs/components.md) and architecture below.
+- **Run locally:** use the [supported demo](#run-the-local-intake-and-structure-demo); it enables a subset of the workbench.
+- **Configure integrations:** consult [runtime requirements](docs/SERVICES.md) and the provider, budget and MCP runbooks in the [documentation index](docs/README.md).
+- **Assess readiness:** use [verification records](#verification). Implemented, configured and qualified describe different things.
 
 ## Capabilities
 
@@ -29,6 +37,16 @@ The central distinction is **what the source establishes, what analysis infers, 
 | Feature tracing     | Deterministic, bounded neighborhoods from one published structural run, with actual file locations and omission reasons                          | Follows retained graph edges; does not invent route-handler links or prove exploitability                                                     |
 | Retrieval           | Verified source-view services, recognized-secret redaction, chunking, exact search, PostgreSQL full-text search and rank-fusion helpers          | Durable indexing and API/UI/MCP reads have scoped local evidence; live provider-backed dense retrieval remains unqualified                    |
 | MCP                 | Official SDK stdio server (`python -m app.mcp`) exposing 13 read-only tools across retrieval, findings, graph, trace, memory, and investigations | Recorded SDK, subprocess, PostgreSQL and isolated-reader checks passed; manual desktop-host acceptance remains pending                        |
+
+### Connected knowledge and model workflows
+
+| Component        | Implemented behavior                                                                            | Qualification boundary                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Reviewed memory  | Candidate review, version history, expiry, supersession and source-linked selection             | Disabled by default for model context; accepted knowledge still needs current-source validation        |
+| Context assembly | Bounded source and memory selection, provenance and complete-request composition                | Local estimates support packing; they are not measured provider billing or a proof for every tokenizer |
+| Investigations   | Durable jobs, bounded tools, checkpoints, cancellation, retained results and report publication | Connected recovery uses synthetic providers; no universal exactly-once external-call guarantee         |
+| Model routing    | Five configurable slots across OpenAI, Bedrock Claude and direct Gemini                         | Owner-managed credentials, disclosure policy, immutable prices and funded budgets are required         |
+| Usage accounting | Reservations, settlement, uncertain holds and audited reconciliation                            | An ambiguous call remains held; cancellation does not establish that no billable work occurred         |
 
 ### Interface
 
@@ -194,7 +212,7 @@ npm --prefix frontend test
 npm --prefix frontend run build
 ```
 
-The `unit` target currently collects the core intake, structural and scanner suites. Retrieval and investigation test coverage is present in the repository but is not yet included in that target or all CI gates.
+The `unit` target currently collects the core intake, structural and scanner suites. Retrieval and investigation suites are separate from that target. The [application-integration workflow](.github/workflows/application-integration.yml) defines additional offline, PostgreSQL/container and fixture-browser checks; a workflow definition alone is not a passing result.
 
 ### Run the local intake and structure demo
 
@@ -263,14 +281,14 @@ MCP connections remain disabled.
 
 ## Verification
 
-| Area                      | Evidence and boundary                                                                                                                                                                                       |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace                 | [Frontend verification](docs/acceptance/frontend-workspace.md): component and intercepted-HTTP browser results, typing, lint, build and UI audit                                                            |
-| Indexing                  | [Index interfaces](docs/acceptance/index-interface.md): real local API/database/worker/reader/indexer journey from a trusted admitted fixture                                                               |
-| Investigations and memory | [Investigation recovery](docs/acceptance/investigations.md) and [reviewed memory](docs/acceptance/reviewed-memory-context.md): scoped database/container checks with synthetic providers                    |
-| MCP                       | [MCP evidence](docs/acceptance/mcp-integration.md): recorded protocol, subprocess and connected storage/reader checks; manual host acceptance pending                                                       |
-| Accounting and models     | [Accounting](docs/acceptance/model-accounting.md) and [model connections](docs/acceptance/model-connections.md): recorded constrained-role and synthetic transport results; live access remains unqualified |
-| Complete product journey  | Single connected local journey (upload, structural analysis, scanning, retrieval, memory, investigation execution and recovery) passed against PostgreSQL and isolated Docker runtimes (`test_connected_journey.py`); live model quality and hosted deployment remain unqualified |
+| Area                      | Evidence and boundary                                                                                                                                                                                                                                                                                     |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace                 | [Frontend verification](docs/acceptance/frontend-workspace.md): component and intercepted-HTTP browser results, typing, lint, build and UI audit                                                                                                                                                          |
+| Indexing                  | [Index interfaces](docs/acceptance/index-interface.md): real local API/database/worker/reader/indexer journey from a trusted admitted fixture                                                                                                                                                             |
+| Investigations and memory | [Investigation recovery](docs/acceptance/investigations.md) and [reviewed memory](docs/acceptance/reviewed-memory-context.md): scoped database/container checks with synthetic providers                                                                                                                  |
+| MCP                       | [MCP evidence](docs/acceptance/mcp-integration.md): recorded protocol, subprocess and connected storage/reader checks; manual host acceptance pending                                                                                                                                                     |
+| Accounting and models     | [Accounting](docs/acceptance/model-accounting.md) and [model connections](docs/acceptance/model-connections.md): recorded constrained-role and synthetic transport results; live access remains unqualified                                                                                               |
+| Complete product journey  | Recorded backend journey uses PostgreSQL and isolated source-reader/indexer containers, in-memory queue delivery, synthetic scanner output and synthetic model transport. It is not a complete browser or live-provider qualification; see [the evidence boundary](docs/acceptance/frontend-workspace.md) |
 
 SQLite service tests do not establish PostgreSQL locking or publication guarantees. Mocked models and embeddings do not qualify real provider behavior. Historical acceptance records describe the commands and revisions they tested; they are not blanket guarantees for later changes.
 

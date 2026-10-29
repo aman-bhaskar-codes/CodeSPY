@@ -31,6 +31,9 @@ The [workspace record](../acceptance/frontend-workspace.md),
 [index interface evidence](../acceptance/index-interface.md),
 [investigation evidence](../acceptance/investigations.md) and
 [MCP evidence](../acceptance/mcp-integration.md) distinguish implemented connections
-from executed checks. Live provider quality and the complete single
-upload-to-saved-result browser journey remain unqualified. The owner handles cloud
+from executed checks. The recorded connected backend journey uses real PostgreSQL and isolated source-reader/indexer containers with synthetic scanner and model responses. It does not qualify native scanner execution in that journey or live provider quality. The complete single upload-to-saved-result browser journey remains unqualified. The owner handles cloud
 services, secrets and deployment; no hosted environment is implied by this design.
+
+## Component reference
+
+See the [component guide](../components.md) for code ownership, contracts, unavailable states and subsystem evidence, and the [documentation index](../README.md) for setup and operator navigation.
