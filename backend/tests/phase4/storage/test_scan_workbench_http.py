@@ -3,10 +3,13 @@
 from uuid import uuid4
 
 import httpx
+import pytest
 from app.api.application import ApiSettings, ApplicationPorts, create_app
 from app.security.sessions import SessionService
 
 from tests.phase4.storage.test_scan_jobs import Registry, scenario
+
+pytestmark = pytest.mark.schema_revision("head")
 
 
 async def test_scoped_scan_configuration_cancel_retry_and_replay(

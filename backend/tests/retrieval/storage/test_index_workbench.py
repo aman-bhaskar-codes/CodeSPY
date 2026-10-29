@@ -93,7 +93,12 @@ async def stop_process(process):
 
 
 async def test_real_index_workbench_browser(
-    api_factory, broker_factory, migration_factory, tmp_path, monkeypatch
+    api_factory,
+    broker_factory,
+    migration_factory,
+    tmp_path,
+    monkeypatch,
+    docker_runtime_paths,
 ):
     if os.environ.get("CODESPY_RUN_INDEX_WORKBENCH") != "1":
         pytest.skip("explicit owned browser qualification required")
@@ -123,19 +128,17 @@ async def test_real_index_workbench_browser(
         body.writestr("a.py", f"token = '{canary}'\nprint('browser_index_marker')\n")
     monkeypatch.setattr(ingestion, "zip_bytes", archive.getvalue)
     ctx, snapshot, repo, store = await admitted(migration_factory, tmp_path)
-    docker_socket = Path.home() / ".docker/run/docker.sock"
+    docker_socket = docker_runtime_paths[1]
     reader = DockerSourceReader(
         ScannerOwnership.create(tmp_path / "reader-owner", reader_image),
-        DockerController(Path("/usr/local/bin/docker"), docker_socket, tmp_path / "reader-config"),
+        DockerController(docker_runtime_paths[0], docker_socket, tmp_path / "reader-config"),
         store,
     )
     verified = tmp_path / "verified"
     verified.mkdir(mode=0o700)
     builder = DockerIndexBuilder(
         ScannerOwnership.create(tmp_path / "index-owner", image),
-        IndexDockerController(
-            Path("/usr/local/bin/docker"), docker_socket, tmp_path / "index-config"
-        ),
+        IndexDockerController(docker_runtime_paths[0], docker_socket, tmp_path / "index-config"),
         verified,
         runtime_source_sha256=source_hash,
     )

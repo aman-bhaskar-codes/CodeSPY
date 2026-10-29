@@ -2,7 +2,6 @@
 
 import json
 import os
-from pathlib import Path
 from uuid import uuid4
 
 import httpx
@@ -41,6 +40,7 @@ async def test_source_tools_claims_crash_draft_reload_and_memory_candidate(
     broker_factory,
     tmp_path,
     mode,
+    docker_runtime_paths,
 ):
     image = os.environ.get("CODESPY_SOURCE_READER_IMAGE")
     if image is None:
@@ -153,8 +153,8 @@ async def test_source_tools_claims_crash_draft_reload_and_memory_candidate(
     reader = DockerSourceReader(
         ScannerOwnership.create(tmp_path / "reader", image),
         DockerController(
-            Path("/usr/local/bin/docker"),
-            Path.home() / ".docker/run/docker.sock",
+            docker_runtime_paths[0],
+            docker_runtime_paths[1],
             tmp_path / "docker-config",
         ),
         store,
