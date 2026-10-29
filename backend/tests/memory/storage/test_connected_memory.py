@@ -1,7 +1,6 @@
 """Real HTTP, PostgreSQL and isolated source reader; provider calls are not exercised."""
 
 import os
-from pathlib import Path
 
 import httpx
 import pytest
@@ -18,7 +17,12 @@ from tests.phase3.integration.test_structural_publication import admitted
     "new_source,correspondence", [(b"print(1)\n", "matching_files"), (b"print(2)\n", "changed")]
 )
 async def test_admitted_source_candidate_review_preview_reload_and_archive(
-    api_factory, migration_factory, tmp_path, new_source, correspondence
+    api_factory,
+    migration_factory,
+    tmp_path,
+    new_source,
+    correspondence,
+    docker_runtime_paths,
 ):
     image = os.environ.get("CODESPY_SOURCE_READER_IMAGE")
     if image is None:
@@ -30,8 +34,8 @@ async def test_admitted_source_candidate_review_preview_reload_and_archive(
         )
     ctx = TenantContext(org_id=ctx.org_id, principal_id=ctx.principal_id, role=OrgRole.OWNER)
     controller = DockerController(
-        Path("/usr/local/bin/docker"),
-        Path.home() / ".docker/run/docker.sock",
+        docker_runtime_paths[0],
+        docker_runtime_paths[1],
         tmp_path / "docker-config",
     )
     owner = ScannerOwnership.create(tmp_path / "reader-owner", image)

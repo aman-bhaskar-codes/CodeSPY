@@ -3,7 +3,6 @@
 import asyncio
 import os
 from datetime import timedelta
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -38,7 +37,11 @@ from tests.phase3.integration.test_structural_publication import admitted
 
 @pytest.mark.parametrize("revoked", [False, True])
 async def test_report_candidates_are_reviewed_deduplicated_and_separate_from_queue(
-    migration_factory, broker_factory, tmp_path, revoked
+    migration_factory,
+    broker_factory,
+    tmp_path,
+    revoked,
+    docker_runtime_paths,
 ):
     image = os.environ.get("CODESPY_SOURCE_READER_IMAGE")
     if image is None:
@@ -47,8 +50,8 @@ async def test_report_candidates_are_reviewed_deduplicated_and_separate_from_que
     reader = DockerSourceReader(
         ScannerOwnership.create(tmp_path / "report-reader", image),
         DockerController(
-            Path("/usr/local/bin/docker"),
-            Path.home() / ".docker/run/docker.sock",
+            docker_runtime_paths[0],
+            docker_runtime_paths[1],
             tmp_path / "docker-config",
         ),
         store,

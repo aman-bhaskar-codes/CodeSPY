@@ -1,4 +1,7 @@
 import os
+import shutil
+import sys
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -55,3 +58,22 @@ async def engine(db_values):
 @pytest.fixture
 def factory(engine):
     return build_session_factory(engine)
+
+
+@pytest.fixture
+def docker_runtime_paths() -> tuple[Path, Path]:
+    executable = os.environ.get("CODESPY_MCP_DOCKER_EXECUTABLE") or shutil.which("docker")
+    socket = os.environ.get("CODESPY_MCP_DOCKER_SOCKET")
+    if socket is None:
+        socket = (
+            str(Path.home() / ".docker/run/docker.sock")
+            if sys.platform == "darwin"
+            else "/var/run/docker.sock"
+        )
+    assert executable, "Explicit Docker executable required for owned native tests"
+    runtime, endpoint = Path(executable), Path(socket)
+    assert runtime.is_absolute() and runtime.is_file(), (
+        "Existing absolute Docker executable required"
+    )
+    assert endpoint.is_absolute() and endpoint.is_socket(), "Owned local Docker socket required"
+    return runtime, endpoint
