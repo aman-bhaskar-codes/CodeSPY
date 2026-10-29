@@ -1,5 +1,6 @@
 """Bounded local outbox effects; report publication and financial history stay independent."""
 
+import asyncio
 import logging
 from datetime import timedelta
 from typing import Any
@@ -126,8 +127,10 @@ class ReportMemoryProposalWorker:
         completed = 0
         for claim, token in claimed:
             try:
-                await self._process(claim, token)
-                completed += 1
+                if not await self._renew(claim, token):
+                    continue
+                async with asyncio.timeout(30):
+                    completed += int(await self._process(claim, token))
             except ValidationError:
                 completed += int(await self._finish(claim, token, "invalid_origin"))
             except (ScopeViolation, InvalidTransition):
@@ -157,17 +160,27 @@ class ReportMemoryProposalWorker:
             outbox.c.id == row["id"],
             outbox.c.state == "claimed",
             outbox.c.claim_token == token,
+            outbox.c.claim_expires_at > func.clock_timestamp(),
         )
 
-    async def _process(self, row: dict[str, Any], token: str) -> None:
+    async def _renew(self, row: dict[str, Any], token: str) -> bool:
+        async with transaction(self.factory) as session:
+            renewed = await session.scalar(
+                update(outbox)
+                .where(self._owned(row, token))
+                .values(claim_expires_at=await database_now(session) + timedelta(seconds=60))
+                .returning(outbox.c.id)
+            )
+            return renewed is not None
+
+    async def _process(self, row: dict[str, Any], token: str) -> bool:
         intent = MemoryProposalIntentV1.model_validate(row["payload"])
         if (
             intent.schema_version != 1
             or intent.derivation_revision != 1
             or intent.org_id != row["org_id"]
         ):
-            await self._finish(row, token, "invalid_origin")
-            return
+            return await self._finish(row, token, "invalid_origin")
         async with self.factory() as session:
             origin = (
                 (
@@ -200,8 +213,7 @@ class ReportMemoryProposalWorker:
                 or origin["snapshot_id"] != intent.snapshot_id
                 or origin["investigation_id"] != intent.investigation_id
             ):
-                await self._finish(row, token, "invalid_origin")
-                return
+                return await self._finish(row, token, "invalid_origin")
             await require_repository(
                 session, row["org_id"], origin["principal_id"], intent.repository_id, write=True
             )
@@ -263,7 +275,7 @@ class ReportMemoryProposalWorker:
                 select(outbox.c.id).where(self._owned(row, token)).with_for_update()
             )
             if owned is None:
-                return
+                return False
             existing = await session.scalar(
                 select(report_memory_receipts.c.intent_id).where(
                     report_memory_receipts.c.org_id == row["org_id"],
@@ -273,7 +285,7 @@ class ReportMemoryProposalWorker:
             )
             if existing is not None:
                 await self._ack(session, row, token)
-                return
+                return True
             await require_repository(
                 session, row["org_id"], origin["principal_id"], intent.repository_id, write=True
             )
@@ -300,6 +312,7 @@ class ReportMemoryProposalWorker:
                 )
             )
             await self._ack(session, row, token)
+            return True
 
     async def _finish(self, row: dict[str, Any], token: str, reason: str) -> bool:
         async with transaction(self.factory) as session:
@@ -330,7 +343,7 @@ class ReportMemoryProposalWorker:
 
     @staticmethod
     async def _ack(session: AsyncSession, row: dict[str, Any], token: str) -> None:
-        await session.execute(
+        acknowledged = await session.scalar(
             update(outbox)
             .where(ReportMemoryProposalWorker._owned(row, token))
             .values(
@@ -339,4 +352,7 @@ class ReportMemoryProposalWorker:
                 claim_token=None,
                 claim_expires_at=None,
             )
+            .returning(outbox.c.id)
         )
+        if acknowledged is None:
+            raise ScopeViolation("report proposal claim expired before acknowledgment")

@@ -430,6 +430,17 @@ class InvestigationClaimV2(Contract):
         return self
 
 
+class InvestigationConclusionV1(Contract):
+    """Untrusted structured output; only server checks establish citation support."""
+
+    verdict: Literal["indeterminate", "benign", "false_positive", "true_positive", "vulnerable"] = (
+        "indeterminate"
+    )
+    confidence: float = Field(default=0.4, ge=0.0, le=1.0)
+    summary: str = Field(default="", max_length=8192)
+    claims: tuple[InvestigationClaimV2, ...] = Field(default=(), max_length=MAX_CLAIMS)
+
+
 class ClaimVerificationStatus(StrEnum):
     """Verification outcome for a claim."""
 
@@ -574,6 +585,8 @@ class InvestigationExecutionStateV1(Contract):
     committed_model_receipt_ids: tuple[UUID, ...] = ()
     committed_tool_receipt_ids: tuple[UUID, ...] = ()
     committed_evidence_ids: tuple[UUID, ...] = ()
+    history_effect_ids: tuple[UUID, ...] = ()
+    report_draft_ref: UUID | None = None
 
     # Context provenance
     context_packet_hash: str = Field(default="", pattern=r"^([0-9a-f]{64})?$")

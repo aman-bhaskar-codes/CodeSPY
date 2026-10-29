@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 @pytest.fixture
-def db_values():
+def db_values(request):
     from scripts import phase2_db as harness
 
     values = {key: value for key, value in os.environ.items() if key.startswith("CODESPY_TEST_")}
@@ -18,11 +18,15 @@ def db_values():
         pytest.skip("owned scan database environment required")
     name = harness.create_database(values, "scancase")
     try:
-        harness.migrate(
-            values, name, values.get("CODESPY_TEST_SCHEMA_TARGET", "0014_finding_triage")
+        boundary = request.node.get_closest_marker("schema_revision")
+        target = (
+            boundary.args[0]
+            if boundary
+            else values.get("CODESPY_TEST_SCHEMA_TARGET", "0014_finding_triage")
         )
+        harness.migrate(values, name, target)
         harness.grant_app(values, name)
-        yield {**values, "CODESPY_TEST_DATABASE": name}
+        yield {**values, "CODESPY_TEST_DATABASE": name, "CODESPY_TEST_SCHEMA_TARGET": target}
     finally:
         harness.drop_database(values, name)
 

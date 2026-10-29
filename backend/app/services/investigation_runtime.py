@@ -26,6 +26,7 @@ from app.services.investigation_executor import (
     InvestigationExecutorService,
     SqlInvestigationJobAuthority,
 )
+from app.services.investigation_journal import SqlExecutionJournal
 from app.services.investigation_support import SqlInvestigationSupport
 from app.services.investigation_verification import InvestigationVerificationService
 from app.services.model_runtime import ConfiguredModelRuntime
@@ -115,6 +116,7 @@ def build_investigation_operation(
             gateway=runtime.gateway(
                 result_store=result_store,
                 dispatch_authority=BoundModelDispatchAuthority(lease, support),
+                context_limits=runtime.memory_context.limits,
             ),
             tools=tools,
             authority=SqlInvestigationJobAuthority(),
@@ -126,6 +128,9 @@ def build_investigation_operation(
             verification_service=InvestigationVerificationService(),
             evidence_repo=SqlInvestigationEvidenceRepository(),
             bound_lease=lease,
+            journal=SqlExecutionJournal(worker_factory, runtime.continuations.cipher)
+            if runtime.continuations
+            else None,
             policy_resolver=lambda scope: runtime.policy_for(scope.org_id, scope.repository_id),
         )
 

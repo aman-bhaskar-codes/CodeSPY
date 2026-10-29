@@ -317,6 +317,12 @@ def grant_app(values, name):
                 "SELECT to_regproc('public.codespy_get_model_result')"
             ).fetchone()[0]:
                 c.execute("REVOKE SELECT ON public.model_call_results FROM p2_broker")
+        if c.execute("SELECT to_regclass('public.investigation_effects')").fetchone()[
+            0
+        ]:
+            c.execute(
+                "REVOKE ALL ON public.investigation_effects FROM p2_api,p2_broker"
+            )
         c.execute("REVOKE ALL ON public.alembic_version FROM p2_api,p2_broker")
         c.execute("REVOKE CREATE ON SCHEMA public FROM p2_api,p2_broker")
 

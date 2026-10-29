@@ -286,6 +286,7 @@ async def test_empty_context_still_requires_retained_target_source(
             r"|scoped ciphertext authority must be retained"
             r"|report memory processing history must be retained"
             r"|embedding cancellation history must be retained"
+            r"|runtime authority repair must be retained"
         ),
     ):
         harness.migrate(

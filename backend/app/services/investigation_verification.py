@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
@@ -73,12 +73,13 @@ class InvestigationVerificationService:
         original_summary: str | None = None,
         coverage_notes: str = "",
         target_type: str = "finding",
+        delivered_excerpts: Mapping[UUID, str] | None = None,
     ) -> VerificationOutcomeV1:
         # Rule 1: Zero claims -> grounding unavailable, conclusive verdict rejected
         if not claims:
             adjusted_verdict = original_verdict or "indeterminate"
             adjusted_confidence = min(original_confidence or 0.5, 0.4)
-            if original_verdict in ("vulnerable", "benign", "false_positive"):
+            if original_verdict in ("vulnerable", "true_positive", "benign", "false_positive"):
                 adjusted_verdict = "indeterminate"
 
             return VerificationOutcomeV1(
@@ -112,6 +113,7 @@ class InvestigationVerificationService:
                 claim=claim,
                 evidence_by_id=evidence_by_id,
                 file_resolver=file_resolver,
+                delivered_excerpts=delivered_excerpts,
             )
             verifications.append(v)
 
@@ -142,7 +144,7 @@ class InvestigationVerificationService:
         adjusted_confidence = original_confidence if original_confidence is not None else 0.5
 
         if not is_grounded:
-            if adjusted_verdict in ("vulnerable", "benign", "false_positive"):
+            if adjusted_verdict in ("vulnerable", "true_positive", "benign", "false_positive"):
                 adjusted_verdict = "indeterminate"
                 adjusted_confidence = min(adjusted_confidence, 0.4 if refuted_cnt == 0 else 0.3)
 
@@ -198,6 +200,7 @@ class InvestigationVerificationService:
         claim: InvestigationClaimV2,
         evidence_by_id: dict[UUID, InvestigationEvidenceV1],
         file_resolver: Callable[[str], Awaitable[str | None]] | None,
+        delivered_excerpts: Mapping[UUID, str] | None = None,
     ) -> ClaimVerificationV1:
         # Check cross-snapshot evidence references
         for eid in claim.evidence_ids:
@@ -224,6 +227,61 @@ class InvestigationVerificationService:
                 claim_id=claim.claim_id,
                 status=ClaimVerificationStatus.UNSUPPORTED,
                 notes="Invalid file path: path traversal is not permitted.",
+            )
+
+        if delivered_excerpts is not None:
+            for identity in claim.evidence_ids:
+                evidence = evidence_by_id.get(identity)
+                excerpt = delivered_excerpts.get(identity)
+                if evidence is None or excerpt is None:
+                    continue
+                if (
+                    evidence.org_id != scope.org_id
+                    or evidence.investigation_id != scope.investigation_id
+                    or evidence.snapshot_id != scope.snapshot_id
+                    or evidence.source_path != file_path
+                    or evidence.observation_type != "source_read"
+                    or hashlib.sha256(excerpt.encode()).hexdigest() != evidence.excerpt_sha256
+                ):
+                    continue
+                start, end = claim.suggested_line_start, claim.suggested_line_end
+                quote = claim.suggested_quote
+                if (
+                    start is None
+                    or end is None
+                    or not quote
+                    or end - start >= 200
+                    or start < evidence.original_start_line
+                    or end > evidence.original_end_line
+                    or any(pattern.search(quote) for pattern in _REDACTED_PATTERNS)
+                ):
+                    continue
+                numbered: dict[int, str] = {}
+                for line in excerpt.splitlines():
+                    prefix, separator, content = line.partition(": ")
+                    if not separator or not prefix.isdigit() or int(prefix) in numbered:
+                        numbered.clear()
+                        break
+                    numbered[int(prefix)] = content
+                if any(line not in numbered for line in range(start, end + 1)):
+                    continue
+                source_slice = "\n".join(numbered[line] for line in range(start, end + 1))
+                if quote in source_slice:
+                    return ClaimVerificationV1(
+                        claim_id=claim.claim_id,
+                        status=ClaimVerificationStatus.SOURCE_CORRESPONDENCE_CONFIRMED,
+                        resolved_file=file_path,
+                        resolved_line_start=start,
+                        resolved_line_end=end,
+                        source_digest=hashlib.sha256(canonical_bytes(source_slice)).hexdigest(),
+                        notes=(
+                            "Exact quote matches delivered source; the conclusion remains a claim."
+                        ),
+                    )
+            return ClaimVerificationV1(
+                claim_id=claim.claim_id,
+                status=ClaimVerificationStatus.UNSUPPORTED,
+                notes="No delivered source receipt supports this quote and range.",
             )
 
         source_text: str | None = None

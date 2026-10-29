@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.contracts.accounting_recovery import AccountingRecoverySettingsV1
-from app.contracts.context_manifest import MemoryContextSettingsV1
+from app.contracts.context_manifest import MemoryContextSettingsV1, RequestContextLimitsV1
 from app.contracts.model import ModelRoutingRequirementV1
 from app.contracts.model_availability import (
     ModelAvailabilityItemV1,
@@ -73,6 +73,16 @@ class ConfiguredModelRuntime:
                     await session.scalar(text("SELECT public.codespy_expire_model_results(100)"))
                     or 0
                 )
+        async with transaction(self.accounting_factory) as session:
+            if await session.scalar(
+                text("SELECT to_regproc('public.codespy_expire_investigation_effects')")
+            ):
+                removed = int(removed or 0) + int(
+                    await session.scalar(
+                        text("SELECT public.codespy_expire_investigation_effects(100)")
+                    )
+                    or 0
+                )
         purged = await MemoryMaintenanceWorker(self.accounting_factory).tick()
         return summary.held + int(removed or 0) + purged
 
@@ -86,6 +96,7 @@ class ConfiguredModelRuntime:
         scan_capabilities: ScanCapabilities | None = None,
         result_store: ModelResultStorePort | None = None,
         dispatch_authority: ModelDispatchAuthorityPort | None = None,
+        context_limits: RequestContextLimitsV1 | None = None,
     ) -> ConfiguredModelGateway:
         return ConfiguredModelGateway(
             self.accounting_factory,
@@ -95,6 +106,7 @@ class ConfiguredModelRuntime:
             admission_factory=self.admission_factory,
             result_store=result_store,
             dispatch_authority=dispatch_authority,
+            context_limits=context_limits,
             memory_context=self.memory_context,
             memory_evidence_factory=lambda session: SourceMemoryEvidence(
                 session,

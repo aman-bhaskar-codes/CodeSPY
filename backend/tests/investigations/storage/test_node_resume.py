@@ -519,6 +519,9 @@ async def test_executor_sql_crash_and_resume(
     receipt_repo = SqlInvestigationStepReceiptRepository()
     spec_repo = SqlInvestigationSpecRepository()
 
+    from app.services.investigation_journal import InMemoryExecutionJournal
+
+    journal = InMemoryExecutionJournal()
     executor1 = InvestigationExecutorService(
         gateway=gateway1,
         tools=tools,
@@ -527,6 +530,7 @@ async def test_executor_sql_crash_and_resume(
         step_receipt_repo=receipt_repo,
         session_factory=session_factory,
         spec_repo=spec_repo,
+        journal=journal,
     )
 
     # 1. GATHER -> INVESTIGATE (checkpoint 1 written to SQLite)
@@ -552,6 +556,7 @@ async def test_executor_sql_crash_and_resume(
         step_receipt_repo=receipt_repo,
         session_factory=session_factory,
         spec_repo=spec_repo,
+        journal=journal,
     )
 
     # 3. Resume from checkpoint 2 -> advances to VERIFY -> finishes to READY_TO_PUBLISH

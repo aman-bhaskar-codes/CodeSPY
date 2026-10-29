@@ -11,7 +11,11 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.adapters.model.codec_support import validate_output_schema
-from app.contracts.context_manifest import ContextManifestV1, MemoryContextSettingsV1
+from app.contracts.context_manifest import (
+    ContextManifestV1,
+    MemoryContextSettingsV1,
+    RequestContextLimitsV1,
+)
 from app.contracts.investigation_execution import ModelInvocationRefV1
 from app.contracts.model import (
     ChatMessageV1,
@@ -33,6 +37,7 @@ from app.ports.investigation_execution import (
 from app.ports.memory import MemoryEvidencePort
 from app.ports.model_transport import ProviderTransportPort
 from app.security.authorization import require_repository
+from app.services.context_composition import ContextComposer
 from app.services.investigation_context import InvestigationContextService
 from app.services.memory_service import MemoryService
 from app.services.model_accounting_authority import (
@@ -67,7 +72,9 @@ class ConfiguredModelGateway:
         memory_evidence_factory: Callable[[AsyncSession], MemoryEvidencePort] | None = None,
         result_store: ModelResultStorePort | None = None,
         dispatch_authority: ModelDispatchAuthorityPort | None = None,
+        context_limits: RequestContextLimitsV1 | None = None,
     ) -> None:
+        self.context_limits = context_limits
         self.factory = factory
         self.admission_factory = admission_factory or factory
         self.registry = registry
@@ -169,6 +176,13 @@ class ConfiguredModelGateway:
                 )
                 wire = composed.prepared
                 request = wire.request
+        elif self.context_limits is not None:
+            wire = (
+                ContextComposer()
+                .compose(request, profile, transport, limits=self.context_limits)
+                .prepared
+            )
+            request = wire.request
         else:
             wire = transport.prepare(request, profile)
         upper = max(

@@ -13,8 +13,15 @@ logger = logging.getLogger(__name__)
 
 
 class WorkerRuntime:
-    def __init__(self, dispatcher: OutboxDispatcher, consumer: JobConsumer):
+    def __init__(
+        self,
+        dispatcher: OutboxDispatcher,
+        consumer: JobConsumer,
+        *,
+        model_maintenance: Callable[[], Awaitable[int]] | None = None,
+    ):
         self.dispatcher, self.consumer = dispatcher, consumer
+        self.model_maintenance = model_maintenance
 
     async def handle(self, delivery: Delivery) -> None:
         await self.consumer.handle(delivery)
@@ -28,6 +35,8 @@ class WorkerRuntime:
         model_maintenance: Callable[[], Awaitable[int]] | None = None,
         memory_maintenance: Callable[[], Awaitable[int]] | None = None,
     ) -> None:
+        model_maintenance = model_maintenance or self.model_maintenance
+
         async def periodic(action: Callable[[], Awaitable[int]], interval: float) -> None:
             while not stop.is_set():
                 try:
