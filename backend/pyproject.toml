@@ -141,7 +141,7 @@ dev = [
 
     "pytest-cov>=6.0.0",
 
-    "pytest-mock>=3.14.0",
+    "pytest-mock>=3.17.0",
 
     "hypothesis>=6.170.5",
 
