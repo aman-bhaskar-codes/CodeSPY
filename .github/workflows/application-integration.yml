@@ -19,7 +19,7 @@ jobs:
       - run: npm --prefix frontend run test:e2e:fixture
         env:
           CODESPY_PLAYWRIGHT_CHANNEL: chromium
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: workspace-browser-failures
@@ -105,7 +105,7 @@ jobs:
       - name: Clean up owned database
         if: always() && hashFiles('work/application-ci.env') != ''
         run: uv run --frozen --all-packages --all-groups python scripts/scan_db.py cleanup --env-file work/application-ci.env
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: application-integration-results
