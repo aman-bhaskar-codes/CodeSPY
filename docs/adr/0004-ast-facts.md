@@ -23,3 +23,7 @@ verification evidence and limits.
    (ADR 0003, decision 5).
 6. Facts are syntax only. No cross-file name resolution is claimed, and configuration reads record
    names, never values.
+7. Install new grammars as individually pinned, hash-locked wheels, never through the dormant
+   language pack. Admit their source files only under a new admission policy version
+   (`source-zip-v3`): changing eligibility under an existing policy digest would give one archive
+   and policy two different manifests. Existing policies and digests stay byte-for-byte unchanged.

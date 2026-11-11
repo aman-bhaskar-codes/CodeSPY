@@ -18,6 +18,14 @@ PINS = {
     "tree-sitter-python": "0.25.0",
     "tree-sitter-javascript": "0.25.0",
     "tree-sitter-typescript": "0.23.2",
+    "tree-sitter-go": "0.25.0",
+    "tree-sitter-rust": "0.24.2",
+    "tree-sitter-java": "0.23.5",
+    "tree-sitter-c": "0.24.2",
+    "tree-sitter-cpp": "0.23.4",
+    "tree-sitter-ruby": "0.23.1",
+    "tree-sitter-php": "0.25.1",
+    "tree-sitter-swift": "0.7.4",
 }
 
 
@@ -61,6 +69,62 @@ CASES = [
         b"// \xf0\x9f\x98\x80\r\nconst view = <div title='hello'/>;\r\n",
         "(jsx_self_closing_element name: (identifier) @name)",
         b"div",
+    ),
+    (
+        "tree_sitter_go",
+        "language",
+        b"// \xf0\x9f\x98\x80\r\nfunc alpha() {}\r\n",
+        "(function_declaration name: (identifier) @name)",
+        b"alpha",
+    ),
+    (
+        "tree_sitter_rust",
+        "language",
+        b"// \xf0\x9f\x98\x80\r\nfn alpha() {}\r\n",
+        "(function_item name: (identifier) @name)",
+        b"alpha",
+    ),
+    (
+        "tree_sitter_java",
+        "language",
+        b"// \xf0\x9f\x98\x80\r\nclass A { void alpha() {} }\r\n",
+        "(method_declaration name: (identifier) @name)",
+        b"alpha",
+    ),
+    (
+        "tree_sitter_c",
+        "language",
+        b"// \xf0\x9f\x98\x80\r\nint alpha(void) { return 1; }\r\n",
+        "(function_definition declarator: (function_declarator declarator: (identifier) @name))",
+        b"alpha",
+    ),
+    (
+        "tree_sitter_cpp",
+        "language",
+        b"// \xf0\x9f\x98\x80\r\nint alpha() { return 1; }\r\n",
+        "(function_definition declarator: (function_declarator declarator: (identifier) @name))",
+        b"alpha",
+    ),
+    (
+        "tree_sitter_ruby",
+        "language",
+        b"# \xf0\x9f\x98\x80\r\ndef alpha; end\r\n",
+        "(method name: (identifier) @name)",
+        b"alpha",
+    ),
+    (
+        "tree_sitter_php",
+        "language_php",
+        b"<?php // \xf0\x9f\x98\x80\r\nfunction alpha() {}\r\n",
+        "(function_definition name: (name) @name)",
+        b"alpha",
+    ),
+    (
+        "tree_sitter_swift",
+        "language",
+        b"// \xf0\x9f\x98\x80\r\nfunc alpha() {}\r\n",
+        "(function_declaration name: (simple_identifier) @name)",
+        b"alpha",
     ),
 ]
 

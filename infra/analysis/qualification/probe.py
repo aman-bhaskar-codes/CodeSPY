@@ -27,6 +27,14 @@ def main():
             "tree-sitter-python": "0.25.0",
             "tree-sitter-javascript": "0.25.0",
             "tree-sitter-typescript": "0.23.2",
+            "tree-sitter-go": "0.25.0",
+            "tree-sitter-rust": "0.24.2",
+            "tree-sitter-java": "0.23.5",
+            "tree-sitter-c": "0.24.2",
+            "tree-sitter-cpp": "0.23.4",
+            "tree-sitter-ruby": "0.23.1",
+            "tree-sitter-php": "0.25.1",
+            "tree-sitter-swift": "0.7.4",
         }
         assert {name: importlib.metadata.version(name) for name in pins} == pins
         cases = [
@@ -38,6 +46,14 @@ def main():
                 b"const value: number = 1;",
             ),
             ("tree_sitter_typescript", "language_tsx", b"const element = <div/>;"),
+            ("tree_sitter_go", "language", b"package main\nfunc example() {}\n"),
+            ("tree_sitter_rust", "language", b"fn example() {}\n"),
+            ("tree_sitter_java", "language", b"class Example { void run() {} }\n"),
+            ("tree_sitter_c", "language", b"int example(void) { return 0; }\n"),
+            ("tree_sitter_cpp", "language", b"class Example { void run(); };\n"),
+            ("tree_sitter_ruby", "language", b"def example; end\n"),
+            ("tree_sitter_php", "language_php", b"<?php function example() {}\n"),
+            ("tree_sitter_swift", "language", b"func example() {}\n"),
         ]
         abis = {}
         for module, factory, source in cases:

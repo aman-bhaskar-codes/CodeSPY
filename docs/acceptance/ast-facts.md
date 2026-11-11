@@ -26,10 +26,33 @@ broker against the admitted archive, and published as immutable rows with the ru
 - **Dispatch.** `ProfileDispatchOperation` routes `analyze_structure` jobs by configuration;
   structural jobs are unaffected.
 
+## Toolchain and admission
+
+- **Grammars.** Tree-sitter grammars for Go (0.25.0), Rust (0.24.2), Java (0.23.5), C (0.24.2),
+  C++ (0.23.4), Ruby (0.23.1), PHP (0.25.1) and Swift (0.7.4) are pinned exactly beside the original
+  Python, JavaScript and TypeScript grammars, in `backend/pyproject.toml` and `uv.lock`, and in the
+  analysis and qualification image builds, which install hash-locked binary wheels only.
+  `tree-sitter-language-pack` stays dormant (ADR 0003). Every grammar loads under tree-sitter
+  0.26.0 with a compatible ABI and parses a fixture, including original byte ranges after a
+  non-ASCII, CRLF prefix.
+- **Registry.** `analyzers/registry.py` holds one table of languages (extensions, grammar module,
+  pinned distribution). Structural analysis keeps exactly its original dialects; facts see all
+  thirteen. The structural TypeScript checker now selects units by JavaScript/TypeScript language
+  instead of "anything that is not Python".
+- **Admission policy `source-zip-v3`.** Admits `.go .rs .java .c .h .cc .cpp .cxx .hpp .hh .hxx .rb
+.php .swift` with language hints and keeps the V2 `uv.lock` metadata rules. The default policy is
+  unchanged, so existing admissions, digests and snapshots are unaffected; V1 and V2 still mark these
+  files `unsupported_language`. Snapshots admitted under V1 or V2 must be re-admitted to analyze
+  these languages. `.h` is classified as C.
+- **Enabling V3.** Set `ApplicationPorts.admission_policy` to `AdmissionPolicyV3()` (and pass a V3
+  policy to `GitHubAcquisitionService`). `scripts/phase2_local.py` does both when
+  `CODESPY_ADMISSION_POLICY=v3`.
+
 ## Limitations
 
-- Only Python is extracted. Go, Rust, Java, C/C++, Ruby, PHP and Swift grammars are not installed and
-  their files are not yet eligible at admission.
+- Only Python is extracted. The other grammars are installed and their files are admitted under
+  policy V3, but facts for them are not implemented yet: they appear as `language_unsupported`
+  omissions.
 - Source reading, limits and timeouts are the structural ones: 128 files, 16 MiB, 180 s.
 - Facts are syntactic; names are not resolved across files. Routes, models and configuration slots
   exist in the contract but are not populated yet.
@@ -50,4 +73,6 @@ this tree:
   downgrade refused with history
 - API: create is gated and idempotent, reads are paged and scoped
 - container: real sandbox output equals in-process extraction and passes broker validation
+- toolchain: all thirteen grammars load and parse inside the analysis image; V3 admission verified
+  in the real admission container; registry, admission tables and pins agree
 - regression: structural container, existing suites, `ruff`, `mypy`, OpenAPI/SDK and frontend checks

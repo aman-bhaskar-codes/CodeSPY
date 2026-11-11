@@ -21,7 +21,9 @@ def resolve_typescript(
     config: AnalysisConfigV1,
     budget: AnalysisBudget,
 ) -> tuple[list[ResolutionV1], list[DiagnosticV1], bool]:
-    selected = {u.path: u for u in units if u.language != "python"}
+    selected = {
+        u.path: u for u in units if u.language in {"javascript", "jsx", "typescript", "tsx"}
+    }
     if not selected:
         return [], [], False
     if config.resolution_profile == "syntax_only":

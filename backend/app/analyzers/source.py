@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Protocol
 
 from app.admission.zip_inventory import inspect_zip_bytes
+from app.analyzers.registry import FACT_DIALECTS, STRUCTURAL_DIALECTS
 from app.contracts.ingestion import ArtifactManifestV1
 from app.contracts.structure import (
     Language,
@@ -25,15 +26,7 @@ class SourceIntegrityError(PersistenceError):
     pass
 
 
-DIALECTS: dict[str, Language] = {
-    ".py": "python",
-    ".js": "javascript",
-    ".jsx": "jsx",
-    ".mjs": "javascript",
-    ".cjs": "javascript",
-    ".ts": "typescript",
-    ".tsx": "tsx",
-}
+DIALECTS: dict[str, Language] = STRUCTURAL_DIALECTS
 
 
 class AdmittedArchive(Protocol):
@@ -115,6 +108,7 @@ class AdmittedSourceReader:
         files = {file.path: file for file in expected.files}
         units: list[SourceUnitV1] = []
         total = config_bytes = 0
+        dialects = FACT_DIALECTS if "ast_facts" in expected.config.adapters else DIALECTS
         with zipfile.ZipFile(io.BytesIO(archive)) as source:
             paths = {}
             for info in source.infolist():
@@ -133,7 +127,7 @@ class AdmittedSourceReader:
                 )
                 if not stored.eligible or not in_scope:
                     continue
-                language = DIALECTS.get(Path(path).suffix.casefold())
+                language = dialects.get(Path(path).suffix.casefold())
                 is_config = Path(path).name == "package.json" or (
                     Path(path).name.startswith("tsconfig") and path.endswith((".json", ".jsonc"))
                 )

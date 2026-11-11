@@ -31,13 +31,13 @@ FILES = {
 }
 
 
-def source_input(root, files=FILES, config=None):
+def source_input(root, files=FILES, config=None, policy=None):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for path, data in files.items():
             zf.writestr(path, data)
     archive = buf.getvalue()
-    policy = AdmissionPolicyV1()
+    policy = policy or AdmissionPolicyV1()
     manifest = inspect_zip_bytes(archive, policy).model_dump_json().encode()
     (root / "archive.zip").write_bytes(archive)
     (root / "manifest.json").write_bytes(manifest)
@@ -161,3 +161,29 @@ def test_facts_draft_rejects_duplicate_files(tmp_path):
     payload["files"].append(payload["files"][0])
     with pytest.raises(ValueError, match="duplicate file facts"):
         load(payload)
+
+
+def test_v3_archives_expose_new_languages_to_facts_but_not_to_structural(tmp_path):
+    from app.analyzers.source import AdmittedSourceReader
+    from app.contracts.ingestion import AdmissionPolicyV3
+
+    files = {"a.py": b"x = 1\n", "svc/main.go": b"package main\n", "lib/lib.rs": b"fn f() {}\n"}
+    facts_cfg = AnalysisConfigV1(toolchain_hash="a" * 64, adapters=("ast_facts",))
+    source = source_input(tmp_path, files, facts_cfg, AdmissionPolicyV3())
+    units = {u.path: u.language for u in AdmittedSourceReader(source, tmp_path).read_selected()}
+    assert units == {"a.py": "python", "lib/lib.rs": "rust", "svc/main.go": "go"}
+    draft = analyze_facts(source, tmp_path)
+    assert [f.path for f in draft.files] == ["a.py"]
+    assert sorted((o.path, o.reason) for o in draft.coverage.omissions) == [
+        ("lib/lib.rs", "language_unsupported"),
+        ("svc/main.go", "language_unsupported"),
+    ]
+    assert draft.coverage.requested_files == 3
+
+    other = tmp_path / "structural"
+    other.mkdir()
+    structural = source_input(
+        other, files, AnalysisConfigV1(toolchain_hash="a" * 64), AdmissionPolicyV3()
+    )
+    structural_units = AdmittedSourceReader(structural, other).read_selected()
+    assert [u.path for u in structural_units] == ["a.py"]  # structural dialects are unchanged

@@ -284,7 +284,15 @@
               "javascript",
               "jsx",
               "typescript",
-              "tsx"
+              "tsx",
+              "go",
+              "rust",
+              "java",
+              "c",
+              "cpp",
+              "ruby",
+              "php",
+              "swift"
             ],
             "title": "Language",
             "type": "string"
@@ -2304,7 +2312,15 @@
               "javascript",
               "jsx",
               "typescript",
-              "tsx"
+              "tsx",
+              "go",
+              "rust",
+              "java",
+              "c",
+              "cpp",
+              "ruby",
+              "php",
+              "swift"
             ],
             "title": "Language",
             "type": "string"

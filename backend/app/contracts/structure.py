@@ -16,7 +16,21 @@ from app.domain.source_ranges import SourceRangeV1
 
 Hash = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 Key = Hash
-Language = Literal["python", "javascript", "jsx", "typescript", "tsx"]
+Language = Literal[
+    "python",
+    "javascript",
+    "jsx",
+    "typescript",
+    "tsx",
+    "go",
+    "rust",
+    "java",
+    "c",
+    "cpp",
+    "ruby",
+    "php",
+    "swift",
+]
 
 
 def normalize_prefixes(values: tuple[str, ...]) -> tuple[str, ...]:
