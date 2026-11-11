@@ -89,3 +89,48 @@ structural_jobs = sa.Table(
     ],
     col("analysis_spec_id", "uuid", True),
 )
+
+
+ast_file_facts = sa.Table(
+    "ast_file_facts",
+    md,
+    orgid(),
+    col("snapshot_id", "uuid"),
+    col("run_id", "uuid"),
+    col("file_id", "uuid"),
+    col("repository_id", "uuid"),
+    col("spec_id", "uuid"),
+    col("config_hash"),
+    col("language"),
+    col("status"),
+    col("facts_json", "json"),
+    col("facts_sha256"),
+    col("symbol_count", "int"),
+    col("import_count", "int"),
+    col("export_count", "int"),
+    created(),
+    pk("org_id", "snapshot_id", "run_id", "file_id"),
+    fk(
+        "fk_ast_facts_run",
+        ["org_id", "snapshot_id", "run_id"],
+        "analysis_runs",
+        ["org_id", "snapshot_id", "id"],
+    ),
+    fk(
+        "fk_ast_facts_file",
+        ["org_id", "snapshot_id", "file_id"],
+        "source_files",
+        ["org_id", "snapshot_id", "id"],
+    ),
+    fk(
+        "fk_ast_facts_spec",
+        ["org_id", "repository_id", "snapshot_id", "spec_id", "config_hash"],
+        "analysis_specs",
+        ["org_id", "repository_id", "snapshot_id", "id", "config_hash"],
+    ),
+    ck(
+        "ck_ast_facts_json",
+        "jsonb_typeof(facts_json)='object' AND octet_length(facts_json::text)<=1048576",
+    ),
+    ck("ck_ast_facts_status", "status IN ('parsed','partial')"),
+)

@@ -35,6 +35,7 @@ from app.models.phase2_tables import PHASE2_TABLES
 from app.repositories.identity_repository import IdentityRepository
 from app.repositories.repository_repository import RepositoryRepository
 from app.services.github_acquisition import GitHubAcquisitionService
+from app.services.ast_finalization import AstFactsFinalizer
 from app.services.job_finalization import JobFinalizer
 from app.services.structural_finalization import StructuralFinalizer
 from app.workers.cleanup import CleanupWorker
@@ -42,6 +43,7 @@ from app.workers.consumer import JobConsumer
 from app.workers.dispatcher import OutboxDispatcher
 from app.workers.operations.admit_source import StoredAdmissionProcessor
 from app.workers.operations.analyze_structure import StructuralAnalysisOperation
+from app.workers.operations.ast_facts import AstFactsOperation, ProfileDispatchOperation
 from app.workers.recovery import RecoveryWorker
 from app.workers.runtime import WorkerRuntime
 from sqlalchemy import insert, text
@@ -231,11 +233,17 @@ async def run(args: argparse.Namespace) -> None:
             queue,
             JobFinalizer(broker, store),
             StoredAdmissionProcessor(broker, store, runner, github_service(broker)),
-            structural_operation=StructuralAnalysisOperation(
+            structural_operation=ProfileDispatchOperation(
                 broker,
-                store,
-                StructuralFinalizer(broker, store),
-                analysis_runner,
+                StructuralAnalysisOperation(
+                    broker,
+                    store,
+                    StructuralFinalizer(broker, store),
+                    analysis_runner,
+                ),
+                AstFactsOperation(
+                    broker, store, AstFactsFinalizer(broker, store), analysis_runner
+                ),
             )
             if analysis_runner is not None
             else None,

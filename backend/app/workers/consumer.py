@@ -33,6 +33,7 @@ from app.scanners.process import NativeProcessError
 from app.services.job_finalization import JobFinalizer
 from app.services.jobs import JobService
 from app.workers.operations.analyze_structure import StructuralAnalysisOperation
+from app.workers.operations.ast_facts import ProfileDispatchOperation
 from app.workers.operations.index_snapshot import IndexOperation
 from app.workers.operations.investigate_snapshot import InvestigateSnapshotOperation
 from app.workers.operations.scan_snapshot import ScanOperation
@@ -67,7 +68,7 @@ class JobConsumer:
         queue: QueuePort,
         finalizer: JobFinalizer,
         processor: AdmissionProcessor,
-        structural_operation: StructuralAnalysisOperation | None = None,
+        structural_operation: StructuralAnalysisOperation | ProfileDispatchOperation | None = None,
         scan_operation: ScanOperation | None = None,
         index_operation: IndexOperation | None = None,
         investigation_operation: InvestigateSnapshotOperation | None = None,

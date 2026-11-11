@@ -10,6 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from app.admission.process import DockerAdmissionRunner
+from app.contracts.ast_facts import AstDraftV1
 from app.contracts.structure import SourceInputV1, StructuralDraftV1
 from app.domain.canonical_json import canonical_bytes
 from app.domain.errors import PersistenceError
@@ -85,6 +86,14 @@ class DockerAnalysisRunner(DockerAdmissionRunner):
                 )
 
     async def analyze(self, source: SourceInputV1, root: Path) -> StructuralDraftV1:
+        return StructuralDraftV1.model_validate_json(await self._run(source, root))
+
+    async def analyze_facts(self, source: SourceInputV1, root: Path) -> AstDraftV1:
+        if "ast_facts" not in source.config.adapters:
+            raise AnalysisProcessError("analysis_unavailable")
+        return AstDraftV1.model_validate_json(await self._run(source, root))
+
+    async def _run(self, source: SourceInputV1, root: Path) -> bytes:
         if source.toolchain_hash != await self.readiness():
             raise AnalysisProcessError("analysis_unavailable")
         request = root / "request.json"
@@ -223,7 +232,7 @@ class DockerAnalysisRunner(DockerAdmissionRunner):
                     "rss_kib": summary.get("rss_kib"),
                     "cgroup_peak_bytes": summary.get("cgroup_peak_bytes"),
                 }
-                return StructuralDraftV1.model_validate_json(raw)
+                return raw
         except TimeoutError:
             raise AnalysisProcessError("analysis_timeout") from None
         finally:

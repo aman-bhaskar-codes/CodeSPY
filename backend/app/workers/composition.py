@@ -10,6 +10,7 @@ from app.services.model_runtime import ConfiguredModelRuntime
 from app.workers.consumer import AdmissionProcessor, JobConsumer
 from app.workers.dispatcher import OutboxDispatcher
 from app.workers.operations.analyze_structure import StructuralAnalysisOperation
+from app.workers.operations.ast_facts import ProfileDispatchOperation
 from app.workers.operations.index_snapshot import IndexOperation
 from app.workers.operations.scan_snapshot import ScanOperation
 from app.workers.runtime import WorkerRuntime
@@ -23,7 +24,7 @@ def build_worker_runtime(
     store: ObjectStore,
     admission: AdmissionProcessor,
     model_runtime: ConfiguredModelRuntime | None = None,
-    structural: StructuralAnalysisOperation | None = None,
+    structural: StructuralAnalysisOperation | ProfileDispatchOperation | None = None,
     scan: ScanOperation | None = None,
     index: IndexOperation | None = None,
     propose_report_memory: bool = False,

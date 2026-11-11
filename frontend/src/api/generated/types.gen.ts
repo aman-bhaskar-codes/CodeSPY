@@ -108,6 +108,98 @@ export type ArchitectureReportV1 = {
 };
 
 /**
+ * AstFilePageV1
+ */
+export type AstFilePageV1 = {
+    /**
+     * Items
+     */
+    items: Array<AstFileSummaryV1>;
+    /**
+     * Next After
+     */
+    next_after?: string | null;
+    /**
+     * Run Id
+     */
+    run_id: string;
+};
+
+/**
+ * AstFileSummaryV1
+ */
+export type AstFileSummaryV1 = {
+    /**
+     * Exports
+     */
+    exports: number;
+    /**
+     * Facts Sha256
+     */
+    facts_sha256: string;
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * Imports
+     */
+    imports: number;
+    /**
+     * Language
+     */
+    language: 'python' | 'javascript' | 'jsx' | 'typescript' | 'tsx';
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Status
+     */
+    status: 'parsed' | 'partial';
+    /**
+     * Symbols
+     */
+    symbols: number;
+};
+
+/**
+ * AstSnapshotSummaryV1
+ */
+export type AstSnapshotSummaryV1 = {
+    /**
+     * Exports
+     */
+    exports: number;
+    /**
+     * Files
+     */
+    files: number;
+    /**
+     * Imports
+     */
+    imports: number;
+    /**
+     * Languages
+     */
+    languages: {
+        [key: string]: number;
+    };
+    /**
+     * Run Id
+     */
+    run_id: string;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+    /**
+     * Symbols
+     */
+    symbols: number;
+};
+
+/**
  * BoundaryLinkV1
  */
 export type BoundaryLinkV1 = {
@@ -224,6 +316,32 @@ export type ClaimVerificationV1 = {
 };
 
 /**
+ * ColumnFactV1
+ */
+export type ColumnFactV1 = {
+    /**
+     * Foreign Key
+     */
+    foreign_key?: string | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Nullable
+     */
+    nullable?: boolean | null;
+    /**
+     * Primary Key
+     */
+    primary_key?: boolean;
+    /**
+     * Type
+     */
+    type?: string | null;
+};
+
+/**
  * ComponentSectionV1
  */
 export type ComponentSectionV1 = {
@@ -254,6 +372,21 @@ export type ComponentSectionV1 = {
      * State
      */
     state: 'complete' | 'partial' | 'unavailable' | 'not_requested';
+};
+
+/**
+ * ConfigFactV1
+ */
+export type ConfigFactV1 = {
+    /**
+     * Kind
+     */
+    kind: 'env_var' | 'config_key';
+    /**
+     * Name
+     */
+    name: string;
+    range: SourceRangeV1;
 };
 
 /**
@@ -711,6 +844,21 @@ export type DependencySelectionV1 = {
 };
 
 /**
+ * DiagnosticFactV1
+ */
+export type DiagnosticFactV1 = {
+    /**
+     * Code
+     */
+    code: 'syntax_error' | 'fact_capacity' | 'unsupported_construct';
+    /**
+     * Message
+     */
+    message: string;
+    range?: SourceRangeV1 | null;
+};
+
+/**
  * DiagnosticV1
  */
 export type DiagnosticV1 = {
@@ -881,6 +1029,25 @@ export type ExactSearchRequestV1 = {
 export type ExactSearchType = 'file_path' | 'path_segment' | 'symbol' | 'qualified_name';
 
 /**
+ * ExportFactV1
+ */
+export type ExportFactV1 = {
+    /**
+     * From Module
+     */
+    from_module?: string | null;
+    /**
+     * Kind
+     */
+    kind: 'declared' | 'all_list' | 'default' | 'reexport';
+    /**
+     * Name
+     */
+    name: string;
+    range: SourceRangeV1;
+};
+
+/**
  * FeatureTraceV1
  */
 export type FeatureTraceV1 = {
@@ -912,6 +1079,72 @@ export type FeatureTraceV1 = {
      * Structural Run Id
      */
     structural_run_id?: string | null;
+};
+
+/**
+ * FileFactsV1
+ */
+export type FileFactsV1 = {
+    /**
+     * Config
+     */
+    config?: Array<ConfigFactV1>;
+    /**
+     * Diagnostics
+     */
+    diagnostics?: Array<DiagnosticFactV1>;
+    /**
+     * Error Nodes
+     */
+    error_nodes?: number;
+    /**
+     * Exports
+     */
+    exports?: Array<ExportFactV1>;
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * Grammar
+     */
+    grammar: string;
+    /**
+     * Imports
+     */
+    imports?: Array<ImportFactV1>;
+    /**
+     * Language
+     */
+    language: 'python' | 'javascript' | 'jsx' | 'typescript' | 'tsx';
+    /**
+     * Models
+     */
+    models?: Array<ModelFactV1>;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Routes
+     */
+    routes?: Array<RouteFactV1>;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+    /**
+     * Sha256
+     */
+    sha256: string;
+    /**
+     * Status
+     */
+    status: 'parsed' | 'partial';
+    /**
+     * Symbols
+     */
+    symbols?: Array<SymbolFactV1>;
 };
 
 /**
@@ -1466,6 +1699,47 @@ export type IdentityMapV1 = {
      * Semantic Key
      */
     semantic_key: string;
+};
+
+/**
+ * ImportFactV1
+ */
+export type ImportFactV1 = {
+    /**
+     * Alias
+     */
+    alias?: string | null;
+    /**
+     * Kind
+     */
+    kind: 'static' | 'from' | 'wildcard' | 'dynamic' | 'require' | 'reexport';
+    /**
+     * Module
+     */
+    module: string;
+    /**
+     * Names
+     */
+    names?: Array<ImportNameV1>;
+    range: SourceRangeV1;
+    /**
+     * Relative Level
+     */
+    relative_level?: number;
+};
+
+/**
+ * ImportNameV1
+ */
+export type ImportNameV1 = {
+    /**
+     * Alias
+     */
+    alias?: string | null;
+    /**
+     * Name
+     */
+    name: string;
 };
 
 /**
@@ -3305,6 +3579,29 @@ export type ModelAvailabilityV1 = {
 };
 
 /**
+ * ModelFactV1
+ */
+export type ModelFactV1 = {
+    /**
+     * Columns
+     */
+    columns?: Array<ColumnFactV1>;
+    /**
+     * Framework
+     */
+    framework: string;
+    /**
+     * Name
+     */
+    name: string;
+    range: SourceRangeV1;
+    /**
+     * Table
+     */
+    table?: string | null;
+};
+
+/**
  * ModelRole
  */
 export type ModelRole = 'system' | 'user' | 'assistant' | 'tool';
@@ -3351,6 +3648,28 @@ export type NodeCreateV1 = {
      * Symbol Name
      */
     symbol_name: string;
+};
+
+/**
+ * ParameterV1
+ */
+export type ParameterV1 = {
+    /**
+     * Default
+     */
+    default?: string | null;
+    /**
+     * Kind
+     */
+    kind?: 'positional' | 'keyword_only' | 'variadic' | 'variadic_keyword';
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Type
+     */
+    type?: string | null;
 };
 
 /**
@@ -3551,6 +3870,29 @@ export type RetryScanResponseV3 = {
      * Schema Version
      */
     schema_version?: 3;
+};
+
+/**
+ * RouteFactV1
+ */
+export type RouteFactV1 = {
+    /**
+     * Framework
+     */
+    framework: string;
+    /**
+     * Handler
+     */
+    handler?: string | null;
+    /**
+     * Method
+     */
+    method: string;
+    /**
+     * Path
+     */
+    path: string;
+    range: SourceRangeV1;
 };
 
 /**
@@ -4071,6 +4413,20 @@ export type SessionV1 = {
 };
 
 /**
+ * SignatureV1
+ */
+export type SignatureV1 = {
+    /**
+     * Params
+     */
+    params?: Array<ParameterV1>;
+    /**
+     * Return Type
+     */
+    return_type?: string | null;
+};
+
+/**
  * SourceExcerptV1
  */
 export type SourceExcerptV1 = {
@@ -4560,6 +4916,46 @@ export type SubmissionRecordV1 = {
      * State
      */
     state: 'reserved' | 'uploading' | 'uploaded' | 'admission_queued' | 'admitting' | 'admitted' | 'rejected' | 'failed' | 'expired' | 'cancelled';
+};
+
+/**
+ * SymbolFactV1
+ */
+export type SymbolFactV1 = {
+    /**
+     * Bases
+     */
+    bases?: Array<string>;
+    /**
+     * Container
+     */
+    container?: string | null;
+    /**
+     * Decorators
+     */
+    decorators?: Array<string>;
+    /**
+     * Kind
+     */
+    kind: 'function' | 'method' | 'class' | 'interface' | 'struct' | 'enum' | 'trait' | 'type_alias' | 'constant' | 'field';
+    /**
+     * Modifiers
+     */
+    modifiers?: Array<string>;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Qualified Name
+     */
+    qualified_name: string;
+    range: SourceRangeV1;
+    signature?: SignatureV1 | null;
+    /**
+     * Visibility
+     */
+    visibility?: 'public' | 'protected' | 'private' | 'internal' | null;
 };
 
 /**
@@ -5398,6 +5794,36 @@ export type StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTravers
 
 export type StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTraversalPostResponse = StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTraversalPostResponses[keyof StructuralTraversalApiV1RepositoriesRepositoryIdAnalysesRunIdTraversalPostResponses];
 
+export type CreateAstFactsApiV1RepositoriesRepositoryIdAstFactsPostData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/ast-facts';
+};
+
+export type CreateAstFactsApiV1RepositoriesRepositoryIdAstFactsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateAstFactsApiV1RepositoriesRepositoryIdAstFactsPostError = CreateAstFactsApiV1RepositoriesRepositoryIdAstFactsPostErrors[keyof CreateAstFactsApiV1RepositoriesRepositoryIdAstFactsPostErrors];
+
+export type CreateAstFactsApiV1RepositoriesRepositoryIdAstFactsPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: AnalysisAcceptedV1;
+};
+
+export type CreateAstFactsApiV1RepositoriesRepositoryIdAstFactsPostResponse = CreateAstFactsApiV1RepositoriesRepositoryIdAstFactsPostResponses[keyof CreateAstFactsApiV1RepositoriesRepositoryIdAstFactsPostResponses];
+
 export type AcquireGithubApiV1RepositoriesRepositoryIdGithubAcquisitionsPostData = {
     body: GitHubAcquisitionV1;
     path: {
@@ -6023,6 +6449,121 @@ export type CreateScanApiV1RepositoriesRepositoryIdScansPostResponses = {
 };
 
 export type CreateScanApiV1RepositoriesRepositoryIdScansPostResponse = CreateScanApiV1RepositoriesRepositoryIdScansPostResponses[keyof CreateScanApiV1RepositoriesRepositoryIdScansPostResponses];
+
+export type AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts';
+};
+
+export type AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetError = AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetErrors[keyof AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetErrors];
+
+export type AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: AstSnapshotSummaryV1;
+};
+
+export type AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetResponse = AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetResponses[keyof AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetResponses];
+
+export type AstFactsFilesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: {
+        /**
+         * After
+         */
+        after?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts/files';
+};
+
+export type AstFactsFilesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AstFactsFilesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesGetError = AstFactsFilesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesGetErrors[keyof AstFactsFilesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesGetErrors];
+
+export type AstFactsFilesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: AstFilePageV1;
+};
+
+export type AstFactsFilesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesGetResponse = AstFactsFilesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesGetResponses[keyof AstFactsFilesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesGetResponses];
+
+export type AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesFileIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * File Id
+         */
+        file_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts/files/{file_id}';
+};
+
+export type AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesFileIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesFileIdGetError = AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesFileIdGetErrors[keyof AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesFileIdGetErrors];
+
+export type AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesFileIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: FileFactsV1;
+};
+
+export type AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesFileIdGetResponse = AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesFileIdGetResponses[keyof AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesFileIdGetResponses];
 
 export type AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostData = {
     body: ContextAssemblyRequestV1;

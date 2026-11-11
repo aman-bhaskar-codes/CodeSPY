@@ -8,7 +8,8 @@ import sys
 from pathlib import Path
 
 from app.analyzers.pipeline import analyze
-from app.contracts.structure import SourceInputV1
+from app.contracts.ast_facts import AstDraftV1
+from app.contracts.structure import SourceInputV1, StructuralDraftV1
 from app.domain.canonical_json import canonical_bytes
 
 
@@ -26,7 +27,14 @@ def main() -> None:
     source = SourceInputV1.model_validate_json(raw)
     if source.toolchain_hash != Path("/opt/codespy/toolchain.sha256").read_text().strip():
         raise ValueError("toolchain identity differs")
-    draft = analyze(source, Path("/input"), isolated_operations=True)
+    if "ast_facts" in source.config.adapters:
+        from app.analyzers.facts_pipeline import analyze_facts
+
+        draft: StructuralDraftV1 | AstDraftV1 = analyze_facts(
+            source, Path("/input"), isolated_operations=True
+        )
+    else:
+        draft = analyze(source, Path("/input"), isolated_operations=True)
     output = canonical_bytes(draft.model_dump())
     if len(output) > 16 * 1024 * 1024:
         raise ValueError("output capacity")

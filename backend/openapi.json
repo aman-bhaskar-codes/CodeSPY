@@ -220,6 +220,159 @@
         "title": "ArchitectureReportV1",
         "type": "object"
       },
+      "AstFilePageV1": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AstFileSummaryV1"
+            },
+            "maxItems": 200,
+            "title": "Items",
+            "type": "array"
+          },
+          "next_after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next After"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "items"
+        ],
+        "title": "AstFilePageV1",
+        "type": "object"
+      },
+      "AstFileSummaryV1": {
+        "additionalProperties": false,
+        "properties": {
+          "exports": {
+            "minimum": 0.0,
+            "title": "Exports",
+            "type": "integer"
+          },
+          "facts_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Facts Sha256",
+            "type": "string"
+          },
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "imports": {
+            "minimum": 0.0,
+            "title": "Imports",
+            "type": "integer"
+          },
+          "language": {
+            "enum": [
+              "python",
+              "javascript",
+              "jsx",
+              "typescript",
+              "tsx"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "parsed",
+              "partial"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "symbols": {
+            "minimum": 0.0,
+            "title": "Symbols",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file_id",
+          "path",
+          "language",
+          "status",
+          "facts_sha256",
+          "symbols",
+          "imports",
+          "exports"
+        ],
+        "title": "AstFileSummaryV1",
+        "type": "object"
+      },
+      "AstSnapshotSummaryV1": {
+        "additionalProperties": false,
+        "properties": {
+          "exports": {
+            "minimum": 0.0,
+            "title": "Exports",
+            "type": "integer"
+          },
+          "files": {
+            "minimum": 0.0,
+            "title": "Files",
+            "type": "integer"
+          },
+          "imports": {
+            "minimum": 0.0,
+            "title": "Imports",
+            "type": "integer"
+          },
+          "languages": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Languages",
+            "type": "object"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "symbols": {
+            "minimum": 0.0,
+            "title": "Symbols",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "run_id",
+          "snapshot_id",
+          "files",
+          "languages",
+          "symbols",
+          "imports",
+          "exports"
+        ],
+        "title": "AstSnapshotSummaryV1",
+        "type": "object"
+      },
       "BoundaryLinkV1": {
         "additionalProperties": false,
         "properties": {
@@ -460,6 +613,62 @@
         "title": "ClaimVerificationV1",
         "type": "object"
       },
+      "ColumnFactV1": {
+        "additionalProperties": false,
+        "properties": {
+          "foreign_key": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreign Key"
+          },
+          "name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "nullable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nullable"
+          },
+          "primary_key": {
+            "default": false,
+            "title": "Primary Key",
+            "type": "boolean"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ColumnFactV1",
+        "type": "object"
+      },
       "ComponentSectionV1": {
         "additionalProperties": false,
         "properties": {
@@ -538,6 +747,35 @@
           "state"
         ],
         "title": "ComponentSectionV1",
+        "type": "object"
+      },
+      "ConfigFactV1": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "env_var",
+              "config_key"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "range": {
+            "$ref": "#/components/schemas/SourceRangeV1"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "range"
+        ],
+        "title": "ConfigFactV1",
         "type": "object"
       },
       "ContextAssemblyRequestV1": {
@@ -1499,6 +1737,41 @@
         "title": "DependencySelectionV1",
         "type": "object"
       },
+      "DiagnosticFactV1": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "syntax_error",
+              "fact_capacity",
+              "unsupported_construct"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 256,
+            "title": "Message",
+            "type": "string"
+          },
+          "range": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceRangeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "DiagnosticFactV1",
+        "type": "object"
+      },
       "DiagnosticV1": {
         "additionalProperties": false,
         "properties": {
@@ -1868,6 +2141,49 @@
         "title": "ExactSearchType",
         "type": "string"
       },
+      "ExportFactV1": {
+        "additionalProperties": false,
+        "properties": {
+          "from_module": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Module"
+          },
+          "kind": {
+            "enum": [
+              "declared",
+              "all_list",
+              "default",
+              "reexport"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "range": {
+            "$ref": "#/components/schemas/SourceRangeV1"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "range"
+        ],
+        "title": "ExportFactV1",
+        "type": "object"
+      },
       "FeatureTraceV1": {
         "properties": {
           "budget_exceeded": {
@@ -1924,6 +2240,137 @@
           "finding_id"
         ],
         "title": "FeatureTraceV1",
+        "type": "object"
+      },
+      "FileFactsV1": {
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ConfigFactV1"
+            },
+            "maxItems": 1024,
+            "title": "Config",
+            "type": "array"
+          },
+          "diagnostics": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticFactV1"
+            },
+            "maxItems": 64,
+            "title": "Diagnostics",
+            "type": "array"
+          },
+          "error_nodes": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Error Nodes",
+            "type": "integer"
+          },
+          "exports": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ExportFactV1"
+            },
+            "maxItems": 5000,
+            "title": "Exports",
+            "type": "array"
+          },
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "grammar": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Grammar",
+            "type": "string"
+          },
+          "imports": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ImportFactV1"
+            },
+            "maxItems": 5000,
+            "title": "Imports",
+            "type": "array"
+          },
+          "language": {
+            "enum": [
+              "python",
+              "javascript",
+              "jsx",
+              "typescript",
+              "tsx"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "models": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ModelFactV1"
+            },
+            "maxItems": 256,
+            "title": "Models",
+            "type": "array"
+          },
+          "path": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Path",
+            "type": "string"
+          },
+          "routes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RouteFactV1"
+            },
+            "maxItems": 256,
+            "title": "Routes",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "parsed",
+              "partial"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "symbols": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SymbolFactV1"
+            },
+            "maxItems": 5000,
+            "title": "Symbols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "file_id",
+          "path",
+          "sha256",
+          "language",
+          "grammar",
+          "status"
+        ],
+        "title": "FileFactsV1",
         "type": "object"
       },
       "FileOmissionV1": {
@@ -3000,6 +3447,94 @@
           "physical_id"
         ],
         "title": "IdentityMapV1",
+        "type": "object"
+      },
+      "ImportFactV1": {
+        "additionalProperties": false,
+        "properties": {
+          "alias": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alias"
+          },
+          "kind": {
+            "enum": [
+              "static",
+              "from",
+              "wildcard",
+              "dynamic",
+              "require",
+              "reexport"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "module": {
+            "maxLength": 2048,
+            "title": "Module",
+            "type": "string"
+          },
+          "names": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ImportNameV1"
+            },
+            "maxItems": 256,
+            "title": "Names",
+            "type": "array"
+          },
+          "range": {
+            "$ref": "#/components/schemas/SourceRangeV1"
+          },
+          "relative_level": {
+            "default": 0,
+            "maximum": 32.0,
+            "minimum": 0.0,
+            "title": "Relative Level",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "module",
+          "range"
+        ],
+        "title": "ImportFactV1",
+        "type": "object"
+      },
+      "ImportNameV1": {
+        "additionalProperties": false,
+        "properties": {
+          "alias": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alias"
+          },
+          "name": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ImportNameV1",
         "type": "object"
       },
       "IndexAvailabilityV1": {
@@ -6468,6 +7003,54 @@
         "title": "ModelAvailabilityV1",
         "type": "object"
       },
+      "ModelFactV1": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ColumnFactV1"
+            },
+            "maxItems": 256,
+            "title": "Columns",
+            "type": "array"
+          },
+          "framework": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Framework",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "range": {
+            "$ref": "#/components/schemas/SourceRangeV1"
+          },
+          "table": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table"
+          }
+        },
+        "required": [
+          "framework",
+          "name",
+          "range"
+        ],
+        "title": "ModelFactV1",
+        "type": "object"
+      },
       "ModelRole": {
         "enum": [
           "system",
@@ -6553,6 +7136,57 @@
           "range"
         ],
         "title": "NodeCreateV1",
+        "type": "object"
+      },
+      "ParameterV1": {
+        "additionalProperties": false,
+        "properties": {
+          "default": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default"
+          },
+          "kind": {
+            "default": "positional",
+            "enum": [
+              "positional",
+              "keyword_only",
+              "variadic",
+              "variadic_keyword"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ParameterV1",
         "type": "object"
       },
       "RepositoryCreate": {
@@ -6921,6 +7555,51 @@
           "scan_spec_id"
         ],
         "title": "RetryScanResponseV3",
+        "type": "object"
+      },
+      "RouteFactV1": {
+        "additionalProperties": false,
+        "properties": {
+          "framework": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Framework",
+            "type": "string"
+          },
+          "handler": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handler"
+          },
+          "method": {
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Method",
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 2048,
+            "title": "Path",
+            "type": "string"
+          },
+          "range": {
+            "$ref": "#/components/schemas/SourceRangeV1"
+          }
+        },
+        "required": [
+          "framework",
+          "method",
+          "path",
+          "range"
+        ],
+        "title": "RouteFactV1",
         "type": "object"
       },
       "RouteObservationV1": {
@@ -7915,6 +8594,34 @@
         "title": "SessionV1",
         "type": "object"
       },
+      "SignatureV1": {
+        "additionalProperties": false,
+        "properties": {
+          "params": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ParameterV1"
+            },
+            "maxItems": 128,
+            "title": "Params",
+            "type": "array"
+          },
+          "return_type": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Type"
+          }
+        },
+        "title": "SignatureV1",
+        "type": "object"
+      },
       "SourceExcerptV1": {
         "additionalProperties": false,
         "properties": {
@@ -8863,6 +9570,116 @@
           "error_code"
         ],
         "title": "SubmissionRecordV1",
+        "type": "object"
+      },
+      "SymbolFactV1": {
+        "additionalProperties": false,
+        "properties": {
+          "bases": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Bases",
+            "type": "array"
+          },
+          "container": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container"
+          },
+          "decorators": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Decorators",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "function",
+              "method",
+              "class",
+              "interface",
+              "struct",
+              "enum",
+              "trait",
+              "type_alias",
+              "constant",
+              "field"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "modifiers": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Modifiers",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "qualified_name": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Qualified Name",
+            "type": "string"
+          },
+          "range": {
+            "$ref": "#/components/schemas/SourceRangeV1"
+          },
+          "signature": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SignatureV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "enum": [
+                  "public",
+                  "protected",
+                  "private",
+                  "internal"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visibility"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "qualified_name",
+          "range"
+        ],
+        "title": "SymbolFactV1",
         "type": "object"
       },
       "SymbolObservationV1": {
@@ -10257,6 +11074,46 @@
         "summary": "Structural Traversal"
       }
     },
+    "/api/v1/repositories/{repository_id}/ast-facts": {
+      "post": {
+        "operationId": "create_ast_facts_api_v1_repositories__repository_id__ast_facts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisAcceptedV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Ast Facts"
+      }
+    },
     "/api/v1/repositories/{repository_id}/github-acquisitions": {
       "post": {
         "operationId": "acquire_github_api_v1_repositories__repository_id__github_acquisitions_post",
@@ -11312,6 +12169,193 @@
           }
         },
         "summary": "Create Scan"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts": {
+      "get": {
+        "operationId": "ast_facts_summary_api_v1_repositories__repository_id__snapshots__snapshot_id__ast_facts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AstSnapshotSummaryV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ast Facts Summary"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts/files": {
+      "get": {
+        "operationId": "ast_facts_files_api_v1_repositories__repository_id__snapshots__snapshot_id__ast_facts_files_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AstFilePageV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ast Facts Files"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts/files/{file_id}": {
+      "get": {
+        "operationId": "ast_facts_file_api_v1_repositories__repository_id__snapshots__snapshot_id__ast_facts_files__file_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileFactsV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ast Facts File"
       }
     },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/context/assemble": {
