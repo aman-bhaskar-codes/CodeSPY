@@ -36,7 +36,7 @@ from app.services.retrieval_selection import (
 grants = PHASE2_TABLES["repository_grants"]
 
 
-class _Vector(UserDefinedType):
+class _Vector(UserDefinedType[Any]):
     """pgvector ``vector(n)`` type used only for query-time casts."""
 
     cache_ok = True

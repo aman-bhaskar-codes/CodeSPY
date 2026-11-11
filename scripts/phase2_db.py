@@ -237,6 +237,8 @@ def grant_app(values, name):
         if c.execute("SELECT to_regclass('public.analysis_specs')").fetchone()[0]:
             c.execute("GRANT INSERT ON analysis_specs TO p2_api")
             c.execute("GRANT INSERT ON structural_reports TO p2_broker")
+            if c.execute("SELECT to_regclass('public.ast_file_facts')").fetchone()[0]:
+                c.execute("GRANT INSERT ON ast_file_facts TO p2_broker")
         if c.execute("SELECT to_regclass('public.scan_specs')").fetchone()[0]:
             c.execute("GRANT INSERT ON scan_specs TO p2_api")
             c.execute(

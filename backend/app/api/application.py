@@ -11,6 +11,11 @@ from uuid import UUID, uuid4
 
 from app.adapters.model.http_transport import ProviderTransportError
 from app.analyzers.reporting import render_json, render_markdown
+from app.contracts.ast_facts import (
+    AstFilePageV1,
+    AstSnapshotSummaryV1,
+    FileFactsV1,
+)
 from app.contracts.context import (
     ContextAssemblyRequestV1,
     ContextItemV1,
@@ -164,6 +169,7 @@ from app.security.authorization import require_repository, require_snapshot
 from app.security.cursors import CursorCodec
 from app.security.oauth import OAuthRejected, OAuthService
 from app.security.sessions import SessionService, token_digest
+from app.services import ast_reads
 from app.services.analysis_sources import locate_source
 from app.services.configured_model_gateway import ModelConnectionError
 from app.services.context_assembly import ContextAssemblyService
@@ -1153,6 +1159,77 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             snapshot_id=body.snapshot_id,
             status_url=f"/api/v1/jobs/{job.id}",
         )
+
+    @app.post("/api/v1/repositories/{repository_id}/ast-facts", status_code=202)
+    async def create_ast_facts(request: Request, repository_id: UUID) -> AnalysisAcceptedV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        body = await json_body(request, StructuralAnalysisRequestV1)
+        if not settings.structural_enabled or settings.structural_toolchain_hash is None:
+            raise HTTPException(503, detail="analysis_unavailable")
+        if ports.readiness is None or not await ports.readiness():
+            raise HTTPException(503, detail="analysis_unavailable")
+        config = AnalysisConfigV1(
+            toolchain_hash=settings.structural_toolchain_hash,
+            include_prefixes=body.include_prefixes,
+            adapters=("ast_facts",),
+            limits=StructuralLimitsV1(),
+        )
+        spec, job = await structural.create_analysis_spec(
+            ctx, repository_id, body.snapshot_id, config, key(request)
+        )
+        return AnalysisAcceptedV1(
+            spec_id=spec.id,
+            job_id=job.id,
+            snapshot_id=body.snapshot_id,
+            status_url=f"/api/v1/jobs/{job.id}",
+        )
+
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts")
+    async def ast_facts_summary(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> AstSnapshotSummaryV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as s:
+            found = await ast_reads.summary(
+                s, ctx.org_id, ctx.principal_id, repository_id, snapshot_id
+            )
+        if found is None:
+            raise HTTPException(404)
+        return found
+
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts/files")
+    async def ast_facts_files(
+        request: Request,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        after: str | None = Query(default=None, max_length=1024),
+        limit: int = 100,
+    ) -> AstFilePageV1:
+        if not 1 <= limit <= 200:
+            raise HTTPException(422)
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as s:
+            page = await ast_reads.files_page(
+                s, ctx.org_id, ctx.principal_id, repository_id, snapshot_id, after, limit
+            )
+        if page is None:
+            raise HTTPException(404)
+        return page
+
+    @app.get(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts/files/{file_id}"
+    )
+    async def ast_facts_file(
+        request: Request, repository_id: UUID, snapshot_id: UUID, file_id: UUID
+    ) -> FileFactsV1:
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as s:
+            facts = await ast_reads.file_facts(
+                s, ctx.org_id, ctx.principal_id, repository_id, snapshot_id, file_id
+            )
+        if facts is None:
+            raise HTTPException(404)
+        return facts
 
     @app.get("/api/v1/repositories/{repository_id}/analyses/{run_id}/report")
     async def get_analysis_report(

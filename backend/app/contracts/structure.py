@@ -86,7 +86,9 @@ class AnalysisConfigV1(Contract):
     schema_version: Literal[1] = 1
     profile: Literal["structural-small-v1"] = "structural-small-v1"
     include_prefixes: tuple[str, ...] = ()
-    adapters: tuple[Literal["python", "js_ts", "fastapi", "express", "http_client"], ...] = (
+    adapters: tuple[
+        Literal["python", "js_ts", "fastapi", "express", "http_client", "ast_facts"], ...
+    ] = (
         "python",
         "js_ts",
         "fastapi",
