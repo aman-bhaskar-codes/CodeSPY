@@ -70,6 +70,12 @@ export const api = {
       headers: mutationHeaders(csrf, key),
       body: JSON.stringify({ requested_ref: ref }),
     }),
+  importGitHubUrl: (url: string, csrf: string, key: string) =>
+    request<SubmissionRecordV1>("/github-imports", {
+      method: "POST",
+      headers: mutationHeaders(csrf, key),
+      body: JSON.stringify({ url }),
+    }),
   scanConfiguration: (
     repoId: string,
     snapshotId: string,

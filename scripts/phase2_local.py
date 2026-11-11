@@ -8,6 +8,7 @@ resources on exit. Never use this fixture entrypoint as a hosted deployment.
 import argparse
 import asyncio
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -17,8 +18,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 sys.path.insert(0, str(ROOT))
 
+import httpx
 import uvicorn
 from app.adapters.emulator_client import emulator_client
+from app.adapters.github.public import GitHubPublicProvider
+from app.adapters.github.transport import FixedGitHubTransport
 from app.adapters.io import blocking_call
 from app.adapters.queue.sqs import SQSQueue
 from app.adapters.storage.local import LocalObjectStore
@@ -30,6 +34,7 @@ from app.contracts.persistence import RepositoryCreate
 from app.models.phase2_tables import PHASE2_TABLES
 from app.repositories.identity_repository import IdentityRepository
 from app.repositories.repository_repository import RepositoryRepository
+from app.services.github_acquisition import GitHubAcquisitionService
 from app.services.job_finalization import JobFinalizer
 from app.services.structural_finalization import StructuralFinalizer
 from app.workers.cleanup import CleanupWorker
@@ -182,6 +187,24 @@ async def run(args: argparse.Namespace) -> None:
             )
             return True
 
+        # Opt-in live egress: unauthenticated public GitHub reads over the fixed-origin
+        # transport. Without the flag, URL import stays unavailable (503).
+        public_github = None
+        if os.environ.get("CODESPY_PUBLIC_GITHUB_IMPORT") == "1":
+            github_client = httpx.AsyncClient(
+                transport=FixedGitHubTransport(
+                    {"api.github.com", "codeload.github.com"}
+                ),
+                trust_env=False,
+                follow_redirects=False,
+            )
+            public_github = GitHubPublicProvider(github_client)
+
+        def github_service(sessions):
+            if public_github is None:
+                return None
+            return GitHubAcquisitionService(sessions, store, None, public=public_github)
+
         app = create_app(
             ApiSettings(
                 origin="http://127.0.0.1:5173",
@@ -189,7 +212,13 @@ async def run(args: argparse.Namespace) -> None:
                 structural_enabled=analysis_runner is not None,
                 structural_toolchain_hash=toolchain,
             ),
-            ApplicationPorts(api_factory, store, ctx, readiness=ready),
+            ApplicationPorts(
+                api_factory,
+                store,
+                ctx,
+                github=github_service(api_factory),
+                readiness=ready,
+            ),
         )
         if args.check:
             await ready()
@@ -201,7 +230,7 @@ async def run(args: argparse.Namespace) -> None:
             broker,
             queue,
             JobFinalizer(broker, store),
-            StoredAdmissionProcessor(broker, store, runner),
+            StoredAdmissionProcessor(broker, store, runner, github_service(broker)),
             structural_operation=StructuralAnalysisOperation(
                 broker,
                 store,

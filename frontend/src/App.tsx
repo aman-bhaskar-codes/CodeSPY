@@ -1,5 +1,6 @@
 import { SessionBoundary } from "./workspace/SessionBoundary";
 import { GitHubImportForm } from "./features/intake/GitHubImportForm";
+import { GitHubUrlImportForm } from "./features/intake/GitHubUrlImportForm";
 import { RepositoryCreateForm } from "./features/intake/RepositoryCreateForm";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -381,6 +382,30 @@ function WorkspaceApp() {
       setPages([null]);
     },
   });
+  const importUrl = useMutation({
+    mutationFn: async (url: string) => {
+      if (!session.data) throw new Error("missing session");
+      const intent = `github-url:${url}`;
+      if (!retryKeys.current.has(intent))
+        retryKeys.current.set(intent, crypto.randomUUID());
+      const isCurrent = responseIsCurrent();
+      const record = await api.importGitHubUrl(
+        url,
+        session.data.csrf_token,
+        retryKeys.current.get(intent)!,
+      );
+      return { record, isCurrent };
+    },
+    onSuccess: ({ record, isCurrent }) => {
+      if (!isCurrent()) return;
+      setRepository(record.repository_id);
+      setSubmissionId(record.id);
+      setJobId(record.job_id ?? null);
+      setRestoredSnapshot(null);
+      setPages([null]);
+      void repositories.refetch();
+    },
+  });
   const upload = useMutation({
     mutationFn: async () => {
       const isCurrent = responseIsCurrent();
@@ -707,6 +732,11 @@ function WorkspaceApp() {
                   onImport={(ref) => acquire.mutate(ref)}
                 />
               )}
+              <GitHubUrlImportForm
+                pending={busy || importUrl.isPending}
+                onImport={(url) => importUrl.mutate(url)}
+              />
+              {importUrl.isError && <p role="alert">{problem(importUrl.error)}</p>}
               {acquire.isError && <p role="alert">{problem(acquire.error)}</p>}
               {upload.isError && <p role="alert">{problem(upload.error)}</p>}
             </section>

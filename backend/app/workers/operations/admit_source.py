@@ -69,7 +69,10 @@ class StoredAdmissionProcessor:
             if selected.sha256 != sub["actual_sha"] or selected.size_bytes != sub["actual_size"]:
                 raise DuplicateConflict("selected acquisition differs")
             github_id = None
-            if sub["source_kind"] == "github_archive":
+            if sub["source_kind"] == "github_public_archive":
+                if sub["resolved_commit"] is None:
+                    raise DuplicateConflict("GitHub acquisition is not pinned")
+            elif sub["source_kind"] == "github_archive":
                 github_id = await session.scalar(
                     select(bindings.c.github_repository_id).where(
                         bindings.c.org_id == lease.org_id,

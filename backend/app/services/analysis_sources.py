@@ -9,6 +9,7 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contracts.ingestion import (
+    GITHUB_SOURCE_KINDS,
     AdmissionPolicy,
     ArtifactManifestV1,
     ObjectDescriptor,
@@ -118,7 +119,8 @@ async def locate_source(
         raise DuplicateConflict("verified admission unavailable")
     try:
         policy = resolve_admission_policy(
-            admitted["policy_hash"], github_strip_root=admitted["source_kind"] == "github_archive"
+            admitted["policy_hash"],
+            github_strip_root=admitted["source_kind"] in GITHUB_SOURCE_KINDS,
         )
     except ValueError:
         raise DuplicateConflict("unsupported admission policy") from None

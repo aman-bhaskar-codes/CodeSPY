@@ -761,6 +761,8 @@ class JobService:
             "storage_unavailable",
             "queue_unavailable",
             "provider_unavailable",
+            "provider_rate_limited",
+            "repository_unavailable",
             "admission_process_failed",
             "finalization_timeout",
             "invalid_archive",

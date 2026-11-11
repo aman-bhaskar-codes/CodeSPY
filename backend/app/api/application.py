@@ -24,6 +24,7 @@ from app.contracts.http import (
     EventPageV3,
     GitHubAcquisitionV1,
     GitHubBindingV1,
+    GitHubImportV1,
     InventoryEntryV1,
     InventoryPageV1,
     JobEventV2,
@@ -881,6 +882,17 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             raise HTTPException(503)
         body = await json_body(request, GitHubAcquisitionV1)
         return await ports.github.request(ctx, repository_id, body.requested_ref, key(request))
+
+    @app.post("/api/v1/github-imports", status_code=202)
+    async def import_github_url(request: Request) -> SubmissionRecordV1:
+        user = await principal(request)
+        if ports.github is None or ports.github.public is None:
+            raise HTTPException(503)
+        body = await json_body(request, GitHubImportV1)
+        try:
+            return await ports.github.import_url(user, body.url, body.ref, key(request))
+        except ValueError:
+            raise HTTPException(422, detail="invalid_github_url") from None
 
     @app.delete("/api/v1/submissions/{submission_id}")
     async def delete_submission(request: Request, submission_id: UUID) -> SubmissionRecordV1:
@@ -2550,6 +2562,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 RepositoryCreate,
                 UploadReservationV1,
                 GitHubAcquisitionV1,
+                GitHubImportV1,
                 GitHubBindingV1,
                 StructuralAnalysisRequestV1,
                 AnalysisAcceptedV1,
