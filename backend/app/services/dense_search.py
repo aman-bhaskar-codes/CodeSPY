@@ -6,8 +6,10 @@ from collections.abc import Sequence
 from typing import Any, Literal
 from uuid import UUID
 
+import sqlalchemy as sa
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.types import UserDefinedType
 
 from app.contracts.chunking import ChunkKind
 from app.contracts.provider_budget import EmbeddingRequestV1
@@ -32,6 +34,18 @@ from app.services.retrieval_selection import (
 )
 
 grants = PHASE2_TABLES["repository_grants"]
+
+
+class _Vector(UserDefinedType):
+    """pgvector ``vector(n)`` type used only for query-time casts."""
+
+    cache_ok = True
+
+    def __init__(self, dimension: int) -> None:
+        self.dimension = dimension
+
+    def get_col_spec(self, **_: Any) -> str:
+        return f"vector({self.dimension})"
 
 
 class DenseSearchService:
@@ -134,23 +148,37 @@ class DenseSearchService:
         self._validate_vector(query_vec, dimension)
 
         # Step 4: Load scoped embeddings joined with source_chunks
-        stmt = (
-            select(
-                chunk_embeddings.c.chunk_id,
-                chunk_embeddings.c.embedding_json,
-                source_chunks.c.file_id,
-                source_chunks.c.file_path,
-                source_chunks.c.chunk_kind,
-                source_chunks.c.symbol_name,
-                source_chunks.c.qualified_name,
-                source_chunks.c.start_byte,
-                source_chunks.c.end_byte,
-                source_chunks.c.start_line,
-                source_chunks.c.end_line,
-                source_chunks.c.safe_content,
-                source_chunks.c.content_sha256,
-                source_chunks.c.safe_content_sha256,
+        use_pgvector = self.session.get_bind().dialect.name == "postgresql"
+        chunk_columns = (
+            chunk_embeddings.c.chunk_id,
+            source_chunks.c.file_id,
+            source_chunks.c.file_path,
+            source_chunks.c.chunk_kind,
+            source_chunks.c.symbol_name,
+            source_chunks.c.qualified_name,
+            source_chunks.c.start_byte,
+            source_chunks.c.end_byte,
+            source_chunks.c.start_line,
+            source_chunks.c.end_line,
+            source_chunks.c.safe_content,
+            source_chunks.c.content_sha256,
+            source_chunks.c.safe_content_sha256,
+        )
+        distance: sa.Label[Any] | None = None
+        columns: tuple[Any, ...]
+        if use_pgvector:
+            # Rank in SQL with the cosine-distance operator. The cast and the dimension
+            # predicate match the partial HNSW index, so 1024-dimension profiles use it.
+            stored = sa.cast(sa.literal_column("chunk_embeddings.embedding"), _Vector(dimension))
+            query_literal = sa.cast(
+                sa.literal("[" + ",".join(map(repr, query_vec)) + "]"), _Vector(dimension)
             )
+            distance = stored.op("<=>")(query_literal).label("distance")
+            columns = (*chunk_columns, distance)
+        else:
+            columns = (chunk_embeddings.c.embedding_json, *chunk_columns)
+        stmt = (
+            select(*columns)
             .join(
                 source_chunks,
                 (chunk_embeddings.c.org_id == source_chunks.c.org_id)
@@ -167,15 +195,25 @@ class DenseSearchService:
                 selected_chunks(self.session, request.scope, resolved),
             )
         )
+        if distance is not None:
+            stmt = stmt.where(
+                sa.func.vector_dims(sa.literal_column("chunk_embeddings.embedding")) == dimension
+            )
+            if request.min_score > 0:
+                stmt = stmt.where(stored.op("<=>")(query_literal) <= 1.0 - request.min_score)
+            stmt = stmt.order_by(distance).limit(request.limit)
 
         rows = (await self.session.execute(stmt)).mappings().all()
         scored_candidates: list[tuple[float, Any]] = []
 
         for row in rows:
             validate_safe_content(dict(row))
-            vec = row["embedding_json"]
-            self._validate_vector(vec, dimension)
-            sim = self._cosine_similarity(query_vec, vec)
+            if distance is not None:
+                sim = 1.0 - float(row["distance"])
+            else:
+                vec = row["embedding_json"]
+                self._validate_vector(vec, dimension)
+                sim = self._cosine_similarity(query_vec, vec)
             norm_score = max(0.0, min(1.0, sim))
             if norm_score >= request.min_score:
                 scored_candidates.append((norm_score, row))
