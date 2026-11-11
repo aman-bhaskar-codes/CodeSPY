@@ -10,6 +10,7 @@ from pathlib import PurePosixPath
 from app.contracts.ingestion import (
     AdmissionPolicy,
     AdmissionPolicyV2,
+    AdmissionPolicyV3,
     ArtifactManifestV1,
     ManifestEntryV1,
     Reason,
@@ -36,6 +37,26 @@ LANGUAGES = {
     ".yaml": "yaml",
     ".yml": "yaml",
     ".txt": "text",
+}
+
+# Extra source languages admitted only by AdmissionPolicyV3. Kept literal because this module is
+# copied into the admission image without the analyzers package; a test asserts they agree.
+EXTENDED_LANGUAGES = {
+    **LANGUAGES,
+    ".go": "go",
+    ".rs": "rust",
+    ".java": "java",
+    ".c": "c",
+    ".h": "c",
+    ".cc": "cpp",
+    ".cpp": "cpp",
+    ".cxx": "cpp",
+    ".hpp": "cpp",
+    ".hh": "cpp",
+    ".hxx": "cpp",
+    ".rb": "ruby",
+    ".php": "php",
+    ".swift": "swift",
 }
 
 
@@ -202,8 +223,13 @@ def inspect_zip_bytes(
                     raise AdmissionRejected("archive_corrupt")
                 path = PurePosixPath(name)
                 parts = {x.casefold() for x in path.parts}
-                language = LANGUAGES.get(path.suffix.casefold())
-                lock_metadata = isinstance(policy, AdmissionPolicyV2) and path.name == "uv.lock"
+                language = (
+                    EXTENDED_LANGUAGES if isinstance(policy, AdmissionPolicyV3) else LANGUAGES
+                ).get(path.suffix.casefold())
+                lock_metadata = (
+                    isinstance(policy, (AdmissionPolicyV2, AdmissionPolicyV3))
+                    and path.name == "uv.lock"
+                )
                 if lock_metadata:
                     language = "toml"
                 reason: Reason | None = None
@@ -219,7 +245,7 @@ def inspect_zip_bytes(
                 elif path.suffix.casefold() in {".zip", ".tar", ".gz", ".asar", ".jar"}:
                     reason = "nested_archive"
                 elif size > policy.eligible_file_bytes or (
-                    isinstance(policy, AdmissionPolicyV2)
+                    isinstance(policy, (AdmissionPolicyV2, AdmissionPolicyV3))
                     and lock_metadata
                     and size > policy.metadata_file_bytes
                 ):

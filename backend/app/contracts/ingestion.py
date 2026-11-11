@@ -38,7 +38,16 @@ class AdmissionPolicyV2(_AdmissionLimits):
     metadata_file_bytes: int = Field(default=262144, gt=0, le=262144)
 
 
-AdmissionPolicy = Annotated[AdmissionPolicyV1 | AdmissionPolicyV2, Field(discriminator="version")]
+class AdmissionPolicyV3(_AdmissionLimits):
+    """Adds Go, Rust, Java, C/C++, Ruby, PHP and Swift sources; keeps V2 uv.lock metadata."""
+
+    version: Literal["source-zip-v3"] = "source-zip-v3"
+    metadata_file_bytes: int = Field(default=262144, gt=0, le=262144)
+
+
+AdmissionPolicy = Annotated[
+    AdmissionPolicyV1 | AdmissionPolicyV2 | AdmissionPolicyV3, Field(discriminator="version")
+]
 _POLICY_ADAPTER: TypeAdapter[AdmissionPolicy] = TypeAdapter(AdmissionPolicy)
 
 
@@ -59,6 +68,7 @@ def resolve_admission_policy(digest: str, *, github_strip_root: bool) -> Admissi
     for policy in (
         AdmissionPolicyV1(github_strip_root=github_strip_root),
         AdmissionPolicyV2(github_strip_root=github_strip_root),
+        AdmissionPolicyV3(github_strip_root=github_strip_root),
     ):
         if policy.digest() == digest:
             return policy
@@ -109,7 +119,7 @@ class ManifestEntryV1(Contract):
 
 class ArtifactManifestV1(Contract):
     schema_version: Literal[1] = 1
-    policy_version: Literal["source-zip-v1", "source-zip-v2"]
+    policy_version: Literal["source-zip-v1", "source-zip-v2", "source-zip-v3"]
     policy_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     archive_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     archive_size: int = Field(ge=22, le=104857600)

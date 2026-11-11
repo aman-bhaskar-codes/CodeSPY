@@ -148,7 +148,7 @@ export type AstFileSummaryV1 = {
     /**
      * Language
      */
-    language: 'python' | 'javascript' | 'jsx' | 'typescript' | 'tsx';
+    language: 'python' | 'javascript' | 'jsx' | 'typescript' | 'tsx' | 'go' | 'rust' | 'java' | 'c' | 'cpp' | 'ruby' | 'php' | 'swift';
     /**
      * Path
      */
@@ -1116,7 +1116,7 @@ export type FileFactsV1 = {
     /**
      * Language
      */
-    language: 'python' | 'javascript' | 'jsx' | 'typescript' | 'tsx';
+    language: 'python' | 'javascript' | 'jsx' | 'typescript' | 'tsx' | 'go' | 'rust' | 'java' | 'c' | 'cpp' | 'ruby' | 'php' | 'swift';
     /**
      * Models
      */

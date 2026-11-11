@@ -94,7 +94,7 @@ def test_policy_decoder_discriminates_version_and_source_mode():
     with pytest.raises(ValueError):
         ingestion.resolve_admission_policy(v2().digest(), github_strip_root=True)
     with pytest.raises(ValidationError):
-        ingestion.parse_admission_policy({"version": "source-zip-v3"})
+        ingestion.parse_admission_policy({"version": "source-zip-v4"})
 
 
 def test_v1_decoder_does_not_accept_v2_fields():
