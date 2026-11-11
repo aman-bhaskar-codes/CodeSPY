@@ -9,10 +9,11 @@ import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Protocol
+from typing import Any, Protocol
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, insert, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.contracts.ingestion import (
@@ -23,6 +24,7 @@ from app.contracts.ingestion import (
     resolve_admission_policy,
 )
 from app.contracts.jobs import AttemptLeaseV2, EnqueueJobV2
+from app.contracts.persistence import RepositoryCreate
 from app.db.time import database_now
 from app.db.transaction import transaction
 from app.domain.canonical_json import semantic_digest
@@ -33,7 +35,10 @@ from app.models.tables import memberships, repositories
 from app.ports.object_store import ObjectStore
 from app.repositories.command_repository import record_command, replay_command
 from app.repositories.event_repository import append_event
+from app.repositories.identity_repository import IdentityRepository
+from app.repositories.repository_repository import RepositoryRepository
 from app.security.authorization import lock_scope
+from app.security.github_url import parse_github_url
 from app.services.job_finalization import descriptor
 from app.services.jobs import JobService
 from app.services.submissions import SubmissionService
@@ -54,16 +59,23 @@ class GitHubProvider(Protocol):
     def archive(self, access: RepositoryAccess, commit: str) -> AsyncIterator[bytes]: ...
 
 
+class GitHubPublicProvider(Protocol):
+    async def resolve(self, full_name: str, ref: str | None) -> str: ...
+    def archive(self, full_name: str, commit: str) -> AsyncIterator[bytes]: ...
+
+
 class GitHubAcquisitionService:
     def __init__(
         self,
         factory: async_sessionmaker[AsyncSession],
         store: ObjectStore,
-        provider: GitHubProvider,
+        provider: GitHubProvider | None,
         *,
         policy: AdmissionPolicy | None = None,
+        public: GitHubPublicProvider | None = None,
     ):
         self.factory, self.store, self.provider = factory, store, provider
+        self.public = public
         self.jobs = JobService(factory)
         self.submissions = SubmissionService(factory, store)
         chosen = policy if policy is not None else AdmissionPolicyV1(github_strip_root=True)
@@ -78,6 +90,8 @@ class GitHubAcquisitionService:
         *,
         request_key: str | None = None,
     ) -> RepositoryAccess:
+        if self.provider is None:
+            raise RuntimeError("GitHub App provider unavailable")
         if github_repository_id <= 0 or installation_id <= 0:
             raise ValueError("numeric provider identities required")
         # The provider must prove the current user+App intersection, not just
@@ -234,15 +248,6 @@ class GitHubAcquisitionService:
             or key.startswith(("job:", "child:"))
         ):
             raise ValueError("invalid acquisition request")
-        submissions, limits = (PHASE2_TABLES[n] for n in ["source_submissions", "org_work_limits"])
-        digest = semantic_digest(
-            {
-                "repository_id": repository_id,
-                "requested_ref": ref,
-                "policy_hash": self.policy.digest(),
-                "source_kind": "github_archive",
-            }
-        )
         async with transaction(self.factory) as s:
             await lock_scope(s, ctx.org_id, ctx.principal_id, repository_id)
             binding = await s.scalar(
@@ -254,73 +259,140 @@ class GitHubAcquisitionService:
             )
             if binding is None:
                 raise ScopeViolation("repository unavailable")
-            old = (
-                (
-                    await s.execute(
-                        select(submissions).where(
-                            submissions.c.org_id == ctx.org_id, submissions.c.request_key == key
-                        )
-                    )
+            return await self._queue(s, ctx, repository_id, ref, key, "github_archive")
+
+    async def import_url(
+        self, principal_id: UUID, url: str, ref: str | None, key: str
+    ) -> SubmissionRecordV1:
+        """Queue a pinned public-repository import; no GitHub App binding is involved."""
+        if self.public is None:
+            raise RuntimeError("public GitHub provider unavailable")
+        parsed = parse_github_url(url)
+        chosen = ref if ref is not None else parsed.ref
+        if (
+            (chosen is not None and not re.fullmatch(r"[A-Za-z0-9_./-]{1,255}", chosen))
+            or not 1 <= len(key.encode()) <= 128
+            or key.startswith(("job:", "child:"))
+        ):
+            raise ValueError("invalid import request")
+        grants = PHASE2_TABLES["repository_grants"]
+        limits = PHASE2_TABLES["org_work_limits"]
+        async with transaction(self.factory) as s:
+            org = await s.scalar(
+                select(memberships.c.org_id)
+                .where(
+                    memberships.c.principal_id == principal_id,
+                    memberships.c.role.in_(["owner", "admin"]),
                 )
-                .mappings()
-                .one_or_none()
+                .order_by(memberships.c.created_at, memberships.c.org_id)
+                .limit(1)
             )
-            if old:
-                if old["request_hash"] != digest:
-                    raise DuplicateConflict("acquisition key differs")
-                return await self.submissions._record(s, dict(old))
-            quota = (
-                (await s.execute(select(limits).where(limits.c.org_id == ctx.org_id)))
-                .mappings()
-                .one()
-            )
-            if (
-                quota["reserved_bytes"] + self.policy.max_archive_bytes
-                > quota["max_reserved_bytes"]
-            ):
-                raise CapacityExceeded("byte reservation exceeded")
-            identity = uuid4()
-            row = (
-                (
-                    await s.execute(
-                        insert(submissions)
-                        .values(
-                            org_id=ctx.org_id,
-                            id=identity,
-                            repository_id=repository_id,
-                            principal_id=ctx.principal_id,
-                            source_kind="github_archive",
-                            state="admission_queued",
-                            request_key=key,
-                            request_hash=digest,
-                            reserved_bytes=self.policy.max_archive_bytes,
-                            requested_ref=ref,
-                            policy_hash=self.policy.digest(),
-                            expires_at=func.clock_timestamp() + timedelta(hours=24),
-                        )
-                        .returning(submissions)
-                    )
-                )
-                .mappings()
-                .one()
-            )
-            await s.execute(
-                update(limits)
-                .where(limits.c.org_id == ctx.org_id)
-                .values(reserved_bytes=limits.c.reserved_bytes + self.policy.max_archive_bytes)
-            )
-            await self.jobs._enqueue(
-                s,
+            if org is None:
+                raise ScopeViolation("organization unavailable")
+            await s.execute(pg_insert(limits).values(org_id=org).on_conflict_do_nothing())
+            await s.execute(select(limits.c.org_id).where(limits.c.org_id == org).with_for_update())
+            ctx = await IdentityRepository(s).resolve_context(org, principal_id)
+            repo = await RepositoryRepository(s).create(
                 ctx,
-                EnqueueJobV2(
-                    repository_id=repository_id,
-                    submission_id=identity,
-                    operation="admit_source",
-                    request_key=f"job:submission:{identity}",
-                    config_hash=self.policy.digest(),
+                RepositoryCreate(
+                    repository_key="github.com/" + parsed.full_name,
+                    display_name=parsed.full_name,
+                    # "github" repositories require a live App binding on every read
+                    # (require_repository); public imports are anonymous archives and
+                    # keep their provenance on the submission kind.
+                    source_kind="archive",
                 ),
             )
-            return await self.submissions._record(s, dict(row))
+            await s.execute(
+                pg_insert(grants)
+                .values(
+                    org_id=org, repository_id=repo.id, principal_id=principal_id, permission="write"
+                )
+                .on_conflict_do_nothing()
+            )
+            await lock_scope(s, ctx.org_id, ctx.principal_id, repo.id)
+            return await self._queue(s, ctx, repo.id, chosen, key, "github_public_archive")
+
+    async def _queue(
+        self,
+        s: AsyncSession,
+        ctx: TenantContext,
+        repository_id: UUID,
+        ref: str | None,
+        key: str,
+        kind: str,
+    ) -> SubmissionRecordV1:
+        submissions, limits = (PHASE2_TABLES[n] for n in ["source_submissions", "org_work_limits"])
+        digest = semantic_digest(
+            {
+                "repository_id": repository_id,
+                "requested_ref": ref,
+                "policy_hash": self.policy.digest(),
+                "source_kind": kind,
+            }
+        )
+        old = (
+            (
+                await s.execute(
+                    select(submissions).where(
+                        submissions.c.org_id == ctx.org_id, submissions.c.request_key == key
+                    )
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if old:
+            if old["request_hash"] != digest:
+                raise DuplicateConflict("acquisition key differs")
+            return await self.submissions._record(s, dict(old))
+        quota = (
+            (await s.execute(select(limits).where(limits.c.org_id == ctx.org_id))).mappings().one()
+        )
+        if quota["reserved_bytes"] + self.policy.max_archive_bytes > quota["max_reserved_bytes"]:
+            raise CapacityExceeded("byte reservation exceeded")
+        identity = uuid4()
+        row = (
+            (
+                await s.execute(
+                    insert(submissions)
+                    .values(
+                        org_id=ctx.org_id,
+                        id=identity,
+                        repository_id=repository_id,
+                        principal_id=ctx.principal_id,
+                        source_kind=kind,
+                        state="admission_queued",
+                        request_key=key,
+                        request_hash=digest,
+                        reserved_bytes=self.policy.max_archive_bytes,
+                        requested_ref=ref,
+                        policy_hash=self.policy.digest(),
+                        expires_at=func.clock_timestamp() + timedelta(hours=24),
+                    )
+                    .returning(submissions)
+                )
+            )
+            .mappings()
+            .one()
+        )
+        await s.execute(
+            update(limits)
+            .where(limits.c.org_id == ctx.org_id)
+            .values(reserved_bytes=limits.c.reserved_bytes + self.policy.max_archive_bytes)
+        )
+        await self.jobs._enqueue(
+            s,
+            ctx,
+            EnqueueJobV2(
+                repository_id=repository_id,
+                submission_id=identity,
+                operation="admit_source",
+                request_key=f"job:submission:{identity}",
+                config_hash=self.policy.digest(),
+            ),
+        )
+        return await self.submissions._record(s, dict(row))
 
     async def acquire(self, lease: AttemptLeaseV2) -> ObjectDescriptor:
         submissions, objects, bindings = (
@@ -342,18 +414,32 @@ class GitHubAcquisitionService:
                 .mappings()
                 .one()
             )
-            binding = dict(
-                (
-                    await s.execute(
-                        select(bindings).where(
-                            bindings.c.org_id == lease.org_id,
-                            bindings.c.repository_id == job["repository_id"],
-                        )
+            public = sub["source_kind"] == "github_public_archive"
+            binding: dict[str, Any] = {}
+            full_name = ""
+            if public:
+                key = await s.scalar(
+                    select(repositories.c.repository_key).where(
+                        repositories.c.org_id == lease.org_id,
+                        repositories.c.id == job["repository_id"],
                     )
                 )
-                .mappings()
-                .one()
-            )
+                if not isinstance(key, str) or not key.startswith("github.com/"):
+                    raise DuplicateConflict("public GitHub repository identity unavailable")
+                full_name = key.removeprefix("github.com/")
+            else:
+                binding = dict(
+                    (
+                        await s.execute(
+                            select(bindings).where(
+                                bindings.c.org_id == lease.org_id,
+                                bindings.c.repository_id == job["repository_id"],
+                            )
+                        )
+                    )
+                    .mappings()
+                    .one()
+                )
             selected = None
             if sub["input_object_id"] is not None:
                 row = (
@@ -370,18 +456,32 @@ class GitHubAcquisitionService:
                     .one()
                 )
                 selected = descriptor(dict(row))
-        access = await self.provider.verify_access(
-            job["principal_id"], binding["github_repository_id"], binding["installation_id"]
-        )
-        if access != RepositoryAccess(
-            binding["github_repository_id"], binding["installation_id"], binding["account_id"]
-        ):
-            raise ScopeViolation("provider identity differs")
+        access: RepositoryAccess | None = None
+        if public:
+            if self.public is None:
+                raise RuntimeError("public GitHub provider unavailable")
+        else:
+            if self.provider is None:
+                raise RuntimeError("GitHub App provider unavailable")
+            access = await self.provider.verify_access(
+                job["principal_id"], binding["github_repository_id"], binding["installation_id"]
+            )
+            if access != RepositoryAccess(
+                binding["github_repository_id"], binding["installation_id"], binding["account_id"]
+            ):
+                raise ScopeViolation("provider identity differs")
         if selected is not None:
             async for _ in self.store.open_verified(selected):
                 pass
             return selected
-        commit = sub["resolved_commit"] or await self.provider.resolve(access, sub["requested_ref"])
+        if sub["resolved_commit"]:
+            commit = sub["resolved_commit"]
+        elif public:
+            assert self.public is not None
+            commit = await self.public.resolve(full_name, sub["requested_ref"])
+        else:
+            assert self.provider is not None and access is not None
+            commit = await self.provider.resolve(access, sub["requested_ref"])
         if not re.fullmatch("[0-9a-f]{40}", commit):
             raise DuplicateConflict("provider commit is not full SHA")
         async with transaction(self.factory) as s:
@@ -441,9 +541,13 @@ class GitHubAcquisitionService:
                 )
             )
         async with asyncio.timeout(120):
-            staged = await self.store.put_stage(
-                stage_key, self.provider.archive(access, commit), self.policy.max_archive_bytes
-            )
+            if public:
+                assert self.public is not None
+                chunks = self.public.archive(full_name, commit)
+            else:
+                assert self.provider is not None and access is not None
+                chunks = self.provider.archive(access, commit)
+            staged = await self.store.put_stage(stage_key, chunks, self.policy.max_archive_bytes)
         async with transaction(self.factory) as s:
             await s.execute(
                 update(objects)
@@ -457,24 +561,29 @@ class GitHubAcquisitionService:
             )
         acquired = await self.store.put_if_absent(key, staged)
         # Recheck provider authority outside locks, then compare the local version.
-        if (
-            await self.provider.verify_access(
-                job["principal_id"], binding["github_repository_id"], binding["installation_id"]
-            )
-            != access
-        ):
-            raise ScopeViolation("provider authority changed")
+        if not public:
+            assert self.provider is not None
+            if (
+                await self.provider.verify_access(
+                    job["principal_id"],
+                    binding["github_repository_id"],
+                    binding["installation_id"],
+                )
+                != access
+            ):
+                raise ScopeViolation("provider authority changed")
         async with transaction(self.factory) as s:
             locked, _ = await self.jobs._locked(s, lease.org_id, lease.job_id)
             await self.jobs._current(s, lease, locked)
-            version = await s.scalar(
-                select(bindings.c.version).where(
-                    bindings.c.org_id == lease.org_id,
-                    bindings.c.repository_id == job["repository_id"],
+            if not public:
+                version = await s.scalar(
+                    select(bindings.c.version).where(
+                        bindings.c.org_id == lease.org_id,
+                        bindings.c.repository_id == job["repository_id"],
+                    )
                 )
-            )
-            if version != binding["version"]:
-                raise ScopeViolation("provider binding changed")
+                if version != binding["version"]:
+                    raise ScopeViolation("provider binding changed")
             current = (
                 (
                     await s.execute(

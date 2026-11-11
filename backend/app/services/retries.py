@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.contracts.ingestion import ObjectDescriptor, resolve_admission_policy
+from app.contracts.ingestion import GITHUB_SOURCE_KINDS, ObjectDescriptor, resolve_admission_policy
 from app.contracts.jobs import EnqueueJobV2, EnqueueJobV3, RetryResponseV1, RetryResponseV2
 from app.contracts.scan_jobs import EnqueueScanJobV4, RetryScanResponseV3
 from app.db.time import database_now
@@ -27,6 +27,7 @@ RECOVERABLE = {
     "storage_unavailable",
     "queue_unavailable",
     "provider_unavailable",
+    "provider_rate_limited",
     "admission_process_failed",
     "analysis_process_failed",
     "analysis_unavailable",
@@ -118,7 +119,7 @@ class RetryService:
             try:
                 expected_policy = resolve_admission_policy(
                     source["policy_hash"],
-                    github_strip_root=source["source_kind"] == "github_archive",
+                    github_strip_root=source["source_kind"] in GITHUB_SOURCE_KINDS,
                 ).digest()
             except ValueError:
                 raise RetryRejected("retry_not_supported") from None

@@ -2282,6 +2282,37 @@
         "title": "GitHubBindingV1",
         "type": "object"
       },
+      "GitHubImportV1": {
+        "additionalProperties": false,
+        "properties": {
+          "ref": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_./-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Ref"
+          },
+          "url": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "GitHubImportV1",
+        "type": "object"
+      },
       "GraphPage": {
         "additionalProperties": false,
         "properties": {
@@ -8796,7 +8827,8 @@
           "source_kind": {
             "enum": [
               "upload_zip",
-              "github_archive"
+              "github_archive",
+              "github_public_archive"
             ],
             "title": "Source Kind",
             "type": "string"
@@ -9444,6 +9476,24 @@
           }
         },
         "summary": "Oauth Start"
+      }
+    },
+    "/api/v1/github-imports": {
+      "post": {
+        "operationId": "import_github_url_api_v1_github_imports_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionRecordV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Import Github Url"
       }
     },
     "/api/v1/jobs/{job_id}": {

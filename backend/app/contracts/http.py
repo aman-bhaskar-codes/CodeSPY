@@ -115,6 +115,13 @@ class GitHubAcquisitionV1(Contract):
     requested_ref: str = Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_./-]+$")
 
 
+class GitHubImportV1(Contract):
+    url: str = Field(min_length=1, max_length=400)
+    ref: str | None = Field(
+        default=None, min_length=1, max_length=255, pattern=r"^[A-Za-z0-9_./-]+$"
+    )
+
+
 class GitHubBindingV1(Contract):
     github_repository_id: int = Field(gt=0)
     installation_id: int = Field(gt=0)

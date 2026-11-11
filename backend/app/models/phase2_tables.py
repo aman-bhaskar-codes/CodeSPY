@@ -317,7 +317,10 @@ submissions = table(
             "source_submissions",
             ["org_id", "repository_id", "id"],
         ),
-        ck("ck_submission_kind", "source_kind IN ('upload_zip','github_archive')"),
+        ck(
+            "ck_submission_kind",
+            "source_kind IN ('upload_zip','github_archive','github_public_archive')",
+        ),
         ck(
             "ck_submission_state",
             "state IN "

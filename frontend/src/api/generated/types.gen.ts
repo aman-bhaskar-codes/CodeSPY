@@ -1126,6 +1126,20 @@ export type GitHubBindingV1 = {
 };
 
 /**
+ * GitHubImportV1
+ */
+export type GitHubImportV1 = {
+    /**
+     * Ref
+     */
+    ref?: string | null;
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
  * GraphPage
  */
 export type GraphPage = {
@@ -4541,7 +4555,7 @@ export type SubmissionRecordV1 = {
     /**
      * Source Kind
      */
-    source_kind: 'upload_zip' | 'github_archive';
+    source_kind: 'upload_zip' | 'github_archive' | 'github_public_archive';
     /**
      * State
      */
@@ -4901,6 +4915,22 @@ export type OauthStartApiV1AuthGithubStartGetResponses = {
      */
     200: unknown;
 };
+
+export type ImportGithubUrlApiV1GithubImportsPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/github-imports';
+};
+
+export type ImportGithubUrlApiV1GithubImportsPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: SubmissionRecordV1;
+};
+
+export type ImportGithubUrlApiV1GithubImportsPostResponse = ImportGithubUrlApiV1GithubImportsPostResponses[keyof ImportGithubUrlApiV1GithubImportsPostResponses];
 
 export type GetJobApiV1JobsJobIdGetData = {
     body?: never;

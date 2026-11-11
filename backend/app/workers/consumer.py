@@ -10,7 +10,12 @@ from app.admission.zip_inventory import AdmissionRejected
 from app.analyzers.runner import AnalysisProcessError
 from app.analyzers.source import SourceIntegrityError
 from app.contracts.indexing import JobEnvelopeV5
-from app.contracts.ingestion import AdmissionPolicy, ArtifactManifestV1, resolve_admission_policy
+from app.contracts.ingestion import (
+    GITHUB_SOURCE_KINDS,
+    AdmissionPolicy,
+    ArtifactManifestV1,
+    resolve_admission_policy,
+)
 from app.contracts.investigation_jobs import JobEnvelopeV6
 from app.contracts.jobs import AttemptLeaseV2, JobEnvelopeV2, JobEnvelopeV3
 from app.contracts.scan_jobs import JobEnvelopeV4
@@ -187,7 +192,7 @@ class JobConsumer:
             if envelope.operation == "admit_source":
                 try:
                     policy = resolve_admission_policy(
-                        job["config_hash"], github_strip_root=source_kind == "github_archive"
+                        job["config_hash"], github_strip_root=source_kind in GITHUB_SOURCE_KINDS
                     )
                 except ValueError:
                     raise DuplicateConflict("unsupported admission policy") from None
@@ -280,7 +285,13 @@ class JobConsumer:
         except ProviderFailure as error:
             code = (
                 error.code
-                if error.code in {"access_revoked", "archive_limit_exceeded"}
+                if error.code
+                in {
+                    "access_revoked",
+                    "archive_limit_exceeded",
+                    "provider_rate_limited",
+                    "repository_unavailable",
+                }
                 else "provider_unavailable"
             )
             try:

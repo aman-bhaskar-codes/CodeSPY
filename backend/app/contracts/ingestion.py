@@ -161,12 +161,15 @@ class ObjectDescriptor(Contract):
         return self
 
 
+GITHUB_SOURCE_KINDS = frozenset({"github_archive", "github_public_archive"})
+
+
 class SubmissionRecordV1(Contract):
     schema_version: Literal[1] = 1
     org_id: UUID
     id: UUID
     repository_id: UUID
-    source_kind: Literal["upload_zip", "github_archive"]
+    source_kind: Literal["upload_zip", "github_archive", "github_public_archive"]
     state: Literal[
         "reserved",
         "uploading",
