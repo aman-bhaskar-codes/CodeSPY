@@ -50,7 +50,10 @@ async def run(profile: str, converse_model: str, skip_embedding: bool) -> int:
         started = time.perf_counter()
         embedded = await AmazonTitanEmbeddingAdapter(client).embed(
             EmbeddingRequestV1(
-                text=EMBED_TEXT, provider="aws_bedrock", model_id=MODEL_ID, dimensions=1024
+                text=EMBED_TEXT,
+                provider="aws_bedrock",
+                model_id=MODEL_ID,
+                dimensions=1024,
             )
         )
         norm = math.sqrt(sum(v * v for v in embedded.vector))
@@ -64,11 +67,15 @@ async def run(profile: str, converse_model: str, skip_embedding: bool) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--converse-model", required=True, help="model or inference-profile id")
+    parser.add_argument(
+        "--converse-model", required=True, help="model or inference-profile id"
+    )
     parser.add_argument("--skip-embedding", action="store_true")
     args = parser.parse_args()
     if os.environ.get("CODESPY_LIVE_BEDROCK") != "1":
-        print("refusing to run: set CODESPY_LIVE_BEDROCK=1 to make two small paid Bedrock calls")
+        print(
+            "refusing to run: set CODESPY_LIVE_BEDROCK=1 to make two small paid Bedrock calls"
+        )
         return 2
     profile = os.environ.get("AWS_PROFILE")
     if not profile:
