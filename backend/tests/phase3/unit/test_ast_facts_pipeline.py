@@ -184,11 +184,13 @@ def test_v3_archives_expose_new_languages_to_facts_but_not_to_structural(tmp_pat
         "svc/main.go": "go",
     }
     draft = analyze_facts(source, tmp_path)
-    assert sorted(f.path for f in draft.files) == ["a.py", "lib/lib.rs", "svc/main.go"]
-    assert [(o.path, o.reason) for o in draft.coverage.omissions] == [
-        ("native/x.c", "language_unsupported")
+    assert sorted(f.path for f in draft.files) == [
+        "a.py",
+        "lib/lib.rs",
+        "native/x.c",
+        "svc/main.go",
     ]
-    assert draft.coverage.requested_files == 4
+    assert draft.coverage.omissions == () and draft.coverage.requested_files == 4
 
     other = tmp_path / "structural"
     other.mkdir()

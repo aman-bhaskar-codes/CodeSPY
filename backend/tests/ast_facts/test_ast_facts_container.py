@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 from app.analyzers.facts_pipeline import analyze_facts
+from app.analyzers.registry import SPECS
 from app.analyzers.runner import AnalysisProcessError, DockerAnalysisRunner
 from app.contracts.structure import AnalysisConfigV1
 from app.domain.scope import RunRef
@@ -74,7 +75,7 @@ async def test_image_loads_and_parses_every_registered_grammar(tmp_path):
     assert json.loads(stdout) == {spec.name: True for spec in SPECS}
 
 
-async def test_container_extracts_go_java_rust_from_a_v3_archive(tmp_path):
+async def test_container_extracts_every_registered_language_from_a_v3_archive(tmp_path):
     image = os.environ.get("CODESPY_ANALYSIS_IMAGE")
     if not image:
         pytest.skip("owned Linux analyzer image required")
@@ -82,10 +83,18 @@ async def test_container_extracts_go_java_rust_from_a_v3_archive(tmp_path):
 
     files = {
         "app.py": b"def f(a: int) -> int:\n    return a\n",
+        "web/app.js": b"export function f(a) { return a; }\n",
+        "web/app.ts": b"export function f(a: number): number { return a; }\n",
+        "web/App.jsx": b"export const App = () => <div/>;\n",
+        "web/App.tsx": b"export const App = (): JSX.Element => <div/>;\n",
         "svc/server.go": b"package svc\nfunc New(host string) *Server { return nil }\n",
         "src/com/ex/Foo.java": b"package com.ex;\npublic class Foo { public void go() {} }\n",
         "src/lib.rs": b"pub fn free(x: i32) -> i32 { x }\n",
         "native/x.c": b"int x;\n",
+        "native/y.cpp": b"namespace n { class Y { public: int get() const; }; }\n",
+        "lib/app.rb": b"class App\n  def run(a); end\nend\n",
+        "src/App.php": b"<?php\nnamespace A;\nclass App { public function run(): void {} }\n",
+        "Sources/Main.swift": b"public struct Main { var x: Int }\n",
     }
     runner = DockerAnalysisRunner(image, tmp_path / "owner")
     toolchain = await runner.qualify_analysis()
@@ -95,17 +104,10 @@ async def test_container_extracts_go_java_rust_from_a_v3_archive(tmp_path):
     source = source_input(root, files, config, AdmissionPolicyV3())
     draft = await runner.analyze_facts(source, root)
     assert draft == analyze_facts(source, root)
-    by_path = {f.path: f for f in draft.files}
-    assert {p: f.language for p, f in by_path.items()} == {
-        "app.py": "python",
-        "src/com/ex/Foo.java": "java",
-        "src/lib.rs": "rust",
-        "svc/server.go": "go",
-    }
-    assert [(o.path, o.reason) for o in draft.coverage.omissions] == [
-        ("native/x.c", "language_unsupported")
-    ]
+    assert draft.coverage.omissions == ()
+    assert {f.language for f in draft.files} == {spec.name for spec in SPECS}
+    assert all(f.status == "parsed" and f.symbols for f in draft.files if f.path != "native/x.c")
     result = materialize_facts(
         RunRef(org_id=uuid4(), snapshot_id=uuid4(), run_id=uuid4()), draft, source, root
     )
-    assert result.batch.disposition == "partial" and len(result.digests) == 4
+    assert result.batch.disposition == "completed" and len(result.digests) == len(files)
