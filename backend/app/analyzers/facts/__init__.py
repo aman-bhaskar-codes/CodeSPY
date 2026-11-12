@@ -3,7 +3,8 @@
 from app.contracts.ast_facts import FileFactsV1
 from app.contracts.structure import AnalysisBudget, SourceUnitV1
 
-FACT_LANGUAGES = frozenset({"python"})
+JS_FAMILY = frozenset({"javascript", "jsx", "typescript", "tsx"})
+FACT_LANGUAGES = frozenset({"python"}) | JS_FAMILY
 
 
 def extract_facts(unit: SourceUnitV1, budget: AnalysisBudget) -> FileFactsV1:
@@ -11,4 +12,8 @@ def extract_facts(unit: SourceUnitV1, budget: AnalysisBudget) -> FileFactsV1:
         from app.analyzers.facts.python import extract
 
         return extract(unit, budget)
+    if unit.language in JS_FAMILY:
+        from app.analyzers.facts.javascript import extract as extract_js
+
+        return extract_js(unit, budget)
     raise ValueError(f"unsupported language: {unit.language}")

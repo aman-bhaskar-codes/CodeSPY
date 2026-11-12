@@ -76,16 +76,17 @@ def ref():
     return RunRef(org_id=uuid4(), snapshot_id=uuid4(), run_id=uuid4())
 
 
-def test_pipeline_extracts_python_and_reports_unsupported_languages_as_omissions(tmp_path):
+def test_pipeline_extracts_python_and_javascript_and_skips_non_source_files(tmp_path):
     draft = analyze_facts(source_input(tmp_path), tmp_path)
     by_path = {f.path: f for f in draft.files}
-    assert set(by_path) == {"pkg/service.py", "pkg/broken.py"}
+    assert set(by_path) == {"pkg/service.py", "pkg/broken.py", "web/app.js"}
     assert by_path["pkg/service.py"].status == "parsed"
     assert by_path["pkg/broken.py"].status == "partial"
+    assert by_path["web/app.js"].language == "javascript"
+    assert [e.name for e in by_path["web/app.js"].exports] == ["x"]
     cov = draft.coverage
-    assert (cov.requested_files, cov.processed_files, cov.omitted_files) == (3, 2, 1)
-    assert [(o.path, o.reason) for o in cov.omissions] == [("web/app.js", "language_unsupported")]
-    assert cov.syntax == "partial"
+    assert (cov.requested_files, cov.processed_files, cov.omitted_files) == (3, 3, 0)
+    assert cov.omissions == () and cov.syntax == "partial"  # broken.py has syntax errors
 
 
 def test_pipeline_is_deterministic(tmp_path):
@@ -99,7 +100,7 @@ def test_materialization_accepts_a_faithful_draft_and_marks_partial(tmp_path):
     source = source_input(tmp_path)
     result = materialize_facts(ref(), analyze_facts(source, tmp_path), source, tmp_path)
     assert result.batch.disposition == "partial"
-    assert len(result.digests) == 2
+    assert len(result.digests) == 3
 
 
 def load(payload) -> AstDraftV1:

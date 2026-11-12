@@ -1726,6 +1726,10 @@ export type ImportFactV1 = {
      * Relative Level
      */
     relative_level?: number;
+    /**
+     * Type Only
+     */
+    type_only?: boolean;
 };
 
 /**
@@ -3667,6 +3671,10 @@ export type ParameterV1 = {
      */
     name: string;
     /**
+     * Optional
+     */
+    optional?: boolean;
+    /**
      * Type
      */
     type?: string | null;
@@ -4935,9 +4943,17 @@ export type SymbolFactV1 = {
      */
     decorators?: Array<string>;
     /**
+     * Exported
+     */
+    exported?: boolean;
+    /**
+     * Implements
+     */
+    implements?: Array<string>;
+    /**
      * Kind
      */
-    kind: 'function' | 'method' | 'class' | 'interface' | 'struct' | 'enum' | 'trait' | 'type_alias' | 'constant' | 'field';
+    kind: 'function' | 'method' | 'class' | 'interface' | 'struct' | 'enum' | 'trait' | 'type_alias' | 'constant' | 'field' | 'namespace';
     /**
      * Modifiers
      */
