@@ -211,7 +211,9 @@ def _dependencies(files: Sequence[FileEntry], graph: DependencyGraphV1, a: Analy
     for hub in a.hubs_in[:1]:
         statements.append(
             _statement(
-                "derivation", "dependencies.top_imported", {"node": hub.node, "count": hub.count}
+                "derivation",
+                "dependencies.top_imported",
+                {"node": hub.node.removeprefix("file:"), "count": hub.count},
             )
         )
     unresolved = [e for e in graph.edges if e.resolution == "unresolved"]

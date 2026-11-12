@@ -273,3 +273,22 @@ def test_go_module_root_package_and_java_framework_prefixes_found_by_calibration
     assert ("org.springframework.beans.factory.annotation.Autowired", "external") in got
     assert ("org.springframework.samples.app.B", "resolved") in got
     assert ("org.springframework.samples.app.Missing", "unresolved") in got  # internal, absent file
+
+
+def test_a_python_fixture_named_like_a_library_does_not_capture_every_importer():
+    # Found on the Flask corpus: tests/.../flask.py would otherwise win for every nearby importer.
+    _, out = summarize(
+        {
+            "src/flask/__init__.py": "",
+            "tests/t/test_a.py": "import flask\n",
+            "tests/t/deep/flask.py": "",
+            "tests/t/test_b.py": "import deep\n",
+            "tests/t/deep/__init__.py": "",
+        }
+    )
+    kind = out["tests/t/test_a.py"][0]
+    assert kind[1] == "ambiguous" and set(kind[2]) == {
+        "file:src/flask/__init__.py",
+        "file:tests/t/deep/flask.py",
+    }
+    assert out["tests/t/test_b.py"] == [("deep", "resolved", "file:tests/t/deep/__init__.py")]
