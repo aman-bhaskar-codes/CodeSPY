@@ -36,6 +36,8 @@ Unsupported billing categories remain held for reconciliation.
 For Bedrock, the owner creates and closes an asynchronous SDK client with region
 `ap-south-1` and `Config(retries={"total_max_attempts": 1, "mode": "standard"})`,
 then wraps it in `ConfiguredAsyncConverseClient` and injects it as `bedrock_client`.
+`core/bedrock_runtime.py::build_bedrock_wiring` does this, plus the accounted embedding
+gate, from a session the owner built; see the [Bedrock runtime record](acceptance/bedrock-runtime.md).
 The wrapper verifies metadata without creating an AWS session. A Mumbai client does
 not prove the processing regions of an inference profile: list and authorize every
 destination separately. The pinned SDK lacks native Converse schema support, so

@@ -7,25 +7,6 @@ from app.domain.errors import ScopeViolation
 from app.services.dense_search import DenseSearchService
 
 
-@pytest.fixture
-def qualified_profile(monkeypatch):
-    # These profile tests isolate unavailable-provider behavior, not publication authority.
-    from app.contracts.indexing import IndexCoverageV1
-    from app.services.retrieval_selection import ResolvedChunkSetV1
-
-    selected = ResolvedChunkSetV1(
-        uuid4(),
-        uuid4(),
-        "a" * 64,
-        "b" * 64,
-        IndexCoverageV1(admitted_files=0, selected_files=0, processed_files=0),
-    )
-    monkeypatch.setattr(
-        "app.services.dense_search.resolve_lexical_set", AsyncMock(return_value=selected)
-    )
-    monkeypatch.setattr("app.services.dense_search.require_retrieval_source", AsyncMock())
-
-
 def request():
     return DenseSearchRequestV1(
         scope=SearchScopeV1(
@@ -88,7 +69,7 @@ async def test_provider_profile_mismatch_is_not_fallback(qualified_profile):
 
     adapter = AsyncMock()
     adapter.embed.return_value = EmbeddingResponseV1(
-        vector=(1.0, 0.0), token_count=1, model_id="wrong", provider="provider"
+        vector=(1.0, 0.0), token_count=1, model_id="wrong", provider="fake"
     )
     service = DenseSearchService(AsyncMock(), embedding_port=adapter)
     service._verify_scope = AsyncMock()
@@ -96,7 +77,7 @@ async def test_provider_profile_mismatch_is_not_fallback(qualified_profile):
         return_value={
             "id": uuid4(),
             "embedding_model": "model",
-            "embedding_provider": "provider",
+            "embedding_provider": "fake",
             "dimension": 2,
             "state": "ready",
         }

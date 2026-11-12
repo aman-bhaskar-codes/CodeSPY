@@ -247,8 +247,8 @@ The existing accounting maintenance pass also sweeps stale embedding markers
 using database time and bounded SKIP LOCKED batches. Recovery preserves reserved
 capacity as uncertain holds; late known settlement uses captured pricing and
 retains other holds. It never guesses usage or frees a hold because a timeout
-elapsed. No external embedding client, billing-feed integration or real inference
-was enabled. Operational funding, credentials and activation remain owner-managed.
+elapsed. The accounted embedding gate and the Titan adapter ([Bedrock runtime](bedrock-runtime.md))
+now use these routines; no billing-feed integration or real inference was enabled. Operational funding, credentials and activation remain owner-managed.
 
 The final owned PostgreSQL accounting/model/memory selection passed 77 cases.
 Known earlier tokenizer-related unit failures were caused by an unset offline

@@ -48,14 +48,18 @@ class AmazonTitanEmbeddingAdapter(EmbeddingPort):
         self._timeout = timeout_seconds
         self._max_response = max_response_bytes
 
-    async def embed(self, request: EmbeddingRequestV1) -> EmbeddingResponseV1:
+    def validate(self, request: EmbeddingRequestV1) -> None:
+        """Refuse a request that could never be sent, before any budget is claimed."""
         if request.provider != PROVIDER or request.model_id != MODEL_ID:
             raise ValueError("request is not for the Titan V2 model on aws_bedrock")
         if request.dimensions not in SUPPORTED_DIMENSIONS:
             raise ValueError(f"unsupported dimension; supported: {SUPPORTED_DIMENSIONS}")
-        text = request.text
-        if len(text.encode()) > MAX_INPUT_BYTES:
+        if len(request.text.encode()) > MAX_INPUT_BYTES:
             raise ValueError("embedding input exceeds the local size bound")
+
+    async def embed(self, request: EmbeddingRequestV1) -> EmbeddingResponseV1:
+        self.validate(request)
+        text = request.text
         body = json.dumps(
             {"inputText": text, "dimensions": request.dimensions, "normalize": request.normalize},
             allow_nan=False,

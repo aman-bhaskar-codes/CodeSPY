@@ -86,7 +86,7 @@ class SimulatedSemanticEmbeddingAdapter(EmbeddingPort):
             vector=tuple(normalized),
             token_count=max(1, len(tokens)),
             model_id="amazon.titan-embed-text-v2:0",
-            provider="simulated_semantic",
+            provider="fake",
             provider_request_id=f"sim_{uuid4().hex[:8]}",
         )
 
@@ -411,7 +411,7 @@ async def test_retrieval_benchmark_suite(
                 snapshot_id=snap_id,
                 index_type=str(IndexType.DENSE),
                 state=str(IndexState.READY),
-                embedding_provider="simulated_semantic",
+                embedding_provider="fake",
                 embedding_model="amazon.titan-embed-text-v2:0",
                 dimension=1024,
                 total_chunks=len(chunk_definitions),

@@ -3,7 +3,7 @@
 import math
 import time
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.types import UserDefinedType
 
 from app.contracts.chunking import ChunkKind
-from app.contracts.provider_budget import EmbeddingRequestV1
+from app.contracts.provider_budget import EmbeddingRequestV1, EmbeddingResponseV1
 from app.contracts.search import (
     DenseSearchHitV1,
     DenseSearchRequestV1,
@@ -48,6 +48,14 @@ class _Vector(UserDefinedType[Any]):
         return f"vector({self.dimension})"
 
 
+class QueryEmbedder(Protocol):
+    """Embeds a search query for one authorized scope (redaction and accounting included)."""
+
+    async def embed_query(
+        self, scope: SearchScopeV1, request: EmbeddingRequestV1
+    ) -> EmbeddingResponseV1: ...
+
+
 class DenseSearchService:
     """Performs strictly scoped dense vector nearest-neighbor similarity searches."""
 
@@ -56,9 +64,11 @@ class DenseSearchService:
         session: AsyncSession,
         *,
         embedding_port: EmbeddingPort | None = None,
+        query_embedder: QueryEmbedder | None = None,
     ) -> None:
         self.session = session
         self.embedding_port = embedding_port
+        self.query_embedder = query_embedder
 
     async def search_dense(self, request: DenseSearchRequestV1) -> DenseSearchResponseV1:
         """Execute a dense vector search within the authorized scope."""
@@ -115,7 +125,7 @@ class DenseSearchService:
         unavailable: Literal["profile_unavailable", "embedding_unconfigured"] | None = None
         if not model_id or not provider or not isinstance(dimension, int) or dimension <= 0:
             unavailable = "profile_unavailable"
-        elif self.embedding_port is None:
+        elif self.embedding_port is None and self.query_embedder is None:
             unavailable = "embedding_unconfigured"
         if unavailable is not None:
             return DenseSearchResponseV1(
@@ -130,7 +140,6 @@ class DenseSearchService:
                 hits=(),
                 execution_ms=round((time.perf_counter() - t0) * 1000, 2),
             )
-        assert self.embedding_port is not None
 
         # Step 3: Embed the query text
         query_req = EmbeddingRequestV1(
@@ -141,7 +150,14 @@ class DenseSearchService:
             normalize=True,
         )
         await require_retrieval_source(self.session, request.scope)
-        query_resp = await self.embedding_port.embed(query_req)
+        if self.query_embedder is not None:
+            query_resp = await self.query_embedder.embed_query(request.scope, query_req)
+        else:
+            assert self.embedding_port is not None
+            if provider != "fake":
+                # An external provider must be disclosure-checked, redacted and budgeted.
+                raise ValueError("external embedding providers require an accounted query embedder")
+            query_resp = await self.embedding_port.embed(query_req)
         query_vec = query_resp.vector
         if query_resp.model_id != model_id or query_resp.provider != provider:
             raise ValueError("embedding response profile does not match index")

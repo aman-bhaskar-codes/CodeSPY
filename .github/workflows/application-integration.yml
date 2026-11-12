@@ -53,7 +53,8 @@ jobs:
           uv run --frozen --all-packages --all-groups python -m pytest
           -c backend/pyproject.toml --import-mode=importlib -o addopts='-ra --strict-markers'
           backend/tests/accounting/unit backend/tests/investigations/unit
-          backend/tests/model_connections/unit backend/tests/memory/unit
+          backend/tests/model_connections/unit backend/tests/model_connections/transport
+          backend/tests/model_connections/live backend/tests/phase5/unit backend/tests/memory/unit
           backend/tests/mcp/unit backend/tests/retrieval/unit
           --junitxml=work/offline-application.xml -q
       - run: uv run --frozen --all-packages --all-groups python scripts/build_source_reader_image.py --image-out work/reader-image.id

@@ -27,29 +27,20 @@ DATASET_PATH = Path(__file__).resolve().parent.parent / "eval" / "relevance_data
 RELEVANCE_DATASET = json.loads(DATASET_PATH.read_text())
 
 
+def test_titan_adapter_has_no_offline_simulation() -> None:
+    # Simulation lives only in the fake adapter; Titan requires an owner-created client.
+    with pytest.raises(ValueError, match="required"):
+        AmazonTitanEmbeddingAdapter(None)
+
+
 @pytest.mark.asyncio
-async def test_titan_v2_offline_simulation() -> None:
-    adapter = AmazonTitanEmbeddingAdapter(simulate_offline=True)
-
-    # Test 1024 dimensions
-    res1024 = await adapter.embed(
-        EmbeddingRequestV1(text="Hello world", model_id=adapter.MODEL_ID, dimensions=1024)
-    )
-    assert len(res1024.vector) == 1024
-    norm1024 = math.sqrt(sum(x * x for x in res1024.vector))
-    assert math.isclose(norm1024, 1.0, rel_tol=1e-5)
-
-    # Test 512 dimensions
-    res512 = await adapter.embed(
-        EmbeddingRequestV1(text="Hello world", model_id=adapter.MODEL_ID, dimensions=512)
-    )
-    assert len(res512.vector) == 512
-
-    # Test unsupported dimensions
-    with pytest.raises(ValueError, match="Unsupported dimension"):
-        await adapter.embed(
-            EmbeddingRequestV1(text="Fail", model_id=adapter.MODEL_ID, dimensions=128)
-        )
+async def test_fake_embedding_is_deterministic_and_normalized() -> None:
+    adapter = FakeEmbeddingAdapter()
+    request = EmbeddingRequestV1(text="Hello world", dimensions=1024)
+    first, second = await adapter.embed(request), await adapter.embed(request)
+    assert first.vector == second.vector and first.provider == "fake"
+    assert len(first.vector) == 1024
+    assert math.isclose(math.sqrt(sum(x * x for x in first.vector)), 1.0, rel_tol=1e-5)
 
 
 @pytest_asyncio.fixture

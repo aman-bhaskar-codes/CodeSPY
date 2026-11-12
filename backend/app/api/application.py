@@ -176,7 +176,7 @@ from app.services import ast_reads
 from app.services.analysis_sources import locate_source
 from app.services.configured_model_gateway import ModelConnectionError
 from app.services.context_assembly import ContextAssemblyService
-from app.services.dense_search import DenseSearchService
+from app.services.dense_search import DenseSearchService, QueryEmbedder
 from app.services.feature_trace import FeatureTraceService
 from app.services.findings_query import (
     FindingDetailResponseV1,
@@ -293,6 +293,7 @@ class ApplicationPorts:
     model_runtime: ConfiguredModelRuntime | None = None
     source_reader: SourceReaderPort | None = None
     embedding_port: EmbeddingPort | None = None
+    query_embedder: QueryEmbedder | None = None
     index_config: IndexBuildConfigV1 | None = None
     index_builder: IndexJobCapabilities | None = None
     scan_defaults: ScanConfigV1 | None = None
@@ -1919,7 +1920,9 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             min_score=body.min_score,
         )
         async with transaction(ports.factory) as s:
-            svc = DenseSearchService(s, embedding_port=ports.embedding_port)
+            svc = DenseSearchService(
+                s, embedding_port=ports.embedding_port, query_embedder=ports.query_embedder
+            )
             return await svc.search_dense(req)
 
     @app.post("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/search/hybrid")
@@ -1949,7 +1952,10 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         )
         async with transaction(ports.factory) as s:
             svc = HybridSearchService(
-                s, dense_service=DenseSearchService(s, embedding_port=ports.embedding_port)
+                s,
+                dense_service=DenseSearchService(
+                    s, embedding_port=ports.embedding_port, query_embedder=ports.query_embedder
+                ),
             )
             return await svc.search_hybrid(req)
 
@@ -1978,7 +1984,10 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 if not 1 <= len(body.query) <= 256:
                     raise HTTPException(422, detail="invalid_search_query")
                 h_svc = HybridSearchService(
-                    s, dense_service=DenseSearchService(s, embedding_port=ports.embedding_port)
+                    s,
+                    dense_service=DenseSearchService(
+                        s, embedding_port=ports.embedding_port, query_embedder=ports.query_embedder
+                    ),
                 )
                 h_res = await h_svc.search_hybrid(
                     HybridSearchRequestV1(scope=scope, query=body.query, limit=20)
