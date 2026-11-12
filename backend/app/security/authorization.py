@@ -144,7 +144,11 @@ async def lock_scope(
             and session.bind is not None
             and session.bind.dialect.name == "postgresql"
             and await session.scalar(
-                text("SELECT to_regproc('public.codespy_lock_snapshot_for_recovery')")
+                # Usable only if present and executable by this role; else the checked lock.
+                text(
+                    "SELECT CASE WHEN to_regprocedure(:sig) IS NULL THEN false "
+                    "ELSE has_function_privilege(current_user, :sig, 'EXECUTE') END"
+                ).bindparams(sig="public.codespy_lock_snapshot_for_recovery(uuid,uuid,uuid)")
             )
         ):
             # Recovery must lock the snapshot even after the principal lost access.
