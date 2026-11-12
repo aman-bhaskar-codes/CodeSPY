@@ -165,13 +165,31 @@ for field, target in (("chunk_id", "source_chunks"), ("index_id", "search_indice
         )
     )
 sa.Index(
-    "uq_index_set_kind",
+    "uq_index_set_lexical",
     search_indices.c.org_id,
     search_indices.c.chunk_set_id,
-    search_indices.c.index_type,
     unique=True,
-    postgresql_where=search_indices.c.chunk_set_id.is_not(None),
-    sqlite_where=search_indices.c.chunk_set_id.is_not(None),
+    postgresql_where=sa.and_(
+        search_indices.c.chunk_set_id.is_not(None), search_indices.c.index_type == "lexical"
+    ),
+    sqlite_where=sa.and_(
+        search_indices.c.chunk_set_id.is_not(None), search_indices.c.index_type == "lexical"
+    ),
+)
+sa.Index(
+    "uq_index_set_dense",
+    search_indices.c.org_id,
+    search_indices.c.chunk_set_id,
+    search_indices.c.embedding_provider,
+    search_indices.c.embedding_model,
+    search_indices.c.dimension,
+    unique=True,
+    postgresql_where=sa.and_(
+        search_indices.c.chunk_set_id.is_not(None), search_indices.c.index_type == "dense"
+    ),
+    sqlite_where=sa.and_(
+        search_indices.c.chunk_set_id.is_not(None), search_indices.c.index_type == "dense"
+    ),
 )
 index_jobs = sa.Table(
     "jobs",
