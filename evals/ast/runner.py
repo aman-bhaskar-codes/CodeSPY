@@ -49,14 +49,20 @@ def measure(name: str, commit: str, path: Path) -> dict[str, Any]:
             eligible_fact_files += 1
             raw = archive.read(info)
             unit = SourceUnitV1(
-                file_id=uuid4(), path=rel, sha256=entry.sha256, data=raw, language=language
+                file_id=uuid4(),
+                path=rel,
+                sha256=entry.sha256,
+                data=raw,
+                language=language,
             )
             started = time.perf_counter()
             try:
                 result = extract_facts(unit, budget)
-            except Exception as error:  # a crash is a result, not a reason to stop the corpus
+            except Exception as error:  # noqa: BLE001 -- a crash is a result, not a reason to stop the corpus
                 statuses["failed"] += 1
-                errors.append({"path": rel, "error": f"{type(error).__name__}: {error}"[:200]})
+                errors.append(
+                    {"path": rel, "error": f"{type(error).__name__}: {error}"[:200]}
+                )
                 continue
             parse_seconds += time.perf_counter() - started
             parsed_bytes += len(raw)
@@ -74,7 +80,9 @@ def measure(name: str, commit: str, path: Path) -> dict[str, Any]:
         "eligible_fact_files": eligible_fact_files,
         "languages": dict(languages),
         "statuses": dict(statuses),
-        "parse_success": (statuses["parsed"] + statuses["partial"]) / processed if processed else 0,
+        "parse_success": (statuses["parsed"] + statuses["partial"]) / processed
+        if processed
+        else 0,
         "clean_parse_ratio": statuses["parsed"] / processed if processed else 0,
         "error_nodes": error_nodes,
         "lines": lines,
@@ -84,7 +92,9 @@ def measure(name: str, commit: str, path: Path) -> dict[str, Any]:
         else {},
         "parse_seconds": round(parse_seconds, 3),
         "files_per_second": round(processed / parse_seconds, 1) if parse_seconds else 0,
-        "mib_per_second": round(parsed_bytes / 1048576 / parse_seconds, 2) if parse_seconds else 0,
+        "mib_per_second": round(parsed_bytes / 1048576 / parse_seconds, 2)
+        if parse_seconds
+        else 0,
         "production_coverage": round(
             min(PRODUCTION_FILES, eligible_fact_files) / eligible_fact_files, 3
         )
@@ -139,7 +149,9 @@ def check(report: dict[str, Any], manifest: dict[str, Any]) -> list[str]:
         }
         for key, floor in expected.items():
             if got[key] < floor:
-                problems.append(f"{name}: {key[4:]} {got[key]} is below the floor {floor}")
+                problems.append(
+                    f"{name}: {key[4:]} {got[key]} is below the floor {floor}"
+                )
         if result["failures"]:
             problems.append(f"{name}: {len(result['failures'])} extraction crashes")
     return problems
