@@ -168,18 +168,27 @@ def test_v3_archives_expose_new_languages_to_facts_but_not_to_structural(tmp_pat
     from app.analyzers.source import AdmittedSourceReader
     from app.contracts.ingestion import AdmissionPolicyV3
 
-    files = {"a.py": b"x = 1\n", "svc/main.go": b"package main\n", "lib/lib.rs": b"fn f() {}\n"}
+    files = {
+        "a.py": b"x = 1\n",
+        "svc/main.go": b"package main\n",
+        "lib/lib.rs": b"fn f() {}\n",
+        "native/x.c": b"int x;\n",
+    }
     facts_cfg = AnalysisConfigV1(toolchain_hash="a" * 64, adapters=("ast_facts",))
     source = source_input(tmp_path, files, facts_cfg, AdmissionPolicyV3())
     units = {u.path: u.language for u in AdmittedSourceReader(source, tmp_path).read_selected()}
-    assert units == {"a.py": "python", "lib/lib.rs": "rust", "svc/main.go": "go"}
+    assert units == {
+        "a.py": "python",
+        "lib/lib.rs": "rust",
+        "native/x.c": "c",
+        "svc/main.go": "go",
+    }
     draft = analyze_facts(source, tmp_path)
-    assert [f.path for f in draft.files] == ["a.py"]
-    assert sorted((o.path, o.reason) for o in draft.coverage.omissions) == [
-        ("lib/lib.rs", "language_unsupported"),
-        ("svc/main.go", "language_unsupported"),
+    assert sorted(f.path for f in draft.files) == ["a.py", "lib/lib.rs", "svc/main.go"]
+    assert [(o.path, o.reason) for o in draft.coverage.omissions] == [
+        ("native/x.c", "language_unsupported")
     ]
-    assert draft.coverage.requested_files == 3
+    assert draft.coverage.requested_files == 4
 
     other = tmp_path / "structural"
     other.mkdir()

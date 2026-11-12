@@ -39,6 +39,7 @@ class SymbolFactV1(Contract):
         "trait",
         "type_alias",
         "constant",
+        "variable",
         "field",
         "namespace",
     ]

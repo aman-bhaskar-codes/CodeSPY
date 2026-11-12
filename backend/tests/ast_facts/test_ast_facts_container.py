@@ -72,3 +72,40 @@ async def test_image_loads_and_parses_every_registered_grammar(tmp_path):
     stdout, stderr = await asyncio.wait_for(process.communicate(payload), 60)
     assert process.returncode == 0, stderr.decode()
     assert json.loads(stdout) == {spec.name: True for spec in SPECS}
+
+
+async def test_container_extracts_go_java_rust_from_a_v3_archive(tmp_path):
+    image = os.environ.get("CODESPY_ANALYSIS_IMAGE")
+    if not image:
+        pytest.skip("owned Linux analyzer image required")
+    from app.contracts.ingestion import AdmissionPolicyV3
+
+    files = {
+        "app.py": b"def f(a: int) -> int:\n    return a\n",
+        "svc/server.go": b"package svc\nfunc New(host string) *Server { return nil }\n",
+        "src/com/ex/Foo.java": b"package com.ex;\npublic class Foo { public void go() {} }\n",
+        "src/lib.rs": b"pub fn free(x: i32) -> i32 { x }\n",
+        "native/x.c": b"int x;\n",
+    }
+    runner = DockerAnalysisRunner(image, tmp_path / "owner")
+    toolchain = await runner.qualify_analysis()
+    config = AnalysisConfigV1(toolchain_hash=toolchain, adapters=("ast_facts",))
+    root = tmp_path / "input"
+    root.mkdir()
+    source = source_input(root, files, config, AdmissionPolicyV3())
+    draft = await runner.analyze_facts(source, root)
+    assert draft == analyze_facts(source, root)
+    by_path = {f.path: f for f in draft.files}
+    assert {p: f.language for p, f in by_path.items()} == {
+        "app.py": "python",
+        "src/com/ex/Foo.java": "java",
+        "src/lib.rs": "rust",
+        "svc/server.go": "go",
+    }
+    assert [(o.path, o.reason) for o in draft.coverage.omissions] == [
+        ("native/x.c", "language_unsupported")
+    ]
+    result = materialize_facts(
+        RunRef(org_id=uuid4(), snapshot_id=uuid4(), run_id=uuid4()), draft, source, root
+    )
+    assert result.batch.disposition == "partial" and len(result.digests) == 4
