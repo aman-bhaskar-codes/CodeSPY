@@ -40,7 +40,7 @@ dependencies = [
 
     "psycopg[binary]>=3.2.3",
 
-    "alembic>=1.14.0",
+    "alembic>=1.20.1",
 
     "pgvector>=0.3.6",
 
