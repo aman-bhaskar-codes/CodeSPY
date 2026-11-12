@@ -140,6 +140,22 @@ async def lock_scope(
         raise ScopeViolation("repository unavailable")
     if snapshot_id is not None:
         if (
+            not access
+            and session.bind is not None
+            and session.bind.dialect.name == "postgresql"
+            and await session.scalar(
+                text("SELECT to_regproc('public.codespy_lock_snapshot_for_recovery')")
+            )
+        ):
+            # Recovery must lock the snapshot even after the principal lost access.
+            found = await session.scalar(
+                text("SELECT public.codespy_lock_snapshot_for_recovery(:org,:repo,:snapshot)"),
+                {"org": org_id, "repo": repository_id, "snapshot": snapshot_id},
+            )
+            if not found:
+                raise ScopeViolation("snapshot unavailable")
+            return ctx
+        if (
             session.bind is not None
             and session.bind.dialect.name == "postgresql"
             and await session.scalar(
