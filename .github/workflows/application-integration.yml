@@ -104,6 +104,7 @@ jobs:
               'backend/tests/retrieval/storage/test_embed_job_service.py',
               'backend/tests/retrieval/storage/test_embed_job_create.py',
               'backend/tests/retrieval/storage/test_embed_consumer.py',
+              'backend/tests/retrieval/storage/test_embed_api.py',
               'backend/tests/phase2/integration/test_github_public_import.py',
               'backend/tests/phase2/api/test_github_import_api.py',
               'backend/tests/ast_facts',

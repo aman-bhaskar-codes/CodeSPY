@@ -14,7 +14,13 @@ from app.services.embed_jobs import EmbedJobService
 from app.workers.consumer import JobConsumer
 from sqlalchemy import text
 
-from tests.retrieval.storage.test_dense_guards import MODEL, PROVIDER, embed_base
+from tests.retrieval.storage.test_dense_guards import (
+    ALLOW,
+    EMBED_POLICY,
+    MODEL,
+    PROVIDER,
+    embed_base,
+)
 from tests.retrieval.storage.test_dense_job import Embedder
 
 pytestmark = pytest.mark.skipif(
@@ -45,6 +51,7 @@ async def created(base, api_factory, key="consume"):
             provider=PROVIDER, model_id=MODEL, dimension=512, normalize=True, price_version="test"
         ),
         key,
+        policy=EMBED_POLICY,
     )
 
 
@@ -85,7 +92,7 @@ async def test_consumer_runs_the_job_and_acks_only_after_a_durable_receipt(
         queue,
         None,
         None,
-        embed_operation=EmbedOperation(broker_factory, embedder),
+        embed_operation=EmbedOperation(broker_factory, embedder, policy_for=ALLOW),
     )
     await consumer.handle(delivery(payload))
     assert queue.acked == 1 and embedder.calls
@@ -120,7 +127,11 @@ async def test_a_wakeup_that_does_not_match_the_stored_spec_is_acked_and_ignored
     forged = {**payload, "embed_spec_id": str(base["ctx"].org_id)}
     embedder, queue = Embedder(), Queue()
     await JobConsumer(
-        broker_factory, queue, None, None, embed_operation=EmbedOperation(broker_factory, embedder)
+        broker_factory,
+        queue,
+        None,
+        None,
+        embed_operation=EmbedOperation(broker_factory, embedder, policy_for=ALLOW),
     ).handle(delivery(forged))
     assert queue.acked == 1 and embedder.calls == []
     assert (await state(migration_factory, job.id))[0] == "queued"
@@ -138,7 +149,7 @@ async def test_transient_provider_failure_retries_and_a_held_chunk_fails_the_job
         queue,
         None,
         None,
-        embed_operation=EmbedOperation(broker_factory, failing, concurrency=1),
+        embed_operation=EmbedOperation(broker_factory, failing, policy_for=ALLOW, concurrency=1),
     )
     await consumer.handle(delivery(await wakeup(migration_factory, job.id)))
     assert queue.acked == 1
@@ -149,7 +160,9 @@ async def test_transient_provider_failure_retries_and_a_held_chunk_fails_the_job
             {"j": job.id},
         )
     healthy = Embedder()
-    consumer.embed_operation = EmbedOperation(broker_factory, healthy, concurrency=1)
+    consumer.embed_operation = EmbedOperation(
+        broker_factory, healthy, policy_for=ALLOW, concurrency=1
+    )
     await consumer.handle(delivery(await wakeup(migration_factory, job.id, generation=2)))
     # the first attempt's call left an uncertain hold: the job fails, the provider is not asked again
     assert await state(migration_factory, job.id) == ("failed", "embed_hold_pending", 2)

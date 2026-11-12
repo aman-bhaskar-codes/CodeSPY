@@ -29,6 +29,15 @@ pytestmark = pytest.mark.skipif(
 
 PROVIDER, MODEL, DIM = "aws_bedrock", "amazon.titan-embed-text-v2:0", 256
 POLICY = DisclosurePolicyV1(allow_external_disclosure=True, allowed_providers=(PROVIDER,))
+EMBED_POLICY = DisclosurePolicyV1(
+    allow_external_disclosure=True,
+    allowed_providers=(PROVIDER,),
+    allowed_regions=("ap-south-1",),
+)
+
+
+def ALLOW(org_id, repository_id):  # noqa: N802 - used like a constant policy resolver
+    return EMBED_POLICY
 
 
 def vector(seed: float = 1.0):

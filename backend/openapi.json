@@ -2154,6 +2154,284 @@
         "title": "EdgeCreateV1",
         "type": "object"
       },
+      "EmbedCreateResponseV1": {
+        "additionalProperties": false,
+        "properties": {
+          "job": {
+            "$ref": "#/components/schemas/EmbedJobRecordV7"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job"
+        ],
+        "title": "EmbedCreateResponseV1",
+        "type": "object"
+      },
+      "EmbedJobRecordV7": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_count": {
+            "minimum": 0.0,
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deadline": {
+            "format": "date-time",
+            "title": "Deadline",
+            "type": "string"
+          },
+          "embed_spec_id": {
+            "format": "uuid",
+            "title": "Embed Spec Id",
+            "type": "string"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "max_attempts": {
+            "exclusiveMinimum": 0.0,
+            "title": "Max Attempts",
+            "type": "integer"
+          },
+          "operation": {
+            "const": "embed_chunk_set",
+            "default": "embed_chunk_set",
+            "title": "Operation",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "result_index_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Index Id"
+          },
+          "schema_version": {
+            "const": 7,
+            "default": 7,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "retry_wait",
+              "cancelling",
+              "succeeded",
+              "partial",
+              "failed",
+              "cancelled"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_id",
+          "id",
+          "repository_id",
+          "snapshot_id",
+          "embed_spec_id",
+          "state",
+          "attempt_count",
+          "max_attempts",
+          "deadline",
+          "failure_code",
+          "result_index_id",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "EmbedJobRecordV7",
+        "type": "object"
+      },
+      "EmbedReceiptV1": {
+        "additionalProperties": false,
+        "properties": {
+          "chunk_count": {
+            "title": "Chunk Count",
+            "type": "integer"
+          },
+          "chunk_set_id": {
+            "format": "uuid",
+            "title": "Chunk Set Id",
+            "type": "string"
+          },
+          "coverage": {
+            "enum": [
+              "complete",
+              "partial"
+            ],
+            "title": "Coverage",
+            "type": "string"
+          },
+          "embedding_digest": {
+            "title": "Embedding Digest",
+            "type": "string"
+          },
+          "index_id": {
+            "format": "uuid",
+            "title": "Index Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "ledger_digest": {
+            "title": "Ledger Digest",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "spec_id": {
+            "format": "uuid",
+            "title": "Spec Id",
+            "type": "string"
+          },
+          "token_total": {
+            "title": "Token Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "org_id",
+          "job_id",
+          "spec_id",
+          "chunk_set_id",
+          "index_id",
+          "chunk_count",
+          "token_total",
+          "coverage",
+          "embedding_digest",
+          "ledger_digest"
+        ],
+        "title": "EmbedReceiptV1",
+        "type": "object"
+      },
+      "EmbedStartRequestV1": {
+        "additionalProperties": false,
+        "description": "HTTP body: only the idempotency key; the profile is server configuration.",
+        "properties": {
+          "request_key": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Request Key",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "request_key"
+        ],
+        "title": "EmbedStartRequestV1",
+        "type": "object"
+      },
+      "EmbedStatusV1": {
+        "additionalProperties": false,
+        "properties": {
+          "can_cancel": {
+            "title": "Can Cancel",
+            "type": "boolean"
+          },
+          "job": {
+            "$ref": "#/components/schemas/EmbedJobRecordV7"
+          },
+          "receipt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmbedReceiptV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job",
+          "can_cancel"
+        ],
+        "title": "EmbedStatusV1",
+        "type": "object"
+      },
       "EventPageV2": {
         "additionalProperties": false,
         "properties": {
@@ -13022,6 +13300,126 @@
         "summary": "Context Preview Endpoint"
       }
     },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/embed-jobs/{job_id}": {
+      "get": {
+        "operationId": "get_embed_job_api_v1_repositories__repository_id__snapshots__snapshot_id__embed_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbedStatusV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Embed Job"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/embed-jobs/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_embed_job_api_v1_repositories__repository_id__snapshots__snapshot_id__embed_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbedStatusV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Embed Job"
+      }
+    },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/files/{file_id}/source-view": {
       "get": {
         "operationId": "get_source_view_endpoint_api_v1_repositories__repository_id__snapshots__snapshot_id__files__file_id__source_view_get",
@@ -13705,6 +14103,76 @@
           }
         },
         "summary": "Create Snapshot Index"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/indexes/{chunk_set_id}/dense": {
+      "post": {
+        "operationId": "create_dense_index_api_v1_repositories__repository_id__snapshots__snapshot_id__indexes__chunk_set_id__dense_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chunk_set_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chunk Set Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbedStartRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbedCreateResponseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Dense Index"
       }
     },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/memories": {

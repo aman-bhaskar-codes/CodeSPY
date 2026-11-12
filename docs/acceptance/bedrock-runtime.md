@@ -28,9 +28,11 @@ test suites; live behaviour is verified only by the owner-run smoke script.
 
 ## Limitations
 
-- **Dense index publication is only partly wired.** The database layer and the embed operation now
-  exist ([Dense index publication](dense-index-publication.md)); creating the job, consuming it and
-  the HTTP route do not. Before that work, migration 0023 refused it at the database:
+- **Dense index publication is wired through the job system but not composed into any runtime.** The
+  database layer, embed operation, job service, consumer and HTTP routes exist
+  ([Dense index publication](dense-index-publication.md)); no shipped entry point builds the Bedrock
+  client, `embed_config` or the worker's embed operation. Before that work, migration 0023 refused
+  it at the database:
   `ck_index_qualified` allows only lexical indexes on a chunk set; the
   `codespy_index_result_guard` trigger rejects any `chunk_embeddings` row whose chunk or index
   belongs to a chunk set ("qualified embedding publication unavailable"); jobs and receipts exist

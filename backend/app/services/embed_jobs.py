@@ -14,12 +14,16 @@ from app.contracts.embedding_jobs import (
     EmbedStatusV1,
     EnqueueEmbedJobV7,
 )
+from app.contracts.provider_budget import DisclosurePolicyV1
 from app.db.transaction import transaction
 from app.domain.errors import DuplicateConflict, ScopeViolation
 from app.domain.scope import TenantContext
 from app.repositories.job_repository import embed_job_record, load_job
 from app.security.authorization import lock_scope, require_snapshot
 from app.services.jobs import TERMINAL, JobService
+from app.services.provider_budget import DisclosureDeniedError
+
+EMBED_REGION = "ap-south-1"
 
 
 class EmbedUnavailable(Exception):  # noqa: N818
@@ -46,8 +50,15 @@ class EmbedJobService:
         chunk_set_id: UUID,
         config: EmbedConfigV1,
         request_key: str,
+        *,
+        policy: DisclosurePolicyV1 | None = None,
     ) -> EmbedCreateResponseV1:
         config = EmbedConfigV1.model_validate(config.model_dump()).validated()
+        policy = policy or DisclosurePolicyV1()
+        if not policy.is_provider_permitted(config.provider) or not policy.is_region_permitted(
+            EMBED_REGION
+        ):
+            raise DisclosureDeniedError("provider or region is not permitted for this repository")
         request = EmbedCreateRequestV1(
             chunk_set_id=chunk_set_id, config=config, request_key=request_key
         )
@@ -165,7 +176,22 @@ class EmbedJobService:
             i=spec.dense_index_id(),
         )
         if published:
-            raise DuplicateConflict("dense index already published")
+            raise EmbedUnavailable("embed_already_published")
+        collision = await _rows(
+            session,
+            "SELECT 1 FROM embed_specs WHERE org_id=:o AND chunk_set_id=:set AND provider=:p "
+            "AND model_id=:m AND dimension=:d AND (normalize<>:n OR price_version<>:v)",
+            o=spec.org_id,
+            set=spec.chunk_set_id,
+            p=c.provider,
+            m=c.model_id,
+            d=c.dimension,
+            n=c.normalize,
+            v=c.price_version,
+        )
+        if collision:
+            # One dense index exists per (provider, model, dimension); a variant would collide.
+            raise EmbedUnavailable("embed_profile_conflict")
 
     async def _spec(self, session: AsyncSession, spec: EmbedSpecV1) -> UUID:
         c = spec.config
@@ -255,10 +281,16 @@ class EmbedJobService:
                 can_cancel=row["state"] not in TERMINAL and row["state"] != "cancelling",
             )
 
-    async def cancel(self, ctx: TenantContext, repository_id: UUID, job_id: UUID) -> EmbedStatusV1:
+    async def cancel(
+        self, ctx: TenantContext, repository_id: UUID, snapshot_id: UUID, job_id: UUID
+    ) -> EmbedStatusV1:
         async with transaction(self.factory) as session:
             row = await load_job(session, ctx.org_id, job_id)
-        if row["operation"] != "embed_chunk_set" or row["repository_id"] != repository_id:
+        if (
+            row["operation"] != "embed_chunk_set"
+            or row["repository_id"] != repository_id
+            or row["snapshot_id"] != snapshot_id
+        ):
             raise ScopeViolation("embed job unavailable")
         await self.jobs.request_cancel(ctx, job_id)
         return await self.get(ctx, repository_id, row["snapshot_id"], job_id)

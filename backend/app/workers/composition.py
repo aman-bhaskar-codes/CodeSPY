@@ -2,6 +2,7 @@
 
 from app.ports.object_store import ObjectStore
 from app.ports.queue import QueuePort
+from app.services.embed_job import EmbedOperation
 from app.services.investigation_runtime import build_investigation_operation
 from app.services.investigation_tools import InvestigationToolService
 from app.services.job_finalization import JobFinalizer
@@ -27,6 +28,7 @@ def build_worker_runtime(
     structural: StructuralAnalysisOperation | ProfileDispatchOperation | None = None,
     scan: ScanOperation | None = None,
     index: IndexOperation | None = None,
+    embed: EmbedOperation | None = None,
     propose_report_memory: bool = False,
 ) -> WorkerRuntime:
     """Connect registered operations and maintenance without reading credentials."""
@@ -61,6 +63,7 @@ def build_worker_runtime(
         scan_operation=scan,
         index_operation=index,
         investigation_operation=investigation,
+        embed_operation=embed,
     )
     return WorkerRuntime(
         OutboxDispatcher(factory, queue),

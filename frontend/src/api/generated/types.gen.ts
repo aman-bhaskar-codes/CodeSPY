@@ -1078,6 +1078,165 @@ export type EdgeCreateV1 = {
 };
 
 /**
+ * EmbedCreateResponseV1
+ */
+export type EmbedCreateResponseV1 = {
+    job: EmbedJobRecordV7;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+};
+
+/**
+ * EmbedJobRecordV7
+ */
+export type EmbedJobRecordV7 = {
+    /**
+     * Attempt Count
+     */
+    attempt_count: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Deadline
+     */
+    deadline: string;
+    /**
+     * Embed Spec Id
+     */
+    embed_spec_id: string;
+    /**
+     * Failure Code
+     */
+    failure_code: string | null;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Max Attempts
+     */
+    max_attempts: number;
+    /**
+     * Operation
+     */
+    operation?: 'embed_chunk_set';
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Result Index Id
+     */
+    result_index_id: string | null;
+    /**
+     * Schema Version
+     */
+    schema_version?: 7;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+    /**
+     * State
+     */
+    state: 'queued' | 'running' | 'retry_wait' | 'cancelling' | 'succeeded' | 'partial' | 'failed' | 'cancelled';
+};
+
+/**
+ * EmbedReceiptV1
+ */
+export type EmbedReceiptV1 = {
+    /**
+     * Chunk Count
+     */
+    chunk_count: number;
+    /**
+     * Chunk Set Id
+     */
+    chunk_set_id: string;
+    /**
+     * Coverage
+     */
+    coverage: 'complete' | 'partial';
+    /**
+     * Embedding Digest
+     */
+    embedding_digest: string;
+    /**
+     * Index Id
+     */
+    index_id: string;
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Ledger Digest
+     */
+    ledger_digest: string;
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+    /**
+     * Spec Id
+     */
+    spec_id: string;
+    /**
+     * Token Total
+     */
+    token_total: number;
+};
+
+/**
+ * EmbedStartRequestV1
+ *
+ * HTTP body: only the idempotency key; the profile is server configuration.
+ */
+export type EmbedStartRequestV1 = {
+    /**
+     * Request Key
+     */
+    request_key: string;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+};
+
+/**
+ * EmbedStatusV1
+ */
+export type EmbedStatusV1 = {
+    /**
+     * Can Cancel
+     */
+    can_cancel: boolean;
+    job: EmbedJobRecordV7;
+    receipt?: EmbedReceiptV1 | null;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+};
+
+/**
  * EventPageV2
  */
 export type EventPageV2 = {
@@ -6938,6 +7097,82 @@ export type ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshot
 
 export type ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextPreviewPostResponse = ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextPreviewPostResponses[keyof ContextPreviewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextPreviewPostResponses];
 
+export type GetEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/embed-jobs/{job_id}';
+};
+
+export type GetEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdGetError = GetEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdGetErrors[keyof GetEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdGetErrors];
+
+export type GetEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmbedStatusV1;
+};
+
+export type GetEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdGetResponse = GetEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdGetResponses[keyof GetEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdGetResponses];
+
+export type CancelEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdCancelPostData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/embed-jobs/{job_id}/cancel';
+};
+
+export type CancelEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdCancelPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CancelEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdCancelPostError = CancelEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdCancelPostErrors[keyof CancelEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdCancelPostErrors];
+
+export type CancelEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdCancelPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmbedStatusV1;
+};
+
+export type CancelEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdCancelPostResponse = CancelEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdCancelPostResponses[keyof CancelEmbedJobApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdEmbedJobsJobIdCancelPostResponses];
+
 export type GetSourceViewEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdFilesFileIdSourceViewGetData = {
     body?: never;
     path: {
@@ -7328,6 +7563,44 @@ export type CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdI
 };
 
 export type CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesPostResponse = CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesPostResponses[keyof CreateSnapshotIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesPostResponses];
+
+export type CreateDenseIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesChunkSetIdDensePostData = {
+    body: EmbedStartRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Chunk Set Id
+         */
+        chunk_set_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/indexes/{chunk_set_id}/dense';
+};
+
+export type CreateDenseIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesChunkSetIdDensePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateDenseIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesChunkSetIdDensePostError = CreateDenseIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesChunkSetIdDensePostErrors[keyof CreateDenseIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesChunkSetIdDensePostErrors];
+
+export type CreateDenseIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesChunkSetIdDensePostResponses = {
+    /**
+     * Successful Response
+     */
+    202: EmbedCreateResponseV1;
+};
+
+export type CreateDenseIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesChunkSetIdDensePostResponse = CreateDenseIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesChunkSetIdDensePostResponses[keyof CreateDenseIndexApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdIndexesChunkSetIdDensePostResponses];
 
 export type QueryMemoryEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdMemoriesGetData = {
     body?: never;
