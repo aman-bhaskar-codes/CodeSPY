@@ -63,6 +63,23 @@ broker against the admitted archive, and published as immutable rows with the ru
     initializers with `async`/`throws`, labelled parameters (`with y`), defaults and variadics,
     attributes as decorators, access levels (`public`/`open` are public), type aliases, global
     constants and variables, and imports.
+- **Framework facts.** HTTP routes (`framework`, method, path, handler) and ORM models (framework,
+  table, columns with type, nullability, primary key and foreign key) for the most common
+  frameworks. Each pass is gated by the file's own imports, so unrelated files carry none.
+  - _Python:_ Flask and FastAPI decorators (`route` with `methods=` expands one route per method;
+    `get`/`post`/... on apps, blueprints and routers), Django `urlpatterns` (`path`, `re_path`,
+    `url`, `include`; method `ANY`), SQLAlchemy models (classic `Column` and 2.0
+    `Mapped[...]`/`mapped_column`, `ForeignKey`, `__tablename__`) and Django models (field types,
+    `null`, `primary_key`, `ForeignKey`/`OneToOneField`, `Meta.db_table`).
+  - _JavaScript and TypeScript:_ Express `app`/`router` verbs, `all` and `use` with a literal path.
+  - _Java:_ Spring `@RequestMapping` (class prefix joined to method paths) and `@Get/Post/Put/
+Delete/PatchMapping`; JPA `@Entity`/`@Table`/`@Id`/`@Column`/`@JoinColumn`, skipping static and
+    `@Transient` fields.
+  - _Go:_ Gin, Echo, chi, Fiber and gorilla/mux verb calls, `net/http` `HandleFunc`/`Handle`
+    (including `"GET /path"` patterns), and gorm models (`gorm.Model`, `column:`, `primaryKey`,
+    `not null`, `foreignKey:`, `gorm:"-"`, `TableName()`).
+  - _Reads:_ `GET .../snapshots/{id}/ast-facts/routes` and `.../models` list them across a
+    snapshot, paged by file path and ordinal.
 - **Evidence.** Every fact has a half-open byte range and line range. The broker re-reads the
   authenticated archive and rejects facts whose range is not exact, files outside the admitted
   source, and identity or coverage drift.
@@ -118,6 +135,12 @@ broker against the admitted archive, and published as immutable rows with the ru
   exist in the contract but are not populated yet.
 - Files with syntax errors yield partial facts and are marked `partial`.
 - Parsing runs one child process per file; throughput for large repositories is not measured.
+
+- Framework detection is syntactic and import-gated: routers registered through helper functions,
+  `Group` prefixes (Gin, Echo), Express sub-router mounting beyond the literal `use` path, Django
+  `include()` expansion, Spring `value` arrays beyond literals, SQLAlchemy relationships and
+  declarative mixins, and Django abstract-model inheritance are not resolved. Other frameworks
+  (NestJS, Koa, Rails, Laravel, Axum, Vapor, ...) are not covered.
 
 ## Verification
 

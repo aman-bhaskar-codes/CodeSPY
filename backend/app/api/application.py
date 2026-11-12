@@ -13,6 +13,8 @@ from app.adapters.model.http_transport import ProviderTransportError
 from app.analyzers.reporting import render_json, render_markdown
 from app.contracts.ast_facts import (
     AstFilePageV1,
+    AstModelPageV1,
+    AstRoutePageV1,
     AstSnapshotSummaryV1,
     FileFactsV1,
 )
@@ -1210,6 +1212,44 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         ctx = await repository_context(request, repository_id, write=False)
         async with transaction(ports.factory) as s:
             page = await ast_reads.files_page(
+                s, ctx.org_id, ctx.principal_id, repository_id, snapshot_id, after, limit
+            )
+        if page is None:
+            raise HTTPException(404)
+        return page
+
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts/routes")
+    async def ast_facts_routes(
+        request: Request,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        after: str | None = Query(default=None, max_length=1100),
+        limit: int = 100,
+    ) -> AstRoutePageV1:
+        if not 1 <= limit <= 200:
+            raise HTTPException(422)
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as s:
+            page = await ast_reads.routes_page(
+                s, ctx.org_id, ctx.principal_id, repository_id, snapshot_id, after, limit
+            )
+        if page is None:
+            raise HTTPException(404)
+        return page
+
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts/models")
+    async def ast_facts_models(
+        request: Request,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        after: str | None = Query(default=None, max_length=1100),
+        limit: int = 100,
+    ) -> AstModelPageV1:
+        if not 1 <= limit <= 200:
+            raise HTTPException(422)
+        ctx = await repository_context(request, repository_id, write=False)
+        async with transaction(ports.factory) as s:
+            page = await ast_reads.models_page(
                 s, ctx.org_id, ctx.principal_id, repository_id, snapshot_id, after, limit
             )
         if page is None:

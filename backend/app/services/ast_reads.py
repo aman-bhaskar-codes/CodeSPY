@@ -3,12 +3,16 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contracts.ast_facts import (
     AstFilePageV1,
     AstFileSummaryV1,
+    AstModelItemV1,
+    AstModelPageV1,
+    AstRouteItemV1,
+    AstRoutePageV1,
     AstSnapshotSummaryV1,
     FileFactsV1,
 )
@@ -150,3 +154,123 @@ async def file_facts(
         )
     )
     return None if value is None else FileFactsV1.model_validate_json(canonical_bytes(value))
+
+
+def _cursor(after: str | None) -> tuple[str, int]:
+    """Cursor 'ordinal:file path' marks the last row returned."""
+    if not after:
+        return "", 0
+    ordinal, _, path = after.partition(":")
+    return path, int(ordinal) if ordinal.isdigit() else 0
+
+
+_ARRAY_QUERY = """
+SELECT f.file_id, sf.path, e.ord, e.value
+FROM ast_file_facts f
+JOIN source_files sf
+  ON sf.org_id=f.org_id AND sf.snapshot_id=f.snapshot_id AND sf.id=f.file_id
+CROSS JOIN LATERAL jsonb_array_elements(f.facts_json->:key) WITH ORDINALITY AS e(value, ord)
+WHERE f.org_id=:org AND f.snapshot_id=:snapshot AND f.run_id=:run
+  AND (sf.path, e.ord) > (:path, :ord)
+ORDER BY sf.path, e.ord
+LIMIT :limit
+"""
+
+
+async def _array_rows(
+    s: AsyncSession,
+    key: str,
+    org_id: UUID,
+    snapshot_id: UUID,
+    run_id: UUID,
+    after: str | None,
+    limit: int,
+) -> list[Any]:
+    path, ordinal = _cursor(after)
+    result = await s.execute(
+        text(_ARRAY_QUERY),
+        {
+            "key": key,
+            "org": org_id,
+            "snapshot": snapshot_id,
+            "run": run_id,
+            "path": path,
+            "ord": ordinal,
+            "limit": limit + 1,
+        },
+    )
+    return list(result.all())
+
+
+def _next(rows: list[Any], limit: int) -> str | None:
+    return f"{rows[limit - 1][2]}:{rows[limit - 1][1]}" if len(rows) > limit else None
+
+
+async def routes_page(
+    s: AsyncSession,
+    org_id: UUID,
+    principal: UUID,
+    repository_id: UUID,
+    snapshot_id: UUID,
+    after: str | None,
+    limit: int,
+) -> AstRoutePageV1 | None:
+    await require_repository(s, org_id, principal, repository_id)
+    run_id = await _latest_run(s, org_id, repository_id, snapshot_id)
+    if run_id is None:
+        return None
+    rows = await _array_rows(s, "routes", org_id, snapshot_id, run_id, after, limit)
+    return AstRoutePageV1(
+        run_id=run_id,
+        items=tuple(
+            AstRouteItemV1(
+                file_id=r[0],
+                file_path=r[1],
+                framework=r[3]["framework"],
+                method=r[3]["method"],
+                route_path=r[3]["path"],
+                handler=r[3].get("handler"),
+                start_line=r[3]["range"]["start_line"],
+                end_line=r[3]["range"]["end_line"],
+            )
+            for r in rows[:limit]
+        ),
+        next_after=_next(rows, limit),
+    )
+
+
+async def models_page(
+    s: AsyncSession,
+    org_id: UUID,
+    principal: UUID,
+    repository_id: UUID,
+    snapshot_id: UUID,
+    after: str | None,
+    limit: int,
+) -> AstModelPageV1 | None:
+    await require_repository(s, org_id, principal, repository_id)
+    run_id = await _latest_run(s, org_id, repository_id, snapshot_id)
+    if run_id is None:
+        return None
+    rows = await _array_rows(s, "models", org_id, snapshot_id, run_id, after, limit)
+    return AstModelPageV1(
+        run_id=run_id,
+        items=tuple(
+            AstModelItemV1.model_validate_json(
+                canonical_bytes(
+                    {
+                        "file_id": str(r[0]),
+                        "file_path": r[1],
+                        "framework": r[3]["framework"],
+                        "name": r[3]["name"],
+                        "table": r[3].get("table"),
+                        "columns": r[3].get("columns", []),
+                        "start_line": r[3]["range"]["start_line"],
+                        "end_line": r[3]["range"]["end_line"],
+                    }
+                )
+            )
+            for r in rows[:limit]
+        ),
+        next_after=_next(rows, limit),
+    )

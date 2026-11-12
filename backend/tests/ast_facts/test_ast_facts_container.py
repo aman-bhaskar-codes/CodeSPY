@@ -111,3 +111,51 @@ async def test_container_extracts_every_registered_language_from_a_v3_archive(tm
         RunRef(org_id=uuid4(), snapshot_id=uuid4(), run_id=uuid4()), draft, source, root
     )
     assert result.batch.disposition == "completed" and len(result.digests) == len(files)
+
+
+async def test_container_extracts_framework_routes_and_models(tmp_path):
+    image = os.environ.get("CODESPY_ANALYSIS_IMAGE")
+    if not image:
+        pytest.skip("owned Linux analyzer image required")
+    from app.contracts.ingestion import AdmissionPolicyV3
+
+    files = {
+        "api/web.py": (
+            b"from flask import Flask\napp = Flask(__name__)\n"
+            b'@app.route("/users", methods=["GET", "POST"])\ndef users(): pass\n'
+        ),
+        "db/models.py": (
+            b"from sqlalchemy import Column, Integer\nclass U(Base):\n"
+            b'    __tablename__ = "users"\n    id = Column(Integer, primary_key=True)\n'
+        ),
+        "srv/app.js": b'const express = require("express");\napp.get("/x", h);\n',
+        "src/com/ex/Ctl.java": (
+            b"package com.ex;\n@RestController\npublic class Ctl {\n"
+            b'  @GetMapping("/ping") public String ping() { return ""; }\n}\n'
+        ),
+        "srv/main.go": (
+            b'package main\nimport "github.com/gin-gonic/gin"\n'
+            b'func main() { r := gin.Default(); r.GET("/ping", ping) }\n'
+        ),
+    }
+    runner = DockerAnalysisRunner(image, tmp_path / "owner")
+    toolchain = await runner.qualify_analysis()
+    config = AnalysisConfigV1(toolchain_hash=toolchain, adapters=("ast_facts",))
+    root = tmp_path / "input"
+    root.mkdir()
+    source = source_input(root, files, config, AdmissionPolicyV3())
+    draft = await runner.analyze_facts(source, root)
+    assert draft == analyze_facts(source, root)
+    found = {
+        f.path: ([(r.framework, r.method, r.path) for r in f.routes], [m.name for m in f.models])
+        for f in draft.files
+    }
+    assert found["api/web.py"][0] == [("flask", "GET", "/users"), ("flask", "POST", "/users")]
+    assert found["db/models.py"][1] == ["U"]
+    assert found["srv/app.js"][0] == [("express", "GET", "/x")]
+    assert found["src/com/ex/Ctl.java"][0] == [("spring", "GET", "/ping")]
+    assert found["srv/main.go"][0] == [("gin", "GET", "/ping")]
+    result = materialize_facts(
+        RunRef(org_id=uuid4(), snapshot_id=uuid4(), run_id=uuid4()), draft, source, root
+    )
+    assert result.batch.disposition == "completed"

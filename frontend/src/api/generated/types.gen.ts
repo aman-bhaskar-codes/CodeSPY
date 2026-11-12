@@ -164,6 +164,118 @@ export type AstFileSummaryV1 = {
 };
 
 /**
+ * AstModelItemV1
+ */
+export type AstModelItemV1 = {
+    /**
+     * Columns
+     */
+    columns?: Array<ColumnFactV1>;
+    /**
+     * End Line
+     */
+    end_line: number;
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * Framework
+     */
+    framework: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Start Line
+     */
+    start_line: number;
+    /**
+     * Table
+     */
+    table?: string | null;
+};
+
+/**
+ * AstModelPageV1
+ */
+export type AstModelPageV1 = {
+    /**
+     * Items
+     */
+    items: Array<AstModelItemV1>;
+    /**
+     * Next After
+     */
+    next_after?: string | null;
+    /**
+     * Run Id
+     */
+    run_id: string;
+};
+
+/**
+ * AstRouteItemV1
+ */
+export type AstRouteItemV1 = {
+    /**
+     * End Line
+     */
+    end_line: number;
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * Framework
+     */
+    framework: string;
+    /**
+     * Handler
+     */
+    handler?: string | null;
+    /**
+     * Method
+     */
+    method: string;
+    /**
+     * Route Path
+     */
+    route_path: string;
+    /**
+     * Start Line
+     */
+    start_line: number;
+};
+
+/**
+ * AstRoutePageV1
+ */
+export type AstRoutePageV1 = {
+    /**
+     * Items
+     */
+    items: Array<AstRouteItemV1>;
+    /**
+     * Next After
+     */
+    next_after?: string | null;
+    /**
+     * Run Id
+     */
+    run_id: string;
+};
+
+/**
  * AstSnapshotSummaryV1
  */
 export type AstSnapshotSummaryV1 = {
@@ -6580,6 +6692,92 @@ export type AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFacts
 };
 
 export type AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesFileIdGetResponse = AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesFileIdGetResponses[keyof AstFactsFileApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesFileIdGetResponses];
+
+export type AstFactsModelsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsModelsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: {
+        /**
+         * After
+         */
+        after?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts/models';
+};
+
+export type AstFactsModelsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsModelsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AstFactsModelsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsModelsGetError = AstFactsModelsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsModelsGetErrors[keyof AstFactsModelsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsModelsGetErrors];
+
+export type AstFactsModelsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsModelsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: AstModelPageV1;
+};
+
+export type AstFactsModelsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsModelsGetResponse = AstFactsModelsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsModelsGetResponses[keyof AstFactsModelsApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsModelsGetResponses];
+
+export type AstFactsRoutesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsRoutesGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: {
+        /**
+         * After
+         */
+        after?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts/routes';
+};
+
+export type AstFactsRoutesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsRoutesGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AstFactsRoutesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsRoutesGetError = AstFactsRoutesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsRoutesGetErrors[keyof AstFactsRoutesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsRoutesGetErrors];
+
+export type AstFactsRoutesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsRoutesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: AstRoutePageV1;
+};
+
+export type AstFactsRoutesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsRoutesGetResponse = AstFactsRoutesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsRoutesGetResponses[keyof AstFactsRoutesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsRoutesGetResponses];
 
 export type AssembleContextEndpointApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdContextAssemblePostData = {
     body: ContextAssemblyRequestV1;
