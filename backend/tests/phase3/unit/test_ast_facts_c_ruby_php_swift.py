@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 from app.analyzers.facts import FACT_LANGUAGES, extract_facts
 from app.analyzers.positions import SourceIndex
-from app.analyzers.registry import SPECS
+from app.analyzers.registry import BY_NAME, SPECS
 from app.contracts.structure import AnalysisBudget, SourceUnitV1
 
 C = """#include <stdio.h>
@@ -427,3 +427,16 @@ def test_node_budget_is_enforced(language, path, source):
 
 def test_every_registered_language_has_a_fact_extractor():
     assert {spec.name for spec in SPECS} == FACT_LANGUAGES
+
+
+def test_cpp_header_named_dot_h_is_read_with_the_cpp_grammar():
+    header = (
+        "#pragma once\nnamespace app {\nclass Widget {\n public:\n"
+        "  int size() const;\n};\ntemplate <class T> T twice(T v);\n}\n"
+    )
+    _, result = facts(header, "c", "include/widget.h")
+    assert result.language == "c" and result.grammar == BY_NAME["cpp"].pin
+    assert result.status == "parsed"
+    assert {"Widget", "size", "twice"} <= {s.name for s in result.symbols}
+    _, plain = facts("int add(int a, int b);\n", "c", "include/plain.h")
+    assert plain.grammar == BY_NAME["c"].pin

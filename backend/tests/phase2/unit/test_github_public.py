@@ -101,6 +101,24 @@ async def test_archive_rejects_foreign_redirect_and_oversize():
     assert error.value.code == "archive_limit_exceeded"
 
 
+async def test_every_request_carries_a_user_agent_including_the_archive_hops():
+    """GitHub answers 403 to requests without one; the archive requests are built by hand."""
+    seen = []
+
+    async def handler(request):
+        seen.append((request.url.host, request.headers.get("user-agent")))
+        if request.url.host == "api.github.com":
+            return httpx.Response(
+                302, headers={"Location": f"https://codeload.github.com/o/r/legacy.zip/{SHA}"}
+            )
+        return httpx.Response(200, content=b"zip")
+
+    async with client(handler) as http:
+        _ = [c async for c in GitHubPublicProvider(http, fixture=True).archive("o/r", SHA)]
+    assert [host for host, _ in seen] == ["api.github.com", "codeload.github.com"]
+    assert all(agent == "codespy-public-import" for _, agent in seen)
+
+
 def test_rejects_unqualified_or_credentialed_clients():
     with pytest.raises(ValueError, match="fixed-origin"):
         GitHubPublicProvider(httpx.AsyncClient())

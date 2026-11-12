@@ -1,0 +1,391 @@
+{
+  "production_file_cap": 128,
+  "repos": [
+    {
+      "name": "pallets/flask",
+      "commit": "49943b5a94413a530761350f04e896f76e8d620e",
+      "archive_bytes": 833652,
+      "eligible_fact_files": 83,
+      "languages": {
+        "python": 83
+      },
+      "statuses": {
+        "parsed": 83
+      },
+      "parse_success": 1.0,
+      "clean_parse_ratio": 1.0,
+      "error_nodes": 0,
+      "lines": 18475,
+      "facts": {
+        "symbols": 1015,
+        "imports": 623,
+        "exports": 576,
+        "routes": 40,
+        "models": 0,
+        "config": 94
+      },
+      "facts_per_kloc": {
+        "symbols": 54.94,
+        "imports": 33.72,
+        "exports": 31.18,
+        "routes": 2.17,
+        "models": 0.0,
+        "config": 5.09
+      },
+      "parse_seconds": 0.365,
+      "files_per_second": 227.3,
+      "mib_per_second": 1.54,
+      "production_coverage": 1.0,
+      "failures": [],
+      "archive_sha256": "7b92a5563ad650c64e2c5d967e555c981628c07536fca3c97b3adb3d9a6769bb"
+    },
+    {
+      "name": "expressjs/express",
+      "commit": "43fca52d28a422c8be48fd489cbd4f2d6152bab6",
+      "archive_bytes": 224347,
+      "eligible_fact_files": 142,
+      "languages": {
+        "javascript": 142
+      },
+      "statuses": {
+        "parsed": 142
+      },
+      "parse_success": 1.0,
+      "clean_parse_ratio": 1.0,
+      "error_nodes": 0,
+      "lines": 22188,
+      "facts": {
+        "symbols": 55,
+        "imports": 405,
+        "exports": 61,
+        "routes": 0,
+        "models": 0,
+        "config": 15
+      },
+      "facts_per_kloc": {
+        "symbols": 2.48,
+        "imports": 18.25,
+        "exports": 2.75,
+        "routes": 0.0,
+        "models": 0.0,
+        "config": 0.68
+      },
+      "parse_seconds": 0.239,
+      "files_per_second": 594.6,
+      "mib_per_second": 2.25,
+      "production_coverage": 0.901,
+      "failures": [],
+      "archive_sha256": "60a0b27b02db662e6cae0df111cf2e0463699a720eb03b40e7da1e23bb2c88ad"
+    },
+    {
+      "name": "gin-gonic/gin",
+      "commit": "0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646",
+      "archive_bytes": 250376,
+      "eligible_fact_files": 99,
+      "languages": {
+        "go": 99
+      },
+      "statuses": {
+        "parsed": 99
+      },
+      "parse_success": 1.0,
+      "clean_parse_ratio": 1.0,
+      "error_nodes": 0,
+      "lines": 24655,
+      "facts": {
+        "symbols": 2019,
+        "imports": 521,
+        "exports": 907,
+        "routes": 13,
+        "models": 0,
+        "config": 2
+      },
+      "facts_per_kloc": {
+        "symbols": 81.89,
+        "imports": 21.13,
+        "exports": 36.79,
+        "routes": 0.53,
+        "models": 0.0,
+        "config": 0.08
+      },
+      "parse_seconds": 0.619,
+      "files_per_second": 160.0,
+      "mib_per_second": 1.09,
+      "production_coverage": 1.0,
+      "failures": [],
+      "archive_sha256": "22b1f5693589367fcc766bb352b83bdee601520c18a405deb9d84d723b0e43d4"
+    },
+    {
+      "name": "spring-projects/spring-petclinic",
+      "commit": "500158f732419217507c7656904b8e6aa1bcc0d6",
+      "archive_bytes": 535952,
+      "eligible_fact_files": 50,
+      "languages": {
+        "java": 50
+      },
+      "statuses": {
+        "parsed": 50
+      },
+      "parse_success": 1.0,
+      "clean_parse_ratio": 1.0,
+      "error_nodes": 0,
+      "lines": 4347,
+      "facts": {
+        "symbols": 323,
+        "imports": 475,
+        "exports": 24,
+        "routes": 17,
+        "models": 9,
+        "config": 1
+      },
+      "facts_per_kloc": {
+        "symbols": 74.3,
+        "imports": 109.27,
+        "exports": 5.52,
+        "routes": 3.91,
+        "models": 2.07,
+        "config": 0.23
+      },
+      "parse_seconds": 0.072,
+      "files_per_second": 690.5,
+      "mib_per_second": 1.86,
+      "production_coverage": 1.0,
+      "failures": [],
+      "archive_sha256": "554863b0fab7e239c2eb594a7a503f99faba106a5bcd23ef011c822bc2fc7743"
+    },
+    {
+      "name": "dtolnay/anyhow",
+      "commit": "87c8571326d60b90391d0555c9675b5ac6f044b1",
+      "archive_bytes": 62543,
+      "eligible_fact_files": 37,
+      "languages": {
+        "rust": 37
+      },
+      "statuses": {
+        "parsed": 35,
+        "partial": 2
+      },
+      "parse_success": 1.0,
+      "clean_parse_ratio": 0.9459459459459459,
+      "error_nodes": 360,
+      "lines": 5894,
+      "facts": {
+        "symbols": 378,
+        "imports": 135,
+        "exports": 43,
+        "routes": 0,
+        "models": 0,
+        "config": 7
+      },
+      "facts_per_kloc": {
+        "symbols": 64.13,
+        "imports": 22.9,
+        "exports": 7.3,
+        "routes": 0.0,
+        "models": 0.0,
+        "config": 1.19
+      },
+      "parse_seconds": 0.125,
+      "files_per_second": 296.9,
+      "mib_per_second": 1.48,
+      "production_coverage": 1.0,
+      "failures": [],
+      "archive_sha256": "9c2285f097d78acb5cf35c50d5b81808a54cd89d2a9feea2b3e67c0b9f7c0586"
+    },
+    {
+      "name": "antirez/kilo",
+      "commit": "323d93b29bd89a2cb446de90c4ed4fea1764176e",
+      "archive_bytes": 14956,
+      "eligible_fact_files": 1,
+      "languages": {
+        "c": 1
+      },
+      "statuses": {
+        "parsed": 1
+      },
+      "parse_success": 1.0,
+      "clean_parse_ratio": 1.0,
+      "error_nodes": 0,
+      "lines": 1309,
+      "facts": {
+        "symbols": 116,
+        "imports": 15,
+        "exports": 39,
+        "routes": 0,
+        "models": 0,
+        "config": 0
+      },
+      "facts_per_kloc": {
+        "symbols": 88.62,
+        "imports": 11.46,
+        "exports": 29.79,
+        "routes": 0.0,
+        "models": 0.0,
+        "config": 0.0
+      },
+      "parse_seconds": 0.021,
+      "files_per_second": 47.5,
+      "mib_per_second": 1.89,
+      "production_coverage": 1.0,
+      "failures": [],
+      "archive_sha256": "706aefddd3e137ec2395de289d19c14a39463eba90a45414f4364ad7164426e9"
+    },
+    {
+      "name": "gabime/spdlog",
+      "commit": "6d9805df3f588402b17073dcd13eb569ceda864d",
+      "archive_bytes": 388534,
+      "eligible_fact_files": 154,
+      "languages": {
+        "cpp": 42,
+        "c": 111,
+        "python": 1
+      },
+      "statuses": {
+        "parsed": 29,
+        "partial": 125
+      },
+      "parse_success": 1.0,
+      "clean_parse_ratio": 0.18831168831168832,
+      "error_nodes": 1598,
+      "lines": 33441,
+      "facts": {
+        "symbols": 2139,
+        "imports": 833,
+        "exports": 843,
+        "routes": 0,
+        "models": 0,
+        "config": 3
+      },
+      "facts_per_kloc": {
+        "symbols": 63.96,
+        "imports": 24.91,
+        "exports": 25.21,
+        "routes": 0.0,
+        "models": 0.0,
+        "config": 0.09
+      },
+      "parse_seconds": 1.327,
+      "files_per_second": 116.0,
+      "mib_per_second": 0.85,
+      "production_coverage": 0.831,
+      "failures": [],
+      "archive_sha256": "584285d60700e184cc9de473a9bd543bf82e937f53b8c2c3a403945ef9d7c194"
+    },
+    {
+      "name": "sinatra/sinatra",
+      "commit": "cb22afd7902b566b6eaba6c4ea89739494a65d12",
+      "archive_bytes": 372848,
+      "eligible_fact_files": 147,
+      "languages": {
+        "ruby": 147
+      },
+      "statuses": {
+        "parsed": 147
+      },
+      "parse_success": 1.0,
+      "clean_parse_ratio": 1.0,
+      "error_nodes": 0,
+      "lines": 24257,
+      "facts": {
+        "symbols": 999,
+        "imports": 193,
+        "exports": 106,
+        "routes": 0,
+        "models": 0,
+        "config": 14
+      },
+      "facts_per_kloc": {
+        "symbols": 41.18,
+        "imports": 7.96,
+        "exports": 4.37,
+        "routes": 0.0,
+        "models": 0.0,
+        "config": 0.58
+      },
+      "parse_seconds": 0.319,
+      "files_per_second": 461.2,
+      "mib_per_second": 2.03,
+      "production_coverage": 0.871,
+      "failures": [],
+      "archive_sha256": "11d32d5c118e3ea7f23ad0ab28cf9b2bbd775a300ee7338821702b15dbc6a80d"
+    },
+    {
+      "name": "slimphp/Slim",
+      "commit": "3675bf6baac66b07032575b7bef4200b60b7974b",
+      "archive_bytes": 74423,
+      "eligible_fact_files": 72,
+      "languages": {
+        "php": 72
+      },
+      "statuses": {
+        "parsed": 72
+      },
+      "parse_success": 1.0,
+      "clean_parse_ratio": 1.0,
+      "error_nodes": 0,
+      "lines": 5915,
+      "facts": {
+        "symbols": 566,
+        "imports": 354,
+        "exports": 72,
+        "routes": 0,
+        "models": 0,
+        "config": 0
+      },
+      "facts_per_kloc": {
+        "symbols": 95.69,
+        "imports": 59.85,
+        "exports": 12.17,
+        "routes": 0.0,
+        "models": 0.0,
+        "config": 0.0
+      },
+      "parse_seconds": 0.06,
+      "files_per_second": 1196.6,
+      "mib_per_second": 2.61,
+      "production_coverage": 1.0,
+      "failures": [],
+      "archive_sha256": "6bae49b69dde75d3f346e9dbbe7b5a7385e6b68aa7307ea9edbc1d7401eacd00"
+    },
+    {
+      "name": "Alamofire/Alamofire",
+      "commit": "b3e74e8301cc53c8f82afb9db141d52952876e69",
+      "archive_bytes": 3452046,
+      "eligible_fact_files": 111,
+      "languages": {
+        "swift": 101,
+        "javascript": 10
+      },
+      "statuses": {
+        "parsed": 106,
+        "partial": 5
+      },
+      "parse_success": 1.0,
+      "clean_parse_ratio": 0.954954954954955,
+      "error_nodes": 12,
+      "lines": 47557,
+      "facts": {
+        "symbols": 3674,
+        "imports": 191,
+        "exports": 100,
+        "routes": 0,
+        "models": 0,
+        "config": 0
+      },
+      "facts_per_kloc": {
+        "symbols": 77.25,
+        "imports": 4.02,
+        "exports": 2.1,
+        "routes": 0.0,
+        "models": 0.0,
+        "config": 0.0
+      },
+      "parse_seconds": 0.887,
+      "files_per_second": 125.1,
+      "mib_per_second": 2.37,
+      "production_coverage": 1.0,
+      "failures": [],
+      "archive_sha256": "902465391b68e176d9fcbd34c480893b1e3512e2befdb99b10447d39fa077975"
+    }
+  ]
+}

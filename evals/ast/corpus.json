@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "note": "Public repositories pinned by full commit SHA; archives are never vendored. Floors are ~5-20% below a measured run (2026-11-12) so a regression fails but noise does not. Re-measure with `scripts/ast_corpus.py run` and review before changing a floor.",
+  "repos": [
+    {
+      "name": "pallets/flask",
+      "family": "python",
+      "commit": "49943b5a94413a530761350f04e896f76e8d620e",
+      "floors": {
+        "min_files": 78,
+        "min_parse_success": 0.99,
+        "min_clean_parse_ratio": 0.95,
+        "min_symbols": 812,
+        "min_routes": 32,
+        "min_models": 0
+      }
+    },
+    {
+      "name": "expressjs/express",
+      "family": "javascript",
+      "commit": "43fca52d28a422c8be48fd489cbd4f2d6152bab6",
+      "floors": {
+        "min_files": 134,
+        "min_parse_success": 0.99,
+        "min_clean_parse_ratio": 0.95,
+        "min_symbols": 44,
+        "min_routes": 0,
+        "min_models": 0
+      }
+    },
+    {
+      "name": "gin-gonic/gin",
+      "family": "go",
+      "commit": "0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646",
+      "floors": {
+        "min_files": 94,
+        "min_parse_success": 0.99,
+        "min_clean_parse_ratio": 0.95,
+        "min_symbols": 1615,
+        "min_routes": 10,
+        "min_models": 0
+      }
+    },
+    {
+      "name": "spring-projects/spring-petclinic",
+      "family": "java",
+      "commit": "500158f732419217507c7656904b8e6aa1bcc0d6",
+      "floors": {
+        "min_files": 47,
+        "min_parse_success": 0.99,
+        "min_clean_parse_ratio": 0.95,
+        "min_symbols": 258,
+        "min_routes": 13,
+        "min_models": 7
+      }
+    },
+    {
+      "name": "dtolnay/anyhow",
+      "family": "rust",
+      "commit": "87c8571326d60b90391d0555c9675b5ac6f044b1",
+      "floors": {
+        "min_files": 35,
+        "min_parse_success": 0.99,
+        "min_clean_parse_ratio": 0.89,
+        "min_symbols": 302,
+        "min_routes": 0,
+        "min_models": 0
+      }
+    },
+    {
+      "name": "antirez/kilo",
+      "family": "c",
+      "commit": "323d93b29bd89a2cb446de90c4ed4fea1764176e",
+      "floors": {
+        "min_files": 1,
+        "min_parse_success": 0.99,
+        "min_clean_parse_ratio": 0.95,
+        "min_symbols": 92,
+        "min_routes": 0,
+        "min_models": 0
+      }
+    },
+    {
+      "name": "gabime/spdlog",
+      "family": "cpp",
+      "commit": "6d9805df3f588402b17073dcd13eb569ceda864d",
+      "floors": {
+        "min_files": 146,
+        "min_parse_success": 0.99,
+        "min_clean_parse_ratio": 0.13,
+        "min_symbols": 1711,
+        "min_routes": 0,
+        "min_models": 0
+      }
+    },
+    {
+      "name": "sinatra/sinatra",
+      "family": "ruby",
+      "commit": "cb22afd7902b566b6eaba6c4ea89739494a65d12",
+      "floors": {
+        "min_files": 139,
+        "min_parse_success": 0.99,
+        "min_clean_parse_ratio": 0.95,
+        "min_symbols": 799,
+        "min_routes": 0,
+        "min_models": 0
+      }
+    },
+    {
+      "name": "slimphp/Slim",
+      "family": "php",
+      "commit": "3675bf6baac66b07032575b7bef4200b60b7974b",
+      "floors": {
+        "min_files": 68,
+        "min_parse_success": 0.99,
+        "min_clean_parse_ratio": 0.95,
+        "min_symbols": 452,
+        "min_routes": 0,
+        "min_models": 0
+      }
+    },
+    {
+      "name": "Alamofire/Alamofire",
+      "family": "swift",
+      "commit": "b3e74e8301cc53c8f82afb9db141d52952876e69",
+      "floors": {
+        "min_files": 105,
+        "min_parse_success": 0.99,
+        "min_clean_parse_ratio": 0.9,
+        "min_symbols": 2939,
+        "min_routes": 0,
+        "min_models": 0
+      }
+    }
+  ]
+}

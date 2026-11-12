@@ -44,8 +44,11 @@ downgrade is refused while any public-import submission exists.
 - Unauthenticated GitHub requests share GitHub's per-address rate limits.
 - Private repositories still require an administrator-bound GitHub App installation,
   and that path is not wired into the local runtime or hosted configuration.
-- No live GitHub request has been made by the test suites; provider behaviour is
-  verified with `httpx.MockTransport` and a fake provider.
+- The test suites make no live GitHub request; provider behaviour is verified with
+  `httpx.MockTransport` and a fake provider. The first live use (the AST corpus) found that the
+  zipball request carried no `User-Agent`, which GitHub rejects with 403; every request now sends
+  `User-Agent: codespy-public-import`, covered by a unit test. The live corpus run downloaded ten
+  archives through the provider.
 - Importing the same URL twice reuses the repository and creates a second
   submission when the idempotency key differs.
 
@@ -70,4 +73,4 @@ offline admission image built from this tree:
   schema target), existing GitHub binding and acquisition tests, `ruff`, `mypy`,
   frontend typecheck, lint and the 72-test frontend suite
 
-No live GitHub request was made.
+The unit suites made no live GitHub request; ten live downloads were made later by the corpus run.
