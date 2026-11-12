@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, Field, model_validator
 
+from app.contracts.embedding_index import EmbedConfigV1, EmbedReceiptV1
 from app.contracts.indexing import JobState
 from app.contracts.scanners import Digest
 from app.domain.canonical_json import canonical_bytes
@@ -74,3 +75,22 @@ class EmbedJobRecordV7(Contract):
         ):
             raise ValueError("inconsistent embed job state")
         return self
+
+
+class EmbedCreateRequestV1(Contract):
+    schema_version: Literal[1] = 1
+    chunk_set_id: UUID
+    config: EmbedConfigV1
+    request_key: str = Field(min_length=1, max_length=128)
+
+
+class EmbedCreateResponseV1(Contract):
+    schema_version: Literal[1] = 1
+    job: EmbedJobRecordV7
+
+
+class EmbedStatusV1(Contract):
+    schema_version: Literal[1] = 1
+    job: EmbedJobRecordV7
+    receipt: EmbedReceiptV1 | None = None
+    can_cancel: bool

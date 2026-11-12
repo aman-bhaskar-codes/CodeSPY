@@ -102,6 +102,7 @@ jobs:
               'backend/tests/retrieval/storage/test_dense_job.py',
               'backend/tests/retrieval/storage/test_embed_job_records.py',
               'backend/tests/retrieval/storage/test_embed_job_service.py',
+              'backend/tests/retrieval/storage/test_embed_job_create.py',
               'backend/tests/phase2/integration/test_github_public_import.py',
               'backend/tests/phase2/api/test_github_import_api.py',
               'backend/tests/ast_facts',
