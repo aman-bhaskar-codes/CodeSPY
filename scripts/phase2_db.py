@@ -308,7 +308,9 @@ def grant_app(values, name):
                 "GRANT SELECT ON embed_specs,embed_attempt_specs,embed_publication_receipts,embed_vector_stage TO p2_api,p2_broker"
             )
             c.execute("GRANT INSERT ON embed_specs TO p2_api")
-            c.execute("GRANT INSERT ON embed_attempt_specs,embed_publication_receipts TO p2_broker")
+            c.execute(
+                "GRANT INSERT ON embed_attempt_specs,embed_publication_receipts TO p2_broker"
+            )
             c.execute("GRANT INSERT,DELETE ON embed_vector_stage TO p2_broker")
             c.execute(
                 "GRANT EXECUTE ON FUNCTION public.codespy_embed_authority(uuid,uuid),"
