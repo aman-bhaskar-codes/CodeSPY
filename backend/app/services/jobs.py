@@ -7,11 +7,11 @@ from uuid import UUID, uuid4
 from sqlalchemy import and_, func, insert, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.contracts.indexing import EnqueueIndexJobV5, IndexJobRecordV5
-from app.contracts.investigation_jobs import EnqueueInvestigationJobV1, InvestigationJobRecordV1
-from app.contracts.jobs import AttemptLeaseV2, EnqueueJobV2, EnqueueJobV3, JobRecordV2, JobRecordV3
+from app.contracts.indexing import EnqueueIndexJobV5
+from app.contracts.investigation_jobs import EnqueueInvestigationJobV1
+from app.contracts.jobs import AttemptLeaseV2, EnqueueJobV2, EnqueueJobV3
 from app.contracts.persistence import RunCreate
-from app.contracts.scan_jobs import EnqueueScanJobV4, ScanJobRecordV4
+from app.contracts.scan_jobs import EnqueueScanJobV4
 from app.db.time import database_now
 from app.db.transaction import transaction
 from app.domain.canonical_json import semantic_digest
@@ -21,6 +21,7 @@ from app.models.phase2_tables import PHASE2_TABLES
 from app.models.tables import analysis_runs
 from app.repositories.event_repository import append_event
 from app.repositories.job_repository import (
+    PublicJobRecord,
     attempts,
     job_record,
     job_record_v3,
@@ -65,7 +66,7 @@ class JobService:
             | EnqueueIndexJobV5
             | EnqueueInvestigationJobV1
         ),
-    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5 | InvestigationJobRecordV1:
+    ) -> PublicJobRecord:
         if request.request_key.startswith(("job:", "child:")):
             raise ValueError("reserved request namespace")
         async with transaction(self.factory) as s:
@@ -163,9 +164,7 @@ class JobService:
         await append_event(s, row, "queued")
         return row
 
-    async def get(
-        self, ctx: TenantContext, job_id: UUID
-    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5 | InvestigationJobRecordV1:
+    async def get(self, ctx: TenantContext, job_id: UUID) -> PublicJobRecord:
         async with transaction(self.factory) as s:
             row = await load_job(s, ctx.org_id, job_id)
             await require_repository(s, ctx.org_id, ctx.principal_id, row["repository_id"])
@@ -806,9 +805,7 @@ class JobService:
                 s, job, attempt, code, transient=transient, cancel=code == "access_revoked"
             )
 
-    async def request_cancel(
-        self, ctx: TenantContext, job_id: UUID
-    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5 | InvestigationJobRecordV1:
+    async def request_cancel(self, ctx: TenantContext, job_id: UUID) -> PublicJobRecord:
         """API cancellation fences work; broker alone closes an inventory run."""
         async with transaction(self.factory) as s:
             hint = await load_job(s, ctx.org_id, job_id)
@@ -854,9 +851,7 @@ class JobService:
                 await append_event(s, job, "cancel_requested")
             return public_job_record(await load_job(s, ctx.org_id, job_id))
 
-    async def cancel(
-        self, ctx: TenantContext, job_id: UUID
-    ) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5 | InvestigationJobRecordV1:
+    async def cancel(self, ctx: TenantContext, job_id: UUID) -> PublicJobRecord:
         async with transaction(self.factory) as s:
             hint = await load_job(s, ctx.org_id, job_id)
             await lock_scope(

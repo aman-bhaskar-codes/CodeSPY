@@ -7,6 +7,7 @@ from uuid import uuid4
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.contracts.embedding_jobs import JobEnvelopeV7
 from app.contracts.indexing import JobEnvelopeV5
 from app.contracts.investigation_jobs import JobEnvelopeV6
 from app.contracts.jobs import JobEnvelopeV2, JobEnvelopeV3
@@ -15,8 +16,27 @@ from app.models.phase2_tables import PHASE2_TABLES
 
 
 async def enqueue_wakeup(s: AsyncSession, job: dict[str, Any]) -> None:
-    envelope: JobEnvelopeV2 | JobEnvelopeV3 | JobEnvelopeV4 | JobEnvelopeV5 | JobEnvelopeV6
-    if job["operation"] == "investigate_snapshot":
+    envelope: (
+        JobEnvelopeV2
+        | JobEnvelopeV3
+        | JobEnvelopeV4
+        | JobEnvelopeV5
+        | JobEnvelopeV6
+        | JobEnvelopeV7
+    )
+    if job["operation"] == "embed_chunk_set":
+        from app.repositories.job_repository import load_job
+
+        current = await load_job(s, job["org_id"], job["id"])
+        envelope = JobEnvelopeV7(
+            org_id=job["org_id"],
+            job_id=job["id"],
+            embed_spec_id=current["embed_spec_id"],
+            dispatch_generation=job["dispatch_generation"],
+            config_hash=job["config_hash"],
+            deadline=job["deadline"],
+        )
+    elif job["operation"] == "investigate_snapshot":
         from app.repositories.job_repository import load_job
 
         current = await load_job(s, job["org_id"], job["id"])
