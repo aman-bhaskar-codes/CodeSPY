@@ -185,3 +185,37 @@ class AstFilePageV1(Contract):
     run_id: UUID
     items: tuple[AstFileSummaryV1, ...] = Field(max_length=200)
     next_after: str | None = None
+
+
+class AstRouteItemV1(Contract):
+    file_id: UUID
+    file_path: str
+    framework: str
+    method: str
+    route_path: str
+    handler: str | None = None
+    start_line: int = Field(ge=1)
+    end_line: int = Field(ge=1)
+
+
+class AstRoutePageV1(Contract):
+    run_id: UUID
+    items: tuple[AstRouteItemV1, ...] = Field(max_length=200)
+    next_after: str | None = None
+
+
+class AstModelItemV1(Contract):
+    file_id: UUID
+    file_path: str
+    framework: str
+    name: str
+    table: str | None = None
+    columns: tuple[ColumnFactV1, ...] = Field(default=(), max_length=256)
+    start_line: int = Field(ge=1)
+    end_line: int = Field(ge=1)
+
+
+class AstModelPageV1(Contract):
+    run_id: UUID
+    items: tuple[AstModelItemV1, ...] = Field(max_length=200)
+    next_after: str | None = None
