@@ -126,14 +126,6 @@ async def test_running_cancellation_is_terminalized_by_recovery(
     assert state[0]["state"] == "cancelled"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "pre-existing: since revision 0040, lock_scope(access=False) still runs the actor-write "
-        "check inside codespy_lock_scoped_snapshot, so recovery raises for a revoked writer; the "
-        "index_snapshot equivalent fails the same way at head"
-    ),
-)
 async def test_revoked_writer_is_terminalized_by_recovery(
     api_factory, broker_factory, migration_factory, tmp_path
 ):

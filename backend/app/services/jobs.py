@@ -1,5 +1,6 @@
 """Durable jobs. Queue delivery never supplies publication or lifecycle authority."""
 
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID, uuid4
@@ -50,6 +51,9 @@ def _ensure_utc(dt: datetime | None) -> datetime:
 TERMINAL = {"succeeded", "partial", "failed", "cancelled"}
 # ASCII namespace CSPY2, shared by all broker processes, not an in-memory semaphore.
 CLAIM_CAPACITY_LOCK = 0x4353505932
+
+
+logger = logging.getLogger(__name__)
 
 
 class JobService:
@@ -987,7 +991,12 @@ class JobService:
         changed = 0
         for org_id, job_id in candidates:
             async with transaction(self.factory) as s:
-                job, _ = await self._locked(s, org_id, job_id, access=False)
+                try:
+                    job, _ = await self._locked(s, org_id, job_id, access=False)
+                except ScopeViolation:
+                    # One job whose scope is gone must not block recovery of the others.
+                    logger.warning("recovery_scope_unavailable")
+                    continue
                 if job["state"] in TERMINAL:
                     continue
                 now = await database_now(s)
