@@ -53,6 +53,7 @@ class Analytics:
     entry_candidates: tuple[str, ...] = ()
     external: tuple[tuple[str, int], ...] = ()  # (external node id, importing files)
     counts: dict[str, int] = field(default_factory=dict)
+    component_by_file: dict[str, str] = field(default_factory=dict)  # file node id -> component
 
 
 def _budget() -> GraphBudget:
@@ -280,4 +281,5 @@ def analyze(graph: DependencyGraphV1, budget: GraphBudget | None = None) -> Anal
         entry_candidates=entries,
         external=external,
         counts={**graph.counts(), "files": len(files), "components": len(component_names)},
+        component_by_file={n.id: c for n in files if (c := component_of(n.id)) is not None},
     )
