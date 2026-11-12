@@ -68,7 +68,7 @@ INSERT = text(
 )
 
 
-GUARDS = ("guard_index_result", "guard_index_committed")
+GUARDS = ("guard_index_result", "guard_index_committed", "guard_embed_committed")
 
 
 async def without_row_guards(session):

@@ -303,6 +303,17 @@ def grant_app(values, name):
             c.execute(
                 "GRANT EXECUTE ON FUNCTION public.codespy_index_authority(uuid,uuid),public.codespy_index_complete_set(uuid,uuid) TO p2_broker"
             )
+        if c.execute("SELECT to_regclass('public.embed_specs')").fetchone()[0]:
+            c.execute(
+                "GRANT SELECT ON embed_specs,embed_attempt_specs,embed_publication_receipts,embed_vector_stage TO p2_api,p2_broker"
+            )
+            c.execute("GRANT INSERT ON embed_specs TO p2_api")
+            c.execute("GRANT INSERT ON embed_attempt_specs,embed_publication_receipts TO p2_broker")
+            c.execute("GRANT INSERT,DELETE ON embed_vector_stage TO p2_broker")
+            c.execute(
+                "GRANT EXECUTE ON FUNCTION public.codespy_embed_authority(uuid,uuid),"
+                "public.codespy_embed_embedding_digest(uuid,uuid),public.codespy_embed_verify(uuid,uuid) TO p2_broker"
+            )
         if c.execute("SELECT to_regclass('public.model_continuations')").fetchone()[0]:
             c.execute(
                 "REVOKE ALL ON public.model_continuations,public.provider_usage_receipts FROM p2_api,p2_broker"
