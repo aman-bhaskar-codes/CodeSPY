@@ -165,7 +165,7 @@ dev = [
 
     # --- Linting, Formatting, Strict Type Checking & Security Audits ---
 
-    "ruff>=0.8.2",
+    "ruff>=0.17.4",
 
     "mypy>=1.13.0",
 
