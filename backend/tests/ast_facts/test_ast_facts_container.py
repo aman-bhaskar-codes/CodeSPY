@@ -121,7 +121,8 @@ async def test_container_extracts_framework_routes_and_models(tmp_path):
 
     files = {
         "api/web.py": (
-            b"from flask import Flask\napp = Flask(__name__)\n"
+            b"import os\nfrom flask import Flask\napp = Flask(__name__)\n"
+            b'DB = os.getenv("DB_URL", "hunter2")\n'
             b'@app.route("/users", methods=["GET", "POST"])\ndef users(): pass\n'
         ),
         "db/models.py": (
@@ -151,6 +152,9 @@ async def test_container_extracts_framework_routes_and_models(tmp_path):
         for f in draft.files
     }
     assert found["api/web.py"][0] == [("flask", "GET", "/users"), ("flask", "POST", "/users")]
+    web = next(f for f in draft.files if f.path == "api/web.py")
+    assert [(c.kind, c.name) for c in web.config] == [("env_var", "DB_URL")]
+    assert "hunter2" not in draft.model_dump_json()  # defaults are never stored
     assert found["db/models.py"][1] == ["U"]
     assert found["srv/app.js"][0] == [("express", "GET", "/x")]
     assert found["src/com/ex/Ctl.java"][0] == [("spring", "GET", "/ping")]

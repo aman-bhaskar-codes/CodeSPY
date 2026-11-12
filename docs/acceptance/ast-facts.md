@@ -80,6 +80,22 @@ Delete/PatchMapping`; JPA `@Entity`/`@Table`/`@Id`/`@Column`/`@JoinColumn`, skip
     `not null`, `foreignKey:`, `gorm:"-"`, `TableName()`).
   - _Reads:_ `GET .../snapshots/{id}/ast-facts/routes` and `.../models` list them across a
     snapshot, paged by file path and ordinal.
+- **Configuration reads.** Environment variables (`env_var`) and configuration keys
+  (`config_key`), recorded by **name only**: defaults, fallbacks and values are never stored, and
+  computed names are skipped. A byte-marker check skips the second parse for files that cannot
+  contain a read.
+  - _Environment:_ Python `os.environ[...]`, `os.environ.get/setdefault/pop`, `os.getenv`;
+    JavaScript and TypeScript `process.env.X`, `process.env["X"]`, `import.meta.env.X`,
+    `Deno.env.get`; Go `os.Getenv`/`LookupEnv`; Java `System.getenv`; Rust `std::env::var`,
+    `var_os`, `env!`, `option_env!`; Ruby `ENV[...]`, `ENV.fetch`; PHP `getenv`, `env()`,
+    `$_ENV[...]`; Swift `ProcessInfo.processInfo.environment[...]`; C and C++ `getenv`.
+    `$_SERVER` is request data and is not treated as configuration.
+  - _Keys (import-gated):_ Django `settings.X`, Flask `app.config[...]`/`.get`, node-config
+    `config.get/has`, viper `GetString`-style calls, Java `System.getProperty`, Spring
+    `@Value("${key}")` and `@ConfigurationProperties(prefix=...)`, Laravel `config()`.
+  - _Placeholder defaults:_ Spring `${name:default}` is masked to `${name:…}` in stored
+    annotation text, since the default can be a fallback credential.
+  - _Reads:_ `GET .../snapshots/{id}/ast-facts/config` lists them across a snapshot.
 - **Evidence.** Every fact has a half-open byte range and line range. The broker re-reads the
   authenticated archive and rejects facts whose range is not exact, files outside the admitted
   source, and identity or coverage drift.
@@ -141,6 +157,14 @@ Delete/PatchMapping`; JPA `@Entity`/`@Table`/`@Id`/`@Column`/`@JoinColumn`, skip
   `include()` expansion, Spring `value` arrays beyond literals, SQLAlchemy relationships and
   declarative mixins, and Django abstract-model inheritance are not resolved. Other frameworks
   (NestJS, Koa, Rails, Laravel, Axum, Vapor, ...) are not covered.
+
+- Facts quote source text: parameter defaults, decorator and annotation arguments and constant
+  initializers are stored as written, so a secret hard-coded in source is visible to anyone who can
+  read the snapshot's facts. Only configuration _reads_ are guaranteed value-free. Facts must be
+  redacted before they leave the deployment (for example in model prompts).
+- Configuration is detected from direct calls and subscripts; reads through wrapper helpers,
+  settings objects (pydantic `BaseSettings`, Spring `Environment` beans other than `getProperty`),
+  `.env` files and dotenv loaders are not followed.
 
 ## Verification
 

@@ -108,6 +108,54 @@ export type ArchitectureReportV1 = {
 };
 
 /**
+ * AstConfigItemV1
+ */
+export type AstConfigItemV1 = {
+    /**
+     * End Line
+     */
+    end_line: number;
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * File Path
+     */
+    file_path: string;
+    /**
+     * Kind
+     */
+    kind: 'env_var' | 'config_key';
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Start Line
+     */
+    start_line: number;
+};
+
+/**
+ * AstConfigPageV1
+ */
+export type AstConfigPageV1 = {
+    /**
+     * Items
+     */
+    items: Array<AstConfigItemV1>;
+    /**
+     * Next After
+     */
+    next_after?: string | null;
+    /**
+     * Run Id
+     */
+    run_id: string;
+};
+
+/**
  * AstFilePageV1
  */
 export type AstFilePageV1 = {
@@ -6611,6 +6659,49 @@ export type AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFa
 };
 
 export type AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetResponse = AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetResponses[keyof AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetResponses];
+
+export type AstFactsConfigApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsConfigGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: {
+        /**
+         * After
+         */
+        after?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts/config';
+};
+
+export type AstFactsConfigApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsConfigGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AstFactsConfigApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsConfigGetError = AstFactsConfigApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsConfigGetErrors[keyof AstFactsConfigApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsConfigGetErrors];
+
+export type AstFactsConfigApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsConfigGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: AstConfigPageV1;
+};
+
+export type AstFactsConfigApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsConfigGetResponse = AstFactsConfigApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsConfigGetResponses[keyof AstFactsConfigApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsConfigGetResponses];
 
 export type AstFactsFilesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsFilesGetData = {
     body?: never;

@@ -29,6 +29,7 @@ def extract_facts(unit: SourceUnitV1, budget: AnalysisBudget) -> FileFactsV1:
     if module is None:
         raise ValueError(f"unsupported language: {unit.language}")
     facts: FileFactsV1 = importlib.import_module(module).extract(unit, budget)
+    from app.analyzers.facts.config import observe
     from app.analyzers.facts.frameworks import enrich
 
-    return enrich(unit, facts, budget)
+    return observe(unit, enrich(unit, facts, budget), budget)
