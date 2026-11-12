@@ -995,7 +995,7 @@ class JobService:
                     job, _ = await self._locked(s, org_id, job_id, access=False)
                 except ScopeViolation:
                     # One job whose scope is gone must not block recovery of the others.
-                    logger.warning("recovery_scope_unavailable")
+                    logger.warning("recovery_scope_unavailable org=%s job=%s", org_id, job_id)
                     continue
                 if job["state"] in TERMINAL:
                     continue

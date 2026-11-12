@@ -56,7 +56,7 @@ async def test_the_recovery_lock_checks_the_snapshot_not_the_actor(
             {**args, "snap": uuid4()},
         ):
             assert await session.scalar(text(LOCK), wrong) is False
-    with pytest.raises(DBAPIError):  # the API role may not execute it
+    with pytest.raises(DBAPIError, match="permission denied"):  # the API role may not execute it
         async with api_factory() as session, session.begin():
             await session.scalar(text(LOCK), args)
 
@@ -84,7 +84,7 @@ async def test_normal_authorization_still_rejects_a_revoked_actor(
 
 
 async def test_one_unlockable_job_does_not_block_recovery_of_the_rest(
-    api_factory, broker_factory, migration_factory, tmp_path, monkeypatch
+    api_factory, broker_factory, migration_factory, tmp_path, monkeypatch, caplog
 ):
     base = await embed_base(api_factory, broker_factory, migration_factory, tmp_path)
     ctx = base["ctx"]
@@ -111,3 +111,19 @@ async def test_one_unlockable_job_does_not_block_recovery_of_the_rest(
         }
     assert rows[second.id] == ("failed", "access_revoked")
     assert rows[first.id][0] == "queued"  # left for a later pass, not terminalized by mistake
+    assert f"job={first.id}" in caplog.text  # diagnosable: the skipped job is named in the log
+
+
+async def test_only_a_scope_violation_is_skipped_other_errors_still_surface(
+    api_factory, broker_factory, migration_factory, tmp_path, monkeypatch
+):
+    base = await embed_base(api_factory, broker_factory, migration_factory, tmp_path)
+    await JobService(api_factory).enqueue(base["ctx"], request(base, "boom"))
+    await revoke(migration_factory, base["ctx"])
+
+    async def locked(self, s, org_id, job_id, **kwargs):
+        raise RuntimeError("unexpected failure")
+
+    monkeypatch.setattr(JobService, "_locked", locked)
+    with pytest.raises(RuntimeError):
+        await JobService(broker_factory).recover_due()
