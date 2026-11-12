@@ -1,5 +1,7 @@
 """Real current-head transactions; only the container transport is substituted."""
 
+import os
+
 import pytest
 from app.analyzers.facts_pipeline import analyze_facts
 from app.analyzers.pipeline import analyze
@@ -18,6 +20,11 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
 
 from tests.phase3.integration.test_structural_publication import admitted
+
+pytestmark = pytest.mark.skipif(
+    os.environ.get("CODESPY_TEST_SCHEMA_TARGET") != "head",
+    reason="requires the current schema head (migrations 0041 to 0043)",
+)
 
 
 class FixtureRunner:

@@ -1,5 +1,6 @@
 import hashlib
 import io
+import os
 import zipfile
 from uuid import uuid4
 
@@ -14,6 +15,12 @@ from app.repositories.identity_repository import IdentityRepository
 from app.services.github_acquisition import GitHubAcquisitionService
 from app.services.jobs import JobService
 from sqlalchemy import func, select, update
+
+pytestmark = pytest.mark.skipif(
+    os.environ.get("CODESPY_TEST_SCHEMA_TARGET") != "head",
+    reason="requires the current schema head (migrations 0041 to 0043)",
+)
+
 
 SHA = "b" * 40
 

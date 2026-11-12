@@ -35,8 +35,8 @@ from app.contracts.persistence import RepositoryCreate
 from app.models.phase2_tables import PHASE2_TABLES
 from app.repositories.identity_repository import IdentityRepository
 from app.repositories.repository_repository import RepositoryRepository
-from app.services.github_acquisition import GitHubAcquisitionService
 from app.services.ast_finalization import AstFactsFinalizer
+from app.services.github_acquisition import GitHubAcquisitionService
 from app.services.job_finalization import JobFinalizer
 from app.services.structural_finalization import StructuralFinalizer
 from app.workers.cleanup import CleanupWorker
@@ -226,7 +226,9 @@ async def run(args: argparse.Namespace) -> None:
                 store,
                 ctx,
                 github=github_service(api_factory),
-                admission_policy=AdmissionPolicyV3() if extended else AdmissionPolicyV1(),
+                admission_policy=AdmissionPolicyV3()
+                if extended
+                else AdmissionPolicyV1(),
                 readiness=ready,
             ),
         )
