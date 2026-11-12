@@ -19,8 +19,8 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
-from uuid import UUID
+from typing import Any, Protocol
+from uuid import UUID, uuid4
 
 from app.adapters.model.http_transport import ProviderTransportError
 from app.contracts.provider_budget import (
@@ -32,7 +32,10 @@ from app.contracts.provider_budget import (
     SettlementOutcomeV1,
     calculate_charge_micros,
 )
+from app.contracts.search import SearchScopeV1
+from app.contracts.source_view import PrivacyPolicyV1
 from app.ports.embedding import EmbeddingPort
+from app.services.privacy_transform import transform_model_safe
 from app.services.provider_budget import (
     DisclosureDeniedError,
     ProviderBudgetError,
@@ -184,8 +187,40 @@ class _BoundPort:
         return await self.gate.embed(self.scope, request)
 
 
+class _Gate(Protocol):
+    async def embed(
+        self, scope: EmbeddingScope, request: EmbeddingRequestV1
+    ) -> EmbeddingResponseV1: ...
+
+
+class AccountedQueryEmbedder:
+    """Embeds a user's search query: redacted first, then disclosure-checked and accounted.
+
+    Every call is its own operation, so repeating a query is a new, separately billed call.
+    """
+
+    def __init__(self, gate: _Gate, policy_for: Callable[[UUID, UUID], DisclosurePolicyV1]) -> None:
+        self.gate, self.policy_for = gate, policy_for
+
+    async def embed_query(
+        self, scope: SearchScopeV1, request: EmbeddingRequestV1
+    ) -> EmbeddingResponseV1:
+        safe = transform_model_safe(request.text.encode(), PrivacyPolicyV1()).safe_text or ""
+        if not safe.strip():
+            raise ValueError("query is empty after redaction")
+        accounted = EmbeddingScope(
+            org_id=scope.org_id,
+            repository_id=scope.repository_id,
+            principal_id=scope.principal_id,
+            policy=self.policy_for(scope.org_id, scope.repository_id),
+            operation_key="query:" + uuid4().hex,
+        )
+        return await self.gate.embed(accounted, request.model_copy(update={"text": safe}))
+
+
 __all__ = [
     "AccountedEmbeddingGate",
+    "AccountedQueryEmbedder",
     "EmbeddingDispatchError",
     "EmbeddingReplayError",
     "EmbeddingScope",
