@@ -1,10 +1,18 @@
 """Native pgvector storage for chunk embeddings against a real PostgreSQL schema."""
 
 import json
+import os
 from uuid import uuid4
 
+import pytest
 from scripts import phase2_db as harness
 from sqlalchemy import text
+
+pytestmark = pytest.mark.skipif(
+    os.environ.get("CODESPY_TEST_SCHEMA_TARGET") != "head",
+    reason="requires the current schema head (migrations 0041 to 0043)",
+)
+
 
 FKS = ("fk_emb_chunk", "fk_emb_index", "fk_emb_repo", "fk_emb_snapshot")
 PREVIOUS = "0040_investigation_runtime_permissions"

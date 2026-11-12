@@ -7,6 +7,7 @@ by the file's own imports so unrelated files cost nothing, and every fact cites 
 """
 
 import re
+from collections.abc import Callable
 
 from app.analyzers.facts.common import clip, text
 from app.analyzers.positions import SourceIndex
@@ -19,6 +20,7 @@ from app.contracts.ast_facts import (
     SymbolFactV1,
 )
 from app.contracts.structure import AnalysisBudget, SourceUnitV1
+from app.domain.source_ranges import SourceRangeV1
 from tree_sitter import Node
 
 MAX_ROUTES = 256
@@ -290,7 +292,7 @@ def _python_ast_facts(
     routes: list[RouteFactV1] = []
     models: list[ModelFactV1] = []
 
-    def span(node: Node):
+    def span(node: Node) -> SourceRangeV1:
         return index.range_from_bytes(node.start_byte, node.end_byte)
 
     for stmt in root.named_children:
@@ -481,7 +483,7 @@ def _go_facts(
     table_names: dict[str, str] = {}
     structs: list[Node] = []
 
-    def span(node: Node):
+    def span(node: Node) -> SourceRangeV1:
         return index.range_from_bytes(node.start_byte, node.end_byte)
 
     stack: list[Node] = [root]
@@ -554,7 +556,12 @@ def _descendants(node: Node, kind: str) -> list[Node]:
     return found
 
 
-def _gorm_model(data, spec: Node, table_names: dict[str, str], span) -> ModelFactV1 | None:
+def _gorm_model(
+    data: bytes,
+    spec: Node,
+    table_names: dict[str, str],
+    span: Callable[[Node], SourceRangeV1],
+) -> ModelFactV1 | None:
     name = text(data, spec.child_by_field_name("name"))
     struct = spec.child_by_field_name("type")
     members = (

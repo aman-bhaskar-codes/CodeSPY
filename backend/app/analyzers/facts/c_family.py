@@ -15,6 +15,7 @@ from app.contracts.ast_facts import (
     SymbolFactV1,
 )
 from app.contracts.structure import AnalysisBudget, SourceUnitV1
+from app.domain.source_ranges import SourceRangeV1
 from tree_sitter import Node
 
 Kind = Literal[
@@ -93,7 +94,7 @@ def extract(unit: SourceUnitV1, budget: AnalysisBudget) -> FileFactsV1:
     truncated = False
     in_template = False
 
-    def span(node: Node):
+    def span(node: Node) -> SourceRangeV1:
         return index.range_from_bytes(node.start_byte, node.end_byte)
 
     def room() -> bool:

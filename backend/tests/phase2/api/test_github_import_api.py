@@ -1,8 +1,16 @@
+import os
+
 import httpx
+import pytest
 from app.adapters.storage.local import LocalObjectStore
 from app.api.application import ApiSettings, ApplicationPorts, create_app
 from app.services.github_acquisition import GitHubAcquisitionService
 from scripts.phase1_fixture import scenario
+
+pytestmark = pytest.mark.skipif(
+    os.environ.get("CODESPY_TEST_SCHEMA_TARGET") != "head",
+    reason="requires the current schema head (migrations 0041 to 0043)",
+)
 
 
 class NoNetwork:

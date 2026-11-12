@@ -1,6 +1,8 @@
+import os
 from uuid import UUID, uuid4
 
 import httpx
+import pytest
 from app.api.application import ApiSettings, ApplicationPorts, create_app
 from app.security.sessions import SessionService
 from app.services.jobs import JobService
@@ -8,6 +10,11 @@ from app.services.jobs import JobService
 from tests.ast_facts.test_ast_facts_publication import (
     admitted,
     operations,
+)
+
+pytestmark = pytest.mark.skipif(
+    os.environ.get("CODESPY_TEST_SCHEMA_TARGET") != "head",
+    reason="requires the current schema head (migrations 0041 to 0043)",
 )
 
 
