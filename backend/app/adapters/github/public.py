@@ -17,7 +17,12 @@ from app.security.github import validate_archive_redirect
 MAX_ARCHIVE_BYTES = 104857600
 _NAME = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?/[A-Za-z0-9_.-]{1,100}")
 _SHA = re.compile(r"[0-9a-f]{40}")
-_HEADERS = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+_USER_AGENT = "codespy-public-import"  # GitHub rejects requests that carry no User-Agent
+_HEADERS = {
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": _USER_AGENT,
+}
 
 
 class GitHubPublicProvider:
@@ -111,7 +116,7 @@ class GitHubPublicProvider:
                     if response.status_code in {301, 302, 303, 307, 308}:
                         url = response.headers.get("location", "")
                         validate_archive_redirect(url)
-                        headers = {"Accept": "application/zip"}
+                        headers = {"Accept": "application/zip", "User-Agent": _USER_AGENT}
                         continue
                     self.status(response)
                     size = 0

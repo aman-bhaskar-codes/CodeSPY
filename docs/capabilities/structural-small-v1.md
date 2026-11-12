@@ -90,3 +90,9 @@ Choose fresh output filenames; the build/qualification scripts refuse existing o
 toolchain qualification contracts/schema; toolchain qualification production runner and full adversarial resource checks; toolchain qualification authenticated source bytes and position mapping; subsequent syntax/binding/graph/framework/report/jobs/API/UI/evaluation packages. Structural 128-file/16-MiB/1,000-node budgets remain proposed until measured at release qualification. No LLM, scanner, AWS, live OAuth, browser automation or deployed service was involved.
 
 See [ADR 0003](../adr/0003-structural-analysis.md) and [REA evidence](../engineering/rea-investigation.md).
+
+## Related: AST facts
+
+The `ast_facts` adapter (see `docs/acceptance/ast-facts.md`) runs beside this profile on the same
+job operation and limits. Its real-repository corpus results show the 128-file cap truncating
+larger repositories; that cap is shared with this profile.
