@@ -60,6 +60,23 @@ def _pick(ctx: Ctx, candidates: list[str]) -> Outcome | None:
     return Outcome("ambiguous", tuple(file_id(c) for c in chosen[:MAX_CANDIDATES]))
 
 
+def _pick_strict(ctx: Ctx, candidates: list[str]) -> Outcome | None:
+    """Resolve only when unambiguous: a lone candidate, or the lone one beside the importer.
+
+    Python's import path depends on how the program is launched, so "nearest tree wins" would
+    silently bind a test fixture named like a library to every test. Anything else stays ambiguous.
+    """
+    unique = sorted(set(candidates))
+    if not unique:
+        return None
+    if len(unique) == 1:
+        return Outcome("resolved", (file_id(unique[0]),))
+    beside = [c for c in unique if parent(c) == ctx.directory]
+    if len(beside) == 1:
+        return Outcome("resolved", (file_id(beside[0]),))
+    return Outcome("ambiguous", tuple(file_id(c) for c in unique[:MAX_CANDIDATES]))
+
+
 def _external(root: str) -> Outcome:
     return Outcome("external", external=root)
 
@@ -98,11 +115,11 @@ def python(imp: ImportFactV1, ctx: Ctx) -> list[Outcome]:
             if sub_files:
                 outcomes.append(Outcome("resolved", (file_id(sub_files[0]),)))
         return outcomes or [UNRESOLVED]
-    module_outcome = _pick(ctx, _py_module_files(ctx, imp.module))
+    module_outcome = _pick_strict(ctx, _py_module_files(ctx, imp.module))
     if module_outcome is not None:
         outcomes.append(module_outcome)
     for name in names:
-        sub = _pick(ctx, _py_module_files(ctx, f"{imp.module}.{name}"))
+        sub = _pick_strict(ctx, _py_module_files(ctx, f"{imp.module}.{name}"))
         if sub is not None:
             outcomes.append(sub)
     if outcomes:
