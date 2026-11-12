@@ -46,6 +46,10 @@ def file_id(path: str) -> str:
     return FILE + path
 
 
+def pkg_id(directory: str) -> str:
+    return PACKAGE + (directory or ".")
+
+
 def _pick(ctx: Ctx, candidates: list[str]) -> Outcome | None:
     """Turn candidate paths into resolved/ambiguous, or None when there are none."""
     if not candidates:
@@ -109,7 +113,10 @@ def python(imp: ImportFactV1, ctx: Ctx) -> list[Outcome]:
     # A top-level name that exists as a directory or module somewhere in the repository may be
     # internal but unlocatable (not analyzed, generated): unknown, not external.
     internal = any(
-        part == root or part == root + ".py" for p in ctx.index.inventory for part in p.split("/")
+        part == root or part == root + ".py"
+        for p in ctx.index.inventory
+        if p.endswith((".py", ".pyi"))
+        for part in p.split("/")
     )
     return [UNRESOLVED if internal else _external(root)]
 
@@ -186,15 +193,19 @@ def go(imp: ImportFactV1, ctx: Ctx) -> list[Outcome]:
             if path.startswith(prefix + "/"):
                 rest = path[len(prefix) + 1 :]
                 if rest in _go_dirs(ctx):
-                    return [Outcome("resolved", (PACKAGE + rest,))]
+                    return [Outcome("resolved", (pkg_id(rest),))]
+                return [UNRESOLVED]
+            if path == prefix:  # the module's root package
+                if "" in _go_dirs(ctx):
+                    return [Outcome("resolved", (pkg_id(""),))]
                 return [UNRESOLVED]
         return [_external("/".join(segments[:3]))]
     dirs, k = matched
     if k < len(segments):
         prefixes.add("/".join(segments[: len(segments) - k]))
     if len(dirs) == 1:
-        return [Outcome("resolved", (PACKAGE + dirs[0],))]
-    return [Outcome("ambiguous", tuple(PACKAGE + d for d in dirs[:MAX_CANDIDATES]))]
+        return [Outcome("resolved", (pkg_id(dirs[0]),))]
+    return [Outcome("ambiguous", tuple(pkg_id(d) for d in dirs[:MAX_CANDIDATES]))]
 
 
 # ---- Java -----------------------------------------------------------------------------------
@@ -216,16 +227,20 @@ def java(imp: ImportFactV1, ctx: Ctx) -> list[Outcome]:
             }
         )
         if len(dirs) == 1:
-            return [Outcome("resolved", (PACKAGE + dirs[0],))]
+            return [Outcome("resolved", (pkg_id(dirs[0]),))]
         if dirs:
-            return [Outcome("ambiguous", tuple(PACKAGE + d for d in dirs[:MAX_CANDIDATES]))]
+            return [Outcome("ambiguous", tuple(pkg_id(d) for d in dirs[:MAX_CANDIDATES]))]
     else:
         picked = _pick(ctx, ctx.index.ending(as_path + ".java"))
         if picked is not None:
             return [picked]
-    head = "/".join(dotted.split(".")[:2])
-    internal = any(("/" + head + "/") in ("/" + d + "/") for d in ctx.index.by_dir)
-    return [UNRESOLVED if internal else _external(".".join(dotted.split(".")[:2]))]
+    parts = dotted.split(".")
+    package = parts if imp.kind == "wildcard" else parts[:-1]
+    head = "/".join(package[:3])
+    # Only a package that names a directory of this repository can be internal; a shared prefix
+    # such as org.springframework is not enough.
+    internal = bool(head) and any(("/" + head + "/") in ("/" + d + "/") for d in ctx.index.by_dir)
+    return [UNRESOLVED if internal else _external(".".join(parts[:2]))]
 
 
 # ---- Rust -----------------------------------------------------------------------------------
@@ -274,9 +289,8 @@ def rust(imp: ImportFactV1, ctx: Ctx) -> list[Outcome]:
                 return [UNRESOLVED]
             chain = chain[:-1]
             rest = rest[1:]
-    best: str | None = None
     walked = list(chain)
-    best = _rust_module_file(ctx, root, walked) if walked or head == "crate" else None
+    best = _rust_module_file(ctx, root, walked)
     for segment in rest:
         deeper = _rust_module_file(ctx, root, [*walked, segment])
         if deeper is None:
@@ -352,9 +366,9 @@ def swift(imp: ImportFactV1, ctx: Ctx) -> list[Outcome]:
     if len(dirs) == 1:
         if dirs[0] == ctx.directory:
             return []  # a file importing its own module
-        return [Outcome("resolved", (PACKAGE + dirs[0],))]
+        return [Outcome("resolved", (pkg_id(dirs[0]),))]
     if dirs:
-        return [Outcome("ambiguous", tuple(PACKAGE + d for d in dirs[:MAX_CANDIDATES]))]
+        return [Outcome("ambiguous", tuple(pkg_id(d) for d in dirs[:MAX_CANDIDATES]))]
     return [_external(module)]
 
 

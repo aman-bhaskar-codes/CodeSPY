@@ -55,7 +55,7 @@ def test_python_resolves_relative_absolute_and_submodule_imports_and_classifies_
             "app/core/__init__.py": "",
             "app/core/engine.py": "",
         },
-        inventory=["missing_pkg_dir/x.txt"],
+        inventory=["missing_pkg_dir/x.py"],  # a Python file that was not analyzed,
     )
     got = {(m, r, t) for m, r, t in out["app/main.py"]}
     assert ("os", "external", "ext:python:os") in got
@@ -245,3 +245,31 @@ def test_the_graph_is_closed_deterministic_and_independent_of_input_order():
     ]
     assert [n.id for n in again.nodes] == [n.id for n in graph.nodes]
     assert graph.counts()["resolved"] >= 4
+
+
+def test_go_module_root_package_and_java_framework_prefixes_found_by_calibration():
+    # The corpus run showed these two cases wrong: the module's root package is its own import
+    # path, and a framework shares a leading directory segment with the application's packages.
+    _, go = summarize(
+        {
+            "gin.go": 'package gin\nimport "github.com/org/repo/internal/x"\n',
+            "internal/x/x.go": "package x\n",
+            "t/t.go": 'package t\nimport "github.com/org/repo"\n',
+        }
+    )
+    assert ("github.com/org/repo", "resolved", "pkg:.") in go["t/t.go"]
+    _, java = summarize(
+        {
+            "src/org/springframework/samples/app/A.java": (
+                "package org.springframework.samples.app;\n"
+                "import org.springframework.beans.factory.annotation.Autowired;\n"
+                "import org.springframework.samples.app.B;\n"
+                "import org.springframework.samples.app.Missing;\n"
+            ),
+            "src/org/springframework/samples/app/B.java": "package org.springframework.samples.app;\n",
+        }
+    )
+    got = {(m, r) for m, r, _ in java["src/org/springframework/samples/app/A.java"]}
+    assert ("org.springframework.beans.factory.annotation.Autowired", "external") in got
+    assert ("org.springframework.samples.app.B", "resolved") in got
+    assert ("org.springframework.samples.app.Missing", "unresolved") in got  # internal, absent file
