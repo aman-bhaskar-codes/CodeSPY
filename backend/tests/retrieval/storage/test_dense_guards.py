@@ -5,7 +5,7 @@ import json
 import os
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from uuid import uuid4, uuid5
+from uuid import UUID, uuid4, uuid5
 
 import pytest
 from app.contracts.provider_budget import (
@@ -168,7 +168,55 @@ async def embed_case(api_factory, broker_factory, migration_factory, tmp_path):
     }
 
 
-async def settled_reservation(case, api_factory, broker_factory, key):
+def reserve_payload(case, chunk_id, **overrides):
+    ctx, spec = case["ctx"], case["spec"]
+    return {
+        "org_id": str(ctx.org_id),
+        "repository_id": str(spec.repository_id),
+        "principal_id": str(ctx.principal_id),
+        "provider": PROVIDER,
+        "model_id": MODEL,
+        "estimated_tokens": 100,
+        "max_charge_micros": 1000,
+        "chunk_id": str(chunk_id),
+        **overrides,
+    }
+
+
+async def wrapper(session, case, statement, **parameters):
+    await set_worker(session, case["ctx"].org_id, case["binding"])
+    value = await session.scalar(text(statement), parameters)
+    return json.loads(value) if isinstance(value, str) else value
+
+
+async def settled_reservation(case, broker_factory, chunk_id):
+    """Spend exactly as the embed worker does: job-bound reserve, claim, settle."""
+    async with broker_factory() as session, session.begin():
+        reserved = await wrapper(
+            session,
+            case,
+            "SELECT public.codespy_embed_reserve(CAST(:p AS jsonb))",
+            p=json.dumps(reserve_payload(case, chunk_id)),
+        )
+    reservation = reserved["reservation_id"]
+    async with broker_factory() as session, session.begin():
+        claimed = await wrapper(
+            session, case, "SELECT public.codespy_embed_claim(CAST(:r AS uuid))", r=reservation
+        )
+        assert claimed["claimed"] is True
+    async with broker_factory() as session, session.begin():
+        await wrapper(
+            session,
+            case,
+            "SELECT public.codespy_embed_settle(CAST(:r AS uuid), CAST(:p AS jsonb))",
+            r=reservation,
+            p=json.dumps({"status": "success", "actual_tokens": 10, "actual_charge_micros": 10}),
+        )
+    return UUID(reservation)
+
+
+async def direct_reservation(case, api_factory, broker_factory, key):
+    """A settled reservation that bypasses the ledger (what the old accounting path produced)."""
     ctx, spec = case["ctx"], case["spec"]
     request = BudgetReservationRequestV1(
         org_id=ctx.org_id,
@@ -224,7 +272,7 @@ RECEIPT = text(
     "INSERT INTO embed_publication_receipts(org_id,job_id,attempt_id,fence,repository_id,snapshot_id,"
     "spec_id,spec_hash,chunk_set_id,index_id,chunk_count,token_total,embedding_digest,ledger_digest,"
     "coverage) SELECT :org,:job,:att,1,:repo,:snap,s.id,s.spec_hash,:set,:idx,:n,:tok,"
-    "public.codespy_embed_embedding_digest(:org,:idx),:ledger,'complete' FROM embed_specs s "
+    "public.codespy_embed_embedding_digest(:org,:idx),public.codespy_embed_ledger_digest(:org,s.id),'complete' FROM embed_specs s "
     "WHERE s.org_id=:org AND s.id=:spec"
 )
 
@@ -275,9 +323,7 @@ async def publish(
     for chunk in chunk_ids:
         await session.execute(EMBED, params(case, chunk=chunk, vec=json.dumps(vectors[chunk])))
     if receipt:
-        await session.execute(
-            RECEIPT, params(case, n=len(chunk_ids), tok=10 * len(chunk_ids), ledger="2" * 64)
-        )
+        await session.execute(RECEIPT, params(case, n=len(chunk_ids), tok=10 * len(chunk_ids)))
     if cleanup:  # staged vectors are removed while the attempt is still live
         await session.execute(
             text("DELETE FROM embed_vector_stage WHERE org_id=:org AND spec_id=:spec"),
@@ -303,10 +349,7 @@ async def publish(
 async def case_with_reservations(api_factory, broker_factory, migration_factory, tmp_path):
     case = await embed_case(api_factory, broker_factory, migration_factory, tmp_path)
     chunks = await set_chunk_ids(migration_factory, case)
-    reservations = [
-        await settled_reservation(case, api_factory, broker_factory, f"chunk-{i}")
-        for i in range(len(chunks))
-    ]
+    reservations = [await settled_reservation(case, broker_factory, chunk) for chunk in chunks]
     return case, chunks, reservations
 
 
