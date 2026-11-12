@@ -9,6 +9,7 @@ from app.adapters.github.http import ProviderFailure
 from app.admission.zip_inventory import AdmissionRejected
 from app.analyzers.runner import AnalysisProcessError
 from app.analyzers.source import SourceIntegrityError
+from app.contracts.embedding_jobs import JobEnvelopeV7
 from app.contracts.indexing import JobEnvelopeV5
 from app.contracts.ingestion import (
     GITHUB_SOURCE_KINDS,
@@ -30,6 +31,7 @@ from app.models.phase2_tables import PHASE2_TABLES
 from app.ports.queue import Delivery, QueuePort
 from app.repositories.job_repository import load_job
 from app.scanners.process import NativeProcessError
+from app.services.embed_job import EmbedFailure, EmbedOperation
 from app.services.job_finalization import JobFinalizer
 from app.services.jobs import JobService
 from app.workers.operations.analyze_structure import StructuralAnalysisOperation
@@ -72,6 +74,7 @@ class JobConsumer:
         scan_operation: ScanOperation | None = None,
         index_operation: IndexOperation | None = None,
         investigation_operation: InvestigateSnapshotOperation | None = None,
+        embed_operation: EmbedOperation | None = None,
     ) -> None:
         self.factory = factory
         self.queue = queue
@@ -81,6 +84,7 @@ class JobConsumer:
         self.scan_operation = scan_operation
         self.index_operation = index_operation
         self.investigation_operation = investigation_operation
+        self.embed_operation = embed_operation
         self.jobs = JobService(factory)
 
     async def _ack(self, receipt: str) -> None:
@@ -94,25 +98,31 @@ class JobConsumer:
             logger.warning("invalid_queue_envelope")
             await self._ack(delivery.receipt)
             return
-        envelope: JobEnvelopeV2 | JobEnvelopeV3 | JobEnvelopeV4 | JobEnvelopeV5 | JobEnvelopeV6
-        try:
-            envelope = JobEnvelopeV6.model_validate_json(delivery.body)
-        except ValidationError:
+        envelope: (
+            JobEnvelopeV2
+            | JobEnvelopeV3
+            | JobEnvelopeV4
+            | JobEnvelopeV5
+            | JobEnvelopeV6
+            | JobEnvelopeV7
+        )
+        for model in (
+            JobEnvelopeV7,
+            JobEnvelopeV6,
+            JobEnvelopeV5,
+            JobEnvelopeV4,
+            JobEnvelopeV3,
+            JobEnvelopeV2,
+        ):
             try:
-                envelope = JobEnvelopeV5.model_validate_json(delivery.body)
+                envelope = model.model_validate_json(delivery.body)
+                break
             except ValidationError:
-                try:
-                    envelope = JobEnvelopeV4.model_validate_json(delivery.body)
-                except ValidationError:
-                    try:
-                        envelope = JobEnvelopeV3.model_validate_json(delivery.body)
-                    except ValidationError:
-                        try:
-                            envelope = JobEnvelopeV2.model_validate_json(delivery.body)
-                        except ValidationError:
-                            logger.warning("invalid_queue_envelope")
-                            await self._ack(delivery.receipt)
-                            return
+                continue
+        else:
+            logger.warning("invalid_queue_envelope")
+            await self._ack(delivery.receipt)
+            return
         async with transaction(self.factory) as s:
             job = await load_job(s, envelope.org_id, envelope.job_id)
             source_kind = (
@@ -132,6 +142,10 @@ class JobConsumer:
             or (
                 isinstance(envelope, JobEnvelopeV5)
                 and job.get("index_spec_id") != envelope.index_spec_id
+            )
+            or (
+                isinstance(envelope, JobEnvelopeV7)
+                and job.get("embed_spec_id") != envelope.embed_spec_id
             )
             or (
                 isinstance(envelope, JobEnvelopeV4)
@@ -155,6 +169,16 @@ class JobConsumer:
                 await self._ack(delivery.receipt)
                 return
             if self.investigation_operation is None:
+                await self.queue.extend(delivery.receipt, 120)
+                return
+        if envelope.operation == "embed_chunk_set":
+            if (
+                job["state"] in {"succeeded", "partial", "failed", "cancelled"}
+                or envelope.dispatch_generation != job["dispatch_generation"]
+            ):
+                await self._ack(delivery.receipt)
+                return
+            if self.embed_operation is None:
                 await self.queue.extend(delivery.receipt, 120)
                 return
         if envelope.operation == "index_snapshot":
@@ -218,6 +242,9 @@ class JobConsumer:
             elif envelope.operation == "index_snapshot":
                 assert self.index_operation is not None
                 await self.index_operation.execute(lease, enter_finalization=enter_finalization)
+            elif envelope.operation == "embed_chunk_set":
+                assert self.embed_operation is not None
+                await self.embed_operation.execute(lease, enter_finalization=enter_finalization)
             elif envelope.operation == "investigate_snapshot":
                 assert self.investigation_operation is not None
                 await self.investigation_operation.execute(
@@ -280,6 +307,9 @@ class JobConsumer:
                 code, transient = scan_failure(error)
             await self.jobs.fail_attempt(lease, code, transient=transient)
             await self._ack(delivery.receipt)
+        except EmbedFailure as failure:
+            await self.jobs.fail_attempt(lease, failure.code, transient=failure.transient)
+            await self._ack(delivery.receipt)
         except TimeoutError:
             await self.jobs.fail_attempt(lease, "finalization_timeout", transient=True)
             await self._ack(delivery.receipt)
@@ -340,7 +370,9 @@ class JobConsumer:
         except Exception:
             await self.jobs.fail_attempt(
                 lease,
-                "index_process_failed"
+                "embed_process_failed"
+                if envelope.operation == "embed_chunk_set"
+                else "index_process_failed"
                 if envelope.operation == "index_snapshot"
                 else "scanner_process_failed"
                 if envelope.operation == "scan_snapshot"
