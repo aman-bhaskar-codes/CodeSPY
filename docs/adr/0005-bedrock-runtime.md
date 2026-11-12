@@ -32,6 +32,6 @@ Status: accepted for generation and query embeddings; dense index publication is
 A separate fenced `embed_chunk_set` job (own spec, attempt, receipt and staging tables; lexical
 tables and guards untouched). Worker spending goes through job-bound `SECURITY DEFINER` functions
 that force the job's principal and write an immutable ledger, and every paid vector is staged durably
-before settlement so a retry never pays twice. The database layer and operation are built; job
-creation, consumer, recovery and the HTTP route are deferred. See
+before settlement so a retry never pays twice. The database layer, operation, job service, consumer and HTTP
+routes are built; composing them into a deployed runtime is not. See
 [Dense index publication](../acceptance/dense-index-publication.md).

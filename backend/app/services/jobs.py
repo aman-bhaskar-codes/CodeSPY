@@ -1,11 +1,14 @@
 """Durable jobs. Queue delivery never supplies publication or lifecycle authority."""
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import and_, func, insert, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import CursorResult
 
 from app.contracts.embedding_jobs import EnqueueEmbedJobV7
 from app.contracts.indexing import EnqueueIndexJobV5
@@ -379,7 +382,7 @@ class JobService:
             )
             await worker_context(s, lease)
             if job["operation"] == "embed_chunk_set":
-                await s.execute(
+                bound = await s.execute(
                     text(
                         "INSERT INTO embed_attempt_specs(org_id,id,job_id,fence,spec_id,"
                         "repository_id,snapshot_id,spec_hash) SELECT :org,:att,:job,:fence,"
@@ -396,6 +399,8 @@ class JobService:
                         "spec": job["embed_spec_id"],
                     },
                 )
+                if cast("CursorResult[Any]", bound).rowcount != 1:
+                    raise ScopeViolation("embed spec unavailable")
             elif job["operation"] == "index_snapshot":
                 from app.models.index_tables import index_attempt_specs, index_specs
 
@@ -835,6 +840,7 @@ class JobService:
             "embed_empty_chunk_set",
             "embed_protocol_error",
             "embed_process_failed",
+            "embed_disclosure_denied",
         }
         if code not in allowed:
             raise ValueError("unknown failure code")

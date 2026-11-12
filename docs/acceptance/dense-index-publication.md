@@ -2,8 +2,8 @@
 
 A sealed lexical chunk set can be embedded through accounted provider calls and published as an
 immutable dense index by a fenced `embed_chunk_set` attempt. The database refuses every other
-writer. The job's creation, queue consumer, recovery and HTTP route are not wired yet (see
-Limitations); the layers below are verified directly against PostgreSQL.
+writer. The job is creatable over HTTP, claimed and recovered by the job service, consumed by the
+worker and visible through a status route; the layers below are verified against PostgreSQL.
 
 ## Implemented boundary
 
@@ -32,16 +32,43 @@ Limitations); the layers below are verified directly against PostgreSQL.
   resent automatically. `EmbedFinalizer` then publishes the sealed index, embeddings, receipt and
   terminal job state in one fenced transaction and removes the staged vectors.
 
+## Job plumbing
+
+- **Creation.** `POST .../snapshots/{id}/indexes/{chunk_set_id}/dense` takes only an idempotency key:
+  the provider, model, dimension and price version are server configuration
+  (`ApplicationPorts.embed_config`), and the repository's disclosure policy
+  (`ApplicationPorts.embed_policy`) must permit the provider and `ap-south-1` (403
+  `disclosure_denied` otherwise, 503 `embed_unavailable` when either is unconfigured). The chunk set
+  must be sealed with a lexical receipt and the price version must be active. A repeated key replays;
+  a changed request conflicts; an already published profile conflicts. Creating a job reuses the
+  immutable spec for the same profile.
+- **Status and cancel.** `GET .../embed-jobs/{job_id}` returns the job, the receipt once published
+  and `can_cancel`; `POST .../embed-jobs/{job_id}/cancel` cancels. The generic job routes answer 409
+  `embed_operation_unavailable` for this operation, as for the other typed operations.
+- **Job service.** Enqueue into the `embed_jobs` projection with the V7 envelope; claim inserts the
+  attempt spec; transient failures retry with a new fence; recovery covers deadline, lease expiry and
+  user cancellation. `embed_*` failure codes are accepted only for this operation.
+- **Worker.** The consumer parses the V7 envelope first, checks the spec id against the stored job,
+  acks only a durable outcome, defers when no embed operation is configured and maps `EmbedFailure`
+  to its code and transient flag. The operation re-checks the disclosure policy before any spend
+  (`embed_disclosure_denied`), and without a policy resolver the default policy refuses every
+  external provider. `build_worker_runtime(embed=...)` wires it.
+- **Search.** The existing dense search route serves the published index through the accounted
+  query embedder (`ApplicationPorts.query_embedder`).
+
 ## Limitations
 
-- **Not yet wired:** creating an embed job (spec insert plus enqueue), `JobService` claim for the new
-  operation (it must insert `embed_attempt_specs`), the outbox envelope and consumer dispatch with
-  `embed_*` failure codes, recovery and cancel/retry branches, the HTTP route, and the worker
-  composition. Until then an attempt exists only in tests.
+- **Recovery of a revoked writer is broken at head for every operation.** Since revision 0040,
+  `lock_scope(access=False)` still runs the actor-write check inside `codespy_lock_scoped_snapshot`,
+  so `recover_due` raises for a job whose principal lost write access. The equivalent
+  `index_snapshot` test fails the same way on `main`; the embed test is a strict expected failure
+  (`test_revoked_writer_is_terminalized_by_recovery`) that flips when the defect is fixed.
+- There is no retry route for embed jobs; creating a request with a new key reuses the spec, resumes
+  from staged vectors and never pays twice for a settled chunk.
 - A held chunk needs an operator to resolve its uncertain hold before the job can finish; there is no
   automatic resolution.
-- Query-time dense search through the HTTP API needs a configured query embedder and a published
-  dense index; neither is enabled in the local runner.
+- The local runner (`scripts/phase2_local.py`) does not enable Bedrock, so no deployment composes the
+  embed operation, the query embedder or `embed_config` yet.
 - The 60-second finalization budget has been exercised on small sets only. A 4,096-chunk set (about
   16 MiB of JSON vectors at 1024 dimensions) has not been measured.
 - The HNSW index covers 1024 dimensions only; other dimensions use an exact scan.
@@ -62,3 +89,11 @@ Owned disposable PostgreSQL 16 at schema head, with the real roles:
   re-calling or re-paying, hold after a failed provider call, stale fence refused
 - regression: the lexical publication, memory and AST-facts storage suites show the same failures as
   before these revisions (seven pre-existing at head)
+- job plumbing: contracts and projection; enqueue idempotency and conflicts; claim binding and retry
+  with a new fence; failure-code scoping; running cancellation recovery; creation refusals (no sealed
+  set, no price, unsupported dimension, forbidden provider or region); status and cancel; the consumer
+  end to end (durable receipt before ack, duplicate wakeup, unconfigured defer, forged spec id,
+  transient failure then hold); HTTP create, replay, CSRF, mismatch, status, cancel, 503, 403 and 404;
+  and a full HTTP create, worker run, status with receipt and dense search hit
+- regression: the retrieval, job, accounting, memory, investigation and AST-facts suites show the
+  same failures with and without these changes

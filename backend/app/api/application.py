@@ -27,7 +27,13 @@ from app.contracts.context import (
     ContextPreviewV1,
 )
 from app.contracts.dependencies import DependencyFileV1
-from app.contracts.embedding_jobs import EmbedJobRecordV7
+from app.contracts.embedding_index import EmbedConfigV1
+from app.contracts.embedding_jobs import (
+    EmbedCreateResponseV1,
+    EmbedJobRecordV7,
+    EmbedStartRequestV1,
+    EmbedStatusV1,
+)
 from app.contracts.http import (
     EventPageV2,
     EventPageV3,
@@ -179,6 +185,7 @@ from app.services.analysis_sources import locate_source
 from app.services.configured_model_gateway import ModelConnectionError
 from app.services.context_assembly import ContextAssemblyService
 from app.services.dense_search import DenseSearchService, QueryEmbedder
+from app.services.embed_jobs import EmbedJobService, EmbedUnavailable
 from app.services.feature_trace import FeatureTraceService
 from app.services.findings_query import (
     FindingDetailResponseV1,
@@ -214,6 +221,7 @@ from app.services.model_router import ModelRouter
 from app.services.model_runtime import ConfiguredModelRuntime
 from app.services.output_validator import OutputValidationError
 from app.services.persistence import PersistenceService
+from app.services.provider_budget import DisclosureDeniedError
 from app.services.retries import RetryService
 from app.services.scan_jobs import ScanJobService
 from app.services.scan_selection import ScanConfigurationV1, choose_scan_configuration
@@ -299,6 +307,8 @@ class ApplicationPorts:
     index_config: IndexBuildConfigV1 | None = None
     index_builder: IndexJobCapabilities | None = None
     scan_defaults: ScanConfigV1 | None = None
+    embed_config: EmbedConfigV1 | None = None
+    embed_policy: Callable[[UUID, UUID], DisclosurePolicyV1] | None = None
 
 
 def legacy_job_record(value: PublicJobRecord) -> JobRecordV2 | JobRecordV3:
@@ -355,6 +365,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     indexes = IndexJobService(
         ports.factory, ports.index_builder if ports.index_config is not None else None
     )
+    embeds = EmbedJobService(ports.factory)
     retries = RetryService(ports.factory, ports.store, scan_capabilities=ports.scan_capabilities)
     submissions = SubmissionService(ports.factory, ports.store, policy=ports.admission_policy)
     structural = StructuralAnalysisService(ports.factory)
@@ -424,13 +435,18 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             503: "provider_unconfigured",
         }
         code = codes.get(exception.status_code, "invalid_state")
-        if exception.status_code == 403 and exception.detail == "memory_review_forbidden":
-            code = "memory_review_forbidden"
+        if exception.status_code == 403 and exception.detail in {
+            "memory_review_forbidden",
+            "disclosure_denied",
+        }:
+            code = exception.detail
         if exception.status_code == 503 and exception.detail in {
             "analysis_unavailable",
             "source_reader_unavailable",
             "inference_unavailable",
             "index_unavailable",
+            "embed_unavailable",
+            "embed_price_unavailable",
         }:
             code = exception.detail
         if exception.status_code == 409 and exception.detail in {
@@ -438,6 +454,9 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             "index_operation_unavailable",
             "memory_snapshot_unbound",
             "investigation_operation_unavailable",
+            "embed_operation_unavailable",
+            "embed_already_published",
+            "embed_profile_conflict",
         }:
             code = exception.detail
         return error(exception.status_code, code)
@@ -1625,6 +1644,60 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             raise HTTPException(503, detail="index_unavailable")
         return await indexes.retry(ctx, repository_id, job_id, body.request_key)
 
+    @app.post(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/indexes/{chunk_set_id}/dense",
+        status_code=202,
+    )
+    async def create_dense_index(
+        request: Request,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        chunk_set_id: UUID,
+    ) -> EmbedCreateResponseV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        async with transaction(ports.factory) as session:
+            await require_snapshot(session, ctx, repository_id, snapshot_id, write=True)
+        body = await json_body(request, EmbedStartRequestV1)
+        if body.request_key != key(request):
+            raise HTTPException(422, detail="request_key_mismatch")
+        if ports.embed_config is None or ports.embed_policy is None:
+            raise HTTPException(503, detail="embed_unavailable")
+        try:
+            return await embeds.create(
+                ctx,
+                repository_id,
+                snapshot_id,
+                chunk_set_id,
+                ports.embed_config,
+                body.request_key,
+                policy=ports.embed_policy(ctx.org_id, repository_id),
+            )
+        except DisclosureDeniedError:
+            raise HTTPException(403, detail="disclosure_denied") from None
+        except EmbedUnavailable as unavailable:
+            raise HTTPException(
+                503 if unavailable.code == "embed_price_unavailable" else 409,
+                detail=unavailable.code,
+            ) from None
+
+    @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/embed-jobs/{job_id}")
+    async def get_embed_job(
+        request: Request, repository_id: UUID, snapshot_id: UUID, job_id: UUID
+    ) -> EmbedStatusV1:
+        ctx = await repository_context(request, repository_id)
+        return await embeds.get(ctx, repository_id, snapshot_id, job_id)
+
+    @app.post(
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/embed-jobs/{job_id}/cancel"
+    )
+    async def cancel_embed_job(
+        request: Request, response: Response, repository_id: UUID, snapshot_id: UUID, job_id: UUID
+    ) -> EmbedStatusV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        result = await embeds.cancel(ctx, repository_id, snapshot_id, job_id)
+        response.status_code = 202 if result.job.state == "cancelling" else 200
+        return result
+
     @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-configuration")
     async def scan_configuration(
         request: Request, repository_id: UUID, snapshot_id: UUID
@@ -2703,6 +2776,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             components = schema.setdefault("components", {}).setdefault("schemas", {})
             contract_models: tuple[type[BaseModel], ...] = (
                 IndexStartRequestV1,
+                EmbedStartRequestV1,
                 RepositoryCreate,
                 UploadReservationV1,
                 GitHubAcquisitionV1,
@@ -2772,6 +2846,10 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 components.update(model_schema.pop("$defs", {}))
                 components[model.__name__] = model_schema
             body_contracts: tuple[tuple[str, type[BaseModel]], ...] = (
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/indexes/{chunk_set_id}/dense",
+                    EmbedStartRequestV1,
+                ),
                 (
                     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/indexes",
                     IndexStartRequestV1,

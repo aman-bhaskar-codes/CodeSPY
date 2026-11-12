@@ -10,7 +10,14 @@ from app.services.embed_job import EmbedOperation
 from app.services.embed_jobs import EmbedJobService, EmbedUnavailable
 from sqlalchemy import text
 
-from tests.retrieval.storage.test_dense_guards import MODEL, PROVIDER, embed_base, embed_case
+from tests.retrieval.storage.test_dense_guards import (
+    ALLOW,
+    EMBED_POLICY,
+    MODEL,
+    PROVIDER,
+    embed_base,
+    embed_case,
+)
 from tests.retrieval.storage.test_dense_job import Embedder, lease_for
 
 pytestmark = pytest.mark.skipif(
@@ -42,9 +49,9 @@ async def test_create_stores_an_immutable_spec_and_enqueues_once_per_key(
     ctx, spec = base["ctx"], base["spec"]
     service = EmbedJobService(api_factory)
     args = (ctx, spec.repository_id, spec.snapshot_id, base["set_id"], config())
-    first = await service.create(*args, "create-1")
+    first = await service.create(*args, "create-1", policy=EMBED_POLICY)
     assert first.job.state == "queued" and first.job.operation == "embed_chunk_set"
-    replay = await service.create(*args, "create-1")
+    replay = await service.create(*args, "create-1", policy=EMBED_POLICY)
     assert replay.job.id == first.job.id
     with pytest.raises(DuplicateConflict):  # same key, different profile
         await service.create(
@@ -54,8 +61,11 @@ async def test_create_stores_an_immutable_spec_and_enqueues_once_per_key(
             base["set_id"],
             config(dimension=256),
             "create-1",
+            policy=EMBED_POLICY,
         )
-    second = await service.create(*args, "create-2")  # a new request for the same profile
+    second = await service.create(
+        *args, "create-2", policy=EMBED_POLICY
+    )  # a new request for the same profile
     assert second.job.id != first.job.id and second.job.embed_spec_id == first.job.embed_spec_id
     specs = await count(
         migration_factory,
@@ -79,7 +89,9 @@ async def test_requests_that_cannot_be_served_are_refused_before_any_row_exists(
     ctx, spec = base["ctx"], base["spec"]
     service = EmbedJobService(api_factory)
     with pytest.raises(ScopeViolation):  # a chunk set that does not exist in this snapshot
-        await service.create(ctx, spec.repository_id, spec.snapshot_id, uuid4(), config(), "k1")
+        await service.create(
+            ctx, spec.repository_id, spec.snapshot_id, uuid4(), config(), "k1", policy=EMBED_POLICY
+        )
     with pytest.raises(EmbedUnavailable) as unpriced:
         await service.create(
             ctx,
@@ -88,11 +100,18 @@ async def test_requests_that_cannot_be_served_are_refused_before_any_row_exists(
             base["set_id"],
             config(price_version="none"),
             "k2",
+            policy=EMBED_POLICY,
         )
     assert unpriced.value.code == "embed_price_unavailable"
     with pytest.raises(ValueError):
         await service.create(
-            ctx, spec.repository_id, spec.snapshot_id, base["set_id"], config(dimension=300), "k3"
+            ctx,
+            spec.repository_id,
+            spec.snapshot_id,
+            base["set_id"],
+            config(dimension=300),
+            "k3",
+            policy=EMBED_POLICY,
         )
     jobs = await count(
         migration_factory, "SELECT count(*) FROM jobs WHERE operation='embed_chunk_set'"
@@ -113,13 +132,21 @@ async def test_get_reports_status_and_cancel_ends_a_queued_job(
     ctx, spec = base["ctx"], base["spec"]
     service = EmbedJobService(api_factory)
     created = await service.create(
-        ctx, spec.repository_id, spec.snapshot_id, base["set_id"], config(), "status-1"
+        ctx,
+        spec.repository_id,
+        spec.snapshot_id,
+        base["set_id"],
+        config(),
+        "status-1",
+        policy=EMBED_POLICY,
     )
     status = await service.get(ctx, spec.repository_id, spec.snapshot_id, created.job.id)
     assert status.job.state == "queued" and status.receipt is None and status.can_cancel
     with pytest.raises(ScopeViolation):  # wrong snapshot scope
         await service.get(ctx, spec.repository_id, uuid4(), created.job.id)
-    cancelled = await service.cancel(ctx, spec.repository_id, created.job.id)
+    with pytest.raises(ScopeViolation):  # the URL's snapshot must match the job's
+        await service.cancel(ctx, spec.repository_id, uuid4(), created.job.id)
+    cancelled = await service.cancel(ctx, spec.repository_id, spec.snapshot_id, created.job.id)
     assert cancelled.job.state == "cancelled" and not cancelled.can_cancel
 
 
@@ -128,9 +155,11 @@ async def test_an_already_published_profile_is_refused_and_status_carries_the_re
 ):
     case = await embed_case(api_factory, broker_factory, migration_factory, tmp_path)
     ctx, spec = case["ctx"], case["spec"]
-    receipt = await EmbedOperation(broker_factory, Embedder()).execute(lease_for(case))
+    receipt = await EmbedOperation(broker_factory, Embedder(), policy_for=ALLOW).execute(
+        lease_for(case)
+    )
     service = EmbedJobService(api_factory)
-    with pytest.raises(DuplicateConflict):
+    with pytest.raises(EmbedUnavailable) as published:
         await service.create(
             ctx,
             spec.repository_id,
@@ -138,7 +167,83 @@ async def test_an_already_published_profile_is_refused_and_status_carries_the_re
             case["set_id"],
             config(dimension=256),
             "again",
+            policy=EMBED_POLICY,
         )
+    assert published.value.code == "embed_already_published"
     status = await service.get(ctx, spec.repository_id, spec.snapshot_id, case["binding"][0])
     assert status.job.state == "succeeded" and status.receipt is not None
     assert status.receipt.index_id == receipt.index_id and not status.can_cancel
+
+
+async def test_a_policy_that_forbids_the_provider_or_region_blocks_creation(
+    api_factory, broker_factory, migration_factory, tmp_path
+):
+    from app.contracts.provider_budget import DisclosurePolicyV1
+    from app.services.provider_budget import DisclosureDeniedError
+
+    base = await embed_base(api_factory, broker_factory, migration_factory, tmp_path)
+    ctx, spec = base["ctx"], base["spec"]
+    service = EmbedJobService(api_factory)
+    wrong_region = DisclosurePolicyV1(
+        allow_external_disclosure=True,
+        allowed_providers=(PROVIDER,),
+        allowed_regions=("us-east-1",),
+    )
+    for policy in (None, DisclosurePolicyV1(), wrong_region):
+        with pytest.raises(DisclosureDeniedError):
+            await service.create(
+                ctx,
+                spec.repository_id,
+                spec.snapshot_id,
+                base["set_id"],
+                config(),
+                "denied",
+                policy=policy,
+            )
+    assert (
+        await count(
+            migration_factory, "SELECT count(*) FROM jobs WHERE operation='embed_chunk_set'"
+        )
+        == 0
+    )
+
+
+async def test_reserved_keys_are_rejected_and_a_profile_variant_conflicts(
+    api_factory, broker_factory, migration_factory, tmp_path
+):
+    from pydantic import ValidationError
+
+    base = await embed_base(api_factory, broker_factory, migration_factory, tmp_path)
+    ctx, spec = base["ctx"], base["spec"]
+    service = EmbedJobService(api_factory)
+    for key in ("job:x", "child:x"):
+        with pytest.raises(ValidationError):
+            await service.create(
+                ctx,
+                spec.repository_id,
+                spec.snapshot_id,
+                base["set_id"],
+                config(),
+                key,
+                policy=EMBED_POLICY,
+            )
+    await service.create(
+        ctx,
+        spec.repository_id,
+        spec.snapshot_id,
+        base["set_id"],
+        config(),
+        "first",
+        policy=EMBED_POLICY,
+    )
+    with pytest.raises(EmbedUnavailable) as variant:  # same index id, different price version
+        await service.create(
+            ctx,
+            spec.repository_id,
+            spec.snapshot_id,
+            base["set_id"],
+            config(price_version="other"),
+            "second",
+            policy=EMBED_POLICY,
+        )
+    assert variant.value.code in {"embed_profile_conflict", "embed_price_unavailable"}

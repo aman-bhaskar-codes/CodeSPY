@@ -12,6 +12,11 @@ from app.domain.canonical_json import canonical_bytes
 from app.domain.scope import Contract
 
 
+def _check_request_key(value: str) -> None:
+    if len(value.encode()) > 128 or value.startswith(("job:", "child:")):
+        raise ValueError("invalid embed request key")
+
+
 class EnqueueEmbedJobV7(Contract):
     repository_id: UUID
     snapshot_id: UUID
@@ -77,11 +82,28 @@ class EmbedJobRecordV7(Contract):
         return self
 
 
+class EmbedStartRequestV1(Contract):
+    """HTTP body: only the idempotency key; the profile is server configuration."""
+
+    schema_version: Literal[1] = 1
+    request_key: str = Field(min_length=1, max_length=128)
+
+    @model_validator(mode="after")
+    def request_identity(self) -> Self:
+        _check_request_key(self.request_key)
+        return self
+
+
 class EmbedCreateRequestV1(Contract):
     schema_version: Literal[1] = 1
     chunk_set_id: UUID
     config: EmbedConfigV1
     request_key: str = Field(min_length=1, max_length=128)
+
+    @model_validator(mode="after")
+    def request_identity(self) -> Self:
+        _check_request_key(self.request_key)
+        return self
 
 
 class EmbedCreateResponseV1(Contract):

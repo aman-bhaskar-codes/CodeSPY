@@ -21,7 +21,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.adapters.model.http_transport import ProviderTransportError
 from app.contracts.embedding_index import EmbedConfigV1, EmbedReceiptV1, EmbedSpecV1
 from app.contracts.jobs import AttemptLeaseV2
-from app.contracts.provider_budget import EmbeddingRequestV1, calculate_charge_micros
+from app.contracts.provider_budget import (
+    DisclosurePolicyV1,
+    EmbeddingRequestV1,
+    calculate_charge_micros,
+)
 from app.db.time import database_now
 from app.db.transaction import transaction
 from app.domain.errors import DuplicateConflict, FinalizationOutcomeUnknown, StaleAttempt
@@ -34,6 +38,7 @@ from app.services.publication import PublicationExecutor
 
 logger = logging.getLogger(__name__)
 SAFETY_SECONDS = 90.0
+EMBED_REGION = "ap-south-1"
 
 
 class EmbedFailure(Exception):  # noqa: N818
@@ -69,11 +74,14 @@ class EmbedOperation:
         *,
         concurrency: int = 4,
         finalizer: "EmbedFinalizer | None" = None,
+        policy_for: Callable[[UUID, UUID], DisclosurePolicyV1] | None = None,
     ) -> None:
         if not 1 <= concurrency <= 8:
             raise ValueError("concurrency must be between 1 and 8")
         self.factory, self.embedder, self.concurrency = factory, embedder, concurrency
         self.finalizer = finalizer or EmbedFinalizer(factory)
+        # Without a resolver the default policy applies, which refuses every external provider.
+        self.policy_for = policy_for or (lambda org, repository: DisclosurePolicyV1())
 
     # ---- inputs -----------------------------------------------------------------------------
     async def load(self, lease: AttemptLeaseV2) -> tuple[UUID, EmbedSpecV1, float]:
@@ -211,7 +219,11 @@ class EmbedOperation:
         )
         try:
             response = await self.embedder.embed(request)
-        except BaseException as error:
+        except asyncio.CancelledError:
+            # Cancelled while the call may be in flight: hold the spend, then keep cancelling.
+            await asyncio.shield(self._settle(lease, rid, "timeout", 0))
+            raise
+        except Exception as error:
             timed_out = isinstance(error, TimeoutError) or (
                 isinstance(error, ProviderTransportError) and error.code == "provider_timeout"
             )
@@ -288,6 +300,11 @@ class EmbedOperation:
         spec_id, spec, seconds = await self.load(lease)
         if seconds <= 0:
             raise EmbedFailure("embed_timeout", transient=True)
+        policy = self.policy_for(spec.org_id, spec.repository_id)
+        if not policy.is_provider_permitted(spec.config.provider) or not policy.is_region_permitted(
+            EMBED_REGION
+        ):
+            raise EmbedFailure("embed_disclosure_denied", transient=False)
         rate = await self.price_micros(spec)
         work = await self.chunks(lease, spec)
         if not work:

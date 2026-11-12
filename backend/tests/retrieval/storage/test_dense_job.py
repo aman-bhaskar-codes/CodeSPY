@@ -11,7 +11,7 @@ from app.domain.errors import StaleAttempt
 from app.services.embed_job import EmbedFailure, EmbedOperation
 from sqlalchemy import text
 
-from tests.retrieval.storage.test_dense_guards import DIM, MODEL, PROVIDER, embed_case
+from tests.retrieval.storage.test_dense_guards import ALLOW, DIM, MODEL, PROVIDER, embed_case
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("CODESPY_TEST_SCHEMA_TARGET") != "head",
@@ -65,7 +65,9 @@ async def test_operation_embeds_every_chunk_once_and_publishes_a_sealed_dense_in
 ):
     case = await embed_case(api_factory, broker_factory, migration_factory, tmp_path)
     embedder = Embedder()
-    receipt = await EmbedOperation(broker_factory, embedder).execute(lease_for(case))
+    receipt = await EmbedOperation(broker_factory, embedder, policy_for=ALLOW).execute(
+        lease_for(case)
+    )
     count = await scalar(
         migration_factory,
         "SELECT count(*) FROM source_chunks WHERE chunk_set_id=:s",
@@ -106,7 +108,7 @@ async def test_operation_embeds_every_chunk_once_and_publishes_a_sealed_dense_in
     )
     assert nearest >= 1
     # a repeat of the finished job publishes nothing new and calls no provider
-    again = await EmbedOperation(broker_factory, embedder).finalizer.finish(
+    again = await EmbedOperation(broker_factory, embedder, policy_for=ALLOW).finalizer.finish(
         lease_for(case), receipt_spec(case), await spec_id(migration_factory, case)
     )
     assert again.index_id == receipt.index_id and len(embedder.calls) == count
@@ -136,7 +138,7 @@ async def test_crash_after_staging_resumes_without_paying_or_calling_the_provide
 ):
     case = await embed_case(api_factory, broker_factory, migration_factory, tmp_path)
     embedder = Embedder()
-    operation = EmbedOperation(broker_factory, embedder, concurrency=1)
+    operation = EmbedOperation(broker_factory, embedder, policy_for=ALLOW, concurrency=1)
     real = EmbedOperation._settle
     crashed = []
 
@@ -169,7 +171,7 @@ async def test_a_failed_provider_call_leaves_an_uncertain_hold_and_is_never_rese
 ):
     case = await embed_case(api_factory, broker_factory, migration_factory, tmp_path)
     embedder = Embedder(fail=ProviderTransportError("provider_timeout"))
-    operation = EmbedOperation(broker_factory, embedder, concurrency=1)
+    operation = EmbedOperation(broker_factory, embedder, policy_for=ALLOW, concurrency=1)
     with pytest.raises(EmbedFailure) as error:
         await operation.execute(lease_for(case))
     assert error.value.code == "embed_provider_timeout" and error.value.transient
@@ -182,7 +184,9 @@ async def test_a_failed_provider_call_leaves_an_uncertain_hold_and_is_never_rese
     )
     calls = len(embedder.calls)
     with pytest.raises(EmbedFailure) as again:  # the held chunk is not retried automatically
-        await EmbedOperation(broker_factory, Embedder(), concurrency=1).execute(lease_for(case))
+        await EmbedOperation(broker_factory, Embedder(), policy_for=ALLOW, concurrency=1).execute(
+            lease_for(case)
+        )
     assert again.value.code == "embed_hold_pending" and not again.value.transient
     assert calls == 1
     assert (
@@ -199,6 +203,40 @@ async def test_a_stale_fence_cannot_embed_or_publish(
     case = await embed_case(api_factory, broker_factory, migration_factory, tmp_path)
     embedder = Embedder()
     with pytest.raises(StaleAttempt):
-        await EmbedOperation(broker_factory, embedder).execute(lease_for(case, fence=2))
+        await EmbedOperation(broker_factory, embedder, policy_for=ALLOW).execute(
+            lease_for(case, fence=2)
+        )
     assert embedder.calls == []
     assert await scalar(migration_factory, "SELECT count(*) FROM embed_spend_ledger") == 0
+
+
+async def test_the_worker_refuses_a_repository_whose_policy_forbids_the_provider(
+    api_factory, broker_factory, migration_factory, tmp_path
+):
+    case = await embed_case(api_factory, broker_factory, migration_factory, tmp_path)
+    embedder = Embedder()
+    with pytest.raises(EmbedFailure) as error:  # no policy resolver: the default policy refuses
+        await EmbedOperation(broker_factory, embedder).execute(lease_for(case))
+    assert error.value.code == "embed_disclosure_denied" and not error.value.transient
+    assert embedder.calls == []
+    assert await scalar(migration_factory, "SELECT count(*) FROM embed_spend_ledger") == 0
+
+
+async def test_cancellation_mid_call_holds_the_spend_and_is_not_turned_into_a_failure(
+    api_factory, broker_factory, migration_factory, tmp_path
+):
+    import asyncio
+
+    case = await embed_case(api_factory, broker_factory, migration_factory, tmp_path)
+    operation = EmbedOperation(
+        broker_factory, Embedder(fail=asyncio.CancelledError()), policy_for=ALLOW, concurrency=1
+    )
+    with pytest.raises(asyncio.CancelledError):  # must stay a cancellation, never an EmbedFailure
+        await operation.execute(lease_for(case))
+    assert (
+        await scalar(
+            migration_factory,
+            "SELECT count(*) FROM embedding_reservations WHERE state='uncertain_hold'",
+        )
+        == 1
+    )
