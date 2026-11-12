@@ -7,6 +7,8 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.contracts.ast_facts import (
+    AstConfigItemV1,
+    AstConfigPageV1,
     AstFilePageV1,
     AstFileSummaryV1,
     AstModelItemV1,
@@ -269,6 +271,37 @@ async def models_page(
                         "end_line": r[3]["range"]["end_line"],
                     }
                 )
+            )
+            for r in rows[:limit]
+        ),
+        next_after=_next(rows, limit),
+    )
+
+
+async def config_page(
+    s: AsyncSession,
+    org_id: UUID,
+    principal: UUID,
+    repository_id: UUID,
+    snapshot_id: UUID,
+    after: str | None,
+    limit: int,
+) -> AstConfigPageV1 | None:
+    await require_repository(s, org_id, principal, repository_id)
+    run_id = await _latest_run(s, org_id, repository_id, snapshot_id)
+    if run_id is None:
+        return None
+    rows = await _array_rows(s, "config", org_id, snapshot_id, run_id, after, limit)
+    return AstConfigPageV1(
+        run_id=run_id,
+        items=tuple(
+            AstConfigItemV1(
+                file_id=r[0],
+                file_path=r[1],
+                kind=r[3]["kind"],
+                name=r[3]["name"],
+                start_line=r[3]["range"]["start_line"],
+                end_line=r[3]["range"]["end_line"],
             )
             for r in rows[:limit]
         ),

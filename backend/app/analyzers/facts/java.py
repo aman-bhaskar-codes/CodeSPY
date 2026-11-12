@@ -1,5 +1,6 @@
 """Tree-sitter fact extraction for Java (types, members, annotations, imports)."""
 
+import re
 from typing import Literal
 
 from app.analyzers.facts.common import clip, count_errors, file_diagnostics, text
@@ -27,6 +28,8 @@ TYPE_NODES = {
     "annotation_type_declaration": "interface",
 }
 ACCESS = {"public", "private", "protected"}
+# Spring "${name:default}" placeholders: the default may be a fallback credential, so it is masked.
+PLACEHOLDER_DEFAULT = re.compile(r"\$\{([^}:]+):[^}]*\}")
 KEYWORDS = {
     "static",
     "final",
@@ -128,7 +131,9 @@ def extract(unit: SourceUnitV1, budget: AnalysisBudget) -> FileFactsV1:
         access: str | None = None
         for child in block.children if block is not None else []:
             if child.type in {"marker_annotation", "annotation"}:
-                annotations.append(clip(text(data, child).lstrip("@"), 256))
+                annotations.append(
+                    clip(PLACEHOLDER_DEFAULT.sub(r"${\1:…}", text(data, child).lstrip("@")), 256)
+                )
             elif child.type in ACCESS:
                 access = child.type
             elif child.type in KEYWORDS:

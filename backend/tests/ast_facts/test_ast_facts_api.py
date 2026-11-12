@@ -116,6 +116,7 @@ class RouteModelRunner:
         from app.contracts.ast_facts import (
             AstDraftV1,
             ColumnFactV1,
+            ConfigFactV1,
             ModelFactV1,
             RouteFactV1,
         )
@@ -138,7 +139,11 @@ class RouteModelRunner:
                 range=span,
             ),
         )
-        updated = file.model_copy(update={"routes": routes, "models": models})
+        configs = (
+            ConfigFactV1(kind="env_var", name="DB_URL", range=span),
+            ConfigFactV1(kind="config_key", name="app.name", range=span),
+        )
+        updated = file.model_copy(update={"routes": routes, "models": models, "config": configs})
         return AstDraftV1.model_validate_json(
             draft.model_copy(update={"files": (updated,)}).model_dump_json()
         )
@@ -195,6 +200,14 @@ async def test_routes_and_models_are_listed_paged_and_scoped(factory, tmp_path):
                 "foreign_key": None,
             }
         ]
+        config = await client.get(f"{url}/config?limit=1")
+        assert [(i["kind"], i["name"]) for i in config.json()["items"]] == [("env_var", "DB_URL")]
+        cursor = config.json()["next_after"]
+        rest = await client.get(f"{url}/config?limit=1&after={cursor}")
+        assert [(i["kind"], i["name"]) for i in rest.json()["items"]] == [
+            ("config_key", "app.name")
+        ]
+        assert (await client.get(f"{url}/config?limit=0")).status_code == 422
         assert (await client.get(f"{url}/routes?limit=0")).status_code == 422
         assert (await client.get(f"{url}/models?limit=201")).status_code == 422
     finally:
@@ -207,5 +220,6 @@ async def test_routes_are_not_found_before_publication(factory, tmp_path):
         url = f"/api/v1/repositories/{repo}/snapshots/{snapshot}/ast-facts"
         assert (await client.get(f"{url}/routes")).status_code == 404
         assert (await client.get(f"{url}/models")).status_code == 404
+        assert (await client.get(f"{url}/config")).status_code == 404
     finally:
         await client.aclose()

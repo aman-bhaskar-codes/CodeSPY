@@ -219,3 +219,18 @@ class AstModelPageV1(Contract):
     run_id: UUID
     items: tuple[AstModelItemV1, ...] = Field(max_length=200)
     next_after: str | None = None
+
+
+class AstConfigItemV1(Contract):
+    file_id: UUID
+    file_path: str
+    kind: Literal["env_var", "config_key"]
+    name: str
+    start_line: int = Field(ge=1)
+    end_line: int = Field(ge=1)
+
+
+class AstConfigPageV1(Contract):
+    run_id: UUID
+    items: tuple[AstConfigItemV1, ...] = Field(max_length=200)
+    next_after: str | None = None
