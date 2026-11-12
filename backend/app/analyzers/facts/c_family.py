@@ -82,8 +82,16 @@ def extract(unit: SourceUnitV1, budget: AnalysisBudget) -> FileFactsV1:
     data = unit.data
     index = SourceIndex(data)
     language = unit.language
+    grammar_name = language
     tree = parse_bytes(language, data)
     errors = count_errors(tree.root_node, budget)
+    if language == "c" and errors and unit.path.endswith(".h"):
+        # ".h" is ambiguous: admission calls it C, but many headers are C++. Keep whichever
+        # grammar reads the file with fewer errors; the fact language stays the admitted one.
+        alternative = parse_bytes("cpp", data)
+        alternative_errors = count_errors(alternative.root_node, budget)
+        if alternative_errors < errors:
+            tree, errors, grammar_name = alternative, alternative_errors, "cpp"
     is_header = unit.path.endswith(HEADERS)
     suffix = "." + unit.path.rsplit(".", 1)[-1] if "." in unit.path.rsplit("/", 1)[-1] else ""
     module = unit.path.removesuffix(suffix).replace("/", ".")
@@ -488,7 +496,7 @@ def extract(unit: SourceUnitV1, budget: AnalysisBudget) -> FileFactsV1:
         path=unit.path,
         sha256=unit.sha256,
         language=language,
-        grammar=BY_NAME[language].pin,
+        grammar=BY_NAME[grammar_name].pin,
         status="partial" if errors else "parsed",
         error_nodes=errors,
         symbols=tuple(symbols),

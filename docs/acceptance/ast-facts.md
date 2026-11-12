@@ -136,7 +136,8 @@ Delete/PatchMapping`; JPA `@Entity`/`@Table`/`@Id`/`@Column`/`@JoinColumn`, skip
   sources; the `language_unsupported` omission remains as a safeguard for a registered language
   without an extractor.
 - C and C++ facts are syntactic: preprocessor conditionals are not evaluated, macro-generated
-  declarations are not seen, and `.h` is treated as C. Swift class inheritance cannot be told from
+  declarations are not seen, and `.h` is admitted as C (a header that reads with fewer errors under
+  the C++ grammar is parsed with it; its fact language stays `c`). Swift class inheritance cannot be told from
   protocol conformance syntactically, so a class lists everything in `bases`. PHP `use function` and
   `use const` imports are not distinguished from class imports. Ruby metaprogramming (`define_method`,
   `Struct.new`) is not followed.
@@ -147,10 +148,10 @@ Delete/PatchMapping`; JPA `@Entity`/`@Table`/`@Id`/`@Column`/`@JoinColumn`, skip
   imports with non-literal arguments are not recorded, `__all__ +=` is not followed, and
   JavaScript values exported through arbitrary expressions are recorded only as `default`.
 - Source reading, limits and timeouts are the structural ones: 128 files, 16 MiB, 180 s.
-- Facts are syntactic; names are not resolved across files. Routes, models and configuration slots
-  exist in the contract but are not populated yet.
+- Facts are syntactic; names are not resolved across files.
 - Files with syntax errors yield partial facts and are marked `partial`.
-- Parsing runs one child process per file; throughput for large repositories is not measured.
+- Parsing runs one child process per file. The 128-file cap means a real repository is analyzed
+  only in part (see the corpus below); a wider profile is future work.
 
 - Framework detection is syntactic and import-gated: routers registered through helper functions,
   `Group` prefixes (Gin, Echo), Express sub-router mounting beyond the literal `use` path, Django
@@ -165,6 +166,51 @@ Delete/PatchMapping`; JPA `@Entity`/`@Table`/`@Id`/`@Column`/`@JoinColumn`, skip
 - Configuration is detected from direct calls and subscripts; reads through wrapper helpers,
   settings objects (pydantic `BaseSettings`, Spring `Environment` beans other than `getProperty`),
   `.env` files and dotenv loaders are not followed.
+
+## Real-repository corpus
+
+`evals/ast/corpus.json` pins ten public repositories by full commit (Flask, Express, Gin, Spring
+PetClinic, anyhow, kilo, spdlog, Sinatra, Slim, Alamofire). Nothing is vendored. `scripts/ast_corpus.py
+resolve|fetch|run` pins, downloads (through the importer's fixed-origin, credential-less transport)
+and measures; archives are cached under the git-ignored `.local/`. The runner admits each archive
+under policy V3 with the GitHub root strip and extracts every eligible file in-process, which runs
+the same code as the sandbox, so parser quality is measured without the 128-file production cap.
+`tests/corpus` checks floors per repository (parse success, clean-parse ratio, symbols, routes,
+models, pinned commit, no crashes). The live test needs `CODESPY_LIVE_CORPUS=1`; the harness itself
+is covered offline.
+
+Measured on 2026-11-12 (Apple silicon, one thread, in-process; `benchmarks/ast-corpus-2026-11-12.json`):
+
+| Repository | Language | Files | Parsed | Clean | kLOC | files/s | MiB/s | Within 128-file cap |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| pallets/flask | Python | 83 | 100% | 100% | 18.5 | 227 | 1.5 | 100% |
+| expressjs/express | JavaScript | 142 | 100% | 100% | 22.2 | 595 | 2.3 | 90% |
+| gin-gonic/gin | Go | 99 | 100% | 100% | 24.7 | 160 | 1.1 | 100% |
+| spring-projects/spring-petclinic | Java | 50 | 100% | 100% | 4.3 | 691 | 1.9 | 100% |
+| dtolnay/anyhow | Rust | 37 | 100% | 94.6% | 5.9 | 297 | 1.5 | 100% |
+| antirez/kilo | C | 1 | 100% | 100% | 1.3 | 48 | 1.9 | 100% |
+| gabime/spdlog | C/C++ | 154 | 100% | 18.8% | 33.4 | 116 | 0.9 | 83% |
+| sinatra/sinatra | Ruby | 147 | 100% | 100% | 24.3 | 461 | 2.0 | 87% |
+| slimphp/Slim | PHP | 72 | 100% | 100% | 5.9 | 1197 | 2.6 | 100% |
+| Alamofire/Alamofire | Swift | 111 | 100% | 95.5% | 47.6 | 125 | 2.4 | 100% |
+
+"Parsed" means a tree and facts were produced (possibly `partial`); "Clean" means no syntax error
+nodes. No file crashed extraction. What the corpus found and what remains:
+
+- **C++ headers named `.h`** were read with the C grammar (spdlog: about 15,000 error nodes). They
+  now fall back to the C++ grammar when it reads the file with fewer errors (about 1,600 remain).
+- **Unexpanded macros** cause the remaining errors: spdlog wraps namespaces in
+  `SPDLOG_NAMESPACE_BEGIN/END`, anyhow's `macro_rules!` bodies are not Rust, and Swift's
+  `#error` directive and some postfix `!` forms are not accepted by the grammar. Facts are still
+  produced for the rest of each file; the clean ratio for such repositories is low by nature.
+- **Frameworks:** Flask (40 routes), Gin (13), Spring PetClinic (17 routes, 9 models) are found.
+  Express, Sinatra and Slim define routes through their own APIs (`app.get = function`, `get '/'`,
+  `$app->get()` on non-imported receivers), which are outside the covered frameworks. Express itself
+  is a framework, so assignment-defined functions (`app.use = function`) are not symbols.
+- **Capacity:** with the 128-file production cap, 4 of 10 repositories would be analyzed only in
+  part (Express 90%, Sinatra 87%, spdlog 83%). Lifting the cap needs the wider-limit profile.
+- Throughput is single-threaded in-process parsing, not the sandbox; per-file child processes are
+  slower.
 
 ## Verification
 
