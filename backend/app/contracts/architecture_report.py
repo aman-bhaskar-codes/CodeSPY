@@ -96,7 +96,7 @@ class SectionV1(Contract):
 
 class GraphNodeV1(Contract):
     id: str = Field(min_length=1, max_length=1100)
-    kind: Literal["file", "external"]
+    kind: Literal["file", "package", "external"]
     label: str = Field(min_length=1, max_length=1024)
     language: str | None = Field(default=None, max_length=64)
     file_id: UUID | None = None
