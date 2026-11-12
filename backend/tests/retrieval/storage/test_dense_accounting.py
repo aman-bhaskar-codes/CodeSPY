@@ -146,8 +146,8 @@ async def test_ledger_is_immutable_and_staged_vectors_need_a_ledgered_settled_re
                 await session.execute(text(statement), params(case))
     outside = await direct_reservation(case, api_factory, broker_factory, "settled-but-unledgered")
     for chunk, reservation, message in (
-        (chunks[0], outside, "no settled reservation"),  # not the chunk's ledgered reservation
-        (chunks[-1] if len(chunks) > 1 else chunks[0], ledgered, "no settled reservation"),
+        (chunks[0], outside, "no claimed reservation"),  # not the chunk's ledgered reservation
+        (chunks[-1] if len(chunks) > 1 else chunks[0], ledgered, "no claimed reservation"),
     ):
         if chunk == chunks[0] and reservation == ledgered:
             continue

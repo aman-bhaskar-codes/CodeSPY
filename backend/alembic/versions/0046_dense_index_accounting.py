@@ -104,12 +104,14 @@ BEGIN
  OR NEW.repository_id IS DISTINCT FROM e.repository_id OR NEW.snapshot_id IS DISTINCT FROM e.snapshot_id
  OR jsonb_array_length(NEW.embedding_json) IS DISTINCT FROM e.dimension
  THEN RAISE EXCEPTION 'embed staged vector differs' USING ERRCODE='23514'; END IF;
+ -- A vector is staged as soon as the provider answers, before settlement, so a crash between the
+ -- two never loses paid work: the reservation must be this chunk's ledgered, dispatch-claimed one.
  IF NOT EXISTS(SELECT 1 FROM public.embed_spend_ledger l JOIN public.embedding_reservations r
    ON r.org_id=l.org_id AND r.reservation_id=l.reservation_id
    WHERE l.org_id=NEW.org_id AND l.spec_id=e.id AND l.chunk_id=NEW.chunk_id AND l.reservation_id=NEW.reservation_id
-   AND r.repository_id=NEW.repository_id AND r.provider=e.provider AND r.model_id=e.model_id AND r.state='committed'
-   AND r.actual_tokens=NEW.token_count)
- THEN RAISE EXCEPTION 'embed staged vector has no settled reservation' USING ERRCODE='23514'; END IF;
+   AND r.repository_id=NEW.repository_id AND r.provider=e.provider AND r.model_id=e.model_id
+   AND r.state IN ('reserved','committed') AND r.dispatch_intent_at IS NOT NULL)
+ THEN RAISE EXCEPTION 'embed staged vector has no claimed reservation' USING ERRCODE='23514'; END IF;
  RETURN NEW;
 END $$;
 

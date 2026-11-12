@@ -380,7 +380,7 @@ async def test_fenced_embed_attempt_publishes_a_sealed_dense_index(
 
 EXPECTED = {
     "no_worker_context": "worker context required",
-    "unsettled_reservation": "no settled reservation",
+    "unsettled_reservation": "no claimed reservation",
     "vector_differs_from_stage": "qualified embedding publication unavailable",
     "wrong_dimension": "embed staged vector differs",
     "index_wrong_id": "ck_index_qualified",
