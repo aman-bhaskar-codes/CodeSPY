@@ -152,14 +152,17 @@ def observe(unit: SourceUnitV1, facts: FileFactsV1, budget: AnalysisBudget) -> F
                         record("env_var", key, node, index)
                     elif flask and base.endswith("config"):
                         record("config_key", key, node, index)
-                elif django and kind == "attribute":
-                    if text(data, node.child_by_field_name("object")) == "settings":
-                        record(
-                            "config_key",
-                            text(data, node.child_by_field_name("attribute")),
-                            node,
-                            index,
-                        )
+                elif (
+                    django
+                    and kind == "attribute"
+                    and text(data, node.child_by_field_name("object")) == "settings"
+                ):
+                    record(
+                        "config_key",
+                        text(data, node.child_by_field_name("attribute")),
+                        node,
+                        index,
+                    )
             elif language in JS_FAMILY:
                 if kind == "member_expression":
                     if text(data, node.child_by_field_name("object")) in JS_ENV_OBJECTS:
@@ -208,12 +211,13 @@ def observe(unit: SourceUnitV1, facts: FileFactsV1, budget: AnalysisBudget) -> F
                             node,
                             index,
                         )
-                elif kind == "macro_invocation":
-                    if text(data, node.child_by_field_name("macro")) in {"env", "option_env"}:
-                        tree_node = next(
-                            (c for c in node.named_children if c.type == "token_tree"), None
-                        )
-                        record("env_var", _literal(data, _first_arg(tree_node)), node, index)
+                elif kind == "macro_invocation" and text(
+                    data, node.child_by_field_name("macro")
+                ) in {"env", "option_env"}:
+                    tree_node = next(
+                        (c for c in node.named_children if c.type == "token_tree"), None
+                    )
+                    record("env_var", _literal(data, _first_arg(tree_node)), node, index)
             elif language == "ruby":
                 if (
                     kind == "element_reference"
