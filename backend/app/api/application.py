@@ -27,6 +27,7 @@ from app.contracts.context import (
     ContextPreviewV1,
 )
 from app.contracts.dependencies import DependencyFileV1
+from app.contracts.embedding_jobs import EmbedJobRecordV7
 from app.contracts.http import (
     EventPageV2,
     EventPageV3,
@@ -167,6 +168,7 @@ from app.ports.scan_execution import ScanCapabilities
 from app.ports.source_reader import SourceReaderPort, SourceReaderUnavailable
 from app.repositories.command_repository import record_command, replay_command
 from app.repositories.identity_repository import IdentityRepository
+from app.repositories.job_repository import PublicJobRecord
 from app.repositories.repository_repository import RepositoryRepository
 from app.security.authorization import require_repository, require_snapshot
 from app.security.cursors import CursorCodec
@@ -299,13 +301,9 @@ class ApplicationPorts:
     scan_defaults: ScanConfigV1 | None = None
 
 
-def legacy_job_record(
-    value: JobRecordV2
-    | JobRecordV3
-    | ScanJobRecordV4
-    | IndexJobRecordV5
-    | InvestigationJobRecordV1,
-) -> JobRecordV2 | JobRecordV3:
+def legacy_job_record(value: PublicJobRecord) -> JobRecordV2 | JobRecordV3:
+    if isinstance(value, EmbedJobRecordV7):
+        raise HTTPException(409, detail="embed_operation_unavailable")
     if isinstance(value, InvestigationJobRecordV1):
         raise HTTPException(409, detail="investigation_operation_unavailable")
     if isinstance(value, IndexJobRecordV5):

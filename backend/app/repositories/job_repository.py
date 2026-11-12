@@ -7,12 +7,22 @@ from uuid import UUID
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.contracts.embedding_jobs import EmbedJobRecordV7
 from app.contracts.indexing import IndexJobRecordV5
 from app.contracts.investigation_jobs import InvestigationJobRecordV1
 from app.contracts.jobs import AttemptLeaseV2, JobRecordV2, JobRecordV3
 from app.contracts.scan_jobs import ScanJobRecordV4
 from app.domain.errors import ScopeViolation
 from app.models.phase2_tables import PHASE2_TABLES
+
+PublicJobRecord = (
+    JobRecordV2
+    | JobRecordV3
+    | ScanJobRecordV4
+    | IndexJobRecordV5
+    | InvestigationJobRecordV1
+    | EmbedJobRecordV7
+)
 
 jobs = PHASE2_TABLES["jobs"]
 attempts = PHASE2_TABLES["job_attempts"]
@@ -44,6 +54,20 @@ async def load_job(
         )
         # Refresh lifecycle and publication fields from the same statement snapshot.
         res = dict(projection)
+    if res.get("operation") == "embed_chunk_set":
+        from app.models.embed_tables import embed_jobs
+
+        res = dict(
+            (
+                await s.execute(
+                    select(embed_jobs).where(
+                        embed_jobs.c.org_id == org_id, embed_jobs.c.id == job_id
+                    )
+                )
+            )
+            .mappings()
+            .one()
+        )
     if res.get("operation") == "scan_snapshot":
         from app.models.scan_tables import scan_jobs, scan_reports
 
@@ -113,6 +137,10 @@ def index_job_record(row: dict[str, Any]) -> IndexJobRecordV5:
     return IndexJobRecordV5(**{k: row[k] for k in IndexJobRecordV5.model_fields if k in row})
 
 
+def embed_job_record(row: dict[str, Any]) -> EmbedJobRecordV7:
+    return EmbedJobRecordV7(**{k: row[k] for k in EmbedJobRecordV7.model_fields if k in row})
+
+
 def _ensure_utc(dt: Any) -> Any:
     if isinstance(dt, datetime):
         return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
@@ -144,9 +172,9 @@ def investigation_job_record(row: dict[str, Any]) -> InvestigationJobRecordV1:
     )
 
 
-def public_job_record(
-    row: dict[str, Any],
-) -> JobRecordV2 | JobRecordV3 | ScanJobRecordV4 | IndexJobRecordV5 | InvestigationJobRecordV1:
+def public_job_record(row: dict[str, Any]) -> PublicJobRecord:
+    if row["operation"] == "embed_chunk_set":
+        return embed_job_record(row)
     if row["operation"] == "index_snapshot":
         return index_job_record(row)
     if row["operation"] == "scan_snapshot":
