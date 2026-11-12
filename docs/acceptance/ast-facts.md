@@ -26,6 +26,21 @@ broker against the admitted archive, and published as immutable rows with the ru
     default, side-effect and `import type` imports, `require()` and literal `import()` calls;
     named, default and re-exports (`export * from`, `export { a as b } from`) and CommonJS
     `module.exports` / `exports.x`.
+  - _Go:_ structs (embedded types as bases), interfaces (embedded interfaces and method elements),
+    defined types and aliases, methods (receiver type as container, `pointer_receiver` modifier),
+    functions (including generic), parameters (grouped `a, b int` expanded, variadic), results,
+    constants and variables, fields, exported names by capitalization (`public` versus `internal`),
+    and structured imports (aliased, dot, blank).
+  - _Java:_ classes, interfaces, enums (constants as fields), records (components as fields) and
+    annotation types, nested types, fields (constants for `static final` and interface constants),
+    methods and constructors, annotations as decorators, `extends`/`implements`, access levels
+    (package-private is `internal`; interface members are `public`), and plain, static and
+    wildcard imports. Public top-level types are exports.
+  - _Rust:_ structs (named and tuple fields), enums (variants), traits (supertrait bounds),
+    `impl` blocks (methods keyed to the impl type; `impl Trait for T` adds the trait to the type's
+    `implements`), functions with `async`/`const`/`unsafe`, constants, statics (`mut`), type
+    aliases, nested `mod` items, attributes as decorators, `pub`/`pub(crate)`/private visibility,
+    and `use` declarations (grouped, aliased, glob, `pub use` as re-exports).
 - **Evidence.** Every fact has a half-open byte range and line range. The broker re-reads the
   authenticated archive and rejects facts whose range is not exact, files outside the admitted
   source, and identity or coverage drift.
@@ -62,9 +77,12 @@ broker against the admitted archive, and published as immutable rows with the ru
 
 ## Limitations
 
-- Python, JavaScript and TypeScript are extracted. The other grammars are installed and their files
-  are admitted under policy V3, but facts for them are not implemented yet: they appear as
-  `language_unsupported` omissions.
+- Python, JavaScript, TypeScript, Go, Java and Rust are extracted. C, C++, Ruby, PHP and Swift
+  grammars are installed and their files are admitted under policy V3, but facts for them are not
+  implemented yet: they appear as `language_unsupported` omissions.
+- Go and Rust module names are derived from the file path (Go: the directory), not from `go.mod`
+  or `Cargo.toml`. Go struct tags, Java generics bounds and Rust macros, `impl` generics and
+  `where` clauses are not recorded; Rust `macro_rules!` items are skipped.
 - Destructured `require()` bindings record the module but not the destructured names, dynamic
   imports with non-literal arguments are not recorded, `__all__ +=` is not followed, and
   JavaScript values exported through arbitrary expressions are recorded only as `default`.

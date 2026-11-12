@@ -9656,6 +9656,7 @@
               "trait",
               "type_alias",
               "constant",
+              "variable",
               "field",
               "namespace"
             ],

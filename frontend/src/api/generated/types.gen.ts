@@ -4953,7 +4953,7 @@ export type SymbolFactV1 = {
     /**
      * Kind
      */
-    kind: 'function' | 'method' | 'class' | 'interface' | 'struct' | 'enum' | 'trait' | 'type_alias' | 'constant' | 'field' | 'namespace';
+    kind: 'function' | 'method' | 'class' | 'interface' | 'struct' | 'enum' | 'trait' | 'type_alias' | 'constant' | 'variable' | 'field' | 'namespace';
     /**
      * Modifiers
      */
