@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import and_, func, insert, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.contracts.embedding_jobs import EnqueueEmbedJobV7
 from app.contracts.indexing import EnqueueIndexJobV5
 from app.contracts.investigation_jobs import EnqueueInvestigationJobV1
 from app.contracts.jobs import AttemptLeaseV2, EnqueueJobV2, EnqueueJobV3
@@ -65,6 +66,7 @@ class JobService:
             | EnqueueScanJobV4
             | EnqueueIndexJobV5
             | EnqueueInvestigationJobV1
+            | EnqueueEmbedJobV7
         ),
     ) -> PublicJobRecord:
         if request.request_key.startswith(("job:", "child:")):
@@ -74,7 +76,12 @@ class JobService:
                 s, ctx.org_id, ctx.principal_id, request.repository_id, request.snapshot_id
             )
             row = await self._enqueue(s, ctx, request)
-        if row.get("operation") in {"scan_snapshot", "index_snapshot", "investigate_snapshot"}:
+        if row.get("operation") in {
+            "scan_snapshot",
+            "index_snapshot",
+            "investigate_snapshot",
+            "embed_chunk_set",
+        }:
             return public_job_record(row)
         if isinstance(request, EnqueueJobV3) or row.get("operation") == "analyze_structure":
             return job_record_v3(row)
@@ -90,6 +97,7 @@ class JobService:
             | EnqueueScanJobV4
             | EnqueueIndexJobV5
             | EnqueueInvestigationJobV1
+            | EnqueueEmbedJobV7
         ),
     ) -> dict[str, Any]:
         digest = semantic_digest(request.model_dump())
@@ -98,6 +106,10 @@ class JobService:
             from app.models.index_tables import index_jobs
 
             target_jobs = index_jobs
+        elif isinstance(request, EnqueueEmbedJobV7):
+            from app.models.embed_tables import embed_jobs
+
+            target_jobs = embed_jobs
         elif isinstance(request, EnqueueInvestigationJobV1):
             from app.models.investigation_execution_tables import investigation_jobs
 
@@ -127,7 +139,7 @@ class JobService:
                 s, ctx.org_id, ctx.principal_id, old["repository_id"], write=True
             )
             if old["request_hash"] != digest or (
-                request.operation in {"scan_snapshot", "index_snapshot"}
+                request.operation in {"scan_snapshot", "index_snapshot", "embed_chunk_set"}
                 and old["principal_id"] != ctx.principal_id
             ):
                 raise DuplicateConflict("request key has different input")
@@ -179,7 +191,12 @@ class JobService:
                     .order_by(jobs.c.created_at.desc(), jobs.c.id.desc())
                     .limit(1)
                 )
-        if row.get("operation") in {"scan_snapshot", "index_snapshot", "investigate_snapshot"}:
+        if row.get("operation") in {
+            "scan_snapshot",
+            "index_snapshot",
+            "investigate_snapshot",
+            "embed_chunk_set",
+        }:
             return public_job_record(row)
         if row.get("operation") == "analyze_structure":
             return job_record_v3(row)
@@ -310,7 +327,11 @@ class JobService:
                 .one()
             )
             target_jobs = jobs
-            if job.get("operation") == "index_snapshot":
+            if job.get("operation") == "embed_chunk_set":
+                from app.models.embed_tables import embed_jobs
+
+                target_jobs = embed_jobs
+            elif job.get("operation") == "index_snapshot":
                 from app.models.index_tables import index_jobs
 
                 target_jobs = index_jobs
@@ -357,7 +378,25 @@ class JobService:
                 else None,
             )
             await worker_context(s, lease)
-            if job["operation"] == "index_snapshot":
+            if job["operation"] == "embed_chunk_set":
+                await s.execute(
+                    text(
+                        "INSERT INTO embed_attempt_specs(org_id,id,job_id,fence,spec_id,"
+                        "repository_id,snapshot_id,spec_hash) SELECT :org,:att,:job,:fence,"
+                        "e.id,:repo,:snap,e.spec_hash FROM embed_specs e "
+                        "WHERE e.org_id=:org AND e.id=:spec"
+                    ),
+                    {
+                        "org": org_id,
+                        "att": attempt_id,
+                        "job": job_id,
+                        "fence": fence,
+                        "repo": job["repository_id"],
+                        "snap": job["snapshot_id"],
+                        "spec": job["embed_spec_id"],
+                    },
+                )
+            elif job["operation"] == "index_snapshot":
                 from app.models.index_tables import index_attempt_specs, index_specs
 
                 spec_hash = await s.scalar(
@@ -624,7 +663,11 @@ class JobService:
         if retry:
             delay = min(60, 5 * 2 ** max(0, job["attempt_count"] - 1))
             target_jobs = jobs
-            if job.get("operation") == "index_snapshot":
+            if job.get("operation") == "embed_chunk_set":
+                from app.models.embed_tables import embed_jobs
+
+                target_jobs = embed_jobs
+            elif job.get("operation") == "index_snapshot":
                 from app.models.index_tables import index_jobs
 
                 target_jobs = index_jobs
@@ -783,12 +826,23 @@ class JobService:
             "investigation_process_failed",
             "investigation_runtime_unavailable",
             "investigation_failed",
+            "embed_timeout",
+            "embed_provider_unavailable",
+            "embed_provider_timeout",
+            "embed_hold_pending",
+            "embed_dispatch_conflict",
+            "embed_price_unavailable",
+            "embed_empty_chunk_set",
+            "embed_protocol_error",
+            "embed_process_failed",
         }
         if code not in allowed:
             raise ValueError("unknown failure code")
         async with transaction(self.factory) as s:
             job, _ = await self._locked(s, lease.org_id, lease.job_id)
             if code.startswith("index_") and job["operation"] != "index_snapshot":
+                raise ValueError("unknown failure code")
+            if code.startswith("embed_") and job["operation"] != "embed_chunk_set":
                 raise ValueError("unknown failure code")
             if (
                 code.startswith("investigation_")
@@ -908,7 +962,9 @@ class JobService:
                             jobs.c.deadline <= func.clock_timestamp(),
                             jobs.c.state == "cancelling",
                             and_(
-                                jobs.c.operation.in_(["index_snapshot", "investigate_snapshot"]),
+                                jobs.c.operation.in_(
+                                    ["index_snapshot", "investigate_snapshot", "embed_chunk_set"]
+                                ),
                                 jobs.c.cancel_requested_at.is_not(None),
                             ),
                             index_recovery_due(),
@@ -956,7 +1012,11 @@ class JobService:
                     and attempt_lease_expiry is not None
                     and attempt_lease_expiry <= now
                 )
-                if job["operation"] in {"index_snapshot", "investigate_snapshot"}:
+                if job["operation"] in {
+                    "index_snapshot",
+                    "investigate_snapshot",
+                    "embed_chunk_set",
+                }:
                     if job["cancel_requested_at"] is not None:
                         await self._finish_failure(
                             s,

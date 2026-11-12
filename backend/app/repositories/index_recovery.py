@@ -51,6 +51,6 @@ def index_recovery_due() -> ColumnElement[bool]:
         )
     ).correlate(jobs)
     return and_(
-        jobs.c.operation == "index_snapshot",
+        jobs.c.operation.in_(("index_snapshot", "embed_chunk_set")),
         or_(jobs.c.state == "cancelling", ~member, ~grant, github_lost),
     )

@@ -40,8 +40,8 @@ def canonical(value) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
-async def embed_case(api_factory, broker_factory, migration_factory, tmp_path):
-    """A published lexical set, a funded budget, an embed spec and a running embed attempt."""
+async def embed_base(api_factory, broker_factory, migration_factory, tmp_path):
+    """A published lexical set, a funded budget and an embed spec (no job yet)."""
     ctx, spec, _, receipt = await published_lexical(
         api_factory, broker_factory, migration_factory, tmp_path
     )
@@ -101,6 +101,22 @@ async def embed_case(api_factory, broker_factory, migration_factory, tmp_path):
                 "ct": text_value,
             },
         )
+    return {
+        "ctx": ctx,
+        "spec": spec,
+        "spec_id": spec_id,
+        "set_id": set_id,
+        "config_hash": config_hash,
+        "spec_hash": spec_hash,
+        "index_id": uuid5(set_id, f"dense-v1:{PROVIDER}:{MODEL}:{DIM}"),
+    }
+
+
+async def embed_case(api_factory, broker_factory, migration_factory, tmp_path):
+    """The base plus a running, fenced embed attempt."""
+    base = await embed_base(api_factory, broker_factory, migration_factory, tmp_path)
+    ctx, spec, spec_id = base["ctx"], base["spec"], base["spec_id"]
+    config_hash, spec_hash, set_id = base["config_hash"], base["spec_hash"], base["set_id"]
     job_id, attempt_id = uuid4(), uuid4()
     async with migration_factory() as session, session.begin():
         await session.execute(
