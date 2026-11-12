@@ -26,7 +26,7 @@ path. Scores are identical in both paths.
   query, not every row above `min_score`; counting them all would restore a full scan.
 - Filtered HNSW scans can return fewer than `limit` rows when the filters are
   selective. Iterative scans are not enabled.
-- External dense publication is still unavailable by design (existing publication
+- External dense publication is still unavailable by design (see [Bedrock runtime](bedrock-runtime.md) for the exact guards) (existing publication
   guards), so the PostgreSQL branch of `search_dense` is covered at the SQL
   expression level, not through a published qualified index.
 - The HNSW index covers 1024 dimensions only.

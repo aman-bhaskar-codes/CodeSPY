@@ -203,7 +203,7 @@ asyncio_mode = "auto"
 pythonpath = [".", ".."]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_default_test_loop_scope = "function"
-markers = ["integration: real PostgreSQL", "concurrency: coordinated independent connections", "performance: dedicated large fixture"]
+markers = ["integration: real PostgreSQL", "concurrency: coordinated independent connections", "performance: dedicated large fixture", "live_bedrock: paid Bedrock calls; opt in with CODESPY_LIVE_BEDROCK=1"]
 testpaths = ["tests"]
 addopts = "-ra -q --strict-markers"
 
