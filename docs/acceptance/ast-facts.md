@@ -9,11 +9,23 @@ broker against the admitted archive, and published as immutable rows with the ru
   with a session, CSRF token and `Idempotency-Key`. It stores a structural analysis spec whose
   adapters are `("ast_facts",)` and enqueues the existing `analyze_structure` job. It is runtime
   gated like structural analysis (503 without a qualified toolchain or readiness).
-- **Extraction (Python only).** Classes (bases, decorators), functions and methods (parameters with
-  types, defaults and kinds, return type, `async`, decorators), module constants, structured
-  imports (`import`, `from`, relative level, aliases, wildcard) and exports (`__all__` or public
-  declarations). Local functions are not part of the module API surface. Other languages in the
-  archive are listed as omissions with reason `language_unsupported`.
+- **Extraction.** Python, JavaScript, JSX, TypeScript and TSX. Each file yields symbols with kind,
+  qualified name, visibility, modifiers, decorators, signature (parameters with type, default,
+  kind and optionality; return type), base classes, implemented interfaces and an `exported` flag;
+  structured imports; and exports.
+  - _Python:_ classes (enum and `Protocol` classes get their own kinds), functions and methods,
+    class fields (annotated or plain), module constants, `TypeAlias` and `type` aliases; `import`,
+    `from`, relative level, aliases, wildcard and `__future__` imports, including those inside
+    `if`/`try`/`with` blocks (under `TYPE_CHECKING` they are `type_only`) and literal
+    `importlib.import_module()` / `__import__()` calls as `dynamic`; exports from `__all__` or
+    public declarations. Local functions are not part of the API surface.
+  - _JavaScript and TypeScript:_ functions, arrow and function-expression bindings, classes
+    (`extends`, `implements`, static/async/generator/getter/setter/abstract/readonly modifiers,
+    `public`/`private`/`protected` and `#private`), fields, interfaces, type aliases, enums,
+    namespaces, ambient declarations and `UPPER_CASE` or exported constants; static, namespace,
+    default, side-effect and `import type` imports, `require()` and literal `import()` calls;
+    named, default and re-exports (`export * from`, `export { a as b } from`) and CommonJS
+    `module.exports` / `exports.x`.
 - **Evidence.** Every fact has a half-open byte range and line range. The broker re-reads the
   authenticated archive and rejects facts whose range is not exact, files outside the admitted
   source, and identity or coverage drift.
@@ -50,9 +62,12 @@ broker against the admitted archive, and published as immutable rows with the ru
 
 ## Limitations
 
-- Only Python is extracted. The other grammars are installed and their files are admitted under
-  policy V3, but facts for them are not implemented yet: they appear as `language_unsupported`
-  omissions.
+- Python, JavaScript and TypeScript are extracted. The other grammars are installed and their files
+  are admitted under policy V3, but facts for them are not implemented yet: they appear as
+  `language_unsupported` omissions.
+- Destructured `require()` bindings record the module but not the destructured names, dynamic
+  imports with non-literal arguments are not recorded, `__all__ +=` is not followed, and
+  JavaScript values exported through arbitrary expressions are recorded only as `default`.
 - Source reading, limits and timeouts are the structural ones: 128 files, 16 MiB, 180 s.
 - Facts are syntactic; names are not resolved across files. Routes, models and configuration slots
   exist in the contract but are not populated yet.

@@ -20,6 +20,7 @@ class ParameterV1(Contract):
     type: str | None = Field(default=None, max_length=512)
     default: str | None = Field(default=None, max_length=512)
     kind: Literal["positional", "keyword_only", "variadic", "variadic_keyword"] = "positional"
+    optional: bool = False
 
 
 class SignatureV1(Contract):
@@ -39,6 +40,7 @@ class SymbolFactV1(Contract):
         "type_alias",
         "constant",
         "field",
+        "namespace",
     ]
     name: Name = Field(min_length=1, max_length=512)
     qualified_name: str = Field(min_length=1, max_length=2048)
@@ -48,6 +50,8 @@ class SymbolFactV1(Contract):
     decorators: tuple[str, ...] = Field(default=(), max_length=32)
     signature: SignatureV1 | None = None
     bases: tuple[str, ...] = Field(default=(), max_length=32)
+    implements: tuple[str, ...] = Field(default=(), max_length=32)
+    exported: bool = False
     container: str | None = Field(default=None, max_length=2048)
 
 
@@ -62,6 +66,7 @@ class ImportFactV1(Contract):
     relative_level: int = Field(default=0, ge=0, le=32)
     names: tuple[ImportNameV1, ...] = Field(default=(), max_length=256)
     alias: str | None = Field(default=None, max_length=512)
+    type_only: bool = False
     range: SourceRangeV1
 
 

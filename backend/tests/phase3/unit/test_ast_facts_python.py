@@ -152,3 +152,85 @@ def test_node_budget_is_enforced():
 
     with pytest.raises(TimeoutError, match="syntax_node_budget_exceeded"):
         extract_facts(make_unit(SOURCE), AnalysisBudget(max_syntax_nodes=10))
+
+
+S2 = """from __future__ import annotations
+import importlib
+import typing
+from typing import TYPE_CHECKING, Protocol, TypeAlias
+from enum import Enum
+
+try:
+    import ujson as json
+except ImportError:
+    import json
+
+if TYPE_CHECKING:
+    from .models import User
+
+plugin = importlib.import_module("plug.in")
+legacy = __import__("old")
+
+
+class Color(Enum):
+    RED = 1
+
+
+class Shape(Protocol):
+    def area(self) -> float: ...
+
+
+class Config:
+    host: str = "x"
+    port = 80
+    flag: bool
+
+
+Alias: TypeAlias = int | str
+type Pair = tuple[int, int]
+"""
+
+
+def test_enums_protocols_fields_and_type_aliases():
+    by_name = {s.qualified_name: s for s in facts(S2).symbols}
+    assert by_name["pkg.mod.Color"].kind == "enum" and by_name["pkg.mod.Color.RED"].kind == "field"
+    assert by_name["pkg.mod.Shape"].kind == "interface"
+    assert by_name["pkg.mod.Shape.area"].kind == "method"
+    assert by_name["pkg.mod.Config"].kind == "class"
+    fields = {
+        n: (s.kind, s.signature.return_type if s.signature else None)
+        for n, s in by_name.items()
+        if n.startswith("pkg.mod.Config.")
+    }
+    assert fields == {
+        "pkg.mod.Config.host": ("field", "str"),
+        "pkg.mod.Config.port": ("field", None),
+        "pkg.mod.Config.flag": ("field", "bool"),
+    }
+    assert by_name["pkg.mod.Alias"].kind == "type_alias"
+    assert by_name["pkg.mod.Pair"].kind == "type_alias"
+
+
+def test_conditional_future_type_checking_and_dynamic_imports():
+    imports = [
+        (i.kind, i.module, i.relative_level, i.alias, i.type_only) for i in facts(S2).imports
+    ]
+    assert imports == [
+        ("from", "__future__", 0, None, False),
+        ("static", "importlib", 0, None, False),
+        ("static", "typing", 0, None, False),
+        ("from", "typing", 0, None, False),
+        ("from", "enum", 0, None, False),
+        ("static", "ujson", 0, "json", False),  # inside try:
+        ("static", "json", 0, None, False),  # inside except:
+        ("from", "models", 1, None, True),  # under TYPE_CHECKING
+        ("dynamic", "plug.in", 0, None, False),
+        ("dynamic", "old", 0, None, False),
+    ]
+
+
+def test_public_enums_protocols_and_aliases_are_exported():
+    result = facts(S2)
+    assert [e.name for e in result.exports] == ["Color", "Shape", "Config", "Alias", "Pair"]
+    exported = {s.name for s in result.symbols if s.exported}
+    assert exported == {"Color", "Shape", "Config", "Alias", "Pair"}

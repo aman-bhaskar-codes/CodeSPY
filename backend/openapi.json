@@ -3515,6 +3515,11 @@
             "minimum": 0.0,
             "title": "Relative Level",
             "type": "integer"
+          },
+          "type_only": {
+            "default": false,
+            "title": "Type Only",
+            "type": "boolean"
           }
         },
         "required": [
@@ -7186,6 +7191,11 @@
             "title": "Name",
             "type": "string"
           },
+          "optional": {
+            "default": false,
+            "title": "Optional",
+            "type": "boolean"
+          },
           "type": {
             "anyOf": [
               {
@@ -9621,6 +9631,20 @@
             "title": "Decorators",
             "type": "array"
           },
+          "exported": {
+            "default": false,
+            "title": "Exported",
+            "type": "boolean"
+          },
+          "implements": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 32,
+            "title": "Implements",
+            "type": "array"
+          },
           "kind": {
             "enum": [
               "function",
@@ -9632,7 +9656,8 @@
               "trait",
               "type_alias",
               "constant",
-              "field"
+              "field",
+              "namespace"
             ],
             "title": "Kind",
             "type": "string"

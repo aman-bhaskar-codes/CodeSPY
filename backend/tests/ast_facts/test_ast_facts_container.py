@@ -31,7 +31,7 @@ async def test_container_facts_match_in_process_and_survive_broker_validation(tm
     result = materialize_facts(
         RunRef(org_id=uuid4(), snapshot_id=uuid4(), run_id=uuid4()), draft, source, root
     )
-    assert result.batch.disposition == "partial" and len(result.digests) == 2
+    assert result.batch.disposition == "partial" and len(result.digests) == 3
 
 
 async def test_structural_requests_cannot_use_the_facts_entrypoint(tmp_path):
