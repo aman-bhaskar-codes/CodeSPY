@@ -4,7 +4,9 @@ from app.contracts.ast_facts import FileFactsV1
 from app.contracts.structure import AnalysisBudget, SourceUnitV1
 
 JS_FAMILY = frozenset({"javascript", "jsx", "typescript", "tsx"})
-FACT_LANGUAGES = frozenset({"python", "go", "java", "rust"}) | JS_FAMILY
+FACT_LANGUAGES = (
+    frozenset({"python", "go", "java", "rust", "c", "cpp", "ruby", "php", "swift"}) | JS_FAMILY
+)
 
 
 def extract_facts(unit: SourceUnitV1, budget: AnalysisBudget) -> FileFactsV1:
@@ -28,4 +30,20 @@ def extract_facts(unit: SourceUnitV1, budget: AnalysisBudget) -> FileFactsV1:
         from app.analyzers.facts.rust import extract as extract_rust
 
         return extract_rust(unit, budget)
+    if unit.language in {"c", "cpp"}:
+        from app.analyzers.facts.c_family import extract as extract_c
+
+        return extract_c(unit, budget)
+    if unit.language == "ruby":
+        from app.analyzers.facts.ruby import extract as extract_ruby
+
+        return extract_ruby(unit, budget)
+    if unit.language == "php":
+        from app.analyzers.facts.php import extract as extract_php
+
+        return extract_php(unit, budget)
+    if unit.language == "swift":
+        from app.analyzers.facts.swift import extract as extract_swift
+
+        return extract_swift(unit, budget)
     raise ValueError(f"unsupported language: {unit.language}")

@@ -41,6 +41,28 @@ broker against the admitted archive, and published as immutable rows with the ru
     `implements`), functions with `async`/`const`/`unsafe`, constants, statics (`mut`), type
     aliases, nested `mod` items, attributes as decorators, `pub`/`pub(crate)`/private visibility,
     and `use` declarations (grouped, aliased, glob, `pub use` as re-exports).
+  - _C and C++:_ structs, unions and classes (base classes, access sections), enums (enumerators
+    as fields), typedefs (anonymous aggregates, function-pointer types), `using` aliases, functions
+    and prototypes, methods (including out-of-class `ns::Foo::run` definitions, constructors,
+    destructors, trailing `const`/`override`), templates, namespaces, variables and constants,
+    object-like and function-like macros, parameter types with `*`/`&`/`&&`, defaults and
+    variadics, and `#include` (quoted includes have `relative_level` 1). In headers every non-static
+    top-level declaration is an export; in sources only external-linkage functions and variables.
+  - _Ruby:_ modules (namespaces), classes with superclass, `include`/`prepend` as `implements` and
+    `extend` as a decorator, `attr_accessor`/`attr_reader`/`attr_writer` fields, methods and
+    singleton methods, parameter kinds (optional, splat, keyword, hash-splat, block), visibility
+    from bare `private`/`protected`/`public`, `private :name` and `private def`, constants, and
+    `require`/`require_relative`/`load`.
+  - _PHP:_ namespaces, classes (abstract/final, `extends`, `implements`, composed traits),
+    interfaces, traits, enums (backing type, cases), constants, properties, methods with
+    visibility and modifiers, constructor-promoted properties, typed, optional, variadic and
+    default parameters, functions, `use` (simple, grouped, aliased) and literal
+    `include`/`require`.
+  - _Swift:_ classes, structs, enums (cases), actors, protocols, extensions (members keyed to the
+    extended type; conformances merged onto the type), properties (`let`/`var`), methods and
+    initializers with `async`/`throws`, labelled parameters (`with y`), defaults and variadics,
+    attributes as decorators, access levels (`public`/`open` are public), type aliases, global
+    constants and variables, and imports.
 - **Evidence.** Every fact has a half-open byte range and line range. The broker re-reads the
   authenticated archive and rejects facts whose range is not exact, files outside the admitted
   source, and identity or coverage drift.
@@ -77,9 +99,14 @@ broker against the admitted archive, and published as immutable rows with the ru
 
 ## Limitations
 
-- Python, JavaScript, TypeScript, Go, Java and Rust are extracted. C, C++, Ruby, PHP and Swift
-  grammars are installed and their files are admitted under policy V3, but facts for them are not
-  implemented yet: they appear as `language_unsupported` omissions.
+- All thirteen registered languages are extracted. Files in other languages are never read as
+  sources; the `language_unsupported` omission remains as a safeguard for a registered language
+  without an extractor.
+- C and C++ facts are syntactic: preprocessor conditionals are not evaluated, macro-generated
+  declarations are not seen, and `.h` is treated as C. Swift class inheritance cannot be told from
+  protocol conformance syntactically, so a class lists everything in `bases`. PHP `use function` and
+  `use const` imports are not distinguished from class imports. Ruby metaprogramming (`define_method`,
+  `Struct.new`) is not followed.
 - Go and Rust module names are derived from the file path (Go: the directory), not from `go.mod`
   or `Cargo.toml`. Go struct tags, Java generics bounds and Rust macros, `impl` generics and
   `where` clauses are not recorded; Rust `macro_rules!` items are skipped.
