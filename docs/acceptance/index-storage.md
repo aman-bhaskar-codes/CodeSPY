@@ -23,7 +23,8 @@ configurations cannot reuse each other's results. Manifest membership is unique
 and matches stored content, counts, safe bytes and coverage. The stored draft
 digest is reconstructed from the committed manifest and content. Qualified
 content cannot be appended, mutated or bypassed through NULL embedding
-membership. External dense publication remains unavailable.
+membership. Dense publication is possible only through the fenced `embed_chunk_set` attempt described in
+[Dense index publication](dense-index-publication.md); every other writer is still refused.
 
 The typed repository owns no transactions. Its set lookup takes the existing
 scope locks rather than requesting UPDATE privileges on immutable sets. Inserting

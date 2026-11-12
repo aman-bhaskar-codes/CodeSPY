@@ -27,7 +27,11 @@ Status: accepted for generation and query embeddings; dense index publication is
 7. Live checks are owner-run (`scripts/bedrock_smoke.py`, `live_bedrock` marker). CI stays offline
    and strips `AWS_*`.
 
-## Deferred
+## Dense index publication
 
-Dense index publication (embedding a sealed chunk set and publishing it). The database refuses it
-by design; see the acceptance record for the exact guards and why this needs its own design.
+A separate fenced `embed_chunk_set` job (own spec, attempt, receipt and staging tables; lexical
+tables and guards untouched). Worker spending goes through job-bound `SECURITY DEFINER` functions
+that force the job's principal and write an immutable ledger, and every paid vector is staged durably
+before settlement so a retry never pays twice. The database layer and operation are built; job
+creation, consumer, recovery and the HTTP route are deferred. See
+[Dense index publication](../acceptance/dense-index-publication.md).
