@@ -85,6 +85,8 @@
   gap: 8px;
 }
 .controls button {
+  min-width: 0;
+  margin: 0;
   min-height: 24px;
   padding: 0 10px;
   font-size: 12px;
@@ -255,6 +257,8 @@
   gap: 12px;
 }
 .statusActions button {
+  min-width: 0;
+  margin: 0;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -359,5 +363,14 @@
     padding: 2px 12px;
     flex-wrap: wrap;
     white-space: normal;
+  }
+  .statusActions {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    min-width: 0;
+  }
+  .statusItems {
+    flex-wrap: wrap;
+    gap: 0 12px;
   }
 }
