@@ -1,7 +1,9 @@
+import type React from "react";
 import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -20,6 +22,14 @@ import { ThemeProvider, ThemeToggle } from "../theme/ThemeProvider";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Button } from "../ui/Button";
 import styles from "./WorkspaceShell.module.css";
+import { Splitter } from "./Splitter";
+import {
+  SIDEBAR_MAX,
+  SIDEBAR_MIN,
+  SIDEBAR_STEP,
+  useWorkbenchLayout,
+} from "./useWorkbenchLayout";
+import { useWorkbenchKeys } from "./useWorkbenchKeys";
 
 export interface WorkspaceDestination {
   id: string;
@@ -156,10 +166,23 @@ function ShellContent({
     available: "Session active",
     unavailable: "Sign-in required",
   }[sessionState];
+  const rootRef = useRef<HTMLDivElement>(null);
+  const layout = useWorkbenchLayout();
+  useWorkbenchKeys(rootRef, layout.toggleSidebar, layout.sidebarVisible);
   const activeLabel = destinations.find((d) => d.id === active)?.label;
   return (
     <WorkspaceView.Provider value={active}>
-      <div className={styles.shell} data-workbench="">
+      <div
+        ref={rootRef}
+        className={styles.shell}
+        data-workbench=""
+        data-sidebar={layout.sidebarVisible ? "open" : "closed"}
+        style={
+          {
+            "--workbench-sidebar": `${layout.sidebarWidth}px`,
+          } as React.CSSProperties
+        }
+      >
         <a className={styles.skip} href="#workspace-content">
           Skip to workspace
         </a>
@@ -192,7 +215,11 @@ function ShellContent({
             )}
           </div>
         </header>
-        <nav className={styles.activityBar} aria-label="Workspace sections">
+        <nav
+          className={styles.activityBar}
+          aria-label="Workspace sections"
+          data-part="activity"
+        >
           {destinations.map((item) => {
             const Icon = icons[item.id as keyof typeof icons] ?? FileCode2;
             const content = (
@@ -223,7 +250,12 @@ function ShellContent({
             );
           })}
         </nav>
-        <aside className={styles.sidebar} aria-label="Explorer">
+        <aside
+          className={styles.sidebar}
+          aria-label="Explorer"
+          data-part="sidebar"
+          tabIndex={-1}
+        >
           <p className={styles.caption}>Explorer</p>
           <div className={styles.context}>
             <strong className={styles.repository}>
@@ -246,11 +278,25 @@ function ShellContent({
             <FileCode2 size={14} aria-hidden="true" /> Evidence starts with
             source.
           </div>
+          <Splitter
+            label="Resize explorer"
+            value={layout.sidebarWidth}
+            min={SIDEBAR_MIN}
+            max={SIDEBAR_MAX}
+            step={SIDEBAR_STEP}
+            onChange={layout.setSidebarWidth}
+            onReset={layout.resetSidebarWidth}
+          />
         </aside>
-        <main id="workspace-content" tabIndex={-1} className={styles.main}>
+        <main
+          id="workspace-content"
+          tabIndex={-1}
+          className={styles.main}
+          data-part="editor"
+        >
           {children}
         </main>
-        <footer className={styles.footer}>
+        <footer className={styles.footer} data-part="status" tabIndex={-1}>
           <span className={styles.statusItems}>
             <span>{sessionLabel}</span>
             {repositoryLabel && <span>{repositoryLabel}</span>}

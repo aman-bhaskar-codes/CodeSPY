@@ -2,12 +2,20 @@
 .shell {
   height: 100dvh;
   display: grid;
-  grid-template-columns: 48px 240px minmax(0, 1fr);
+  grid-template-columns: 48px var(--workbench-sidebar, 240px) minmax(0, 1fr);
   grid-template-rows: 35px minmax(0, 1fr) 22px;
   grid-template-areas:
     "title title title"
     "activity side editor"
     "status status status";
+}
+.shell[data-sidebar="closed"] {
+  grid-template-columns: 48px 0 minmax(0, 1fr);
+}
+.shell[data-sidebar="closed"] .sidebar {
+  visibility: hidden;
+  border-right: 0;
+  overflow: hidden;
   background: var(--cs-canvas);
   color: var(--cs-text);
   font-family: var(--cs-font);
@@ -140,6 +148,7 @@
   background: var(--cs-panel);
   padding: 0 0 8px;
   overflow-y: auto;
+  position: relative;
 }
 .caption {
   margin: 0;
@@ -253,16 +262,14 @@
   }
 }
 @media (max-width: 1050px) {
-  .shell {
-    grid-template-columns: 48px 200px minmax(0, 1fr);
-  }
   .productLabel {
     display: none;
   }
 }
 /* Narrow screens: the activity bar becomes a strip and the explorer folds away. */
 @media (max-width: 760px) {
-  .shell {
+  .shell,
+  .shell[data-sidebar="closed"] {
     height: auto;
     min-height: 100dvh;
     overflow: visible;
@@ -293,10 +300,12 @@
     width: auto;
     height: 2px;
   }
-  .sidebar {
+  .sidebar,
+  .shell[data-sidebar="closed"] .sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--cs-border);
     overflow: visible;
+    visibility: visible;
   }
   .caption,
   .sidebarFoot {

@@ -1,0 +1,29 @@
+.splitter {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 5;
+}
+.splitter:hover,
+.splitter:active {
+  background: var(--cs-focus);
+  opacity: 0.7;
+}
+.splitter:focus-visible {
+  outline: 2px solid var(--cs-focus);
+  outline-offset: -2px;
+  background: var(--cs-focus);
+}
+@media (max-width: 760px) {
+  .splitter {
+    display: none;
+  }
+}
+@media (forced-colors: active) {
+  .splitter:focus-visible,
+  .splitter:hover {
+    background: Highlight;
+  }
+}
