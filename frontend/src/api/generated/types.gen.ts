@@ -238,6 +238,24 @@ export type ArchitectureStartRequestV1 = {
 };
 
 /**
+ * ArchitectureTemplatesV1
+ *
+ * Statement text templates keyed by statement code (``{name}`` marks a parameter).
+ */
+export type ArchitectureTemplatesV1 = {
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+    /**
+     * Templates
+     */
+    templates: {
+        [key: string]: string;
+    };
+};
+
+/**
  * AstConfigItemV1
  */
 export type AstConfigItemV1 = {
@@ -6020,6 +6038,22 @@ export type ValidationError = {
 export type IndexCreateResponseV1Writable = {
     job: IndexJobRecordV5;
 };
+
+export type ArchitectureReportTemplatesApiV1ArchitectureReportTemplatesGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/architecture-report-templates';
+};
+
+export type ArchitectureReportTemplatesApiV1ArchitectureReportTemplatesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArchitectureTemplatesV1;
+};
+
+export type ArchitectureReportTemplatesApiV1ArchitectureReportTemplatesGetResponse = ArchitectureReportTemplatesApiV1ArchitectureReportTemplatesGetResponses[keyof ArchitectureReportTemplatesApiV1ArchitectureReportTemplatesGetResponses];
 
 export type OauthCallbackApiV1AuthGithubCallbackGetData = {
     body?: never;

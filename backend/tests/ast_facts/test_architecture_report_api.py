@@ -94,6 +94,9 @@ async def test_prepare_build_and_read_a_report_through_http(factory, tmp_path):
         assert (await client.get(f"{base}/{ref['id']}/graph?limit=0")).status_code == 422
         assert (await client.get(f"{base}/{ref['id']}/sections/bogus")).status_code == 422
         assert (await client.get(f"{base}/{uuid4()}")).status_code == 404
+        templates = await client.get("/api/v1/architecture-report-templates")
+        assert templates.status_code == 200
+        assert "{analyzed}" in templates.json()["templates"]["overview.files"]
     finally:
         await client.aclose()
 

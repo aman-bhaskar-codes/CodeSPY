@@ -147,3 +147,12 @@ def test_markdown_and_graph_payload_shape():
     assert statement_text(
         next(s for s in statements(report, "overview") if s.code == "overview.files")
     ).startswith("5 source files")
+
+
+def test_every_statement_code_the_report_emits_has_a_template():
+    from app.analyzers.graph.render import TEXT
+
+    report, _ = build(eligible_files=len(FILES) + 5, omitted_files=5)
+    codes = {s.code for section in report.sections for s in section.statements}
+    assert codes <= set(TEXT), sorted(codes - set(TEXT))
+    assert set(LIMITATIONS) <= set(TEXT)

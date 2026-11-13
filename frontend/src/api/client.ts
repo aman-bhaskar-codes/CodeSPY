@@ -9,6 +9,11 @@ import type {
   InventoryPageV1,
   AnalysisAcceptedV1,
   ArchitectureReportV1,
+  ArchitectureGraphPageV1,
+  ArchitectureReportRefV1,
+  ArchitectureShardsV1,
+  ArchitectureTemplatesV1,
+  RepositoryReportV1,
 } from "./generated/types.gen";
 
 export class ApiError extends Error {
@@ -53,7 +58,57 @@ export async function request<T>(
     throw new ApiError(409, "access_context_changed");
   return value as T;
 }
+const reportsPath = (repoId: string, snapshotId: string) =>
+  `/repositories/${repoId}/snapshots/${snapshotId}/architecture-reports`;
+
 export const api = {
+  architectureStatus: (repoId: string, snapshotId: string) =>
+    request<ArchitectureShardsV1>(`${reportsPath(repoId, snapshotId)}/prepare`),
+  architecturePrepare: (repoId: string, snapshotId: string, csrf: string) =>
+    request<ArchitectureShardsV1>(
+      `${reportsPath(repoId, snapshotId)}/prepare`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf),
+      },
+    ),
+  architectureBuild: (
+    repoId: string,
+    snapshotId: string,
+    csrf: string,
+    key: string,
+  ) =>
+    request<ArchitectureReportRefV1>(reportsPath(repoId, snapshotId), {
+      method: "POST",
+      headers: mutationHeaders(csrf, key),
+      body: JSON.stringify({ request_key: key }),
+    }),
+  architectureLatest: async (repoId: string, snapshotId: string) => {
+    try {
+      return await request<ArchitectureReportRefV1>(
+        `${reportsPath(repoId, snapshotId)}/latest`,
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) return null;
+      throw error;
+    }
+  },
+  architectureReport: (repoId: string, snapshotId: string, reportId: string) =>
+    request<RepositoryReportV1>(
+      `${reportsPath(repoId, snapshotId)}/${reportId}`,
+    ),
+  architectureGraph: (
+    repoId: string,
+    snapshotId: string,
+    reportId: string,
+    offset = 0,
+    limit = 5000,
+  ) =>
+    request<ArchitectureGraphPageV1>(
+      `${reportsPath(repoId, snapshotId)}/${reportId}/graph?offset=${offset}&limit=${limit}`,
+    ),
+  architectureTemplates: () =>
+    request<ArchitectureTemplatesV1>("/architecture-report-templates"),
   repositoryMetadata: (repoId: string, signal?: AbortSignal) =>
     request<import("./generated/types.gen").RepositoryListItemV1>(
       `/repositories/${repoId}/metadata`,

@@ -244,6 +244,13 @@ class ArchitectureReportRefV1(Contract):
     eligible_files: int = Field(ge=0)
 
 
+class ArchitectureTemplatesV1(Contract):
+    """Statement text templates keyed by statement code (``{name}`` marks a parameter)."""
+
+    schema_version: Literal[1] = 1
+    templates: dict[str, str]
+
+
 class GraphNodeOutV1(Contract):
     id: str
     label: str

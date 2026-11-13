@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from app.adapters.model.http_transport import ProviderTransportError
+from app.analyzers.graph.render import TEXT as REPORT_TEMPLATES
 from app.analyzers.graph.render import graph_page
 from app.analyzers.graph.render import render_markdown as render_repository_markdown
 from app.analyzers.reporting import render_json, render_markdown
@@ -18,6 +19,7 @@ from app.contracts.architecture_report import (
     ArchitectureReportRefV1,
     ArchitectureShardsV1,
     ArchitectureStartRequestV1,
+    ArchitectureTemplatesV1,
     RepositoryReportV1,
     SectionName,
     SectionV1,
@@ -1783,6 +1785,11 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         return Response(
             render_repository_markdown(report), media_type="text/markdown; charset=utf-8"
         )
+
+    @app.get("/api/v1/architecture-report-templates")
+    async def architecture_report_templates(request: Request) -> ArchitectureTemplatesV1:
+        await principal(request)
+        return ArchitectureTemplatesV1(templates=dict(REPORT_TEMPLATES))
 
     @app.get(reports_base + "/{report_id}/graph")
     async def architecture_report_graph(

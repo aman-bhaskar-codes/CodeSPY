@@ -419,6 +419,30 @@
         "title": "ArchitectureStartRequestV1",
         "type": "object"
       },
+      "ArchitectureTemplatesV1": {
+        "additionalProperties": false,
+        "description": "Statement text templates keyed by statement code (``{name}`` marks a parameter).",
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "templates": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Templates",
+            "type": "object"
+          }
+        },
+        "required": [
+          "templates"
+        ],
+        "title": "ArchitectureTemplatesV1",
+        "type": "object"
+      },
       "AstConfigItemV1": {
         "additionalProperties": false,
         "properties": {
@@ -11633,6 +11657,24 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/architecture-report-templates": {
+      "get": {
+        "operationId": "architecture_report_templates_api_v1_architecture_report_templates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchitectureTemplatesV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Architecture Report Templates"
+      }
+    },
     "/api/v1/auth/github/callback": {
       "get": {
         "operationId": "oauth_callback_api_v1_auth_github_callback_get",

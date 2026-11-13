@@ -25,6 +25,7 @@ import type {
   RetryResponseV2,
 } from "./api/generated/types.gen";
 import { StructuralReportView } from "./features/structure/StructuralReportView";
+import { ArchitectureWorkbench } from "./features/architecture/ArchitectureWorkbench";
 import { FindingsWorkbench } from "./features/findings/FindingsWorkbench";
 import { RetrievalWorkbench } from "./features/retrieval/RetrievalWorkbench";
 import { InvestigationsWorkbench } from "./features/investigations/InvestigationsWorkbench";
@@ -1009,6 +1010,11 @@ function WorkspaceApp() {
                   </div>
                 )}
               </section>
+              <ArchitectureWorkbench
+                repositoryId={repository}
+                snapshotId={snapshot}
+                csrfToken={session.data?.csrf_token ?? ""}
+              />
             </WorkspacePane>
           )}
           {snapshot && repository && (
