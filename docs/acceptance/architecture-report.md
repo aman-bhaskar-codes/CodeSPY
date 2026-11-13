@@ -47,8 +47,8 @@ statement is typed, and what the facts cannot settle is stated as unknown.
   classpaths and Swift package manifests are not read; such imports are unresolved, ambiguous or
   external, never guessed. Swift imports of the repository's own module therefore read as external
   (Alamofire: 0 resolved of 191).
-- Rust `mod x;` declarations and inline modules are not import facts, so Rust edges come from `use`
-  paths only (anyhow: 7 of 34 internal imports unresolved).
+- Rust `mod x;` declarations are import facts (`self::x`, resolved to `x.rs` or `x/mod.rs`); inline
+  modules are not. Corpus numbers in the table below predate this change for Rust.
 - Component boundaries are a directory-based heuristic. Package manifests are not parsed: the stack is
   inferred from imports and framework facts.
 - The model-written narrative (component analysis and synthesis) is not built; it needs the Bedrock

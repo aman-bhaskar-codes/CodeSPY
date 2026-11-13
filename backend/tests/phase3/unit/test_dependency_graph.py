@@ -292,3 +292,19 @@ def test_a_python_fixture_named_like_a_library_does_not_capture_every_importer()
         "file:tests/t/deep/flask.py",
     }
     assert out["tests/t/test_b.py"] == [("deep", "resolved", "file:tests/t/deep/__init__.py")]
+
+
+def test_rust_mod_declarations_are_file_dependencies():
+    graph = build_graph(
+        entries(
+            {
+                "src/lib.rs": "mod util;\nmod net;\n",
+                "src/util.rs": "pub fn f() {}\n",
+                "src/net/mod.rs": "pub fn g() {}\n",
+            }
+        ),
+        inventory=("src/lib.rs", "src/util.rs", "src/net/mod.rs"),
+    )
+    targets = {(e.source, e.target) for e in graph.edges if e.resolution == "resolved"}
+    assert ("file:src/lib.rs", "file:src/util.rs") in targets
+    assert ("file:src/lib.rs", "file:src/net/mod.rs") in targets
