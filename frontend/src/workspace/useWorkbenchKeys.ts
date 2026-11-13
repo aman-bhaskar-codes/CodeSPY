@@ -41,6 +41,7 @@ export function useWorkbenchKeys(
   sidebarVisible: boolean,
   togglePanel: () => void,
   panelVisible: boolean,
+  openPalette: () => void,
 ) {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -55,6 +56,22 @@ export function useWorkbenchKeys(
       ) {
         event.preventDefault();
         toggleSidebar();
+        return;
+      }
+      if (
+        ((event.ctrlKey || event.metaKey) &&
+          event.shiftKey &&
+          !event.altKey &&
+          event.key.toLowerCase() === "p") ||
+        event.key === "F1"
+      ) {
+        if (
+          event.target instanceof HTMLElement &&
+          event.target.closest("[role='dialog']")
+        )
+          return;
+        event.preventDefault();
+        openPalette();
         return;
       }
       if (
@@ -91,5 +108,12 @@ export function useWorkbenchKeys(
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [rootRef, toggleSidebar, sidebarVisible, togglePanel, panelVisible]);
+  }, [
+    rootRef,
+    toggleSidebar,
+    sidebarVisible,
+    togglePanel,
+    panelVisible,
+    openPalette,
+  ]);
 }

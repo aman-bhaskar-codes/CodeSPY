@@ -20,11 +20,13 @@ import {
   Upload,
   Workflow,
 } from "lucide-react";
-import { ThemeProvider, ThemeToggle } from "../theme/ThemeProvider";
+import { ThemeProvider, ThemeToggle, useTheme } from "../theme/ThemeProvider";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Button } from "../ui/Button";
 import styles from "./WorkspaceShell.module.css";
 import { BottomPanel } from "./BottomPanel";
+import { CommandPalette } from "./CommandPalette";
+import type { Command } from "./commands";
 import { EditorTabs } from "./EditorTabs";
 import { Splitter } from "./Splitter";
 import {
@@ -47,6 +49,8 @@ interface Props {
   destinations: readonly WorkspaceDestination[];
   repositoryLabel?: string;
   snapshotId?: string | null;
+  /** Extra palette commands supplied by the screens. */
+  commands?: readonly Command[];
   /** Content for the explorer side bar, below the repository and snapshot. */
   explorer?: ReactNode;
   onSignOut?: () => void;
@@ -151,6 +155,7 @@ function ShellContent({
   repositoryLabel,
   snapshotId,
   explorer,
+  commands = [],
   onSignOut,
   signingOut,
 }: Props) {
@@ -183,13 +188,55 @@ function ShellContent({
   const layout = useWorkbenchLayout();
   const mainRef = useRef<HTMLElement>(null);
   const { problems, output } = useWorkbenchObserver(mainRef);
+  const theme = useTheme();
+  const [paletteOpen, setPaletteOpen] = useState(false);
   useWorkbenchKeys(
     rootRef,
     layout.toggleSidebar,
     layout.sidebarVisible,
     layout.togglePanel,
     layout.panelVisible,
+    () => setPaletteOpen(true),
   );
+  const paletteCommands: Command[] = [
+    ...destinations
+      .filter((d) => d.enabled)
+      .map((d) => ({
+        id: `go-${d.id}`,
+        title: `Go to ${d.label}`,
+        keywords: "open view navigate",
+        run: () => window.location.assign(`#${d.id}`),
+      })),
+    {
+      id: "toggle-sidebar",
+      title: "View: Toggle explorer",
+      shortcut: "Ctrl+B",
+      run: layout.toggleSidebar,
+    },
+    {
+      id: "toggle-panel",
+      title: "View: Toggle panel",
+      shortcut: "Ctrl+J",
+      run: layout.togglePanel,
+    },
+    {
+      id: "show-problems",
+      title: "View: Show problems",
+      run: () => layout.showPanel("problems"),
+    },
+    {
+      id: "show-output",
+      title: "View: Show output",
+      run: () => layout.showPanel("output"),
+    },
+    {
+      id: "toggle-theme",
+      title: `Preferences: Switch to ${theme.theme === "dark" ? "light" : "dark"} theme`,
+      keywords: "color appearance",
+      run: theme.toggle,
+    },
+    ...commands,
+  ];
   const activeLabel = destinations.find((d) => d.id === active)?.label;
   return (
     <WorkspaceView.Provider value={active}>
@@ -358,6 +405,13 @@ function ShellContent({
             </button>
             <button
               type="button"
+              onClick={() => setPaletteOpen(true)}
+              title="Command palette (Ctrl+Shift+P)"
+            >
+              Commands
+            </button>
+            <button
+              type="button"
               onClick={layout.togglePanel}
               aria-expanded={layout.panelVisible}
               title="Toggle panel (Ctrl+J)"
@@ -370,6 +424,11 @@ function ShellContent({
             </span>
           </span>
         </footer>
+        <CommandPalette
+          open={paletteOpen}
+          commands={paletteCommands}
+          onClose={() => setPaletteOpen(false)}
+        />
       </div>
     </WorkspaceView.Provider>
   );
