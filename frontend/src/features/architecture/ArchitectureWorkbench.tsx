@@ -11,6 +11,8 @@ import { InlineNotice } from "../../ui/InlineNotice";
 import { Panel } from "../../ui/Panel";
 import { StatusBadge } from "../../ui/StatusBadge";
 import { ComponentGraph } from "./ComponentGraph";
+import { RuleChecks } from "./RuleChecks";
+import { prefixSuggestions } from "./ruleSuggestions";
 import {
   KIND_LABEL,
   KIND_TONE,
@@ -157,7 +159,9 @@ function ArchitectureWorkbenchState({
             {status.data.skipped_files > 0 &&
               ` ${status.data.skipped_files} files cannot be selected and are not covered.`}
           </p>
-          {shards.some((s) => s.state === "failed" || s.state === "cancelled") && (
+          {shards.some(
+            (s) => s.state === "failed" || s.state === "cancelled",
+          ) && (
             <p role="alert">
               Some analyses failed or were cancelled, so the report cannot be
               built for this snapshot yet.
@@ -212,6 +216,12 @@ function ArchitectureWorkbenchState({
           report={report.data}
           templates={templates.data?.templates}
           graph={graph.data}
+          rules={{
+            repositoryId,
+            snapshotId,
+            reportId: reportId ?? "",
+            csrfToken,
+          }}
         />
       )}
     </Panel>
@@ -222,10 +232,17 @@ function ReportView({
   report,
   templates,
   graph,
+  rules,
 }: {
   report: RepositoryReportV1;
   templates: Templates | undefined;
   graph: Parameters<typeof ComponentGraph>[0]["graph"] | undefined;
+  rules: {
+    repositoryId: string;
+    snapshotId: string;
+    reportId: string;
+    csrfToken: string;
+  };
 }) {
   const cov = report.coverage;
   const complete =
@@ -263,6 +280,22 @@ function ReportView({
           <h3 id="architecture-graph-heading">Component graph</h3>
           <ComponentGraph layers={layers} graph={graph} fileCounts={counts} />
         </section>
+      )}
+      {rules.reportId && (
+        <RuleChecks
+          {...rules}
+          inputsDigest={report.inputs_digest}
+          suggestions={prefixSuggestions(
+            (graph?.nodes ?? [])
+              .filter((n) => n.kind === "file")
+              .map((n) => n.label),
+          )}
+          suggestionsNote={
+            graph && graph.nodes_total > graph.nodes.length
+              ? `Suggestions are based on the first ${graph.nodes.length} of ${graph.nodes_total} files.`
+              : undefined
+          }
+        />
       )}
     </div>
   );
