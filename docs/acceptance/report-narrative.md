@@ -29,8 +29,10 @@ decisions. Everything below is proven offline; **no live model call has been mad
   The spec records the prompt revision. A reply is parsed strictly (fence strip, JSON object, schema); a failed
   page is counted and left out, with no automatic second call.
 - **Verifier.** A sentence is confirmed only if every cited statement was delivered to this investigation as a
-  `report_fact` receipt of the pinned report and the delivered page still hashes to its receipt; backticked names and
-  numbers in the sentence appear in the cited statements; and an `unknown` statement is supported only by a sentence
+  `report_fact` receipt of the pinned report and the delivered page still hashes to its receipt; every run of digits
+  (so "400k", "12ms" and "v3" count), every quantity word (three, dozens, half), every backticked name (whole tokens,
+  at least 3 characters) and every bare path, snake_case, CamelCase or file name in the sentence appears in the cited
+  statements' text or parameters; and an `unknown` statement is supported only by a sentence
   that says unknown or restates it. Source evidence never supports a narrative sentence. Unconfirmed sentences are
   shown as unverified, never hidden. The narrative is grounded at 0.8 confirmed or more; the verdict is always
   `indeterminate`.
@@ -64,9 +66,10 @@ decisions. Everything below is proven offline; **no live model call has been mad
 
 - No real model has produced a narrative here; quality is judged only by the owner-run check. Offline tests prove
   structure, safety, accounting and replay, not prose.
-- The deterministic check is conservative: it can mark a valid paraphrase unverified (for example a number written as
-  a word), and it only checks names the model wrote in backticks and digits. It does not judge that a sentence is
-  complete or relevant.
+- The deterministic check is lexical. It can mark a valid paraphrase unverified (for example "three" for a statement
+  that says 3), it matches a number or name anywhere in the cited statements rather than the thing it counts, it does
+  not understand negation ("a does not import b" can be confirmed by "a imports b"), and capitalised proper nouns
+  without backticks are not checked. It does not judge that a sentence is complete or relevant.
 - The full executor on PostgreSQL with the encrypted SQL journal and real fencing is not exercised end to end. The
   executor is tested in memory with a scripted model, the tool, migration, guard, read route and finalizer insertion
   are tested on PostgreSQL or SQLite separately.
@@ -75,4 +78,10 @@ decisions. Everything below is proven offline; **no live model call has been mad
 - Delimiters reduce harm from hostile report text but are not a defence by themselves; the real controls are: no
   tools for the model, schema-checked output, and verification by code. Whether Bedrock guardrails evaluate
   Converse content is unconfirmed and nothing here depends on it.
-- A narrative started through the existing investigation routes uses the default budget (5,000,000 micros).
+- A narrative started through the existing investigation routes uses the default budget (5,000,000 micros) and is
+  always created with 25 steps and the largest context the gateway allows.
+- The spec records the prompt as its model route (`report_narrative:<name>.<version>.<digest>`); a run created under
+  a prompt that has since changed fails at its first node instead of silently using another version.
+- A second narrative of the same report is a second published report and a second link row; the read route returns
+  the latest. A crash between receipt commit and journal write can leave unreferenced `report_fact` rows; they are
+  never committed to state, so verification ignores them.

@@ -43,6 +43,7 @@ from app.repositories.investigation_execution_repository import (
     SqlInvestigationSpecRepository,
 )
 from app.security.authorization import lock_scope, require_repository
+from app.services.investigation_narrative import route_revision
 from app.services.jobs import JobService
 
 TERMINAL_INVESTIGATION_STATUSES = {"completed", "failed", "cancelled"}
@@ -138,9 +139,10 @@ class InvestigationJobService:
                 report_digest = found[0]
 
             if request.mode == InvestigationMode.REPORT_NARRATIVE:
-                # A narrative page plus its prompt needs the largest context the gateway allows.
+                # A narrative page plus its prompt needs the largest context the gateway allows,
+                # and a report is read in up to 8 sections of one or more pages.
                 limits = InvestigationLimitsV1(
-                    max_steps=request.max_steps,
+                    max_steps=25,
                     budget_limit_micros=request.budget_limit_micros,
                     max_context_tokens=8192,
                     max_context_bytes=65536,
@@ -174,7 +176,11 @@ class InvestigationJobService:
                 limits=limits,
                 disclosure_policy_digest="0" * 64,
                 tool_policy_revision="v1_standard",
-                model_route_revision="v1_standard",
+                model_route_revision=(
+                    route_revision()
+                    if request.mode == InvestigationMode.REPORT_NARRATIVE
+                    else "v1_standard"
+                ),
                 model_profile_revision="v1_standard",
                 runtime_revision=1,
                 privacy_policy_revision="v1_standard",

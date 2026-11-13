@@ -730,6 +730,17 @@ class InvestigationExecutorService(InvestigationExecutorPort):
                     next_kind = InvestigationNodeKind.INVESTIGATE
                     next_role = "investigator"
                 elif spec.mode == "report_narrative":
+                    from app.services.investigation_narrative import route_revision
+
+                    if spec.model_route_revision != route_revision():
+                        return InvestigationAdvanceV1(
+                            status=InvestigationAdvanceStatus.TERMINAL_FAILURE,
+                            node_id=node_id,
+                            checkpoint_sequence=state.checkpoint_sequence,
+                            stop_reason=InvestigationStopReason.CONFIGURATION_MISSING,
+                            message="the narrative prompt changed since this run was created; "
+                            "start a new narrative",
+                        )
                     next_kind = InvestigationNodeKind.SYNTHESIZE
                     next_role = "narrator"
                     narrative_cursor = {"narrative_section": 0, "narrative_offset": 0}

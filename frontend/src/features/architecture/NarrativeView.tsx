@@ -50,14 +50,22 @@ function NarrativeState({
   csrfToken,
 }: Props) {
   const [requestedAt, setRequestedAt] = useState<number | null>(null);
+  // The narrative on screen when the request was made: a different one means the new run finished.
+  const [baseline, setBaseline] = useState<string | null>(null);
   const [expired, setExpired] = useState(false);
-  const waiting = requestedAt !== null && !expired;
   const narrative = useQuery({
     queryKey: ["architecture-narrative", repositoryId, snapshotId, reportId],
     queryFn: () =>
       api.architectureNarrative(repositoryId, snapshotId, reportId),
-    refetchInterval: (query) => (waiting && !query.state.data ? 4000 : false),
+    refetchInterval: (query) => {
+      const shown = query.state.data?.investigation_report_id ?? null;
+      return requestedAt !== null && !expired && shown === baseline
+        ? 4000
+        : false;
+    },
   });
+  const shown = narrative.data?.investigation_report_id ?? null;
+  const waiting = requestedAt !== null && !expired && shown === baseline;
   const start = useMutation({
     mutationFn: () =>
       api.architectureNarrativeStart(
@@ -67,18 +75,19 @@ function NarrativeState({
         csrfToken,
       ),
     onSuccess: () => {
+      setBaseline(narrative.data?.investigation_report_id ?? null);
       setExpired(false);
       setRequestedAt(Date.now());
     },
   });
   useEffect(() => {
-    if (requestedAt === null || narrative.data) return;
+    if (requestedAt === null || !waiting) return;
     const timer = window.setTimeout(
       () => setExpired(true),
       Math.max(0, requestedAt + WAIT_MS - Date.now()),
     );
     return () => window.clearTimeout(timer);
-  }, [requestedAt, narrative.data]);
+  }, [requestedAt, waiting]);
 
   return (
     <section aria-labelledby="architecture-narrative-heading">
@@ -102,12 +111,12 @@ function NarrativeState({
       {start.isError && (
         <InlineNotice tone="danger">{problem(start.error)}</InlineNotice>
       )}
-      {waiting && !narrative.data && (
+      {waiting && (
         <p role="status">
           Narrative requested. It appears here when the investigation finishes.
         </p>
       )}
-      {expired && !narrative.data && (
+      {expired && shown === baseline && (
         <InlineNotice tone="info">
           No narrative has been published yet. It may still be running or may
           have stopped; check the investigation list.

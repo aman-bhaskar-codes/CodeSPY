@@ -187,3 +187,58 @@ def test_unconfirmed_sentences_are_marked_in_the_rendered_text():
         "The code has 12 resolved imports.",
         "[unverified] There are 99 files.",
     ]
+
+
+def one(text, *sids):
+    v, _ = verdicts(sentence(1, text, *(sids or ("a",))))
+    return v["c1"]
+
+
+def test_numbers_with_units_and_leading_dots_are_checked_too():
+    for text in (
+        "The service has 400k lines.",
+        "It handles 5x more load.",
+        "Latency is 77ms.",
+        "Uses 2FA and v3 tokens.",
+        "About .5 of imports resolve.",
+        "A 99th-percentile figure.",
+    ):
+        assert one(text).status == "unsupported", text
+    assert one("12 resolved imports, 3 unresolved.").status == "confirmed"
+
+
+def test_quantity_words_need_support_in_the_cited_statements():
+    assert one("There are three unresolved imports.").status == "unsupported"
+    assert one("Dozens of files import it.").status == "unsupported"
+    assert one("Flask appears to be used.", "d").status == "confirmed"
+
+
+def test_names_without_backticks_are_checked_when_they_look_like_names():
+    for text in (
+        "The service lives in src/other.py.",
+        "It calls get_user_by_id.",
+        "UserService owns it.",
+        "See config.yaml for details.",
+    ):
+        assert one(text, "d").status == "unsupported", text
+    assert one("The routes are in app/web.py.", "b").status == "confirmed"
+    assert (
+        one("Use e.g. flask, i.e. the framework.", "d").status == "confirmed"
+    )  # abbreviations are not names
+
+
+def test_backticked_names_match_whole_tokens_and_cannot_be_tiny():
+    assert one("`app/web.py` has routes.", "b").status == "confirmed"
+    assert (
+        one("`pp/web` is mentioned.", "b").status == "unsupported"
+    )  # part of a longer name is not the name
+    for tiny in ("`a`", "`.`", "`/`"):
+        assert one(f"{tiny} is mentioned.", "b").status == "unsupported"
+
+
+def test_a_long_model_claim_id_cannot_break_the_stored_narrative():
+    long_id = "x" * 64
+    sent = NarrativeSentenceV1(
+        claim_id=long_id, text="The code has 12 resolved imports.", sids=("a" * 16,)
+    )
+    assert sent.claim_id == long_id

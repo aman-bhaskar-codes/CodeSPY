@@ -25,7 +25,23 @@ from app.contracts.report_narrative import (
 
 GROUNDED_RATIO = 0.8
 _NAME = re.compile(r"`([^`\n]{1,200})`")
-_NUMBER = re.compile(r"(?<![\w.])\d+(?:,\d{3})*(?:\.\d+)?(?![\w])")
+# Every run of digits counts, so "400k", "12ms", "2FA", "v3" and ".5" are checked too.
+_NUMBER = re.compile(r"\d+(?:,\d{3})*(?:\.\d+)?")
+_NUMBER_WORDS = re.compile(
+    r"\b(?:two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|"
+    r"hundreds?|thousands?|millions?|dozens?|half|double|triple)\b",
+    re.IGNORECASE,
+)
+# Names the model forgot to put in backticks: paths, snake_case, CamelCase and file names.
+_BARE_NAME = re.compile(
+    r"(?<![\w`/.-])(?:"
+    r"[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]*[A-Za-z0-9_]"
+    r"|[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]+"
+    r"|[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+"
+    r"|[A-Za-z0-9_-]{2,}\.[a-z]{1,5}(?![A-Za-z0-9_])"
+    r")(?![\w`])"
+)
+MIN_NAME_LENGTH = 3
 _UNKNOWN_WORDS = (
     "unknown",
     "could not",
@@ -52,6 +68,12 @@ _ORDER = ("observed", "derived", "inferred", "unknown")
 
 def _numbers(text: str) -> set[str]:
     return {m.replace(",", "") for m in _NUMBER.findall(text)}
+
+
+def _boundary_match(name: str, haystack: str) -> bool:
+    """The name appears with no letter, digit or underscore touching it on either side."""
+    pattern = r"(?<![A-Za-z0-9_])" + re.escape(name) + r"(?![A-Za-z0-9_])"
+    return re.search(pattern, haystack) is not None
 
 
 def _statement_text(entry: Mapping[str, Any]) -> str:
@@ -113,13 +135,20 @@ def _verify_sentence(
     haystack = "\n".join(_statement_text(entry) for entry in entries)
     allowed_numbers = _numbers(haystack)
     names = _NAME.findall(sentence.text)
-    for name in names:
-        if name not in haystack:
-            return no(f"`{name}` does not appear in the cited statements")
     prose = _NAME.sub(" ", sentence.text)
+    for name in names:
+        if len(name.strip()) < MIN_NAME_LENGTH or not _boundary_match(name, haystack):
+            return no(f"`{name}` does not appear in the cited statements")
+    for bare in sorted(set(_BARE_NAME.findall(prose))):
+        if not _boundary_match(bare.rstrip(".,;:"), haystack):
+            return no(f"{bare} does not appear in the cited statements")
     for number in sorted(_numbers(prose)):
         if number not in allowed_numbers:
             return no(f"the number {number} does not appear in the cited statements")
+    haystack_lower = haystack.lower()
+    for word in sorted({w.lower() for w in _NUMBER_WORDS.findall(prose)}):
+        if word not in haystack_lower:
+            return no(f"the quantity word '{word}' does not appear in the cited statements")
     kinds = {str(entry.get("kind")) for entry in entries}
     lowered = sentence.text.lower()
     says_unknown = any(word in lowered for word in _UNKNOWN_WORDS) or all(

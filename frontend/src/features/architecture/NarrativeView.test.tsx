@@ -189,4 +189,30 @@ describe("NarrativeView", () => {
       screen.getByRole("button", { name: "Write narrative" }),
     ).toBeEnabled();
   });
+
+  it("keeps polling after a new request and shows the new narrative when it arrives", async () => {
+    const first = narrative();
+    const second = { ...narrative(), investigation_report_id: "ir2" };
+    const read = vi
+      .spyOn(api, "architectureNarrative")
+      .mockResolvedValueOnce(first)
+      .mockResolvedValue(first);
+    vi.spyOn(api, "architectureNarrativeStart").mockResolvedValue("inv2");
+    mount();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Write a new narrative" }),
+    );
+    expect(await screen.findByText(/Narrative requested/)).toBeInTheDocument();
+    read.mockResolvedValue(second);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4500);
+    });
+    await waitFor(() =>
+      expect(screen.queryByText(/Narrative requested/)).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Write a new narrative" }),
+    ).toBeEnabled();
+  });
 });

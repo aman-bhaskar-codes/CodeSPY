@@ -65,7 +65,6 @@ CREATE TABLE public.architecture_report_narratives (
  spec_hash text NOT NULL,report_digest text NOT NULL,narrative_json jsonb NOT NULL,
  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  PRIMARY KEY(org_id,id),
- UNIQUE(org_id,architecture_report_id,spec_hash),
  UNIQUE(org_id,investigation_report_id),
  FOREIGN KEY(org_id,architecture_report_id) REFERENCES public.architecture_reports(org_id,id),
  FOREIGN KEY(org_id,investigation_id) REFERENCES public.investigations(org_id,id),

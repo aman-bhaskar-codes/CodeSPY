@@ -193,7 +193,17 @@ async def test_narrative_link_guard_and_immutability(factory, tmp_path):
         await s.execute(text(link), good)
         await refused(
             s, link, {**good, "i": uuid4()}, "duplicate|unique"
-        )  # one narrative per report and spec
+        )  # one link per published report
+        # A second run of the same spec is a second published report and links as well: "latest" wins.
+        rep2 = uuid4()
+        await s.execute(
+            text(
+                "INSERT INTO investigation_reports(org_id,id,investigation_id,spec_hash,job_id,verdict,verdict_confidence,summary,report_json,report_digest,claims_count,evidence_refs_count)"
+                " VALUES(:o,:i,:v,:h,:j,'indeterminate',0,'s',CAST('{}' AS jsonb),:d,0,0)"
+            ),
+            {"o": ctx.org_id, "i": rep2, "v": inv, "h": HEX, "j": uuid4(), "d": OTHER},
+        )
+        await s.execute(text(link), {**good, "i": uuid4(), "ir": rep2})
         await refused(
             s, "UPDATE architecture_report_narratives SET report_digest=:d", {"d": OTHER}, ""
         )

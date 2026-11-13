@@ -60,6 +60,11 @@ def narrative_asset() -> PromptAsset:
     return load_prompt(PROMPT_NAME, PROMPT_VERSION)
 
 
+def route_revision() -> str:
+    """What a narrative spec records as its model route: the prompt it was created under."""
+    return f"{PROMPT_NAME}:{narrative_asset().revision}"
+
+
 def prompt_messages(
     asset: PromptAsset, *, section: str, page: str, node_id: UUID, report_digest: str, unit: int
 ) -> list[ChatMessageV1]:
@@ -264,8 +269,10 @@ async def verify_narrative_node(
         except NarrativeParseError:
             unparsed += 1
             continue
+        # Ids are assigned here, not taken from the model: they are short, unique and always valid.
         sentences.extend(
-            s.model_copy(update={"claim_id": f"u{unit}-{s.claim_id}"}) for s in conclusion.sentences
+            s.model_copy(update={"claim_id": f"u{unit}-{index}"})
+            for index, s in enumerate(conclusion.sentences)
         )
     dropped = max(0, len(sentences) - MAX_SENTENCES)
     sentences = sentences[:MAX_SENTENCES]

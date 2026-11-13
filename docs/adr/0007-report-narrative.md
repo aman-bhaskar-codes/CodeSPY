@@ -21,7 +21,7 @@ Status: accepted for offline construction. Nothing in this record needs a live m
    is only meaningful together with the report digest.
 5. **Verification is deterministic.** A claim is confirmed only if every cited statement id was delivered to this
    investigation as a `report_fact` receipt of the pinned report, and every number, path and name in the claim text appears
-   in the cited statements' parameters. Unknown-kind statements support only claims phrased as unknown. Unconfirmed
+   in the cited statements' text or parameters (digits, quantity words, backticked and bare names). Unknown-kind statements support only claims phrased as unknown. Unconfirmed
    sentences are shown as inference. There is no model judge.
 6. **Statements, not source, go to the model.** Report parameters are paths, names and counts; they still pass through the
    model-safe transform. Instructions live in the system message only; report text is data inside a per-call random
@@ -47,3 +47,11 @@ refuses when narrative rows or `report_fact` evidence exist.
 - A deployable worker entrypoint with Bedrock composed, and the production database role that reads
   `architecture_reports` (migration 0049 grants the test worker role only).
 - Narrative quality with a real model; it is judged only in the owner-run live check.
+
+## Changes from the plan
+
+- No LLM synthesis call: each page is narrated independently and the narrative is the verified sentences, so
+  nothing unverified (an overview) is written by the model.
+- The evidence CHECK is per type rather than a closed list of observation types, so existing rows and tests with other
+  type names remain valid.
+- One narrative link row per published investigation report (not per report and spec), so a re-run replaces "latest".

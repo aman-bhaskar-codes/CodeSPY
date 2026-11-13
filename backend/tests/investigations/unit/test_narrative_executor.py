@@ -24,6 +24,7 @@ from app.services.investigation_executor import (
     InvestigationExecutorService,
 )
 from app.services.investigation_journal import InMemoryExecutionJournal
+from app.services.investigation_narrative import route_revision
 from app.services.investigation_tools import REPORT_SECTIONS
 
 from tests.investigations.unit.test_executor import DummyModelGateway, _make_context, _make_response
@@ -49,7 +50,7 @@ def narrative_spec(max_steps=25, budget=5_000_000) -> InvestigationSpecV1:
         ),
         disclosure_policy_digest="a" * 64,
         tool_policy_revision="v1",
-        model_route_revision="v1",
+        model_route_revision=route_revision(),
         model_profile_revision="v1",
         runtime_revision=1,
         privacy_policy_revision="v1",
@@ -334,3 +335,39 @@ def test_ids_and_states_of_other_modes_are_unchanged():
 
     assert base.compute_state_digest() == hashlib.sha256(canonical_bytes(dump)).hexdigest()
     assert UUID(int=0)
+
+
+async def test_a_changed_prompt_fails_the_run_instead_of_silently_using_another_version():
+    import dataclasses  # noqa: F401
+
+    spec = narrative_spec().model_copy(
+        update={"model_route_revision": "report_narrative:old.v0.abc"}
+    )
+    gateway = EchoGateway()
+    executor, ctx, _, _ = make(spec, gateway)
+    advance = await run(executor, ctx)
+    assert (
+        advance.status == InvestigationAdvanceStatus.TERMINAL_FAILURE and gateway.call_history == []
+    )
+    assert "prompt changed" in advance.message
+
+
+async def test_model_claim_ids_are_replaced_by_short_unique_ids():
+    long_id = "x" * 64
+    reply = json.dumps(
+        {
+            "schema_version": 1,
+            "sentences": [
+                {"claim_id": long_id, "text": "Everything is perfect.", "sids": ["f" * 16]}
+            ],
+        }
+    )
+    executor, ctx, _, _ = make(narrative_spec(), EchoGateway(reply=reply))
+    draft = (await run(executor, ctx)).draft
+    ids = [s.claim_id for s in draft.narrative.sentences]
+    assert all(len(i) <= 8 and i.startswith("u") for i in ids) and len(ids) == len(set(ids))
+    from app.contracts.report_narrative import NarrativeDraftV1
+
+    NarrativeDraftV1.model_validate_json(
+        draft.narrative.model_dump_json()
+    )  # what the read route does
