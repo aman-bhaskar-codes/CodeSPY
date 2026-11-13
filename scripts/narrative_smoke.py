@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 """Owner-run live check of the report narrative (makes a few small paid Bedrock calls).
 
     CODESPY_LIVE_BEDROCK=1 AWS_PROFILE=<profile> uv run --project backend \

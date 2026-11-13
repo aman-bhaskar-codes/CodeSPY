@@ -58,7 +58,7 @@ def measure(name: str, commit: str, path: Path) -> dict[str, Any]:
             started = time.perf_counter()
             try:
                 result = extract_facts(unit, budget)
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001
                 statuses["failed"] += 1
                 errors.append({"path": rel, "error": f"{type(error).__name__}: {error}"[:200]})
                 continue

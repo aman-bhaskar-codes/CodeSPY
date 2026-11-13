@@ -30,7 +30,11 @@ from app.adapters.storage.s3 import S3ObjectStore
 from app.admission.process import DockerAdmissionRunner
 from app.analyzers.runner import DockerAnalysisRunner
 from app.api.application import ApiSettings, ApplicationPorts, create_app
-from app.contracts.ingestion import AdmissionPolicyV1, AdmissionPolicyV3, AdmissionPolicyV4
+from app.contracts.ingestion import (
+    AdmissionPolicyV1,
+    AdmissionPolicyV3,
+    AdmissionPolicyV4,
+)
 from app.contracts.persistence import RepositoryCreate
 from app.models.phase2_tables import PHASE2_TABLES
 from app.repositories.identity_repository import IdentityRepository
