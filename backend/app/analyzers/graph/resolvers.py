@@ -285,15 +285,22 @@ def _rust_module_file(ctx: Ctx, root: str, chain: list[str]) -> str | None:
 def rust(imp: ImportFactV1, ctx: Ctx) -> list[Outcome]:
     segments = imp.module.split("::")
     head = segments[0]
-    root = _rust_root(ctx.path)
     if head not in {"crate", "self", "super"}:
         return [_external(head)]
-    if root is None:
-        return [UNRESOLVED]
-    stem = ctx.path[len(root) + 1 :]
-    here = stem[: -len(".rs")].split("/")
-    if here and here[-1] in {"mod", "lib", "main"}:
-        here = here[:-1]
+    parent, _, filename = ctx.path.rpartition("/")
+    if parent.rsplit("/", 1)[-1] in {"tests", "examples", "benches"} and filename.endswith(".rs"):
+        # An integration test, example or bench file is its own crate root: `mod x;` is relative
+        # to its directory.
+        root, here = parent, []
+    else:
+        found = _rust_root(ctx.path)
+        if found is None:
+            return [UNRESOLVED]
+        root = found
+        stem = ctx.path[len(root) + 1 :]
+        here = stem[: -len(".rs")].split("/")
+        if here and here[-1] in {"mod", "lib", "main"}:
+            here = here[:-1]
     if head == "crate":
         chain, rest = [], segments[1:]
     elif head == "self":

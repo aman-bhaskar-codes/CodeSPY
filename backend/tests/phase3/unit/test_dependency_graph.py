@@ -308,3 +308,18 @@ def test_rust_mod_declarations_are_file_dependencies():
     targets = {(e.source, e.target) for e in graph.edges if e.resolution == "resolved"}
     assert ("file:src/lib.rs", "file:src/util.rs") in targets
     assert ("file:src/lib.rs", "file:src/net/mod.rs") in targets
+
+
+def test_rust_integration_tests_are_their_own_crate_root():
+    graph = build_graph(
+        entries(
+            {
+                "tests/test_a.rs": "mod common;\n",
+                "tests/common/mod.rs": "pub fn f() {}\n",
+            }
+        ),
+        inventory=("tests/test_a.rs", "tests/common/mod.rs"),
+    )
+    assert any(
+        e.resolution == "resolved" and e.target == "file:tests/common/mod.rs" for e in graph.edges
+    )

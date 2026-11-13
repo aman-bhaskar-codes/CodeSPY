@@ -45,10 +45,10 @@ statement is typed, and what the facts cannot settle is stated as unknown.
 
 - Resolution is syntactic. Path aliases, bundler configuration, `go.mod`, Cargo workspaces, build
   classpaths and Swift package manifests are not read; such imports are unresolved, ambiguous or
-  external, never guessed. Swift imports of the repository's own module therefore read as external
+  external, never guessed. Swift imports of the repository's own module resolve by directory name, and read as external only when the target name differs from the directory
   (Alamofire: 0 resolved of 191).
 - Rust `mod x;` declarations are import facts (`self::x`, resolved to `x.rs` or `x/mod.rs`); inline
-  modules are not. Corpus numbers in the table below predate this change for Rust.
+  modules are not. Files under `tests/`, `examples/` and `benches/` are their own crate roots. anyhow went from 27 to 50 resolved internal imports and from 7 to 1 unresolved.
 - Component boundaries are a directory-based heuristic. Package manifests are not parsed: the stack is
   inferred from imports and framework facts.
 - The model-written narrative (component analysis and synthesis) is not built; it needs the Bedrock
@@ -92,7 +92,7 @@ Owned disposable PostgreSQL 16 at schema head:
 | expressjs/express | 142 | 160 | 0 | 245 | 0 | 30 | 0 | 180 KiB | 2 |
 | gin-gonic/gin | 99 | 31 | 0 | 490 | 0 | 7 | 0 | 210 KiB | 1 |
 | spring-projects/spring-petclinic | 50 | 24 | 0 | 451 | 0 | 6 | 0 | 269 KiB | 1 |
-| dtolnay/anyhow | 37 | 27 | 0 | 98 | 7 | 7 | 1 | 58 KiB | 1 |
+| dtolnay/anyhow | 37 | 50 | 0 | 98 | 1 | 7 | 1 | 63 KiB | 1 |
 | antirez/kilo | 1 | 0 | 0 | 15 | 0 | 1 | 0 | 10 KiB | 1 |
 | gabime/spdlog | 154 | 446 | 0 | 380 | 2 | 11 | 21 | 366 KiB | 2 |
 | sinatra/sinatra | 147 | 130 | 0 | 62 | 0 | 8 | 0 | 110 KiB | 2 |
