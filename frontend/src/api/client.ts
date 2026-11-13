@@ -13,8 +13,19 @@ import type {
   ArchitectureReportRefV1,
   ArchitectureShardsV1,
   ArchitectureTemplatesV1,
+  RuleCheckV1,
   RepositoryReportV1,
 } from "./generated/types.gen";
+
+export type ArchitectureRuleSet = {
+  schema_version?: 1;
+  rules: {
+    name: string;
+    kind: "forbidden" | "layers" | "independence";
+    groups: string[][];
+    allow_indirect?: boolean;
+  }[];
+};
 
 export class ApiError extends Error {
   constructor(
@@ -106,6 +117,21 @@ export const api = {
   ) =>
     request<ArchitectureGraphPageV1>(
       `${reportsPath(repoId, snapshotId)}/${reportId}/graph?offset=${offset}&limit=${limit}`,
+    ),
+  architectureRuleCheck: (
+    repoId: string,
+    snapshotId: string,
+    reportId: string,
+    rules: ArchitectureRuleSet,
+    csrf: string,
+  ) =>
+    request<RuleCheckV1>(
+      `${reportsPath(repoId, snapshotId)}/${reportId}/rule-check`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf),
+        body: JSON.stringify(rules),
+      },
     ),
   architectureTemplates: () =>
     request<ArchitectureTemplatesV1>("/architecture-report-templates"),

@@ -24,6 +24,7 @@ from app.contracts.architecture_report import (
     SectionName,
     SectionV1,
 )
+from app.contracts.architecture_rules import RuleCheckV1, RuleSetV1
 from app.contracts.ast_facts import (
     AstConfigPageV1,
     AstFilePageV1,
@@ -1787,6 +1788,14 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     ) -> RepositoryReportV1:
         ctx = await repository_context(request, repository_id)
         return await architecture.get(ctx, repository_id, snapshot_id, report_id)
+
+    @app.post(reports_base + "/{report_id}/rule-check")
+    async def check_architecture_rules(
+        request: Request, repository_id: UUID, snapshot_id: UUID, report_id: UUID
+    ) -> RuleCheckV1:
+        ctx = await repository_context(request, repository_id)
+        rules = await json_body(request, RuleSetV1)
+        return await architecture.check_rules(ctx, repository_id, snapshot_id, report_id, rules)
 
     @app.get(reports_base + "/{report_id}/markdown")
     async def architecture_report_markdown(

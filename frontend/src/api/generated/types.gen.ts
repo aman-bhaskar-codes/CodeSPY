@@ -4662,6 +4662,62 @@ export type RouteObservationV1 = {
 };
 
 /**
+ * RuleCheckV1
+ */
+export type RuleCheckV1 = {
+    /**
+     * Inputs Digest
+     */
+    inputs_digest: string;
+    /**
+     * Report Id
+     */
+    report_id: string;
+    /**
+     * Results
+     */
+    results: Array<RuleResultV1>;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+};
+
+/**
+ * RuleResultV1
+ */
+export type RuleResultV1 = {
+    /**
+     * Files In Scope
+     */
+    files_in_scope?: number;
+    /**
+     * Kind
+     */
+    kind: 'forbidden' | 'layers' | 'independence';
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Status
+     */
+    status: 'passed' | 'violated' | 'unknown';
+    /**
+     * Unknown Imports
+     */
+    unknown_imports?: number;
+    /**
+     * Violations
+     */
+    violations?: Array<ViolationV1>;
+    /**
+     * Violations Total
+     */
+    violations_total: number;
+};
+
+/**
  * RunRef
  */
 export type RunRef = {
@@ -6077,6 +6133,25 @@ export type ValidationError = {
      * Error Type
      */
     type: string;
+};
+
+/**
+ * ViolationV1
+ */
+export type ViolationV1 = {
+    /**
+     * Chain
+     */
+    chain: Array<string>;
+    evidence?: EvidenceRefV1 | null;
+    /**
+     * Source
+     */
+    source: string;
+    /**
+     * Target
+     */
+    target: string;
 };
 
 /**
@@ -7542,6 +7617,44 @@ export type ArchitectureReportMarkdownApiV1RepositoriesRepositoryIdSnapshotsSnap
      */
     200: unknown;
 };
+
+export type CheckArchitectureRulesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdRuleCheckPostData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Report Id
+         */
+        report_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}/rule-check';
+};
+
+export type CheckArchitectureRulesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdRuleCheckPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CheckArchitectureRulesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdRuleCheckPostError = CheckArchitectureRulesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdRuleCheckPostErrors[keyof CheckArchitectureRulesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdRuleCheckPostErrors];
+
+export type CheckArchitectureRulesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdRuleCheckPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: RuleCheckV1;
+};
+
+export type CheckArchitectureRulesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdRuleCheckPostResponse = CheckArchitectureRulesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdRuleCheckPostResponses[keyof CheckArchitectureRulesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdRuleCheckPostResponses];
 
 export type ArchitectureReportSectionApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdSectionsNameGetData = {
     body?: never;

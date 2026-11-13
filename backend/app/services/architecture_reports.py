@@ -23,6 +23,7 @@ from app.analyzers.facts import FACT_LANGUAGES
 from app.analyzers.facts.manifests import is_manifest
 from app.analyzers.graph import FileEntry
 from app.analyzers.graph.report import assemble_report
+from app.analyzers.graph.rules import check_rules
 from app.analyzers.graph.shards import ShardPlan, plan_shards
 from app.contracts.architecture_report import (
     MAX_FACT_RUNS,
@@ -32,6 +33,7 @@ from app.contracts.architecture_report import (
     RepositoryReportV1,
     ShardStatusV1,
 )
+from app.contracts.architecture_rules import RuleCheckV1, RuleSetV1
 from app.contracts.ast_facts import FileFactsV1
 from app.contracts.structure import AnalysisConfigV1
 from app.db.transaction import transaction
@@ -320,6 +322,20 @@ class ArchitectureReportService:
         if not found:
             raise ScopeViolation("report unavailable")
         return _load(RepositoryReportV1, found[0].report_json)
+
+    async def check_rules(
+        self,
+        ctx: TenantContext,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        report_id: UUID,
+        rules: RuleSetV1,
+    ) -> RuleCheckV1:
+        """Evaluate declared rules against a stored report; nothing is stored."""
+        report = await self.get(ctx, repository_id, snapshot_id, report_id)
+        return await asyncio.to_thread(
+            check_rules, report.graph, rules, str(report_id), report.inputs_digest
+        )
 
     async def latest_ref(
         self, ctx: TenantContext, repository_id: UUID, snapshot_id: UUID

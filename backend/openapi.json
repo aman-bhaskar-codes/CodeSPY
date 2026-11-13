@@ -9021,6 +9021,100 @@
         "title": "RouteObservationV1",
         "type": "object"
       },
+      "RuleCheckV1": {
+        "additionalProperties": false,
+        "properties": {
+          "inputs_digest": {
+            "title": "Inputs Digest",
+            "type": "string"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/RuleResultV1"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "report_id",
+          "inputs_digest",
+          "results"
+        ],
+        "title": "RuleCheckV1",
+        "type": "object"
+      },
+      "RuleResultV1": {
+        "additionalProperties": false,
+        "properties": {
+          "files_in_scope": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Files In Scope",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "forbidden",
+              "layers",
+              "independence"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "violated",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "unknown_imports": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Unknown Imports",
+            "type": "integer"
+          },
+          "violations": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ViolationV1"
+            },
+            "maxItems": 50,
+            "title": "Violations",
+            "type": "array"
+          },
+          "violations_total": {
+            "minimum": 0.0,
+            "title": "Violations Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "status",
+          "violations_total"
+        ],
+        "title": "RuleResultV1",
+        "type": "object"
+      },
       "RunRef": {
         "additionalProperties": false,
         "properties": {
@@ -11752,6 +11846,46 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "ViolationV1": {
+        "additionalProperties": false,
+        "properties": {
+          "chain": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Chain",
+            "type": "array"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceRefV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "maxLength": 1024,
+            "title": "Source",
+            "type": "string"
+          },
+          "target": {
+            "maxLength": 1024,
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "chain"
+        ],
+        "title": "ViolationV1",
+        "type": "object"
       }
     }
   },
@@ -14121,6 +14255,66 @@
           }
         },
         "summary": "Architecture Report Markdown"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}/rule-check": {
+      "post": {
+        "operationId": "check_architecture_rules_api_v1_repositories__repository_id__snapshots__snapshot_id__architecture_reports__report_id__rule_check_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleCheckV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Architecture Rules"
       }
     },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}/sections/{name}": {

@@ -94,6 +94,18 @@ async def test_prepare_build_and_read_a_report_through_http(factory, tmp_path):
         assert (await client.get(f"{base}/{ref['id']}/graph?limit=0")).status_code == 422
         assert (await client.get(f"{base}/{ref['id']}/sections/bogus")).status_code == 422
         assert (await client.get(f"{base}/{uuid4()}")).status_code == 404
+        rules = {"rules": [{"name": "no-a", "kind": "forbidden", "groups": [["a.py"], ["b"]]}]}
+        check = f"{base}/{ref['id']}/rule-check"
+        assert (await client.post(check, json=rules)).status_code == 403  # no CSRF
+        checked = await client.post(check, json=rules, headers=headers)
+        assert checked.status_code == 200, checked.text
+        assert checked.json()["results"][0]["name"] == "no-a"
+        assert checked.json()["inputs_digest"] == report.json()["inputs_digest"]
+        bad = {"rules": [{"name": "x", "kind": "layers", "groups": [["../a"], ["b"]]}]}
+        assert (await client.post(check, json=bad, headers=headers)).status_code == 422
+        assert (
+            await client.post(f"{base}/{uuid4()}/rule-check", json=rules, headers=headers)
+        ).status_code == 404
         templates = await client.get("/api/v1/architecture-report-templates")
         assert templates.status_code == 200
         assert "{analyzed}" in templates.json()["templates"]["overview.files"]
