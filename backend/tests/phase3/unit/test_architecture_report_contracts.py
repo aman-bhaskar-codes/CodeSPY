@@ -53,7 +53,7 @@ def test_an_observation_needs_evidence_but_an_unknown_does_not():
 
 @pytest.mark.parametrize(
     "code,params",
-    [("Bad Code", {}), ("x.y", {"": 1}), ("x.y", {"k": "v" * 513})],
+    [("Bad Code", {}), ("x.y", {"": 1})],
 )
 def test_codes_and_parameters_are_bounded(code, params):
     with pytest.raises(ValidationError):
@@ -131,3 +131,7 @@ def test_inputs_digest_ignores_order_and_changes_with_content():
     a, b = uuid4(), uuid4()
     assert inputs_digest((a, b), ("x", "y")) == inputs_digest((b, a), ("y", "x"))
     assert inputs_digest((a, b), ("x", "y")) != inputs_digest((a, b), ("x", "z"))
+
+
+def test_long_parameter_values_are_clipped_not_rejected():
+    assert len(StatementV1(kind="unknown", code="x.y", params={"k": "v" * 900}).params["k"]) == 512

@@ -195,7 +195,11 @@ from app.security.oauth import OAuthRejected, OAuthService
 from app.security.sessions import SessionService, token_digest
 from app.services import ast_reads
 from app.services.analysis_sources import locate_source
-from app.services.architecture_reports import ArchitectureReportService, ReportInputsPending
+from app.services.architecture_reports import (
+    ArchitectureReportService,
+    ReportInputsPending,
+    ReportTooLarge,
+)
 from app.services.configured_model_gateway import ModelConnectionError
 from app.services.context_assembly import ContextAssemblyService
 from app.services.dense_search import DenseSearchService, QueryEmbedder
@@ -1737,14 +1741,20 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 limits=StructuralLimitsV1(),
             )
 
-        return await architecture.prepare(ctx, repository_id, snapshot_id, config_for)
+        try:
+            return await architecture.prepare(ctx, repository_id, snapshot_id, config_for)
+        except ReportTooLarge:
+            raise HTTPException(422, detail="report_too_large") from None
 
     @app.get(reports_base + "/prepare")
     async def architecture_report_status(
         request: Request, repository_id: UUID, snapshot_id: UUID
     ) -> ArchitectureShardsV1:
         ctx = await repository_context(request, repository_id)
-        return await architecture.status(ctx, repository_id, snapshot_id)
+        try:
+            return await architecture.status(ctx, repository_id, snapshot_id)
+        except ReportTooLarge:
+            raise HTTPException(422, detail="report_too_large") from None
 
     @app.post(reports_base, status_code=201)
     async def build_architecture_report(
@@ -1758,6 +1768,8 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             return await architecture.build(ctx, repository_id, snapshot_id)
         except ReportInputsPending:
             raise HTTPException(409, detail="report_inputs_pending") from None
+        except ReportTooLarge:
+            raise HTTPException(422, detail="report_too_large") from None
 
     @app.get(reports_base + "/latest")
     async def latest_architecture_report(

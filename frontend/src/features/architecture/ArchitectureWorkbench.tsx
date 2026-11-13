@@ -71,7 +71,10 @@ function ArchitectureWorkbenchState({
     refetchInterval: (query) => {
       const data = query.state.data;
       const started = data?.shards?.some((s) => s.state !== "not_started");
-      return started && !data?.ready ? 4000 : false;
+      const stuck = data?.shards?.some(
+        (s) => s.state === "failed" || s.state === "cancelled",
+      );
+      return started && !data?.ready && !stuck ? 4000 : false;
     },
   });
   const latest = useQuery({
@@ -154,6 +157,12 @@ function ArchitectureWorkbenchState({
             {status.data.skipped_files > 0 &&
               ` ${status.data.skipped_files} files cannot be selected and are not covered.`}
           </p>
+          {shards.some((s) => s.state === "failed" || s.state === "cancelled") && (
+            <p role="alert">
+              Some analyses failed or were cancelled, so the report cannot be
+              built for this snapshot yet.
+            </p>
+          )}
           {started && shards.length > 1 && (
             <table>
               <thead>

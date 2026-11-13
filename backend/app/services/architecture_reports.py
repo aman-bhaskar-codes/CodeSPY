@@ -7,6 +7,8 @@ create the rest). `build` waits for nothing: it requires every shard analysis to
 computes the report as a pure function of those facts and stores it immutably.
 """
 
+import asyncio
+import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -22,8 +24,10 @@ from app.analyzers.graph import FileEntry
 from app.analyzers.graph.report import assemble_report
 from app.analyzers.graph.shards import ShardPlan, plan_shards
 from app.contracts.architecture_report import (
+    MAX_FACT_RUNS,
     ArchitectureReportRefV1,
     ArchitectureShardsV1,
+    ReportTooLarge,
     RepositoryReportV1,
     ShardStatusV1,
 )
@@ -55,8 +59,14 @@ class SnapshotPlan:
     inventory: tuple[str, ...]
 
 
-def shard_key(plan: ShardPlan, index: int) -> str:
-    return f"report:{plan.digest[:32]}:{index}"
+def _assemble(**kwargs: Any) -> RepositoryReportV1:
+    return assemble_report(**kwargs)
+
+
+def shard_key(snapshot_id: UUID, plan: ShardPlan, index: int) -> str:
+    """Request key of one shard; scoped to the snapshot so plans never collide across snapshots."""
+    scope = hashlib.sha256(f"{snapshot_id}:{plan.digest}".encode()).hexdigest()[:32]
+    return f"report:{scope}:{index}"
 
 
 def _load[M: BaseModel](model: type[M], payload: Any) -> M:
@@ -80,22 +90,34 @@ class ArchitectureReportService:
         located = await locate_source(session, ctx.org_id, repository_id, snapshot_id)
         eligible = [f for f in located.files if f.eligible]
         sizes = {f.path: f.size_bytes for f in eligible if f.language in FACT_LANGUAGES}
+        plan = plan_shards(sizes)
+        if len(plan.shards) > MAX_FACT_RUNS:
+            raise ReportTooLarge("repository needs more fact shards than one report can cite")
         return SnapshotPlan(
-            plan=plan_shards(sizes),
+            plan=plan,
             analyzable=len(sizes),
             inventory=tuple(sorted(f.path for f in eligible)),
         )
 
     async def _status(
-        self, session: AsyncSession, ctx: TenantContext, plan: ShardPlan, skipped: int
+        self,
+        session: AsyncSession,
+        ctx: TenantContext,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        plan: ShardPlan,
+        skipped: int,
     ) -> ArchitectureShardsV1:
         shards = []
         for shard in plan.shards:
             found = await _rows(
                 session,
-                "SELECT id,state,result_run_id FROM jobs WHERE org_id=:o AND request_key=:k",
+                "SELECT id,state,result_run_id FROM jobs WHERE org_id=:o AND repository_id=:r "
+                "AND snapshot_id=:s AND request_key=:k",
                 o=ctx.org_id,
-                k=shard_key(plan, shard.index),
+                r=repository_id,
+                s=snapshot_id,
+                k=shard_key(snapshot_id, plan, shard.index),
             )
             job = found[0] if found else None
             shards.append(
@@ -122,7 +144,9 @@ class ArchitectureReportService:
         async with transaction(self.factory) as session:
             await require_snapshot(session, ctx, repository_id, snapshot_id)
             snap = await self._plan(session, ctx, repository_id, snapshot_id)
-            return await self._status(session, ctx, snap.plan, len(snap.plan.skipped))
+            return await self._status(
+                session, ctx, repository_id, snapshot_id, snap.plan, len(snap.plan.skipped)
+            )
 
     async def prepare(
         self,
@@ -136,7 +160,9 @@ class ArchitectureReportService:
         async with transaction(self.factory) as session:
             await require_snapshot(session, ctx, repository_id, snapshot_id, write=True)
             snap = await self._plan(session, ctx, repository_id, snapshot_id)
-            current = await self._status(session, ctx, snap.plan, len(snap.plan.skipped))
+            current = await self._status(
+                session, ctx, repository_id, snapshot_id, snap.plan, len(snap.plan.skipped)
+            )
         created = 0
         for shard, state in zip(snap.plan.shards, current.shards, strict=True):
             if state.state != "not_started":
@@ -149,13 +175,15 @@ class ArchitectureReportService:
                     repository_id,
                     snapshot_id,
                     config_for(shard.prefixes),
-                    shard_key(snap.plan, shard.index),
+                    shard_key(snapshot_id, snap.plan, shard.index),
                 )
             except CapacityExceeded:
                 break  # the organization's pending-job quota is full; call again later
             created += 1
         async with transaction(self.factory) as session:
-            return await self._status(session, ctx, snap.plan, len(snap.plan.skipped))
+            return await self._status(
+                session, ctx, repository_id, snapshot_id, snap.plan, len(snap.plan.skipped)
+            )
 
     async def build(
         self, ctx: TenantContext, repository_id: UUID, snapshot_id: UUID
@@ -163,7 +191,9 @@ class ArchitectureReportService:
         async with transaction(self.factory) as session:
             await lock_scope(session, ctx.org_id, ctx.principal_id, repository_id, snapshot_id)
             snap = await self._plan(session, ctx, repository_id, snapshot_id)
-            status = await self._status(session, ctx, snap.plan, len(snap.plan.skipped))
+            status = await self._status(
+                session, ctx, repository_id, snapshot_id, snap.plan, len(snap.plan.skipped)
+            )
             if not status.ready:
                 raise ReportInputsPending(status)
             runs = tuple(sorted({s.run_id for s in status.shards if s.run_id}))
@@ -179,7 +209,8 @@ class ArchitectureReportService:
             for row in rows:
                 facts = _load(FileFactsV1, row.facts_json)
                 entries.append(FileEntry(facts.file_id, facts.path, facts.language, facts))
-            report = assemble_report(
+            report = await asyncio.to_thread(
+                _assemble,
                 org_id=ctx.org_id,
                 repository_id=repository_id,
                 snapshot_id=snapshot_id,
@@ -297,5 +328,6 @@ __all__ = [
     "ArchitectureReportService",
     "DuplicateConflict",
     "ReportInputsPending",
+    "ReportTooLarge",
     "shard_key",
 ]

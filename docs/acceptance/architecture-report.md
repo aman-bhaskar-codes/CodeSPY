@@ -57,6 +57,19 @@ statement is typed, and what the facts cannot settle is stated as unknown.
   and the organization's pending-job quota (default 20) bounds how many exist at once.
 - No retry or rebuild route: building again from the same facts returns the same report.
 
+Review follow-ups (documented bounds):
+
+- Route handlers are reported only when they are plain dotted names; other expressions show as
+  `<expression>`. Route paths keep their pattern, but long token-like segments are replaced.
+- Shard job keys are scoped to the snapshot and lookups filter by repository and snapshot.
+- Repositories needing more than 64 fact shards, or whose graph or report exceeds its size bound,
+  are refused with `report_too_large` (HTTP 422); nothing is truncated silently.
+- A failed or cancelled shard has no retry route yet, so the report cannot be built until that is
+  addressed; the viewer shows this and stops polling.
+- Graph analytics keep a wall-clock budget; on a very slow machine an exhausted budget is recorded
+  as a disposition in the report, so the stored report is what that machine produced.
+- `/graph` pages recompute the analytics for each request.
+
 ## Verification
 
 Owned disposable PostgreSQL 16 at schema head:

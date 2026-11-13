@@ -13,6 +13,7 @@ from app.contracts.architecture_report import (
     EvidenceRefV1,
     GraphEdgeV1,
     GraphNodeV1,
+    ReportTooLarge,
     Resolution,
 )
 from app.contracts.ast_facts import FileFactsV1
@@ -113,12 +114,12 @@ def build_graph(files: Sequence[FileEntry], inventory: Iterable[str] = ()) -> De
             edges.append(edge(None, "ambiguous", candidates))
         elif outcome.resolution == "external":
             family = ECOSYSTEM.get(entry.language, entry.language)
-            target = ensure(f"{EXTERNAL}{family}:{outcome.external}", family)
+            target = ensure(f"{EXTERNAL}{family}:{(outcome.external or '')[:256]}", family)
             edges.append(edge(target, "external"))
         else:
             edges.append(edge(None, "unresolved"))
         if len(edges) > MAX_EDGES or len(nodes) > MAX_NODES:
-            raise ValueError("dependency graph exceeds its size bound")
+            raise ReportTooLarge("dependency graph exceeds its size bound")
 
     edges.sort(
         key=lambda e: (

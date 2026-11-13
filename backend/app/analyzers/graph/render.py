@@ -70,12 +70,17 @@ class _Params(dict[str, Any]):
         return "?"
 
 
+def _clean(value: object) -> str:
+    """One line of plain text: control characters and line separators become spaces."""
+    return "".join(" " if ord(c) < 32 or c in "\x7f\u2028\u2029\x85" else c for c in str(value))
+
+
 def statement_text(statement: StatementV1) -> str:
     template = TEXT.get(statement.code)
     if template is None:
         pairs = ", ".join(f"{k}={v}" for k, v in sorted(statement.params.items()))
         return f"{statement.code}" + (f" ({pairs})" if pairs else "")
-    return template.format_map(_Params(statement.params))
+    return _clean(template.format_map(_Params(statement.params)))
 
 
 def _location(ref: EvidenceRefV1) -> str:
@@ -83,7 +88,7 @@ def _location(ref: EvidenceRefV1) -> str:
 
 
 def _cell(value: object) -> str:
-    return str(value).replace("|", "\\|").replace("\n", " ")
+    return _clean(value).replace("|", "\\|")
 
 
 def _table(table: TableV1) -> list[str]:

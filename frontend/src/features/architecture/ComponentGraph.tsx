@@ -41,7 +41,9 @@ export function ComponentGraph({ layers, graph, fileCounts }: Props) {
     ),
   );
   const height = 48 + ordered.length * ROW;
-  const incomplete = graph.links_total > graph.links.length;
+  const incomplete =
+    graph.links_total > graph.links.length ||
+    (graph.nodes_total ?? 0) > graph.nodes.length;
   return (
     <figure>
       <svg

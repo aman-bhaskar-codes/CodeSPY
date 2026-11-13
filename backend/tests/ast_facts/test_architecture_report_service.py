@@ -121,7 +121,7 @@ async def test_the_database_refuses_reports_that_cite_missing_or_altered_inputs(
         await insert(inputs_digest="d" * 64, document={**doc, "inputs_digest": "d" * 64})
     with pytest.raises(DBAPIError, match="identity differs"):  # document disagrees with its columns
         await insert(document={**doc, "snapshot_id": str(uuid4())})
-    with pytest.raises(DBAPIError):  # the same inputs twice
+    with pytest.raises(DBAPIError, match="duplicate key|uq_"):  # the same inputs twice
         await insert()
 
 

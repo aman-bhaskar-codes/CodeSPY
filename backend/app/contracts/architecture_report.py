@@ -8,10 +8,10 @@ values or quotes; evidence points at files and ranges instead.
 """
 
 import hashlib
-from typing import Literal, Self
+from typing import Any, Literal, Self
 from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from app.domain.canonical_json import canonical_bytes, semantic_digest
 from app.domain.scope import Contract
@@ -20,6 +20,12 @@ from app.domain.source_ranges import SourceRangeV1
 MAX_NODES = 20_000
 MAX_EDGES = 100_000
 MAX_REPORT_BYTES = 8 * 1024 * 1024
+MAX_FACT_RUNS = 64
+
+
+class ReportTooLarge(ValueError):  # noqa: N818
+    """The repository exceeds a documented report bound; the report is refused, not truncated."""
+
 
 StatementKind = Literal["observation", "derivation", "inference", "unknown"]
 Resolution = Literal["resolved", "ambiguous", "external", "unresolved"]
@@ -57,6 +63,14 @@ class StatementV1(Contract):
         if self.evidence_total is None:
             object.__setattr__(self, "evidence_total", len(self.evidence))
         return self
+
+    @field_validator("params", mode="before")
+    @classmethod
+    def clip_values(cls, value: Any) -> Any:
+        """Paths and names can be long; clip them deterministically instead of failing a build."""
+        if isinstance(value, dict):
+            return {k: (v[:512] if isinstance(v, str) else v) for k, v in value.items()}
+        return value
 
     @model_validator(mode="after")
     def bounded(self) -> Self:
@@ -149,7 +163,7 @@ class CoverageV1(Contract):
     analyzed_files: int = Field(ge=0)
     partial_files: int = Field(ge=0)
     omitted_files: int = Field(ge=0)
-    fact_runs: tuple[UUID, ...] = Field(default=(), max_length=64)
+    fact_runs: tuple[UUID, ...] = Field(default=(), max_length=MAX_FACT_RUNS)
 
     @model_validator(mode="after")
     def bounded(self) -> Self:
@@ -187,7 +201,7 @@ class RepositoryReportV1(Contract):
 
     def check_size(self) -> None:
         if self.size_bytes() > MAX_REPORT_BYTES:
-            raise ValueError("report exceeds the size bound")
+            raise ReportTooLarge("report exceeds the size bound")
 
 
 def inputs_digest(run_ids: tuple[UUID, ...], facts_digests: tuple[str, ...]) -> str:

@@ -156,3 +156,33 @@ def test_every_statement_code_the_report_emits_has_a_template():
     codes = {s.code for section in report.sections for s in section.statements}
     assert codes <= set(TEXT), sorted(codes - set(TEXT))
     assert set(LIMITATIONS) <= set(TEXT)
+
+
+def test_long_paths_and_external_names_do_not_break_a_build():
+    long_dir = "d" * 300
+    files = {
+        f"{long_dir}/{long_dir}/index.py": "",
+        "main.py": "import " + "a" * 1500 + "\n",
+    }
+    report, _ = build(files)
+    assert report.sections  # clipped, not raised
+    assert all(len(n.id) <= 1100 for n in report.graph.nodes)
+
+
+def test_route_handlers_and_token_like_paths_are_not_echoed():
+    files = {
+        "app.js": (
+            "const express = require('express');\nconst app = express();\n"
+            "app.get('/hook/abcdef0123456789abcdef0123456789', auth('Bearer sk_live_ZZ9'));\n"
+        )
+    }
+    report, _ = build(files)
+    blob = json.dumps(report.model_dump(mode="json"))
+    assert "sk_live_ZZ9" not in blob
+    assert "abcdef0123456789abcdef0123456789" not in blob
+
+
+def test_markdown_cannot_be_structured_by_control_characters():
+    files = {"a\r# forged.py": "", "main.py": "import os\n"}
+    report, _ = build(files)
+    assert "\r" not in render_markdown(report)

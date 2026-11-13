@@ -7,6 +7,7 @@ what the facts cannot settle (unresolved imports, partial files, truncated cover
 limitations) is stated as unknown. Statements carry evidence (file and range), never source text.
 """
 
+import re
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
 from uuid import UUID
@@ -273,7 +274,14 @@ def _api(files: Sequence[FileEntry]) -> SectionV1:
     for f in files:
         for r in f.facts.routes:
             rows.append(
-                (r.framework, r.method, _clip(r.path), _clip(r.handler), f.path, r.range.start_line)
+                (
+                    r.framework,
+                    r.method,
+                    _route_path(r.path),
+                    _handler(r.handler),
+                    f.path,
+                    r.range.start_line,
+                )
             )
             evidence.append(_ref(f, "route", r.range))
             frameworks[r.framework] += 1
@@ -386,6 +394,24 @@ def _coverage(files: Sequence[FileEntry], cov: CoverageV1, a: Analytics) -> Sect
         statements.append(_statement("unknown", "analytics.incomplete", {"reason": a.disposition}))
     statements.extend(_statement("unknown", code) for code in LIMITATIONS)
     return SectionV1(name="coverage", statements=tuple(statements))
+
+
+_HANDLER = re.compile(r"^[A-Za-z_$][\w$]*(?:[.:][A-Za-z_$][\w$]*){0,6}$")
+_SECRETISH = re.compile(
+    r"(?<![A-Za-z0-9_-])(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{24,}(?![A-Za-z0-9_-])"
+)
+
+
+def _handler(text: str | None) -> str:
+    """A handler is reported only when it is a plain (dotted) name, never an expression."""
+    if text is None:
+        return ""
+    return text if _HANDLER.match(text) else "<expression>"
+
+
+def _route_path(text: str) -> str:
+    """Route patterns are kept, but long token-like segments are not echoed."""
+    return _clip(_SECRETISH.sub("<redacted>", text))
 
 
 def assemble_report(

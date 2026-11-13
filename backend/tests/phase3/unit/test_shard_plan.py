@@ -74,3 +74,12 @@ def test_the_plan_is_deterministic_and_unplannable_paths_are_reported():
     assert plan.skipped == ("bad\\name.py",)
     assert plan.digest == plan_shards(sizes).digest or plan.digest  # digest covers prefixes only
     assert plan_shards({}).shards == ()
+
+
+def test_shard_keys_differ_per_snapshot():
+    from uuid import uuid4
+
+    from app.services.architecture_reports import shard_key
+
+    plan = plan_shards({"a.py": 1})
+    assert shard_key(uuid4(), plan, 0) != shard_key(uuid4(), plan, 0)
