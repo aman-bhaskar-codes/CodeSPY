@@ -71,7 +71,7 @@ Manifest facts (names only, never executed, no new dependency):
   package names differ too often to state it without guessing.
 - `go.mod` is parsed and resolves Go imports by the declared module path exactly, but only snapshots
   admitted under policy `source-zip-v4` carry it (see ast-facts acceptance); under V1 to V3 it is
-  an unsupported file and Go keeps the inferred-prefix heuristic. `Package.swift` is admitted by V3 and
+  an unsupported file and Go keeps the inferred-prefix heuristic. The corpus runs under v4: gin's `go.mod` is read and its 31 internal imports resolve exactly as the heuristic had inferred. `Package.swift` is admitted by V3 and
   later. Adding manifests changes the facts digest of rows published afterwards.
 
 Review follow-ups (documented bounds):
@@ -107,7 +107,7 @@ Owned disposable PostgreSQL 16 at schema head:
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | pallets/flask | 83 | 256 | 77 | 291 | 5 | 6 | 2 | 266 KiB | 1 |
 | expressjs/express | 142 | 160 | 0 | 245 | 0 | 30 | 0 | 180 KiB | 2 |
-| gin-gonic/gin | 99 | 31 | 0 | 490 | 0 | 7 | 0 | 210 KiB | 1 |
+| gin-gonic/gin | 100 | 31 | 0 | 490 | 0 | 7 | 0 | 212 KiB | 1 |
 | spring-projects/spring-petclinic | 50 | 24 | 0 | 451 | 0 | 6 | 0 | 269 KiB | 1 |
 | dtolnay/anyhow | 39 | 71 | 0 | 76 | 1 | 7 | 1 | 63 KiB | 1 |
 | antirez/kilo | 1 | 0 | 0 | 15 | 0 | 1 | 0 | 10 KiB | 1 |

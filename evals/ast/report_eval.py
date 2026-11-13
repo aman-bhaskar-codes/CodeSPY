@@ -21,7 +21,7 @@ from app.analyzers.graph.render import render_markdown
 from app.analyzers.graph.report import assemble_report
 from app.analyzers.graph.shards import plan_shards
 from app.analyzers.registry import FACT_DIALECTS
-from app.contracts.ingestion import AdmissionPolicyV3
+from app.contracts.ingestion import AdmissionPolicyV4
 from app.contracts.structure import AnalysisBudget, SourceUnitV1
 
 SECTIONS = 8
@@ -29,7 +29,7 @@ SECTIONS = 8
 
 def load_entries(path: Path) -> tuple[list[FileEntry], list[str], dict[str, int]]:
     data = path.read_bytes()
-    manifest = inspect_zip_bytes(data, AdmissionPolicyV3(github_strip_root=True))
+    manifest = inspect_zip_bytes(data, AdmissionPolicyV4(github_strip_root=True))
     known = {e.path: e for e in manifest.entries}
     budget = AnalysisBudget(wall_seconds=3600.0, max_syntax_nodes=10**9)
     entries: list[FileEntry] = []
