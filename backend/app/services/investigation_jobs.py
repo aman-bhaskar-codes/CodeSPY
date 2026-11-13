@@ -9,8 +9,9 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, insert, select, update
-from sqlalchemy import text as sa_text
+from sqlalchemy import String, Uuid, func, insert, select, update
+from sqlalchemy import column as sa_column
+from sqlalchemy import table as sa_table
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.contracts.investigation import (
@@ -45,6 +46,17 @@ from app.services.jobs import JobService
 
 TERMINAL_INVESTIGATION_STATUSES = {"completed", "failed", "cancelled"}
 TERMINAL_JOB_STATES = {"succeeded", "partial", "failed", "cancelled"}
+
+
+# The columns of a stored architecture report this service reads (declared here, not owned here).
+_REPORTS = sa_table(
+    "architecture_reports",
+    sa_column("org_id", Uuid),
+    sa_column("id", Uuid),
+    sa_column("repository_id", Uuid),
+    sa_column("snapshot_id", Uuid),
+    sa_column("report_digest", String),
+)
 
 
 class InvestigationJobService:
@@ -112,16 +124,12 @@ class InvestigationJobService:
             if request.target_type == "architecture_report":
                 found = (
                     await s.execute(
-                        sa_text(
-                            "SELECT report_digest FROM architecture_reports WHERE org_id=:o "
-                            "AND id=:i AND repository_id=:r AND snapshot_id=:s"
-                        ),
-                        {
-                            "o": ctx.org_id,
-                            "i": request.architecture_report_id,
-                            "r": request.repository_id,
-                            "s": request.snapshot_id,
-                        },
+                        select(_REPORTS.c.report_digest).where(
+                            _REPORTS.c.org_id == ctx.org_id,
+                            _REPORTS.c.id == request.architecture_report_id,
+                            _REPORTS.c.repository_id == request.repository_id,
+                            _REPORTS.c.snapshot_id == request.snapshot_id,
+                        )
                     )
                 ).first()
                 if found is None:

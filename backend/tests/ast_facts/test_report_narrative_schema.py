@@ -171,8 +171,8 @@ async def test_narrative_link_guard_and_immutability(factory, tmp_path):
             {"o": ctx.org_id, "i": rep, "v": inv, "h": HEX, "j": uuid4(), "d": HEX},
         )
         link = (
-            "INSERT INTO architecture_report_narratives(org_id,id,architecture_report_id,repository_id,snapshot_id,investigation_id,investigation_report_id,spec_hash,report_digest)"
-            " VALUES(:o,:i,:a,:r,:s,:v,:ir,:h,:d)"
+            "INSERT INTO architecture_report_narratives(org_id,id,architecture_report_id,repository_id,snapshot_id,investigation_id,investigation_report_id,spec_hash,report_digest,narrative_json)"
+            " VALUES(:o,:i,:a,:r,:s,:v,:ir,:h,:d,CAST('{}' AS jsonb))"
         )
         good = {
             "o": ctx.org_id,

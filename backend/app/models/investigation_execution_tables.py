@@ -270,6 +270,26 @@ investigation_reports = sa.Table(
 # Investigation Publication Receipts (atomic finalization binding)
 # ---------------------------------------------------------------------------
 
+architecture_report_narratives = sa.Table(
+    "architecture_report_narratives",
+    md,
+    orgid(),
+    col("id", "uuid"),
+    col("architecture_report_id", "uuid"),
+    col("repository_id", "uuid"),
+    col("snapshot_id", "uuid"),
+    col("investigation_id", "uuid"),
+    col("investigation_report_id", "uuid"),
+    col("spec_hash"),
+    col("report_digest"),
+    sa.Column("narrative_json", JSONB().with_variant(sa.JSON(), "sqlite"), nullable=False),
+    created(),
+    pk("org_id", "id"),
+    uq("uq_narrative_report_spec", "org_id", "architecture_report_id", "spec_hash"),
+    uq("uq_narrative_investigation_report", "org_id", "investigation_report_id"),
+)
+
+
 investigation_publication_receipts = sa.Table(
     "investigation_publication_receipts",
     md,

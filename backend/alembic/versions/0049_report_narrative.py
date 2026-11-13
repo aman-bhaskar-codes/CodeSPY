@@ -62,7 +62,7 @@ CREATE TABLE public.architecture_report_narratives (
  org_id uuid NOT NULL,id uuid NOT NULL,
  architecture_report_id uuid NOT NULL,repository_id uuid NOT NULL,snapshot_id uuid NOT NULL,
  investigation_id uuid NOT NULL,investigation_report_id uuid NOT NULL,
- spec_hash text NOT NULL,report_digest text NOT NULL,
+ spec_hash text NOT NULL,report_digest text NOT NULL,narrative_json jsonb NOT NULL,
  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  PRIMARY KEY(org_id,id),
  UNIQUE(org_id,architecture_report_id,spec_hash),
@@ -70,7 +70,8 @@ CREATE TABLE public.architecture_report_narratives (
  FOREIGN KEY(org_id,architecture_report_id) REFERENCES public.architecture_reports(org_id,id),
  FOREIGN KEY(org_id,investigation_id) REFERENCES public.investigations(org_id,id),
  FOREIGN KEY(org_id,investigation_report_id) REFERENCES public.investigation_reports(org_id,id),
- CHECK(spec_hash ~ '^[0-9a-f]{64}$' AND report_digest ~ '^[0-9a-f]{64}$')
+ CHECK(spec_hash ~ '^[0-9a-f]{64}$' AND report_digest ~ '^[0-9a-f]{64}$'),
+ CHECK(jsonb_typeof(narrative_json)='object' AND octet_length(narrative_json::text)<=262144)
 );
 CREATE INDEX ix_report_narratives_report ON public.architecture_report_narratives(org_id,architecture_report_id,created_at,id);
 CREATE TRIGGER guard_report_narrative_immutable BEFORE UPDATE OR DELETE ON public.architecture_report_narratives

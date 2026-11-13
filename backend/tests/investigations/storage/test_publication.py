@@ -28,6 +28,7 @@ from app.contracts.jobs import AttemptLeaseV2
 from app.domain.errors import DuplicateConflict, ScopeViolation
 from app.domain.scope import OrgRole, TenantContext
 from app.models.investigation_execution_tables import (
+    architecture_report_narratives,
     investigation_commands,
     investigation_evidence,
     investigation_execution_checkpoints,
@@ -47,7 +48,7 @@ from app.models.phase2_tables import PHASE2_TABLES, md
 from app.models.tables import artifacts, memberships, repositories, source_snapshots
 from app.services.investigation_jobs import InvestigationJobService
 from app.workers.investigation_finalizer import InvestigationFinalizer
-from sqlalchemy import event, insert, select, update
+from sqlalchemy import event, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
@@ -135,6 +136,7 @@ async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
                     investigation_evidence,
                     investigation_reports,
                     investigation_publication_receipts,
+                    architecture_report_narratives,
                     investigation_commands,
                 ],
             )
@@ -146,6 +148,8 @@ async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
 
 async def _seed_running_job(
     session_factory: async_sessionmaker[AsyncSession],
+    *,
+    narrative_report: bool = False,
 ) -> tuple[TenantContext, AttemptLeaseV2, UUID, str]:
     org_id = uuid4()
     repo_id = uuid4()
@@ -216,14 +220,43 @@ async def _seed_running_job(
     )
 
     job_service = InvestigationJobService(session_factory)
-    req = InvestigationCreateRequestV2(
-        repository_id=repo_id,
-        snapshot_id=snap_id,
-        target_type="repository",
-        query="Audit security posture",
-        mode=InvestigationMode.SHORT_PATH,
-        depth=InvestigationDepth.STANDARD,
-    )
+    if narrative_report:
+        report_id = uuid4()
+        async with session_factory() as session, session.begin():
+            await session.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS architecture_reports(org_id, id, repository_id, "
+                    "snapshot_id, report_digest)"
+                )
+            )
+            await session.execute(
+                text("INSERT INTO architecture_reports VALUES(:o,:i,:r,:s,:d)"),
+                {
+                    "o": org_id.hex,
+                    "i": report_id.hex,
+                    "r": repo_id.hex,
+                    "s": snap_id.hex,
+                    "d": "e" * 64,
+                },
+            )
+        req = InvestigationCreateRequestV2(
+            repository_id=repo_id,
+            snapshot_id=snap_id,
+            target_type="architecture_report",
+            query="Narrate the report",
+            mode=InvestigationMode.REPORT_NARRATIVE,
+            depth=InvestigationDepth.STANDARD,
+            architecture_report_id=report_id,
+        )
+    else:
+        req = InvestigationCreateRequestV2(
+            repository_id=repo_id,
+            snapshot_id=snap_id,
+            target_type="repository",
+            query="Audit security posture",
+            mode=InvestigationMode.SHORT_PATH,
+            depth=InvestigationDepth.STANDARD,
+        )
     summary = await job_service.create(ctx, req, request_key="req-create-1")
     start_resp = await job_service.start(ctx, summary.id, request_key="req-start-1")
 
@@ -501,3 +534,60 @@ async def test_cumulative_work_timeout_rolls_back_report(session_factory, monkey
             .one()
         )
         assert row["state"] == "running"
+
+
+@pytest.mark.asyncio
+async def test_a_narrative_draft_is_recorded_against_the_pinned_report(
+    session_factory: async_sessionmaker[AsyncSession],
+):
+    """Publishing a narrative also writes the link row that carries its structured sentences."""
+    from app.contracts.report_narrative import (
+        NarrativeDraftV1,
+        NarrativeSentenceV1,
+        NarrativeVerificationV1,
+    )
+    from app.models.investigation_execution_tables import architecture_report_narratives
+
+    ctx, lease, inv_id, spec_hash = await _seed_running_job(session_factory, narrative_report=True)
+    narrative = NarrativeDraftV1(
+        sentences=(
+            NarrativeSentenceV1(claim_id="u0-c0", text="Imports: 3 resolved.", sids=("a" * 16,)),
+        ),
+        verifications=(
+            NarrativeVerificationV1(claim_id="u0-c0", status="confirmed", basis="derived"),
+        ),
+        confirmed=1,
+        total=1,
+        grounded=True,
+        prompt_revision="report_narrative.v1.x",
+        report_digest="e" * 64,
+    )
+    draft = _make_draft(inv_id, spec_hash).model_copy(
+        update={"verdict": "indeterminate", "claims": (), "narrative": narrative}
+    )
+    draft = draft.model_copy(update={"draft_digest": draft.compute_draft_digest()})
+    receipt = await InvestigationFinalizer(session_factory).publish(ctx, lease, draft)
+    async with session_factory() as session:
+        row = (await session.execute(select(architecture_report_narratives))).mappings().one()
+    assert row["investigation_report_id"] == receipt.report_id and row["spec_hash"] == spec_hash
+    assert row["report_digest"] == "e" * 64 and row["narrative_json"]["confirmed"] == 1
+    assert row["narrative_json"]["sentences"][0]["sids"] == ["a" * 16]
+
+
+@pytest.mark.asyncio
+async def test_a_narrative_for_a_spec_without_a_pin_is_refused(
+    session_factory: async_sessionmaker[AsyncSession],
+):
+    from app.contracts.report_narrative import NarrativeDraftV1
+
+    ctx, lease, inv_id, spec_hash = await _seed_running_job(session_factory)
+    draft = _make_draft(inv_id, spec_hash).model_copy(
+        update={
+            "narrative": NarrativeDraftV1(
+                confirmed=0, total=0, grounded=False, prompt_revision="x", report_digest="e" * 64
+            )
+        }
+    )
+    draft = draft.model_copy(update={"draft_digest": draft.compute_draft_digest()})
+    with pytest.raises(DuplicateConflict):
+        await InvestigationFinalizer(session_factory).publish(ctx, lease, draft)
