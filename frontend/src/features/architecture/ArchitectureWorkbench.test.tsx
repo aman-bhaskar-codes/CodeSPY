@@ -315,4 +315,46 @@ describe("statementText", () => {
       statementText(undefined, { ...base, code: "plain", params: {} }),
     ).toBe("plain");
   });
+
+  it("checks architecture rules for the shown report with suggestions from its graph", async () => {
+    const check = vi.spyOn(api, "architectureRuleCheck").mockResolvedValue({
+      schema_version: 1,
+      report_id: ref.id,
+      inputs_digest: "x",
+      results: [
+        {
+          name: "no-lib",
+          kind: "forbidden",
+          status: "passed",
+          violations_total: 0,
+          files_in_scope: 2,
+          unknown_imports: 0,
+          violations: [],
+        },
+      ],
+    } as never);
+    mount({ status: shards("succeeded", true), latest: ref });
+    const rules = await screen.findByRole("region", {
+      name: "Architecture rules",
+    });
+    const group = within(rules).getByLabelText(/Group 1 path prefixes/);
+    const options = [
+      ...document
+        .getElementById(group.getAttribute("list")!)!
+        .querySelectorAll("option"),
+    ].map((o) => o.getAttribute("value"));
+    expect(options).toContain("lib");
+    fireEvent.change(within(rules).getByLabelText("Rule name"), {
+      target: { value: "no-lib" },
+    });
+    fireEvent.change(group, { target: { value: "app" } });
+    fireEvent.change(within(rules).getByLabelText(/Group 2 path prefixes/), {
+      target: { value: "lib" },
+    });
+    fireEvent.click(within(rules).getByRole("button", { name: "Add rule" }));
+    fireEvent.click(within(rules).getByRole("button", { name: "Check rules" }));
+    await within(rules).findByText("Passed");
+    expect(check.mock.calls[0]?.slice(0, 3)).toEqual([repo, snapshot, ref.id]);
+    expect(check.mock.calls[0]?.[4]).toBe("csrf-token");
+  });
 });

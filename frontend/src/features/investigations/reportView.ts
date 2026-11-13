@@ -77,6 +77,21 @@ export function reportClaims(
     });
 }
 
+/** The server types caveats as one string; older reports and tests use lists. Accept both. */
+function caveatItems(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .slice(0, 100);
+  }
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .slice(0, 100);
+}
+
 export function reportCaveats(
   report: unknown,
 ): { label: string; items: string[] }[] {
@@ -89,11 +104,7 @@ export function reportCaveats(
   )
     .map(([key, label]) => ({
       label,
-      items: Array.isArray(report[key])
-        ? report[key]
-            .filter((value): value is string => typeof value === "string")
-            .slice(0, 100)
-        : [],
+      items: caveatItems(report[key]),
     }))
     .filter((group) => group.items.length > 0);
 }
