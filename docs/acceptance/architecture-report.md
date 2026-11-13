@@ -64,8 +64,8 @@ Review follow-ups (documented bounds):
 - Shard job keys are scoped to the snapshot and lookups filter by repository and snapshot.
 - Repositories needing more than 64 fact shards, or whose graph or report exceeds its size bound,
   are refused with `report_too_large` (HTTP 422); nothing is truncated silently.
-- A failed or cancelled shard has no retry route yet, so the report cannot be built until that is
-  addressed; the viewer shows this and stops polling.
+- A failed or cancelled shard is retried by calling prepare again (a new analysis with an attempt-suffixed key).
+  the viewer shows failures, stops polling, and the Prepare button retries them.
 - Graph analytics keep a wall-clock budget; on a very slow machine an exhausted budget is recorded
   as a disposition in the report, so the stored report is what that machine produced.
 - `/graph` pages recompute the analytics for each request.

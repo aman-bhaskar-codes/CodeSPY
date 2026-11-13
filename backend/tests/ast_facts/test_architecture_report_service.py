@@ -146,3 +146,16 @@ async def test_capacity_stops_prepare_without_error_and_other_tenants_see_nothin
     with pytest.raises(ScopeViolation):
         await service.get(other, repo, snapshot, ref.id)
     assert shard_key.__name__ == "shard_key"
+
+
+async def test_a_failed_shard_is_retried_with_a_new_analysis(factory, tmp_path):
+    ctx, snapshot, repo, store, service = await setup(factory, tmp_path)
+    first = await service.prepare(ctx, repo, snapshot, config_for)
+    job = first.shards[0].job_id
+    assert await JobService(factory).cancel(ctx, job) is not None
+    cancelled = await service.status(ctx, repo, snapshot)
+    assert cancelled.shards[0].state == "cancelled" and not cancelled.ready
+    retried = await service.prepare(ctx, repo, snapshot, config_for)
+    assert retried.shards[0].job_id != job and retried.shards[0].state == "queued"
+    await publish_shards(factory, ctx, retried, store)
+    assert (await service.status(ctx, repo, snapshot)).ready

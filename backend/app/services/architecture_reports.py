@@ -42,6 +42,7 @@ from app.services.structural_analysis import StructuralAnalysisService
 
 MAX_NEW_PER_CALL = 8
 TERMINAL_OK = {"succeeded", "partial"}
+RETRYABLE = {"failed", "cancelled"}
 
 
 class ReportInputsPending(Exception):  # noqa: N818
@@ -99,6 +100,23 @@ class ArchitectureReportService:
             inventory=tuple(sorted(f.path for f in eligible)),
         )
 
+    async def _attempts(
+        self, snapshot_id: UUID, ctx: TenantContext, plan: ShardPlan, index: int
+    ) -> int:
+        """How many analyses were already created for one shard (the next retry's number)."""
+        base = shard_key(snapshot_id, plan, index)
+        async with transaction(self.factory) as session:
+            rows = await _rows(
+                session,
+                "SELECT count(*) AS n FROM jobs WHERE org_id=:o AND snapshot_id=:s "
+                "AND (request_key=:k OR request_key LIKE :kp)",
+                o=ctx.org_id,
+                s=snapshot_id,
+                k=base,
+                kp=base + ":r%",
+            )
+        return int(rows[0].n)
+
     async def _status(
         self,
         session: AsyncSession,
@@ -113,11 +131,13 @@ class ArchitectureReportService:
             found = await _rows(
                 session,
                 "SELECT id,state,result_run_id FROM jobs WHERE org_id=:o AND repository_id=:r "
-                "AND snapshot_id=:s AND request_key=:k",
+                "AND snapshot_id=:s AND (request_key=:k OR request_key LIKE :kp) "
+                "ORDER BY created_at DESC, request_key DESC LIMIT 1",
                 o=ctx.org_id,
                 r=repository_id,
                 s=snapshot_id,
                 k=shard_key(snapshot_id, plan, shard.index),
+                kp=shard_key(snapshot_id, plan, shard.index) + ":r%",
             )
             job = found[0] if found else None
             shards.append(
@@ -165,7 +185,8 @@ class ArchitectureReportService:
             )
         created = 0
         for shard, state in zip(snap.plan.shards, current.shards, strict=True):
-            if state.state != "not_started":
+            retry = state.state in RETRYABLE
+            if state.state != "not_started" and not retry:
                 continue
             if created >= limit:
                 break
@@ -175,7 +196,12 @@ class ArchitectureReportService:
                     repository_id,
                     snapshot_id,
                     config_for(shard.prefixes),
-                    shard_key(snapshot_id, snap.plan, shard.index),
+                    shard_key(snapshot_id, snap.plan, shard.index)
+                    + (
+                        f":r{await self._attempts(snapshot_id, ctx, snap.plan, shard.index)}"
+                        if retry
+                        else ""
+                    ),
                 )
             except CapacityExceeded:
                 break  # the organization's pending-job quota is full; call again later
