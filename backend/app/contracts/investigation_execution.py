@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal, Self
+from typing import Any, Literal, Self
 from uuid import UUID, uuid5
 
 from pydantic import AwareDatetime, Field, field_validator, model_validator
@@ -217,18 +217,22 @@ class InvestigationSpecV1(Contract):
     principal_id: UUID
 
     # Target
-    target_type: Literal["repository", "finding"]
+    target_type: Literal["repository", "finding", "architecture_report"]
     finding_id: UUID | None = None
     finding_run_id: UUID | None = None
     chunk_set_id: UUID | None = None
     chunk_config_id: UUID | None = None
     materialization_id: UUID | None = None
+    # A narrative is pinned to one stored architecture report. Both are None for every other
+    # target and are left out of the hashed dump when None, so older spec hashes never change.
+    architecture_report_id: UUID | None = None
+    architecture_report_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
     # Query
     query: str = Field(min_length=1, max_length=MAX_QUERY_CHARS)
 
     # Mode
-    mode: Literal["short_path", "two_specialist"]
+    mode: Literal["short_path", "two_specialist", "report_narrative"]
     depth: Literal["quick", "standard", "deep"] = "standard"
 
     # Limits
@@ -257,17 +261,38 @@ class InvestigationSpecV1(Contract):
             raise ValueError("finding target requires finding_run_id")
         if self.target_type == "repository" and self.finding_id is not None:
             raise ValueError("repository target cannot have finding_id")
+        narrative = self.mode == "report_narrative"
+        report_target = self.target_type == "architecture_report"
+        if narrative != report_target:
+            raise ValueError("report_narrative mode and architecture_report target go together")
+        pinned = self.architecture_report_id is not None
+        if pinned != (self.architecture_report_digest is not None):
+            raise ValueError("architecture_report_id and architecture_report_digest go together")
+        if pinned != report_target:
+            raise ValueError(
+                "an architecture report is pinned exactly for the architecture_report target"
+            )
+        if report_target and (self.finding_id is not None or self.finding_run_id is not None):
+            raise ValueError("architecture_report target cannot have finding fields")
         return self
+
+    def _hashed_dump(self) -> dict[str, Any]:
+        """The dump that defines identity: new optional fields are omitted when None."""
+        dump = self.model_dump()
+        for key in ("architecture_report_id", "architecture_report_digest"):
+            if dump.get(key) is None:
+                dump.pop(key, None)
+        return dump
 
     @model_validator(mode="after")
     def _bounded_size(self) -> Self:
-        if len(canonical_bytes(self.model_dump())) > MAX_SPEC_BYTES:
+        if len(canonical_bytes(self._hashed_dump())) > MAX_SPEC_BYTES:
             raise ValueError(f"spec exceeds {MAX_SPEC_BYTES} byte bound")
         return self
 
     def compute_spec_hash(self) -> str:
         """SHA-256 of canonical JSON representation."""
-        return hashlib.sha256(canonical_bytes(self.model_dump())).hexdigest()
+        return hashlib.sha256(canonical_bytes(self._hashed_dump())).hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -632,12 +657,15 @@ class InvestigationEvidenceV1(Contract):
     org_id: UUID
     investigation_id: UUID
     snapshot_id: UUID
-    source_path: str = Field(min_length=1, max_length=1024)
-    file_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    original_start_line: int = Field(ge=1)
-    original_end_line: int = Field(ge=1)
-    safe_start_line: int = Field(ge=1)
-    safe_end_line: int = Field(ge=1)
+    # Source-bound rows carry all of these. A `report_fact` row (a statement of a stored
+    # architecture report) carries none of them and a `fact_ref` instead.
+    source_path: str | None = Field(default=None, min_length=1, max_length=1024)
+    file_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    original_start_line: int | None = Field(default=None, ge=1)
+    original_end_line: int | None = Field(default=None, ge=1)
+    safe_start_line: int | None = Field(default=None, ge=1)
+    safe_end_line: int | None = Field(default=None, ge=1)
+    fact_ref: str | None = Field(default=None, min_length=1, max_length=256)
     excerpt_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     observation_type: str = Field(min_length=1, max_length=64)
     coverage_summary: str = Field(default="", max_length=4096)
@@ -647,6 +675,22 @@ class InvestigationEvidenceV1(Contract):
 
     @model_validator(mode="after")
     def _validate_lines(self) -> Self:
+        source = (
+            self.source_path,
+            self.file_sha256,
+            self.original_start_line,
+            self.original_end_line,
+            self.safe_start_line,
+            self.safe_end_line,
+        )
+        if self.observation_type == "report_fact":
+            if any(v is not None for v in source) or self.fact_ref is None:
+                raise ValueError("a report_fact row has a fact_ref and no source fields")
+            return self
+        if self.fact_ref is not None or any(v is None for v in source):
+            raise ValueError("a source-bound row has every source field and no fact_ref")
+        assert self.original_start_line is not None and self.original_end_line is not None
+        assert self.safe_start_line is not None and self.safe_end_line is not None
         if self.original_start_line > self.original_end_line:
             raise ValueError("original_start_line must be <= original_end_line")
         if self.safe_start_line > self.safe_end_line:

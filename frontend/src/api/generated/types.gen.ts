@@ -2888,6 +2888,10 @@ export type InvestigationCreateRequestV1 = {
  */
 export type InvestigationCreateRequestV2 = {
     /**
+     * Architecture Report Id
+     */
+    architecture_report_id?: string | null;
+    /**
      * Budget Limit Micros
      */
     budget_limit_micros?: number;
@@ -2924,7 +2928,7 @@ export type InvestigationCreateRequestV2 = {
     /**
      * Target Type
      */
-    target_type: 'repository' | 'finding';
+    target_type: 'repository' | 'finding' | 'architecture_report';
 };
 
 /**
@@ -3223,7 +3227,7 @@ export type InvestigationListResponseV2 = {
 /**
  * InvestigationMode
  */
-export type InvestigationMode = 'short_path' | 'two_specialist';
+export type InvestigationMode = 'short_path' | 'two_specialist' | 'report_narrative';
 
 /**
  * InvestigationReportV1

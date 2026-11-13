@@ -37,6 +37,8 @@ investigation_specs = sa.Table(
     col("chunk_set_id", "uuid", nullable=True),
     col("chunk_config_id", "uuid", nullable=True),
     col("materialization_id", "uuid", nullable=True),
+    col("architecture_report_id", "uuid", nullable=True),
+    sa.Column("architecture_report_digest", sa.String(64), nullable=True),
     sa.Column("query", sa.Text, nullable=False),
     sa.Column("mode", sa.String(32), nullable=False),
     sa.Column("depth", sa.String(32), nullable=False),
@@ -64,8 +66,14 @@ investigation_specs = sa.Table(
     ),
     ck("ck_investigation_spec_hash_format", "length(spec_hash) = 64"),
     ck("ck_investigation_spec_disclosure_format", "length(disclosure_policy_digest) = 64"),
-    ck("ck_investigation_spec_target_type", "target_type IN ('repository', 'finding')"),
-    ck("ck_investigation_spec_mode", "mode IN ('short_path', 'two_specialist')"),
+    ck(
+        "ck_investigation_spec_target_type",
+        "target_type IN ('repository', 'finding', 'architecture_report')",
+    ),
+    ck(
+        "ck_investigation_spec_mode",
+        "mode IN ('short_path', 'two_specialist', 'report_narrative')",
+    ),
     ck("ck_investigation_spec_depth", "depth IN ('quick', 'standard', 'deep')"),
     ck("ck_investigation_spec_runtime_revision", "runtime_revision >= 1"),
 )
@@ -182,12 +190,13 @@ investigation_evidence = sa.Table(
     col("id", "uuid"),
     col("investigation_id", "uuid"),
     col("snapshot_id", "uuid"),
-    sa.Column("source_path", sa.Text, nullable=False),
-    col("file_sha256"),
-    sa.Column("original_start_line", sa.Integer, nullable=False),
-    sa.Column("original_end_line", sa.Integer, nullable=False),
-    sa.Column("safe_start_line", sa.Integer, nullable=False),
-    sa.Column("safe_end_line", sa.Integer, nullable=False),
+    sa.Column("source_path", sa.Text, nullable=True),
+    col("file_sha256", nullable=True),
+    sa.Column("original_start_line", sa.Integer, nullable=True),
+    sa.Column("original_end_line", sa.Integer, nullable=True),
+    sa.Column("safe_start_line", sa.Integer, nullable=True),
+    sa.Column("safe_end_line", sa.Integer, nullable=True),
+    sa.Column("fact_ref", sa.String(256), nullable=True),
     col("excerpt_sha256"),
     sa.Column("observation_type", sa.String(64), nullable=False),
     sa.Column("coverage_summary", sa.Text, nullable=True),
@@ -208,6 +217,16 @@ investigation_evidence = sa.Table(
         "original_start_line >= 1 AND original_start_line <= original_end_line",
     ),
     ck("ck_evidence_safe_lines", "safe_start_line >= 1 AND safe_start_line <= safe_end_line"),
+    ck(
+        "ck_evidence_source_or_fact",
+        "(observation_type = 'report_fact' AND fact_ref IS NOT NULL AND source_path IS NULL "
+        "AND file_sha256 IS NULL AND original_start_line IS NULL AND original_end_line IS NULL "
+        "AND safe_start_line IS NULL AND safe_end_line IS NULL) OR "
+        "(observation_type <> 'report_fact' AND fact_ref IS NULL AND source_path IS NOT NULL "
+        "AND file_sha256 IS NOT NULL AND original_start_line IS NOT NULL "
+        "AND original_end_line IS NOT NULL AND safe_start_line IS NOT NULL "
+        "AND safe_end_line IS NOT NULL)",
+    ),
 )
 
 

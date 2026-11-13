@@ -10,6 +10,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, insert, select, update
+from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.contracts.investigation import (
@@ -64,12 +65,16 @@ class InvestigationJobService:
         if not request_key or len(request_key.encode("utf-8")) > 128:
             raise ValueError("invalid request_key: must be between 1 and 128 bytes")
 
+        digest_body = request.model_dump(mode="json")
+        if digest_body.get("architecture_report_id") is None:
+            # Older requests have no such key; keep their idempotency digests unchanged.
+            digest_body.pop("architecture_report_id", None)
         request_digest = semantic_digest(
             {
                 "principal_id": str(ctx.principal_id),
                 "repository_id": str(request.repository_id),
                 "snapshot_id": str(request.snapshot_id),
-                **request.model_dump(mode="json"),
+                **digest_body,
             }
         )
 
@@ -101,8 +106,27 @@ class InvestigationJobService:
                 s, ctx.org_id, ctx.principal_id, request.repository_id, write=True, lock=True
             )
 
-            if request.target_type not in ("repository", "finding"):
+            if request.target_type not in ("repository", "finding", "architecture_report"):
                 raise ScopeViolation(f"unsupported target type: {request.target_type}")
+            report_digest: str | None = None
+            if request.target_type == "architecture_report":
+                found = (
+                    await s.execute(
+                        sa_text(
+                            "SELECT report_digest FROM architecture_reports WHERE org_id=:o "
+                            "AND id=:i AND repository_id=:r AND snapshot_id=:s"
+                        ),
+                        {
+                            "o": ctx.org_id,
+                            "i": request.architecture_report_id,
+                            "r": request.repository_id,
+                            "s": request.snapshot_id,
+                        },
+                    )
+                ).first()
+                if found is None:
+                    raise ScopeViolation("architecture report unavailable")
+                report_digest = found[0]
 
             limits = InvestigationLimitsV1(
                 max_steps=request.max_steps,
@@ -124,6 +148,8 @@ class InvestigationJobService:
                 finding_id=request.finding_id,
                 finding_run_id=request.finding_run_id,
                 chunk_set_id=request.chunk_set_id,
+                architecture_report_id=request.architecture_report_id,
+                architecture_report_digest=report_digest,
                 query=request.query,
                 mode=mode_str,
                 depth=depth_str,

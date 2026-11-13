@@ -5641,6 +5641,19 @@
         "additionalProperties": false,
         "description": "Create request requiring an immutable snapshot binding.",
         "properties": {
+          "architecture_report_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Architecture Report Id"
+          },
           "budget_limit_micros": {
             "default": 5000000,
             "exclusiveMinimum": 0,
@@ -5720,7 +5733,8 @@
           "target_type": {
             "enum": [
               "repository",
-              "finding"
+              "finding",
+              "architecture_report"
             ],
             "title": "Target Type",
             "type": "string"
@@ -6233,7 +6247,8 @@
       "InvestigationMode": {
         "enum": [
           "short_path",
-          "two_specialist"
+          "two_specialist",
+          "report_narrative"
         ],
         "title": "InvestigationMode",
         "type": "string"
