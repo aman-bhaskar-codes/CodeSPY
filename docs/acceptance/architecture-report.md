@@ -103,8 +103,8 @@ Deterministic greedy modularity (Clauset-Newman-Moore) over the resolved file gr
 the directory grouping on the corpus. It raises modularity everywhere there are edges (flask 0.41 vs
 0.11, express 0.49 vs -0.03, petclinic 0.44 vs -0.23, sinatra 0.71 vs 0.50, Slim 0.53 vs -0.10, spdlog
 0.44 vs 0.21, anyhow 0.29 vs 0.03) and usually lowers the share of edges crossing component
-boundaries (express 0.24 vs 0.85, Slim 0.20 vs 0.91, petclinic 0.33 vs 1.00), but not always
-(flask 0.31 vs 0.18, anyhow 0.27 vs 0.47 is better, spdlog 0.40 vs 0.61 is better). It also yields 21 to
+boundaries (express 0.24 vs 0.85, Slim 0.20 vs 0.91, petclinic 0.33 vs 1.00, sinatra 0.08 vs 0.29, spdlog
+0.40 vs 0.61, anyhow 0.27 vs 0.47); flask is the exception (0.31 vs 0.18). It also yields 21 to
 36 small clusters on several repositories, has no meaningful names, and leaves every file a singleton where
 imports are not resolved (gin, Alamofire: 0 edges). Not adopted as the default grouping; a candidate for a
 second "coupling clusters" view once clusters can be named and merged to a readable count.
