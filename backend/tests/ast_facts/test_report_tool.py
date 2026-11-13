@@ -189,7 +189,7 @@ async def test_the_tool_refuses_without_a_pin_across_tenants_and_after_the_repor
 async def test_secret_looking_values_are_redacted_before_they_reach_the_model(
     factory, tmp_path, monkeypatch
 ):
-    from app.services import investigation_tools as module
+    from app.analyzers.graph import report_pages as module
 
     ctx, snapshot, repo, ref = await a_report(factory, tmp_path)
     inv = await seed(factory, ctx, snapshot, repo, ref)

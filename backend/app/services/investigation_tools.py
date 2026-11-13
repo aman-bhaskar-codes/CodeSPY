@@ -26,8 +26,7 @@ from sqlalchemy import select
 from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.analyzers.graph.render import statement_text
-from app.analyzers.graph.statement_ids import statement_ids
+from app.analyzers.graph.report_pages import build_page
 from app.contracts.architecture_report import RepositoryReportV1
 from app.contracts.context_manifest import MemoryContextSettingsV1
 from app.contracts.investigation_execution import (
@@ -207,8 +206,6 @@ REPORT_SECTIONS = (
     "entry_points",
     "coverage",
 )
-REPORT_PAGE_BYTES = 16 * 1024
-REPORT_PAGE_STATEMENTS = 40
 
 TOOL_DEF_READ_REPORT_SECTION = ToolDefinitionV1(
     name=InvestigationToolName.READ_REPORT_SECTION.value,
@@ -887,50 +884,14 @@ class InvestigationToolService(InvestigationToolPort):
             report_digest: str = row[1]
             raw = row[0] if isinstance(row[0], str) else json.dumps(row[0])
             report = RepositoryReportV1.model_validate_json(raw)
-            rows = statement_ids(report).get(section)
-            if rows is None:
+            page = build_page(report, section, offset, self.privacy_policy)
+            if page is None:
                 return InvestigationToolResultV1(
                     status=InvestigationToolStatus.INVALID, omission_reason="unknown_section"
                 )
-            entries: list[dict[str, Any]] = []
-            size = 0
-            index = offset
-            while index < len(rows) and len(entries) < REPORT_PAGE_STATEMENTS:
-                sid, statement = rows[index]
-                params = {
-                    k: (
-                        transform_model_safe(v.encode("utf-8"), self.privacy_policy).safe_text
-                        if isinstance(v, str)
-                        else v
-                    )
-                    for k, v in statement.params.items()
-                }
-                shown = statement.model_copy(update={"params": params})
-                entry = {
-                    "sid": sid,
-                    "kind": statement.kind,
-                    "code": statement.code,
-                    "text": statement_text(shown),
-                    "params": params,
-                }
-                cost = len(canonical_bytes(entry)) + 1
-                if entries and size + cost > REPORT_PAGE_BYTES:
-                    break
-                entries.append(entry)
-                size += cost
-                index += 1
-            next_offset = index if index < len(rows) else None
-            payload = json.dumps(
-                {
-                    "section": section,
-                    "total": len(rows),
-                    "offset": offset,
-                    "next_offset": next_offset,
-                    "statements": entries,
-                },
-                sort_keys=True,
-                separators=(",", ":"),
-            )
+            entries, payload, next_offset = list(page.entries), page.payload, page.next_offset
+            rows_total = page.total
+            index = offset + len(entries)
             excerpt_sha = hashlib.sha256(payload.encode("utf-8")).hexdigest()
             evidence_ids: list[UUID] = []
             for entry in entries:
@@ -942,7 +903,7 @@ class InvestigationToolService(InvestigationToolPort):
                     fact_ref=f"{report_digest}:{entry['sid']}",
                     excerpt_sha256=excerpt_sha,
                     observation_type="report_fact",
-                    coverage_summary=f"{section} statements {offset + 1}-{index} of {len(rows)}",
+                    coverage_summary=f"{section} statements {offset + 1}-{index} of {rows_total}",
                 )
                 await self.evidence_repo.record_evidence(session, evidence)
                 evidence_ids.append(evidence.id)
@@ -956,7 +917,7 @@ class InvestigationToolService(InvestigationToolPort):
             ),
             payload=payload,
             evidence_refs=tuple(evidence_ids),
-            coverage_notes=f"{len(entries)} of {len(rows)} statements of {section}",
+            coverage_notes=f"{len(entries)} of {rows_total} statements of {section}",
             omission_reason="more_statements_available" if next_offset is not None else "",
             result_digest=hashlib.sha256(canonical_bytes(payload)).hexdigest(),
         )
