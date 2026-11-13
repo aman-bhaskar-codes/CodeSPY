@@ -30,7 +30,7 @@ from app.adapters.storage.s3 import S3ObjectStore
 from app.admission.process import DockerAdmissionRunner
 from app.analyzers.runner import DockerAnalysisRunner
 from app.api.application import ApiSettings, ApplicationPorts, create_app
-from app.contracts.ingestion import AdmissionPolicyV1, AdmissionPolicyV3
+from app.contracts.ingestion import AdmissionPolicyV1, AdmissionPolicyV3, AdmissionPolicyV4
 from app.contracts.persistence import RepositoryCreate
 from app.models.phase2_tables import PHASE2_TABLES
 from app.repositories.identity_repository import IdentityRepository
@@ -204,12 +204,14 @@ async def run(args: argparse.Namespace) -> None:
             public_github = GitHubPublicProvider(github_client)
 
         # Opt-in: admit Go/Rust/Java/C/C++/Ruby/PHP/Swift sources (policy source-zip-v3).
-        extended = os.environ.get("CODESPY_ADMISSION_POLICY") == "v3"
+        chosen = os.environ.get("CODESPY_ADMISSION_POLICY")
+        extended = chosen in {"v3", "v4"}
+        policy_class = AdmissionPolicyV4 if chosen == "v4" else AdmissionPolicyV3
 
         def github_service(sessions):
             if public_github is None:
                 return None
-            policy = AdmissionPolicyV3(github_strip_root=True) if extended else None
+            policy = policy_class(github_strip_root=True) if extended else None
             return GitHubAcquisitionService(
                 sessions, store, None, policy=policy, public=public_github
             )
@@ -226,7 +228,7 @@ async def run(args: argparse.Namespace) -> None:
                 store,
                 ctx,
                 github=github_service(api_factory),
-                admission_policy=AdmissionPolicyV3()
+                admission_policy=policy_class()
                 if extended
                 else AdmissionPolicyV1(),
                 readiness=ready,

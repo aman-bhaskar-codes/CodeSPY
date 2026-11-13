@@ -110,3 +110,20 @@ def test_same_archive_yields_identical_archive_digest_under_every_policy():
         )
     }
     assert len(digests) == 1
+
+
+def test_policy_v4_admits_go_mod_only_and_older_policies_do_not():
+    files = [*FILES, ("go.mod", b"module example.com/a\n"), ("go.sum", b"x v1 h1:abc\n")]
+    for policy in (ingestion.AdmissionPolicyV1(), ingestion.AdmissionPolicyV3()):
+        assert not entries(policy, files)["go.mod"].eligible
+    found = entries(ingestion.AdmissionPolicyV4(), files)
+    assert found["go.mod"].eligible and found["go.mod"].language_hint == "gomod"
+    assert not found["go.sum"].eligible and found["main.go"].language_hint == "go"
+    manifest = inspect_zip_bytes(archive(files), ingestion.AdmissionPolicyV4())
+    assert manifest.policy_version == "source-zip-v4"
+    for strip in (True, False):
+        resolved = ingestion.resolve_admission_policy(
+            ingestion.AdmissionPolicyV4(github_strip_root=strip).digest(), github_strip_root=strip
+        )
+        assert isinstance(resolved, ingestion.AdmissionPolicyV4)
+    assert ingestion.AdmissionPolicyV3().digest() != ingestion.AdmissionPolicyV4().digest()

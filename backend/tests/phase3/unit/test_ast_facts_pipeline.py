@@ -223,3 +223,17 @@ def test_manifests_are_read_as_facts_and_materialize(tmp_path):
     assert draft.coverage.requested_files == draft.coverage.processed_files == 6
     result = materialize_facts(ref(), draft, source, tmp_path)
     assert result.batch.disposition == "partial"
+
+
+def test_go_mod_is_read_under_policy_v4(tmp_path):
+    from app.contracts.ingestion import AdmissionPolicyV4
+
+    files = {
+        "go.mod": b"module example.com/app\nrequire github.com/x/y v1.0.0\n",
+        "a.go": b"package a\n",
+    }
+    source = source_input(tmp_path, files, None, AdmissionPolicyV4())
+    draft = analyze_facts(source, tmp_path)
+    by_path = {f.path: f for f in draft.files}
+    assert by_path["go.mod"].manifest.name == "example.com/app"
+    assert [d.name for d in by_path["go.mod"].manifest.dependencies] == ["github.com/x/y"]

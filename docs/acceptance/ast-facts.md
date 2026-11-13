@@ -126,6 +126,11 @@ Delete/PatchMapping`; JPA `@Entity`/`@Table`/`@Id`/`@Column`/`@JoinColumn`, skip
   unchanged, so existing admissions, digests and snapshots are unaffected; V1 and V2 still mark these
   files `unsupported_language`. Snapshots admitted under V1 or V2 must be re-admitted to analyze
   these languages. `.h` is classified as C.
+- **Admission policy `source-zip-v4`.** V3 plus `go.mod`, which is read only as a manifest fact (module
+  path and required module names, no versions). `go.sum` and every other file type stay unsupported. V1 to V3 are
+  unchanged, so their digests and snapshots are unaffected; a snapshot admitted under V3 must be
+  re-admitted to have its `go.mod` read. Enable with `AdmissionPolicyV4()` or
+  `CODESPY_ADMISSION_POLICY=v4` in `scripts/phase2_local.py`.
 - **Enabling V3.** Set `ApplicationPorts.admission_policy` to `AdmissionPolicyV3()` (and pass a V3
   policy to `GitHubAcquisitionService`). `scripts/phase2_local.py` does both when
   `CODESPY_ADMISSION_POLICY=v3`.

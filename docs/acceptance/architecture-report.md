@@ -43,7 +43,7 @@ statement is typed, and what the facts cannot settle is stated as unknown.
 
 ## Limitations
 
-- Resolution is syntactic. Path aliases, bundler configuration, `go.mod`, Cargo workspaces, build
+- Resolution is syntactic. Path aliases, bundler configuration, Cargo features, build, build
   classpaths and Swift package manifests are not read; such imports are unresolved, ambiguous or
   external, never guessed. Swift imports of the repository's own module resolve by directory name, and read as external only when the target name differs from the directory
   (Alamofire: 0 resolved of 191).
@@ -69,9 +69,10 @@ Manifest facts (names only, never executed, no new dependency):
 - Declared dependencies appear as observations with the manifest as evidence, plus a
   `declared_dependencies` table. Declared-versus-imported comparison is not made: import names and
   package names differ too often to state it without guessing.
-- `go.mod` has a parser and exact module-path resolution, but admission policy v3 marks `go.mod` as an
-  unsupported file type, so it is not read until a new admission policy admits it. `Package.swift` is
-  admitted by policy v3 only. Adding manifests changes the facts digest of rows published afterwards.
+- `go.mod` is parsed and resolves Go imports by the declared module path exactly, but only snapshots
+  admitted under policy `source-zip-v4` carry it (see ast-facts acceptance); under V1 to V3 it is
+  an unsupported file and Go keeps the inferred-prefix heuristic. `Package.swift` is admitted by V3 and
+  later. Adding manifests changes the facts digest of rows published afterwards.
 
 Review follow-ups (documented bounds):
 

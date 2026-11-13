@@ -11,6 +11,7 @@ from app.contracts.ingestion import (
     AdmissionPolicy,
     AdmissionPolicyV2,
     AdmissionPolicyV3,
+    AdmissionPolicyV4,
     ArtifactManifestV1,
     ManifestEntryV1,
     Reason,
@@ -224,14 +225,18 @@ def inspect_zip_bytes(
                 path = PurePosixPath(name)
                 parts = {x.casefold() for x in path.parts}
                 language = (
-                    EXTENDED_LANGUAGES if isinstance(policy, AdmissionPolicyV3) else LANGUAGES
+                    EXTENDED_LANGUAGES
+                    if isinstance(policy, (AdmissionPolicyV3, AdmissionPolicyV4))
+                    else LANGUAGES
                 ).get(path.suffix.casefold())
                 lock_metadata = (
-                    isinstance(policy, (AdmissionPolicyV2, AdmissionPolicyV3))
+                    isinstance(policy, (AdmissionPolicyV2, AdmissionPolicyV3, AdmissionPolicyV4))
                     and path.name == "uv.lock"
                 )
                 if lock_metadata:
                     language = "toml"
+                if isinstance(policy, AdmissionPolicyV4) and path.name == "go.mod":
+                    language = "gomod"
                 reason: Reason | None = None
                 if path.name.casefold() in {
                     ".env",
@@ -245,7 +250,7 @@ def inspect_zip_bytes(
                 elif path.suffix.casefold() in {".zip", ".tar", ".gz", ".asar", ".jar"}:
                     reason = "nested_archive"
                 elif size > policy.eligible_file_bytes or (
-                    isinstance(policy, (AdmissionPolicyV2, AdmissionPolicyV3))
+                    isinstance(policy, (AdmissionPolicyV2, AdmissionPolicyV3, AdmissionPolicyV4))
                     and lock_metadata
                     and size > policy.metadata_file_bytes
                 ):
