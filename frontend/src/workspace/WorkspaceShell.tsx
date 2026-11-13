@@ -23,6 +23,7 @@ import { ThemeProvider, ThemeToggle } from "../theme/ThemeProvider";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Button } from "../ui/Button";
 import styles from "./WorkspaceShell.module.css";
+import { EditorTabs } from "./EditorTabs";
 import { Splitter } from "./Splitter";
 import {
   SIDEBAR_MAX,
@@ -298,14 +299,23 @@ function ShellContent({
             onReset={layout.resetSidebarWidth}
           />
         </aside>
-        <main
-          id="workspace-content"
-          tabIndex={-1}
-          className={styles.main}
-          data-part="editor"
-        >
-          {children}
-        </main>
+        <div className={styles.editorArea}>
+          <EditorTabs
+            active={active}
+            labels={{
+              ...Object.fromEntries(destinations.map((d) => [d.id, d.label])),
+              "source-title": "Source",
+            }}
+          />
+          <main
+            id="workspace-content"
+            tabIndex={-1}
+            className={styles.main}
+            data-part="editor"
+          >
+            {children}
+          </main>
+        </div>
         <footer className={styles.footer} data-part="status" tabIndex={-1}>
           <span className={styles.statusItems}>
             <span>{sessionLabel}</span>

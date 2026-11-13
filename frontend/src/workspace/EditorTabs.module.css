@@ -1,0 +1,82 @@
+.strip {
+  display: flex;
+  min-height: 35px;
+  overflow-x: auto;
+  background: var(--cs-tab-inactive);
+  border-bottom: 1px solid var(--cs-border);
+  scrollbar-width: thin;
+}
+.tab {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  max-width: 220px;
+  background: var(--cs-tab-inactive);
+  border-right: 1px solid var(--cs-border);
+  color: var(--cs-muted);
+}
+.tab[data-active] {
+  background: var(--cs-tab-active);
+  color: var(--cs-text);
+  box-shadow: inset 0 1px 0 var(--cs-focus);
+}
+.label,
+.close {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 35px;
+  padding: 0 6px 0 12px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.label > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.close {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.label {
+  min-height: 35px;
+  padding: 0 4px 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.close {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 4px;
+  opacity: 0.6;
+}
+.tab:hover .close,
+.tab[data-active] .close,
+.label:focus-visible .close {
+  opacity: 1;
+}
+.close:hover {
+  background: var(--cs-raised);
+}
+.label:focus-visible {
+  outline: 1px solid var(--cs-focus);
+  outline-offset: -2px;
+}
