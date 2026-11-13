@@ -186,3 +186,16 @@ def test_markdown_cannot_be_structured_by_control_characters():
     files = {"a\r# forged.py": "", "main.py": "import os\n"}
     report, _ = build(files)
     assert "\r" not in render_markdown(report)
+
+
+def test_graph_pages_reuse_the_component_grouping(monkeypatch):
+    from app.analyzers.graph import render
+
+    report, _ = build()
+    calls = []
+    real = render.analyze
+    monkeypatch.setattr(render, "analyze", lambda g: calls.append(1) or real(g))
+    render._GROUPS.clear()
+    first = render.graph_page(report, 0, 5)
+    second = render.graph_page(report, 5, 5)
+    assert len(calls) == 1 and first.nodes_total == second.nodes_total

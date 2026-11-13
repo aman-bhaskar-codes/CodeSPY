@@ -68,7 +68,7 @@ Review follow-ups (documented bounds):
   the viewer shows failures, stops polling, and the Prepare button retries them.
 - Graph analytics keep a wall-clock budget; on a very slow machine an exhausted budget is recorded
   as a disposition in the report, so the stored report is what that machine produced.
-- `/graph` pages recompute the analytics for each request.
+- `/graph` pages reuse a cached component grouping (16 reports, keyed by inputs digest).
 
 ## Verification
 

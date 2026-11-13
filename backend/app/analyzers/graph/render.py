@@ -1,6 +1,7 @@
 # ruff: noqa: E501
 """Deterministic Markdown and graph payload for an architecture report."""
 
+from collections import OrderedDict
 from typing import Any
 
 from app.analyzers.graph.analytics import analyze
@@ -135,9 +136,27 @@ def render_markdown(report: RepositoryReportV1) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+_GROUPS: OrderedDict[str, dict[str, str]] = OrderedDict()
+_GROUPS_KEPT = 16
+
+
+def _components(report: RepositoryReportV1) -> dict[str, str]:
+    """Component assignment per file node; a pure function of the graph, so cached by its inputs."""
+    key = report.inputs_digest
+    found = _GROUPS.get(key)
+    if found is None:
+        found = analyze(report.graph).component_by_file
+        _GROUPS[key] = found
+        while len(_GROUPS) > _GROUPS_KEPT:
+            _GROUPS.popitem(last=False)
+    else:
+        _GROUPS.move_to_end(key)
+    return found
+
+
 def graph_payload(report: RepositoryReportV1) -> dict[str, Any]:
     """D3-compatible ``{nodes, links}`` for resolved and external edges; unknowns are counted."""
-    components = analyze(report.graph).component_by_file
+    components = _components(report)
     counts = report.graph.counts()
     return {
         "nodes": [
