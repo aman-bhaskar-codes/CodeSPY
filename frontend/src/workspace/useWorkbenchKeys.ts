@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const PARTS = ["activity", "sidebar", "editor", "status"] as const;
+const PARTS = ["activity", "sidebar", "editor", "panel", "status"] as const;
 export type WorkbenchPart = (typeof PARTS)[number];
 
 function editable(target: EventTarget | null): boolean {
@@ -39,6 +39,8 @@ export function useWorkbenchKeys(
   rootRef: { current: HTMLElement | null },
   toggleSidebar: () => void,
   sidebarVisible: boolean,
+  togglePanel: () => void,
+  panelVisible: boolean,
 ) {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -55,13 +57,28 @@ export function useWorkbenchKeys(
         toggleSidebar();
         return;
       }
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        !event.shiftKey &&
+        !event.altKey &&
+        event.key.toLowerCase() === "j" &&
+        !editable(event.target)
+      ) {
+        event.preventDefault();
+        togglePanel();
+        return;
+      }
       if (event.key === "F6" && !event.ctrlKey && !event.metaKey) {
         if (
           event.target instanceof HTMLElement &&
           event.target.closest("[role='dialog']")
         )
           return;
-        const parts = PARTS.filter((p) => p !== "sidebar" || sidebarVisible);
+        const parts = PARTS.filter(
+          (p) =>
+            (p !== "sidebar" || sidebarVisible) &&
+            (p !== "panel" || panelVisible),
+        );
         const now = currentPart(root);
         const index = now ? parts.indexOf(now) : -1;
         const next =
@@ -74,5 +91,5 @@ export function useWorkbenchKeys(
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [rootRef, toggleSidebar, sidebarVisible]);
+  }, [rootRef, toggleSidebar, sidebarVisible, togglePanel, panelVisible]);
 }

@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   Braces,
+  CircleAlert,
   FileCode2,
   FileText,
   Files,
@@ -23,6 +24,7 @@ import { ThemeProvider, ThemeToggle } from "../theme/ThemeProvider";
 import { StatusBadge } from "../ui/StatusBadge";
 import { Button } from "../ui/Button";
 import styles from "./WorkspaceShell.module.css";
+import { BottomPanel } from "./BottomPanel";
 import { EditorTabs } from "./EditorTabs";
 import { Splitter } from "./Splitter";
 import {
@@ -32,6 +34,7 @@ import {
   useWorkbenchLayout,
 } from "./useWorkbenchLayout";
 import { useWorkbenchKeys } from "./useWorkbenchKeys";
+import { useWorkbenchObserver } from "./useWorkbenchObserver";
 
 export interface WorkspaceDestination {
   id: string;
@@ -178,7 +181,15 @@ function ShellContent({
   }[sessionState];
   const rootRef = useRef<HTMLDivElement>(null);
   const layout = useWorkbenchLayout();
-  useWorkbenchKeys(rootRef, layout.toggleSidebar, layout.sidebarVisible);
+  const mainRef = useRef<HTMLElement>(null);
+  const { problems, output } = useWorkbenchObserver(mainRef);
+  useWorkbenchKeys(
+    rootRef,
+    layout.toggleSidebar,
+    layout.sidebarVisible,
+    layout.togglePanel,
+    layout.panelVisible,
+  );
   const activeLabel = destinations.find((d) => d.id === active)?.label;
   return (
     <WorkspaceView.Provider value={active}>
@@ -308,6 +319,7 @@ function ShellContent({
             }}
           />
           <main
+            ref={mainRef}
             id="workspace-content"
             tabIndex={-1}
             className={styles.main}
@@ -315,6 +327,18 @@ function ShellContent({
           >
             {children}
           </main>
+          {layout.panelVisible && (
+            <BottomPanel
+              height={layout.panelHeight}
+              tab={layout.panelTab}
+              problems={problems}
+              output={output}
+              onTab={layout.showPanel}
+              onHeight={layout.setPanelHeight}
+              onResetHeight={layout.resetPanelHeight}
+              onClose={layout.togglePanel}
+            />
+          )}
         </div>
         <footer className={styles.footer} data-part="status" tabIndex={-1}>
           <span className={styles.statusItems}>
@@ -323,9 +347,27 @@ function ShellContent({
             {snapshotId && <span>Snapshot {snapshotId.slice(0, 8)}</span>}
             {activeLabel && <span>{activeLabel}</span>}
           </span>
-          <span>
-            <span className={styles.evidenceDot} aria-hidden="true" /> Source
-            files are read-only
+          <span className={styles.statusActions}>
+            <button
+              type="button"
+              onClick={() => layout.showPanel("problems")}
+              aria-label={`Problems: ${problems.length}`}
+              title="Show problems"
+            >
+              <CircleAlert size={12} aria-hidden="true" /> {problems.length}
+            </button>
+            <button
+              type="button"
+              onClick={layout.togglePanel}
+              aria-expanded={layout.panelVisible}
+              title="Toggle panel (Ctrl+J)"
+            >
+              Panel
+            </button>
+            <span>
+              <span className={styles.evidenceDot} aria-hidden="true" /> Source
+              files are read-only
+            </span>
           </span>
         </footer>
       </div>
