@@ -344,7 +344,7 @@ export type AstFileSummaryV1 = {
     /**
      * Language
      */
-    language: 'python' | 'javascript' | 'jsx' | 'typescript' | 'tsx' | 'go' | 'rust' | 'java' | 'c' | 'cpp' | 'ruby' | 'php' | 'swift';
+    language: 'python' | 'javascript' | 'jsx' | 'typescript' | 'tsx' | 'go' | 'rust' | 'java' | 'c' | 'cpp' | 'ruby' | 'php' | 'swift' | 'manifest';
     /**
      * Path
      */
@@ -1517,7 +1517,7 @@ export type EvidenceRefV1 = {
     /**
      * Fact
      */
-    fact: 'file' | 'import' | 'export' | 'route' | 'model' | 'config' | 'symbol';
+    fact: 'file' | 'import' | 'export' | 'route' | 'model' | 'config' | 'symbol' | 'manifest';
     /**
      * File Id
      */
@@ -1642,7 +1642,8 @@ export type FileFactsV1 = {
     /**
      * Language
      */
-    language: 'python' | 'javascript' | 'jsx' | 'typescript' | 'tsx' | 'go' | 'rust' | 'java' | 'c' | 'cpp' | 'ruby' | 'php' | 'swift';
+    language: 'python' | 'javascript' | 'jsx' | 'typescript' | 'tsx' | 'go' | 'rust' | 'java' | 'c' | 'cpp' | 'ruby' | 'php' | 'swift' | 'manifest';
+    manifest?: ManifestFactV1 | null;
     /**
      * Models
      */
@@ -3892,6 +3893,52 @@ export type LexicalSearchRequestV1 = {
      */
     query: string;
     scope?: SearchScopeV1 | null;
+};
+
+/**
+ * ManifestDependencyV1
+ */
+export type ManifestDependencyV1 = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Scope
+     */
+    scope?: 'runtime' | 'dev';
+};
+
+/**
+ * ManifestFactV1
+ *
+ * A package manifest reduced to names: no versions, URLs, scripts or credentials.
+ */
+export type ManifestFactV1 = {
+    /**
+     * Dependencies
+     */
+    dependencies?: Array<ManifestDependencyV1>;
+    /**
+     * Ecosystem
+     */
+    ecosystem: 'go' | 'cargo' | 'npm' | 'python' | 'swift';
+    /**
+     * Members
+     */
+    members?: Array<string>;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Targets
+     */
+    targets?: Array<string>;
+    /**
+     * Truncated
+     */
+    truncated?: boolean;
 };
 
 /**

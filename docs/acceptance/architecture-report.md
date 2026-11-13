@@ -49,13 +49,29 @@ statement is typed, and what the facts cannot settle is stated as unknown.
   (Alamofire: 0 resolved of 191).
 - Rust `mod x;` declarations are import facts (`self::x`, resolved to `x.rs` or `x/mod.rs`); inline
   modules are not. Files under `tests/`, `examples/` and `benches/` are their own crate roots. anyhow went from 27 to 50 resolved internal imports and from 7 to 1 unresolved.
-- Component boundaries are a directory-based heuristic. Package manifests are not parsed: the stack is
-  inferred from imports and framework facts.
+- Component boundaries are a directory-based heuristic. Manifests are read for names only (see below); the
+  stack is otherwise inferred from imports and framework facts.
 - The model-written narrative (component analysis and synthesis) is not built; it needs the Bedrock
   runtime composed and qualified, and will attach to the report as inference unless verified.
 - The coordinator relies on the existing analysis runtime; a large snapshot needs several shard jobs
   and the organization's pending-job quota (default 20) bounds how many exist at once.
 - No retry or rebuild route: building again from the same facts returns the same report.
+
+Manifest facts (names only, never executed, no new dependency):
+
+- `Cargo.toml`, `package.json`, `pyproject.toml` and `Package.swift` are read as `manifest` file facts
+  (`ManifestFactV1`: ecosystem, package name, dependency names with runtime/dev scope, workspace members,
+  targets; capped at 512 dependencies). Versions, URLs, scripts and credentials are dropped. A manifest
+  that does not parse is a partial file and the report says what it declares is unknown.
+- They resolve own-package imports exactly: npm workspace package names to their directory and Cargo
+  crate names (including workspace members) to the crate root. anyhow went from 50 to 71 resolved
+  internal imports with its workspace crates recognised.
+- Declared dependencies appear as observations with the manifest as evidence, plus a
+  `declared_dependencies` table. Declared-versus-imported comparison is not made: import names and
+  package names differ too often to state it without guessing.
+- `go.mod` has a parser and exact module-path resolution, but admission policy v3 marks `go.mod` as an
+  unsupported file type, so it is not read until a new admission policy admits it. `Package.swift` is
+  admitted by policy v3 only. Adding manifests changes the facts digest of rows published afterwards.
 
 Review follow-ups (documented bounds):
 
@@ -92,7 +108,7 @@ Owned disposable PostgreSQL 16 at schema head:
 | expressjs/express | 142 | 160 | 0 | 245 | 0 | 30 | 0 | 180 KiB | 2 |
 | gin-gonic/gin | 99 | 31 | 0 | 490 | 0 | 7 | 0 | 210 KiB | 1 |
 | spring-projects/spring-petclinic | 50 | 24 | 0 | 451 | 0 | 6 | 0 | 269 KiB | 1 |
-| dtolnay/anyhow | 37 | 50 | 0 | 98 | 1 | 7 | 1 | 63 KiB | 1 |
+| dtolnay/anyhow | 39 | 71 | 0 | 76 | 1 | 7 | 1 | 63 KiB | 1 |
 | antirez/kilo | 1 | 0 | 0 | 15 | 0 | 1 | 0 | 10 KiB | 1 |
 | gabime/spdlog | 154 | 446 | 0 | 380 | 2 | 11 | 21 | 366 KiB | 2 |
 | sinatra/sinatra | 147 | 130 | 0 | 62 | 0 | 8 | 0 | 110 KiB | 2 |

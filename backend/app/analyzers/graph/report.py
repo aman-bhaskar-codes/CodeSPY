@@ -192,9 +192,51 @@ def _components(a: Analytics) -> SectionV1:
     )
 
 
-def _dependencies(files: Sequence[FileEntry], graph: DependencyGraphV1, a: Analytics) -> SectionV1:
+def _manifests(
+    manifests: Sequence[FileEntry],
+) -> tuple[list[StatementV1], list[tuple[Scalar, ...]]]:
+    statements: list[StatementV1] = []
+    rows: list[tuple[Scalar, ...]] = []
+    unparsed = []
+    for entry in manifests:
+        fact = entry.facts.manifest
+        if fact is None:
+            unparsed.append(_ref(entry, "manifest", None))
+            continue
+        runtime = sum(1 for d in fact.dependencies if d.scope == "runtime")
+        if len(statements) < 20:
+            statements.append(
+                _statement(
+                    "observation",
+                    "manifest.declared",
+                    {
+                        "path": entry.path[:512],
+                        "name": fact.name or "(unnamed)",
+                        "ecosystem": fact.ecosystem,
+                        "runtime": runtime,
+                        "dev": len(fact.dependencies) - runtime,
+                    },
+                    [_ref(entry, "manifest", None)],
+                )
+            )
+        rows.extend((entry.path[:512], fact.ecosystem, d.name, d.scope) for d in fact.dependencies)
+    if unparsed:
+        statements.append(
+            _statement("unknown", "manifest.unparsed", {"count": len(unparsed)}, unparsed)
+        )
+    return statements, rows
+
+
+def _dependencies(
+    files: Sequence[FileEntry],
+    graph: DependencyGraphV1,
+    a: Analytics,
+    manifests: Sequence[FileEntry] = (),
+) -> SectionV1:
     counts = graph.counts()
+    declared, declared_rows = _manifests(manifests)
     statements = [
+        *declared,
         _statement("derivation", "dependencies.counts", dict(counts)),
         _statement("derivation", "dependencies.external", {"packages": len(a.external)}),
     ]
@@ -243,6 +285,9 @@ def _dependencies(files: Sequence[FileEntry], graph: DependencyGraphV1, a: Analy
         )
     modules = Counter(e.module for e in unresolved)
     tables = (
+        _table(
+            "declared_dependencies", ("manifest", "ecosystem", "dependency", "scope"), declared_rows
+        ),
         _table(
             "hubs_imported",
             ("file", "importers"),
@@ -350,7 +395,7 @@ def _entries(files: Sequence[FileEntry], a: Analytics) -> SectionV1:
 LIMITATIONS = (
     "limitation.syntax_only",
     "limitation.aliases_and_build_configuration",
-    "limitation.no_manifests",
+    "limitation.manifests_names_only",
     "limitation.config_values_not_recorded",
     "limitation.component_grouping_is_heuristic",
 )
@@ -425,18 +470,20 @@ def assemble_report(
     omitted_files: int,
     fact_runs: tuple[UUID, ...],
 ) -> RepositoryReportV1:
-    ordered = sorted(files, key=lambda f: f.path)
-    graph = build_graph(ordered, inventory)
+    everything = sorted(files, key=lambda f: f.path)
+    manifests = [f for f in everything if f.language == "manifest"]
+    ordered = [f for f in everything if f.language != "manifest"]
+    graph = build_graph(ordered, inventory, manifests)
     analytics = analyze(graph)
-    partial = sum(1 for f in ordered if f.facts.status == "partial")
+    partial = sum(1 for f in everything if f.facts.status == "partial")
     coverage = CoverageV1(
-        eligible_files=max(eligible_files, len(ordered)),
-        analyzed_files=len(ordered),
+        eligible_files=max(eligible_files, len(everything)),
+        analyzed_files=len(everything),
         partial_files=partial,
         omitted_files=omitted_files,
         fact_runs=tuple(sorted(fact_runs)),
     )
-    digests = tuple(FileFactsV1.facts_sha256(f.facts) for f in ordered)
+    digests = tuple(FileFactsV1.facts_sha256(f.facts) for f in everything)
     report = RepositoryReportV1(
         org_id=org_id,
         repository_id=repository_id,
@@ -447,7 +494,7 @@ def assemble_report(
         sections=(
             _overview(ordered, graph, _frameworks(ordered, graph)),
             _components(analytics),
-            _dependencies(ordered, graph, analytics),
+            _dependencies(ordered, graph, analytics, manifests),
             _api(ordered),
             _data(ordered),
             _config(ordered),

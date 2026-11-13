@@ -13,7 +13,8 @@ from typing import Any
 from uuid import uuid4
 
 from app.admission.zip_inventory import inspect_zip_bytes
-from app.analyzers.facts import FACT_LANGUAGES, extract_facts
+from app.analyzers.facts import FACT_UNIT_LANGUAGES, extract_facts
+from app.analyzers.facts.manifests import is_manifest
 from app.analyzers.graph import FileEntry
 from app.analyzers.graph.analytics import analyze
 from app.analyzers.graph.render import render_markdown
@@ -44,7 +45,9 @@ def load_entries(path: Path) -> tuple[list[FileEntry], list[str], dict[str, int]
                 continue
             inventory.append(rel)
             language = FACT_DIALECTS.get(Path(rel).suffix.casefold())
-            if language not in FACT_LANGUAGES:
+            if language is None and is_manifest(rel):
+                language = "manifest"
+            if language not in FACT_UNIT_LANGUAGES:
                 continue
             raw = archive.read(info)
             sizes[rel] = len(raw)

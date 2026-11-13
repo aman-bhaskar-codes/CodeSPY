@@ -199,3 +199,27 @@ def test_v3_archives_expose_new_languages_to_facts_but_not_to_structural(tmp_pat
     )
     structural_units = AdmittedSourceReader(structural, other).read_selected()
     assert [u.path for u in structural_units] == ["a.py"]  # structural dialects are unchanged
+
+
+def test_manifests_are_read_as_facts_and_materialize(tmp_path):
+    files = {
+        **FILES,
+        "Cargo.toml": b'[package]\nname = "app"\n[dependencies]\nserde = "1"\n',
+        "web/package.json": b'{"name": "web", "dependencies": {"react": "18"}}',
+        "bad/pyproject.toml": b"[package",
+    }
+    source = source_input(tmp_path, files)
+    draft = analyze_facts(source, tmp_path)
+    by_path = {f.path: f for f in draft.files}
+    assert (
+        by_path["Cargo.toml"].language == "manifest"
+        and by_path["Cargo.toml"].manifest.name == "app"
+    )
+    assert [d.name for d in by_path["web/package.json"].manifest.dependencies] == ["react"]
+    assert (
+        by_path["bad/pyproject.toml"].status == "partial"
+        and by_path["bad/pyproject.toml"].manifest is None
+    )
+    assert draft.coverage.requested_files == draft.coverage.processed_files == 6
+    result = materialize_facts(ref(), draft, source, tmp_path)
+    assert result.batch.disposition == "partial"

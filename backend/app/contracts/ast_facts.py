@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import Field, model_validator
 
-from app.contracts.structure import Hash, Language, StructuralCoverageV1
+from app.contracts.structure import Hash, StructuralCoverageV1, UnitLanguage
 from app.domain.canonical_json import semantic_digest
 from app.domain.scope import Contract
 from app.domain.source_ranges import SourceRangeV1
@@ -108,6 +108,22 @@ class ConfigFactV1(Contract):
     range: SourceRangeV1
 
 
+class ManifestDependencyV1(Contract):
+    name: str = Field(min_length=1, max_length=256)
+    scope: Literal["runtime", "dev"] = "runtime"
+
+
+class ManifestFactV1(Contract):
+    """A package manifest reduced to names: no versions, URLs, scripts or credentials."""
+
+    ecosystem: Literal["go", "cargo", "npm", "python", "swift"]
+    name: str | None = Field(default=None, max_length=256)
+    dependencies: tuple[ManifestDependencyV1, ...] = Field(default=(), max_length=512)
+    members: tuple[str, ...] = Field(default=(), max_length=64)
+    targets: tuple[str, ...] = Field(default=(), max_length=64)
+    truncated: bool = False
+
+
 class DiagnosticFactV1(Contract):
     code: Literal["syntax_error", "fact_capacity", "unsupported_construct"]
     message: str = Field(max_length=256)
@@ -119,7 +135,7 @@ class FileFactsV1(Contract):
     file_id: UUID
     path: str = Field(min_length=1, max_length=1024)
     sha256: Hash
-    language: Language
+    language: UnitLanguage
     grammar: str = Field(min_length=1, max_length=128)
     status: Literal["parsed", "partial"]
     error_nodes: int = Field(default=0, ge=0)
@@ -129,6 +145,7 @@ class FileFactsV1(Contract):
     routes: tuple[RouteFactV1, ...] = Field(default=(), max_length=256)
     models: tuple[ModelFactV1, ...] = Field(default=(), max_length=256)
     config: tuple[ConfigFactV1, ...] = Field(default=(), max_length=1024)
+    manifest: ManifestFactV1 | None = None
     diagnostics: tuple[DiagnosticFactV1, ...] = Field(default=(), max_length=64)
 
     @model_validator(mode="after")
@@ -163,7 +180,7 @@ class AstDraftV1(Contract):
 class AstFileSummaryV1(Contract):
     file_id: UUID
     path: str
-    language: Language
+    language: UnitLanguage
     status: Literal["parsed", "partial"]
     facts_sha256: Hash
     symbols: int = Field(ge=0)

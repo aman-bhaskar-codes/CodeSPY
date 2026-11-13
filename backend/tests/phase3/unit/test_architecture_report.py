@@ -199,3 +199,26 @@ def test_graph_pages_reuse_the_component_grouping(monkeypatch):
     first = render.graph_page(report, 0, 5)
     second = render.graph_page(report, 5, 5)
     assert len(calls) == 1 and first.nodes_total == second.nodes_total
+
+
+def test_manifests_become_declared_observations_and_not_graph_nodes():
+    files = {
+        "go.mod": "module example.com/app\nrequire github.com/gin-gonic/gin v1.9.1\n",
+        "bad/Cargo.toml": "[package",
+        "main.go": 'package main\nimport "github.com/gin-gonic/gin"\n',
+    }
+    report, _ = build(files, inventory=list(files))
+    deps = statements(report, "dependencies")
+    declared = [s for s in deps if s.code == "manifest.declared"]
+    assert len(declared) == 1 and declared[0].kind == "observation" and declared[0].evidence
+    assert any(s.code == "manifest.unparsed" and s.kind == "unknown" for s in deps)
+    assert all(n.language != "manifest" for n in report.graph.nodes)
+    assert report.coverage.analyzed_files == 3 and report.coverage.partial_files == 1
+    blob = json.dumps(report.model_dump(mode="json"))
+    assert "v1.9.1" not in blob
+    table = next(
+        t
+        for t in next(s for s in report.sections if s.name == "dependencies").tables
+        if t.name == "declared_dependencies"
+    )
+    assert ("go.mod", "go", "github.com/gin-gonic/gin", "runtime") in table.rows

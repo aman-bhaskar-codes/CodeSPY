@@ -89,7 +89,7 @@ function report(): RepositoryReportV1 {
         statements: [
           {
             kind: "unknown",
-            code: "limitation.no_manifests",
+            code: "limitation.manifests_names_only",
             params: {},
             evidence: [],
             evidence_total: 0,
@@ -193,7 +193,7 @@ const templates = {
     "overview.files": "{analyzed} source files were analyzed.",
     "stack.framework":
       "{framework} appears to be used (imported by {files} files).",
-    "limitation.no_manifests": "Package manifests are not parsed.",
+    "limitation.manifests_names_only": "Package manifests are not parsed.",
   },
 };
 

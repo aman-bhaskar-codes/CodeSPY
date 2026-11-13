@@ -99,7 +99,7 @@
         "min_models": 0
       },
       "report_floors": {
-        "min_resolved": 45,
+        "min_resolved": 65,
         "max_unresolved_permille": 40,
         "max_ambiguous_permille": 50,
         "min_components": 4,

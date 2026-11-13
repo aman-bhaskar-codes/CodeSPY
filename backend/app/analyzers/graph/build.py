@@ -2,9 +2,10 @@
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
-from app.analyzers.graph.index import EXTERNAL, FILE, PACKAGE, PathIndex
+from app.analyzers.graph.index import EXTERNAL, FILE, PACKAGE, PathIndex, parent
 from app.analyzers.graph.resolvers import RESOLVERS, Ctx, Outcome
 from app.contracts.architecture_report import (
     MAX_EDGES,
@@ -33,11 +34,35 @@ def _label(node_id: str) -> str:
     return node_id.split(":", 1)[1] if ":" in node_id else node_id
 
 
-def build_graph(files: Sequence[FileEntry], inventory: Iterable[str] = ()) -> DependencyGraphV1:
+def declared_identity(manifests: Iterable[FileEntry]) -> dict[str, Any]:
+    """Package identity (Go modules, npm workspace packages, Cargo crates) from manifest facts."""
+    go_modules: list[tuple[str, str]] = []
+    npm: dict[str, str] = {}
+    cargo: dict[str, str] = {}
+    for entry in sorted(manifests, key=lambda m: m.path):
+        fact = entry.facts.manifest
+        if fact is None or not fact.name:
+            continue
+        directory = parent(entry.path)
+        if fact.ecosystem == "go":
+            go_modules.append((fact.name, directory))
+        elif fact.ecosystem == "npm":
+            npm.setdefault(fact.name, directory)
+        elif fact.ecosystem == "cargo":
+            cargo.setdefault(fact.name.replace("-", "_"), directory)
+    return {"go_modules": go_modules, "npm_packages": npm, "cargo_crates": cargo}
+
+
+def build_graph(
+    files: Sequence[FileEntry],
+    inventory: Iterable[str] = (),
+    manifests: Sequence[FileEntry] = (),
+) -> DependencyGraphV1:
     """Resolve every import fact; the result depends only on the facts and the inventory."""
     ordered = sorted(files, key=lambda f: f.path)
     index = PathIndex.build((f.path for f in ordered), inventory)
     states: dict[str, dict[str, object]] = {}
+    declared = declared_identity(manifests)
 
     def resolve_all(emit: bool) -> list[tuple[FileEntry, int, Outcome, str]]:
         found: list[tuple[FileEntry, int, Outcome, str]] = []
@@ -45,7 +70,7 @@ def build_graph(files: Sequence[FileEntry], inventory: Iterable[str] = ()) -> De
             resolver = RESOLVERS.get(entry.language)
             if resolver is None:
                 continue
-            ctx = Ctx(entry.path, index, states.setdefault(entry.language, {}))
+            ctx = Ctx(entry.path, index, states.setdefault(entry.language, {}), declared)
             for position, imp in enumerate(entry.facts.imports):
                 for outcome in resolver(imp, ctx):
                     if emit:

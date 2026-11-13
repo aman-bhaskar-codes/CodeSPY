@@ -596,7 +596,8 @@
               "cpp",
               "ruby",
               "php",
-              "swift"
+              "swift",
+              "manifest"
             ],
             "title": "Language",
             "type": "string"
@@ -2933,7 +2934,8 @@
               "route",
               "model",
               "config",
-              "symbol"
+              "symbol",
+              "manifest"
             ],
             "title": "Fact",
             "type": "string"
@@ -3206,10 +3208,21 @@
               "cpp",
               "ruby",
               "php",
-              "swift"
+              "swift",
+              "manifest"
             ],
             "title": "Language",
             "type": "string"
+          },
+          "manifest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ManifestFactV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "models": {
             "default": [],
@@ -7529,6 +7542,97 @@
           "query"
         ],
         "title": "LexicalSearchRequestV1",
+        "type": "object"
+      },
+      "ManifestDependencyV1": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "scope": {
+            "default": "runtime",
+            "enum": [
+              "runtime",
+              "dev"
+            ],
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ManifestDependencyV1",
+        "type": "object"
+      },
+      "ManifestFactV1": {
+        "additionalProperties": false,
+        "description": "A package manifest reduced to names: no versions, URLs, scripts or credentials.",
+        "properties": {
+          "dependencies": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ManifestDependencyV1"
+            },
+            "maxItems": 512,
+            "title": "Dependencies",
+            "type": "array"
+          },
+          "ecosystem": {
+            "enum": [
+              "go",
+              "cargo",
+              "npm",
+              "python",
+              "swift"
+            ],
+            "title": "Ecosystem",
+            "type": "string"
+          },
+          "members": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "title": "Members",
+            "type": "array"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "targets": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "title": "Targets",
+            "type": "array"
+          },
+          "truncated": {
+            "default": false,
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ecosystem"
+        ],
+        "title": "ManifestFactV1",
         "type": "object"
       },
       "MemoryCreateRequestV1": {

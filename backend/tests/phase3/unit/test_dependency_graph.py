@@ -15,7 +15,7 @@ from app.contracts.structure import AnalysisBudget, SourceUnitV1
 def entries(files: dict[str, str]) -> list[FileEntry]:
     result = []
     for path, text in files.items():
-        language = FACT_DIALECTS[Path(path).suffix.casefold()]
+        language = FACT_DIALECTS.get(Path(path).suffix.casefold(), "manifest")
         data = text.encode()
         unit = SourceUnitV1(
             file_id=uuid4(),
@@ -30,8 +30,16 @@ def entries(files: dict[str, str]) -> list[FileEntry]:
     return result
 
 
+def split(files: dict[str, str]):
+    items = entries(files)
+    return [e for e in items if e.language != "manifest"], [
+        e for e in items if e.language == "manifest"
+    ]
+
+
 def summarize(files: dict[str, str], inventory=()):
-    graph = build_graph(entries(files), inventory)
+    sources, manifests = split(files)
+    graph = build_graph(sources, inventory, manifests)
     out: dict[str, list[tuple]] = {}
     for e in graph.edges:
         source = e.source.removeprefix("file:")
@@ -323,3 +331,49 @@ def test_rust_integration_tests_are_their_own_crate_root():
     assert any(
         e.resolution == "resolved" and e.target == "file:tests/common/mod.rs" for e in graph.edges
     )
+
+
+def resolutions(files, inventory=()):
+    sources, manifests = split(files)
+    graph = build_graph(sources, inventory, manifests)
+    return {(e.module, e.resolution, e.target) for e in graph.edges}
+
+
+def test_go_mod_module_path_resolves_exactly_even_without_other_evidence():
+    got = resolutions(
+        {
+            "go.mod": "module example.com/acme/app\n",
+            "cmd/main.go": 'package main\nimport (\n"example.com/acme/app/internal/db"\n"example.com/acme/app/missing"\n"github.com/x/y"\n)\n',
+            "internal/db/db.go": "package db\n",
+        }
+    )
+    assert ("example.com/acme/app/internal/db", "resolved", "pkg:internal/db") in got
+    assert ("example.com/acme/app/missing", "unresolved", None) in got
+    assert ("github.com/x/y", "external", "ext:go:github.com/x/y") in got
+
+
+def test_npm_workspace_package_names_resolve_to_their_directory():
+    got = resolutions(
+        {
+            "package.json": '{"name": "root", "workspaces": ["packages/*"]}',
+            "packages/ui/package.json": '{"name": "@acme/ui"}',
+            "packages/ui/index.ts": "export const a = 1;\n",
+            "packages/app/src/main.ts": 'import { a } from "@acme/ui/button";\nimport x from "react";\n',
+        }
+    )
+    assert ("@acme/ui/button", "resolved", "pkg:packages/ui") in got
+    assert ("react", "external", "ext:js:react") in got
+
+
+def test_cargo_crate_names_resolve_across_a_workspace():
+    got = resolutions(
+        {
+            "crates/core/Cargo.toml": '[package]\nname = "my-core"\n',
+            "crates/core/src/lib.rs": "pub mod util;\n",
+            "crates/core/src/util.rs": "pub fn f() {}\n",
+            "crates/cli/Cargo.toml": '[package]\nname = "cli"\n',
+            "crates/cli/src/main.rs": "use my_core::util::f;\nuse serde::Serialize;\n",
+        }
+    )
+    assert ("my_core::util::f", "resolved", "file:crates/core/src/util.rs") in got
+    assert ("serde::Serialize", "external", "ext:rust:serde") in got

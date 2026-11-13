@@ -10,6 +10,7 @@ generated code) is ``unresolved`` and therefore *unknown*, not absent.
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 from app.analyzers.graph.index import (
     FILE,
@@ -36,6 +37,10 @@ class Ctx:
     path: str
     index: PathIndex
     state: dict[str, object] = field(default_factory=dict)
+    # Declared package identity read from manifests, shared by every language of one build:
+    # ``go_modules`` [(module path, directory)], ``npm_packages`` {name: directory},
+    # ``cargo_crates`` {crate name: crate directory}.
+    declared: dict[str, Any] = field(default_factory=dict)
 
     @property
     def directory(self) -> str:
@@ -172,6 +177,9 @@ def javascript(imp: ImportFactV1, ctx: Ctx) -> list[Outcome]:
         return [UNRESOLVED]  # path aliases and absolute paths need build configuration
     parts = spec.split("/")
     root = "/".join(parts[:2]) if spec.startswith("@") and len(parts) > 1 else parts[0]
+    workspace = ctx.declared.get("npm_packages", {}).get(root)
+    if workspace is not None:  # a package of this repository, declared by its manifest
+        return [Outcome("resolved", (pkg_id(workspace),))]
     return [_external(root)]
 
 
@@ -201,6 +209,12 @@ def go(imp: ImportFactV1, ctx: Ctx) -> list[Outcome]:
     segments = path.split("/")
     if "." not in segments[0]:
         return [_external(path)]  # standard library
+    for module, base in sorted(ctx.declared.get("go_modules", ()), key=lambda m: -len(m[0])):
+        if path == module or path.startswith(module + "/"):  # the declared module path is exact
+            target = join(base, path[len(module) + 1 :]) if path != module else base
+            if target in _go_dirs(ctx):
+                return [Outcome("resolved", (pkg_id(target),))]
+            return [UNRESOLVED]
     prefixes: set[str] = ctx.state.setdefault("go_prefixes", set())  # type: ignore[assignment]
     matched = go_suffix_match(ctx, path)
     if matched is None:
@@ -285,6 +299,11 @@ def _rust_module_file(ctx: Ctx, root: str, chain: list[str]) -> str | None:
 def rust(imp: ImportFactV1, ctx: Ctx) -> list[Outcome]:
     segments = imp.module.split("::")
     head = segments[0]
+    crate_dir = ctx.declared.get("cargo_crates", {}).get(head)
+    if crate_dir is not None and head not in {"crate", "self", "super"}:
+        # `use name::...` names a crate of this repository: walk it from its crate root.
+        crate_root = join(crate_dir, "src") if crate_dir else "src"
+        return _rust_walk(ctx, crate_root, [], segments[1:])
     if head not in {"crate", "self", "super"}:
         return [_external(head)]
     parent, _, filename = ctx.path.rpartition("/")
@@ -313,6 +332,10 @@ def rust(imp: ImportFactV1, ctx: Ctx) -> list[Outcome]:
                 return [UNRESOLVED]
             chain = chain[:-1]
             rest = rest[1:]
+    return _rust_walk(ctx, root, chain, rest)
+
+
+def _rust_walk(ctx: Ctx, root: str, chain: list[str], rest: list[str]) -> list[Outcome]:
     walked = list(chain)
     best = _rust_module_file(ctx, root, walked)
     for segment in rest:

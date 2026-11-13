@@ -29,7 +29,7 @@ class ReportTooLarge(ValueError):  # noqa: N818
 
 StatementKind = Literal["observation", "derivation", "inference", "unknown"]
 Resolution = Literal["resolved", "ambiguous", "external", "unresolved"]
-FactKind = Literal["file", "import", "export", "route", "model", "config", "symbol"]
+FactKind = Literal["file", "import", "export", "route", "model", "config", "symbol", "manifest"]
 Scalar = str | int | float | bool
 SectionName = Literal[
     "overview",

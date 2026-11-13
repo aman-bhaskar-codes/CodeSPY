@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.analyzers.facts import FACT_LANGUAGES
+from app.analyzers.facts.manifests import is_manifest
 from app.analyzers.graph import FileEntry
 from app.analyzers.graph.report import assemble_report
 from app.analyzers.graph.shards import ShardPlan, plan_shards
@@ -90,7 +91,11 @@ class ArchitectureReportService:
     ) -> SnapshotPlan:
         located = await locate_source(session, ctx.org_id, repository_id, snapshot_id)
         eligible = [f for f in located.files if f.eligible]
-        sizes = {f.path: f.size_bytes for f in eligible if f.language in FACT_LANGUAGES}
+        sizes = {
+            f.path: f.size_bytes
+            for f in eligible
+            if f.language in FACT_LANGUAGES or is_manifest(f.path)
+        }
         plan = plan_shards(sizes)
         if len(plan.shards) > MAX_FACT_RUNS:
             raise ReportTooLarge("repository needs more fact shards than one report can cite")

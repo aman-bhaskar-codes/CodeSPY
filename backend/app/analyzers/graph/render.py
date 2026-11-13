@@ -42,8 +42,10 @@ TEXT: dict[str, str] = {
     "coverage.partial_files": "{count} files had syntax errors; their facts are partial.",
     "analytics.incomplete": "A bounded computation stopped early ({reason}); derived structure may be incomplete.",
     "limitation.syntax_only": "Facts are syntactic: names are not resolved across files beyond the rules in this report.",
-    "limitation.aliases_and_build_configuration": "Path aliases, bundler settings, go.mod and build-system classpaths are not read, so such imports are unknown.",
-    "limitation.no_manifests": "Package manifests are not parsed; the technology stack is inferred from imports and framework facts.",
+    "limitation.aliases_and_build_configuration": "Path aliases, bundler settings and build-system classpaths are not read, so such imports are unknown.",
+    "limitation.manifests_names_only": "go.mod, Cargo.toml, package.json, pyproject.toml and Package.swift are read for names only (no versions or scripts); other build manifests are not read.",
+    "manifest.declared": "{path} declares {name} ({ecosystem}) with {runtime} runtime and {dev} development dependencies.",
+    "manifest.unparsed": "{count} manifests could not be parsed; what they declare is unknown.",
     "limitation.config_values_not_recorded": "Only configuration names are recorded, never values.",
     "limitation.component_grouping_is_heuristic": "Component boundaries are a directory-based heuristic, not a declared architecture.",
 }
