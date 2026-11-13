@@ -1,4 +1,5 @@
 from datetime import timedelta
+from uuid import uuid4
 
 from app.models.phase2_tables import PHASE2_TABLES
 from app.services.jobs import JobService
@@ -128,3 +129,65 @@ async def test_authority_sweep_progresses_past_healthy_first_batch(factory, tmp_
             )
             == "cancelled"
         )
+
+
+async def test_tick_survives_a_job_whose_scope_is_gone_and_still_runs_later_sections(
+    factory, tmp_path, monkeypatch
+):
+    from app.domain.errors import ScopeViolation
+
+    _, ctx, request, _, _, _ = await submission_scenario(factory, tmp_path)
+    async with factory.begin() as s:
+        await s.execute(
+            PHASE2_TABLES["jobs"]
+            .insert()
+            .values(
+                org_id=ctx.org_id,
+                id=uuid4(),
+                repository_id=request.repository_id,
+                principal_id=ctx.principal_id,
+                operation="admit_source",
+                request_key="scope-gone",
+                request_hash="a" * 64,
+                config_hash="b" * 64,
+                deadline=func.clock_timestamp() + timedelta(minutes=15),
+            )
+        )
+    worker = RecoveryWorker(factory)
+    seen = []
+
+    async def gone(*args, **kwargs):
+        seen.append(1)
+        raise ScopeViolation("scope unavailable")
+
+    monkeypatch.setattr(worker.jobs, "_locked", gone)
+    await worker.tick()  # must not raise
+    assert seen
+
+
+async def test_objects_with_queued_cleanup_do_not_fill_the_expiry_batch(factory, tmp_path):
+    from app.admission.zip_inventory import inspect_zip_bytes
+    from app.contracts.ingestion import AdmissionPolicyV1
+    from app.services.job_finalization import JobFinalizer
+
+    service, ctx, _, sub, body, store = await submission_scenario(factory, tmp_path)
+    uploaded = await service.write_content(ctx, sub.id, chunks(body))
+    lease = await JobService(factory).claim(ctx.org_id, uploaded.job_id, 1, "fixture")
+    finalizer = JobFinalizer(factory, store)
+    prepared = await finalizer.prepare_admission(
+        lease, inspect_zip_bytes(body, AdmissionPolicyV1())
+    )
+    await finalizer.finish_admission(lease, prepared)
+    objects = PHASE2_TABLES["object_records"]
+    async with factory.begin() as s:
+        await s.execute(
+            update(objects)
+            .where(objects.c.org_id == ctx.org_id, objects.c.kind == "input")
+            .values(expires_at=func.clock_timestamp() - timedelta(seconds=1))
+        )
+    worker = RecoveryWorker(factory)
+    async with factory() as s:
+        assert len(await worker._due_objects(s)) == 1
+    await worker.tick()  # queues the cleanup task
+    async with factory() as s:
+        assert await worker._due_objects(s) == []  # already queued: not selected again

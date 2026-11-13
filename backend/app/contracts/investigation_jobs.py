@@ -133,10 +133,12 @@ class InvestigationCreateRequestV2(Contract):
     repository_id: UUID
     snapshot_id: UUID
     query: str = Field(min_length=1, max_length=4000)
-    target_type: Literal["repository", "finding"]
+    target_type: Literal["repository", "finding", "architecture_report"]
     finding_id: UUID | None = None
     finding_run_id: UUID | None = None
     chunk_set_id: UUID | None = None
+    # The stored architecture report a narrative describes; the server pins its digest.
+    architecture_report_id: UUID | None = None
     mode: InvestigationMode = InvestigationMode.SHORT_PATH
     depth: InvestigationDepth = InvestigationDepth.STANDARD
     max_steps: int = Field(default=10, ge=1, le=25)
@@ -158,6 +160,11 @@ class InvestigationCreateRequestV2(Contract):
                 raise ValueError("finding target requires finding_run_id")
         if self.target_type == "repository" and self.finding_id is not None:
             raise ValueError("repository target cannot have finding_id")
+        narrative = self.mode == InvestigationMode.REPORT_NARRATIVE
+        if narrative != (self.target_type == "architecture_report"):
+            raise ValueError("report_narrative mode and architecture_report target go together")
+        if (self.architecture_report_id is not None) != narrative:
+            raise ValueError("architecture_report_id is required for, and only for, a narrative")
         # Reject commit/diff until they resolve to admitted snapshots
         return self
 

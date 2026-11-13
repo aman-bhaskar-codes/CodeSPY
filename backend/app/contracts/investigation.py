@@ -30,6 +30,7 @@ class InvestigationStatus(StrEnum):
 class InvestigationMode(StrEnum):
     SHORT_PATH = "short_path"
     TWO_SPECIALIST = "two_specialist"
+    REPORT_NARRATIVE = "report_narrative"
 
 
 class InvestigationDepth(StrEnum):

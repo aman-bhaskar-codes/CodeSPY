@@ -3,6 +3,8 @@ import { GitHubImportForm } from "./features/intake/GitHubImportForm";
 import { GitHubUrlImportForm } from "./features/intake/GitHubUrlImportForm";
 import { RepositoryCreateForm } from "./features/intake/RepositoryCreateForm";
 import { useEffect, useRef, useState } from "react";
+import { FileTree } from "./features/explorer/FileTree";
+import { SourceEditor } from "./features/source/SourceEditor";
 import {
   WorkspaceHeading,
   WorkspacePane,
@@ -25,6 +27,7 @@ import type {
   RetryResponseV2,
 } from "./api/generated/types.gen";
 import { StructuralReportView } from "./features/structure/StructuralReportView";
+import { ArchitectureWorkbench } from "./features/architecture/ArchitectureWorkbench";
 import { FindingsWorkbench } from "./features/findings/FindingsWorkbench";
 import { RetrievalWorkbench } from "./features/retrieval/RetrievalWorkbench";
 import { InvestigationsWorkbench } from "./features/investigations/InvestigationsWorkbench";
@@ -506,6 +509,11 @@ function WorkspaceApp() {
         repositoryItems.find((item) => item.id === repository)?.display_name
       }
       snapshotId={snapshot}
+      explorer={
+        session.data && snapshot && repository ? (
+          <FileTree repositoryId={repository} snapshotId={snapshot} />
+        ) : undefined
+      }
       destinations={[
         { id: "workspace-home", label: "Overview", enabled: true },
         { id: "upload-title", label: "Add codebase", enabled: !!session.data },
@@ -1009,6 +1017,11 @@ function WorkspaceApp() {
                   </div>
                 )}
               </section>
+              <ArchitectureWorkbench
+                repositoryId={repository}
+                snapshotId={snapshot}
+                csrfToken={session.data?.csrf_token ?? ""}
+              />
             </WorkspacePane>
           )}
           {snapshot && repository && (
@@ -1139,6 +1152,11 @@ function WorkspaceApp() {
                   </div>
                 )}
               </section>
+            </WorkspacePane>
+          )}
+          {snapshot && repository && (
+            <WorkspacePane id="source-title">
+              <SourceEditor repositoryId={repository} snapshotId={snapshot} />
             </WorkspacePane>
           )}
           {snapshot && repository && (

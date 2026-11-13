@@ -241,6 +241,8 @@ class InvestigationVerificationService:
                     or evidence.snapshot_id != scope.snapshot_id
                     or evidence.source_path != file_path
                     or evidence.observation_type != "source_read"
+                    or evidence.original_start_line is None
+                    or evidence.original_end_line is None
                     or hashlib.sha256(excerpt.encode()).hexdigest() != evidence.excerpt_sha256
                 ):
                     continue

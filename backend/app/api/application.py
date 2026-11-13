@@ -10,7 +10,21 @@ from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from app.adapters.model.http_transport import ProviderTransportError
+from app.analyzers.graph.render import TEXT as REPORT_TEMPLATES
+from app.analyzers.graph.render import graph_page
+from app.analyzers.graph.render import render_markdown as render_repository_markdown
 from app.analyzers.reporting import render_json, render_markdown
+from app.contracts.architecture_report import (
+    ArchitectureGraphPageV1,
+    ArchitectureReportRefV1,
+    ArchitectureShardsV1,
+    ArchitectureStartRequestV1,
+    ArchitectureTemplatesV1,
+    RepositoryReportV1,
+    SectionName,
+    SectionV1,
+)
+from app.contracts.architecture_rules import RuleCheckV1, RuleSetV1
 from app.contracts.ast_facts import (
     AstConfigPageV1,
     AstFilePageV1,
@@ -100,6 +114,7 @@ from app.contracts.memory import (
 from app.contracts.model_availability import ModelAvailabilityV1
 from app.contracts.persistence import GraphPage, RepositoryCreate, RepositoryRecord
 from app.contracts.provider_budget import DisclosurePolicyV1
+from app.contracts.report_narrative import ArchitectureNarrativeV1
 from app.contracts.scan_jobs import (
     DependencySelectionV1,
     NativeSelectionV1,
@@ -182,6 +197,11 @@ from app.security.oauth import OAuthRejected, OAuthService
 from app.security.sessions import SessionService, token_digest
 from app.services import ast_reads
 from app.services.analysis_sources import locate_source
+from app.services.architecture_reports import (
+    ArchitectureReportService,
+    ReportInputsPending,
+    ReportTooLarge,
+)
 from app.services.configured_model_gateway import ModelConnectionError
 from app.services.context_assembly import ContextAssemblyService
 from app.services.dense_search import DenseSearchService, QueryEmbedder
@@ -369,6 +389,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     retries = RetryService(ports.factory, ports.store, scan_capabilities=ports.scan_capabilities)
     submissions = SubmissionService(ports.factory, ports.store, policy=ports.admission_policy)
     structural = StructuralAnalysisService(ports.factory)
+    architecture = ArchitectureReportService(ports.factory, structural)
     cursors = CursorCodec(secrets.token_bytes(32))
     findings_query = FindingsQueryService(
         ports.factory,
@@ -457,6 +478,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             "embed_operation_unavailable",
             "embed_already_published",
             "embed_profile_conflict",
+            "report_inputs_pending",
         }:
             code = exception.detail
         return error(exception.status_code, code)
@@ -1698,6 +1720,139 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         response.status_code = 202 if result.job.state == "cancelling" else 200
         return result
 
+    reports_base = (
+        "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports"
+    )
+
+    @app.post(reports_base + "/prepare", status_code=202)
+    async def prepare_architecture_report(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> ArchitectureShardsV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        if not settings.structural_enabled or settings.structural_toolchain_hash is None:
+            raise HTTPException(503, detail="analysis_unavailable")
+        if ports.readiness is None or not await ports.readiness():
+            raise HTTPException(503, detail="analysis_unavailable")
+        toolchain = settings.structural_toolchain_hash
+
+        def config_for(prefixes: tuple[str, ...]) -> AnalysisConfigV1:
+            return AnalysisConfigV1(
+                toolchain_hash=toolchain,
+                include_prefixes=prefixes,
+                adapters=("ast_facts",),
+                limits=StructuralLimitsV1(),
+            )
+
+        try:
+            return await architecture.prepare(ctx, repository_id, snapshot_id, config_for)
+        except ReportTooLarge:
+            raise HTTPException(422, detail="report_too_large") from None
+
+    @app.get(reports_base + "/prepare")
+    async def architecture_report_status(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> ArchitectureShardsV1:
+        ctx = await repository_context(request, repository_id)
+        try:
+            return await architecture.status(ctx, repository_id, snapshot_id)
+        except ReportTooLarge:
+            raise HTTPException(422, detail="report_too_large") from None
+
+    @app.post(reports_base, status_code=201)
+    async def build_architecture_report(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> ArchitectureReportRefV1:
+        ctx = await repository_context(request, repository_id, write=True)
+        body = await json_body(request, ArchitectureStartRequestV1)
+        if body.request_key != key(request):
+            raise HTTPException(422, detail="request_key_mismatch")
+        try:
+            return await architecture.build(ctx, repository_id, snapshot_id)
+        except ReportInputsPending:
+            raise HTTPException(409, detail="report_inputs_pending") from None
+        except ReportTooLarge:
+            raise HTTPException(422, detail="report_too_large") from None
+
+    @app.get(reports_base + "/latest")
+    async def latest_architecture_report(
+        request: Request, repository_id: UUID, snapshot_id: UUID
+    ) -> ArchitectureReportRefV1:
+        ctx = await repository_context(request, repository_id)
+        found = await architecture.latest_ref(ctx, repository_id, snapshot_id)
+        if found is None:
+            raise HTTPException(404)
+        return found
+
+    @app.get(reports_base + "/{report_id}")
+    async def get_architecture_report(
+        request: Request, repository_id: UUID, snapshot_id: UUID, report_id: UUID
+    ) -> RepositoryReportV1:
+        ctx = await repository_context(request, repository_id)
+        return await architecture.get(ctx, repository_id, snapshot_id, report_id)
+
+    @app.get(reports_base + "/{report_id}/narrative")
+    async def get_architecture_narrative(
+        request: Request, repository_id: UUID, snapshot_id: UUID, report_id: UUID
+    ) -> ArchitectureNarrativeV1:
+        ctx = await repository_context(request, repository_id)
+        found = await architecture.narrative(ctx, repository_id, snapshot_id, report_id)
+        if found is None:
+            raise HTTPException(404, detail="narrative_not_found")
+        return found
+
+    @app.post(reports_base + "/{report_id}/rule-check")
+    async def check_architecture_rules(
+        request: Request, repository_id: UUID, snapshot_id: UUID, report_id: UUID
+    ) -> RuleCheckV1:
+        ctx = await repository_context(request, repository_id)
+        rules = await json_body(request, RuleSetV1)
+        return await architecture.check_rules(ctx, repository_id, snapshot_id, report_id, rules)
+
+    @app.get(reports_base + "/{report_id}/markdown")
+    async def architecture_report_markdown(
+        request: Request, repository_id: UUID, snapshot_id: UUID, report_id: UUID
+    ) -> Response:
+        ctx = await repository_context(request, repository_id)
+        report = await architecture.get(ctx, repository_id, snapshot_id, report_id)
+        return Response(
+            render_repository_markdown(report), media_type="text/markdown; charset=utf-8"
+        )
+
+    @app.get("/api/v1/architecture-report-templates")
+    async def architecture_report_templates(request: Request) -> ArchitectureTemplatesV1:
+        await principal(request)
+        return ArchitectureTemplatesV1(templates=dict(REPORT_TEMPLATES))
+
+    @app.get(reports_base + "/{report_id}/graph")
+    async def architecture_report_graph(
+        request: Request,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        report_id: UUID,
+        offset: int = 0,
+        limit: int = 2000,
+    ) -> ArchitectureGraphPageV1:
+        if not 0 <= offset <= 200_000 or not 1 <= limit <= 5000:
+            raise HTTPException(422)
+        ctx = await repository_context(request, repository_id)
+        report = await architecture.get(ctx, repository_id, snapshot_id, report_id)
+        return graph_page(report, offset, limit)
+
+    @app.get(reports_base + "/{report_id}/sections/{name}")
+    async def architecture_report_section(
+        request: Request,
+        repository_id: UUID,
+        snapshot_id: UUID,
+        report_id: UUID,
+        name: SectionName,
+    ) -> SectionV1:
+        ctx = await repository_context(request, repository_id)
+        report = await architecture.get(ctx, repository_id, snapshot_id, report_id)
+        section = next((s for s in report.sections if s.name == name), None)
+        if section is None:
+            raise HTTPException(404)
+        return section
+
     @app.get("/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/scan-configuration")
     async def scan_configuration(
         request: Request, repository_id: UUID, snapshot_id: UUID
@@ -2776,6 +2931,7 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             components = schema.setdefault("components", {}).setdefault("schemas", {})
             contract_models: tuple[type[BaseModel], ...] = (
                 IndexStartRequestV1,
+                ArchitectureStartRequestV1,
                 EmbedStartRequestV1,
                 RepositoryCreate,
                 UploadReservationV1,
@@ -2846,6 +3002,10 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
                 components.update(model_schema.pop("$defs", {}))
                 components[model.__name__] = model_schema
             body_contracts: tuple[tuple[str, type[BaseModel]], ...] = (
+                (
+                    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports",
+                    ArchitectureStartRequestV1,
+                ),
                 (
                     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/indexes/{chunk_set_id}/dense",
                     EmbedStartRequestV1,

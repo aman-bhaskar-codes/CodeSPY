@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from app.analyzers.facts import FACT_LANGUAGES, extract_facts
+from app.analyzers.facts import FACT_UNIT_LANGUAGES, extract_facts
 from app.analyzers.source import AdmittedSourceReader
 from app.contracts.ast_facts import AstDraftV1, FileFactsV1
 from app.contracts.structure import (
@@ -32,7 +32,7 @@ def analyze_facts(
     omitted = list(reader.omitted)
     for unit in units:
         actual_budget.tick_nodes(0)
-        if unit.language not in FACT_LANGUAGES:
+        if unit.language not in FACT_UNIT_LANGUAGES:
             omitted.append((unit.path, "language_unsupported"))
             continue
         if isolated_operations:

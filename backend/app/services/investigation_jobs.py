@@ -9,10 +9,13 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, insert, select, update
+from sqlalchemy import String, Uuid, func, insert, select, update
+from sqlalchemy import column as sa_column
+from sqlalchemy import table as sa_table
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.contracts.investigation import (
+    InvestigationMode,
     InvestigationStatus,
 )
 from app.contracts.investigation_execution import (
@@ -40,10 +43,22 @@ from app.repositories.investigation_execution_repository import (
     SqlInvestigationSpecRepository,
 )
 from app.security.authorization import lock_scope, require_repository
+from app.services.investigation_narrative import route_revision
 from app.services.jobs import JobService
 
 TERMINAL_INVESTIGATION_STATUSES = {"completed", "failed", "cancelled"}
 TERMINAL_JOB_STATES = {"succeeded", "partial", "failed", "cancelled"}
+
+
+# The columns of a stored architecture report this service reads (declared here, not owned here).
+_REPORTS = sa_table(
+    "architecture_reports",
+    sa_column("org_id", Uuid),
+    sa_column("id", Uuid),
+    sa_column("repository_id", Uuid),
+    sa_column("snapshot_id", Uuid),
+    sa_column("report_digest", String),
+)
 
 
 class InvestigationJobService:
@@ -64,12 +79,16 @@ class InvestigationJobService:
         if not request_key or len(request_key.encode("utf-8")) > 128:
             raise ValueError("invalid request_key: must be between 1 and 128 bytes")
 
+        digest_body = request.model_dump(mode="json")
+        if digest_body.get("architecture_report_id") is None:
+            # Older requests have no such key; keep their idempotency digests unchanged.
+            digest_body.pop("architecture_report_id", None)
         request_digest = semantic_digest(
             {
                 "principal_id": str(ctx.principal_id),
                 "repository_id": str(request.repository_id),
                 "snapshot_id": str(request.snapshot_id),
-                **request.model_dump(mode="json"),
+                **digest_body,
             }
         )
 
@@ -101,13 +120,38 @@ class InvestigationJobService:
                 s, ctx.org_id, ctx.principal_id, request.repository_id, write=True, lock=True
             )
 
-            if request.target_type not in ("repository", "finding"):
+            if request.target_type not in ("repository", "finding", "architecture_report"):
                 raise ScopeViolation(f"unsupported target type: {request.target_type}")
+            report_digest: str | None = None
+            if request.target_type == "architecture_report":
+                found = (
+                    await s.execute(
+                        select(_REPORTS.c.report_digest).where(
+                            _REPORTS.c.org_id == ctx.org_id,
+                            _REPORTS.c.id == request.architecture_report_id,
+                            _REPORTS.c.repository_id == request.repository_id,
+                            _REPORTS.c.snapshot_id == request.snapshot_id,
+                        )
+                    )
+                ).first()
+                if found is None:
+                    raise ScopeViolation("architecture report unavailable")
+                report_digest = found[0]
 
-            limits = InvestigationLimitsV1(
-                max_steps=request.max_steps,
-                budget_limit_micros=request.budget_limit_micros,
-            )
+            if request.mode == InvestigationMode.REPORT_NARRATIVE:
+                # A narrative page plus its prompt needs the largest context the gateway allows,
+                # and a report is read in up to 8 sections of one or more pages.
+                limits = InvestigationLimitsV1(
+                    max_steps=25,
+                    budget_limit_micros=request.budget_limit_micros,
+                    max_context_tokens=8192,
+                    max_context_bytes=65536,
+                )
+            else:
+                limits = InvestigationLimitsV1(
+                    max_steps=request.max_steps,
+                    budget_limit_micros=request.budget_limit_micros,
+                )
             mode_str: Any = (
                 request.mode.value if hasattr(request.mode, "value") else str(request.mode)
             )
@@ -124,13 +168,19 @@ class InvestigationJobService:
                 finding_id=request.finding_id,
                 finding_run_id=request.finding_run_id,
                 chunk_set_id=request.chunk_set_id,
+                architecture_report_id=request.architecture_report_id,
+                architecture_report_digest=report_digest,
                 query=request.query,
                 mode=mode_str,
                 depth=depth_str,
                 limits=limits,
                 disclosure_policy_digest="0" * 64,
                 tool_policy_revision="v1_standard",
-                model_route_revision="v1_standard",
+                model_route_revision=(
+                    route_revision()
+                    if request.mode == InvestigationMode.REPORT_NARRATIVE
+                    else "v1_standard"
+                ),
                 model_profile_revision="v1_standard",
                 runtime_revision=1,
                 privacy_policy_revision="v1_standard",

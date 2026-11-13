@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.analyzers.facts import FACT_LANGUAGES
+from app.analyzers.facts import FACT_UNIT_LANGUAGES
 from app.analyzers.positions import SourceIndex
 from app.analyzers.source import AdmittedSourceReader
 from app.contracts.ast_facts import AstDraftV1, FileFactsV1
@@ -57,7 +57,7 @@ def materialize_facts(
             or not stored.eligible
             or facts.file_id != stored.file_id
             or facts.sha256 != stored.sha256
-            or facts.language not in FACT_LANGUAGES
+            or facts.language not in FACT_UNIT_LANGUAGES
             or facts.language != unit.language
             or facts.path in seen
         ):

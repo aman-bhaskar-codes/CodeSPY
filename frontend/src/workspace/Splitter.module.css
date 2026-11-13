@@ -1,0 +1,43 @@
+.splitter {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 5;
+}
+.horizontal {
+  position: absolute;
+  inset: -3px 0 auto 0;
+  height: 6px;
+  cursor: row-resize;
+  touch-action: none;
+  z-index: 5;
+}
+.splitter:hover,
+.splitter:active,
+.horizontal:hover,
+.horizontal:active {
+  background: var(--cs-focus);
+  opacity: 0.7;
+}
+.splitter:focus-visible,
+.horizontal:focus-visible {
+  outline: 2px solid var(--cs-focus);
+  outline-offset: -2px;
+  background: var(--cs-focus);
+}
+@media (max-width: 760px) {
+  .splitter,
+  .horizontal {
+    display: none;
+  }
+}
+@media (forced-colors: active) {
+  .splitter:focus-visible,
+  .splitter:hover,
+  .horizontal:focus-visible,
+  .horizontal:hover {
+    background: Highlight;
+  }
+}

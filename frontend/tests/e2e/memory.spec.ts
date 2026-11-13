@@ -77,7 +77,7 @@ for (const width of [390, 1280]) {
     });
     await page.goto(`/?repository=${repository}&snapshot=${snapshot}#retrieval-title`);
     await page
-      .getByRole("tab", { name: "Memory", exact: false })
+      .getByRole("tab", { name: "Memory", exact: true })
       .click();
     await page
       .getByRole("button", { name: "Accept Scoped routing", exact: true })

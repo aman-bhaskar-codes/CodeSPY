@@ -1,0 +1,53 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--cs-row, 22px);
+  padding-right: 8px;
+  cursor: pointer;
+  color: var(--cs-text);
+  font-size: var(--cs-ui-size, 13px);
+  white-space: nowrap;
+}
+.row:hover {
+  background: var(--cs-raised);
+}
+.row:focus-visible {
+  outline: 1px solid var(--cs-focus);
+  outline-offset: -1px;
+}
+.row[aria-selected="true"] {
+  background: var(--cs-info-bg);
+}
+.row[aria-disabled="true"] {
+  color: var(--cs-muted);
+}
+.gap {
+  display: inline-block;
+  width: 14px;
+}
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.note {
+  margin: 8px 12px 0;
+  color: var(--cs-muted);
+  font-size: 11px;
+}
+.more {
+  min-width: 0;
+  margin: 8px 12px 0;
+  min-height: 24px;
+  font-size: 12px;
+}

@@ -27,6 +27,7 @@ from app.db.transaction import transaction
 from app.domain.errors import DuplicateConflict, ScopeViolation
 from app.domain.scope import TenantContext
 from app.models.investigation_execution_tables import (
+    architecture_report_narratives,
     investigation_jobs,
     investigation_publication_receipts,
     investigation_reports,
@@ -372,6 +373,27 @@ class InvestigationFinalizer:
             "created_at": now_utc,
         }
         await session.execute(insert(investigation_reports).values(**report_values))
+
+        if draft.narrative is not None:
+            # A narrative is recorded against the report it describes. The database guard checks
+            # that the spec pins that report and digest and that this investigation was published.
+            if spec.architecture_report_id is None or spec.architecture_report_digest is None:
+                raise DuplicateConflict("narrative draft for a spec without a pinned report")
+            await session.execute(
+                insert(architecture_report_narratives).values(
+                    org_id=lease.org_id,
+                    id=uuid4(),
+                    architecture_report_id=spec.architecture_report_id,
+                    repository_id=spec.repository_id,
+                    snapshot_id=spec.snapshot_id,
+                    investigation_id=draft.investigation_id,
+                    investigation_report_id=report_id,
+                    spec_hash=draft.spec_hash,
+                    report_digest=spec.architecture_report_digest,
+                    narrative_json=draft.narrative.model_dump(mode="json"),
+                    created_at=now_utc,
+                )
+            )
 
         # 7. Insert investigation_publication_receipts
         receipt_id = uuid4()

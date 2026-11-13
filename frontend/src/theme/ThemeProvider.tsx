@@ -55,6 +55,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
+export function useTheme() {
+  const value = useContext(ThemeContext);
+  if (!value) throw new Error("useTheme requires ThemeProvider");
+  return value;
+}
+
 export function ThemeToggle() {
   const value = useContext(ThemeContext);
   if (!value) throw new Error("ThemeToggle requires ThemeProvider");

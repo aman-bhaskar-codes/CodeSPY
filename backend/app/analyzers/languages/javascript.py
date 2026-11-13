@@ -1,5 +1,7 @@
 """Iterative Tree-sitter syntax extraction for JavaScript and JSX."""
 
+from typing import cast
+
 from app.analyzers.positions import SourceIndex
 from app.analyzers.registry import parse_bytes
 from app.contracts.structure import (
@@ -17,7 +19,7 @@ from tree_sitter import Node
 
 def extract(unit: SourceUnitV1, budget: AnalysisBudget) -> FileObservationsV1:
     index = SourceIndex(unit.data)
-    lang_name: Language = unit.language
+    lang_name = cast("Language", unit.language)  # structural units are sources
     tree = parse_bytes(lang_name, unit.data)
     symbols: list[SymbolObservationV1] = []
     diagnostics: list[DiagnosticV1] = []

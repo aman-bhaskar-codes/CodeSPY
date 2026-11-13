@@ -1,0 +1,50 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.path {
+  margin: 0;
+}
+.scroll {
+  overflow: auto;
+  border: 1px solid var(--cs-border);
+  background: var(--cs-canvas);
+  max-height: calc(100dvh - 220px);
+}
+.scroll:focus-visible {
+  outline: 1px solid var(--cs-focus);
+  outline-offset: -1px;
+}
+.code {
+  border-collapse: collapse;
+  min-width: 100%;
+  font-family: var(--cs-mono);
+  font-size: 12px;
+  line-height: 18px;
+  border: 0;
+}
+.code td,
+.code th {
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  vertical-align: top;
+}
+.code code {
+  font: inherit;
+  white-space: pre;
+  background: transparent;
+  padding: 0;
+}
+.gutter {
+  position: sticky;
+  left: 0;
+  width: 1%;
+  min-width: 48px;
+  text-align: right;
+  color: var(--cs-muted);
+  background: var(--cs-canvas) !important;
+  font-weight: 400;
+  user-select: none;
+}

@@ -17,7 +17,7 @@ from sqlalchemy import insert, text
 BACKEND_DIR = Path(__file__).resolve().parents[3]
 
 pytestmark = [
-    pytest.mark.schema_revision("0040_investigation_runtime_permissions"),
+    pytest.mark.schema_revision("0049_report_narrative"),
     pytest.mark.skipif(
         not os.environ.get("CODESPY_TEST_MARKER"),
         reason="owned disposable PostgreSQL environment required",

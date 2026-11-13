@@ -25,6 +25,10 @@ Do not expose credentials, raw provider payloads or source-bearing diagnostics.
 | ----------------------------- | -------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------- |
 | Appearance                    | `frontend/src/theme/ThemeProvider.tsx`                   | `frontend/src/styles/tokens.css`                     | Dark default, light; storage optional                      | Theme component and browser tests                         |
 | Workspace chrome              | `frontend/src/workspace/WorkspaceShell.tsx`              | This navigation contract                             | Enabled links or explained unavailable destinations        | Shell component and browser tests                         |
+| Workbench layout              | `frontend/src/workspace/useWorkbenchLayout.ts`           | Persisted explorer width, panel size and visibility  | Explorer 160-480 px, panel 80-480 px; storage optional     | Layout, splitter and workbench browser tests              |
+| Editor tabs                   | `frontend/src/workspace/EditorTabs.tsx`                  | Visited views and open files; the URL hash decides   | Views and read-only source files; Delete closes a tab      | Tab component and browser tests                           |
+| Command palette               | `frontend/src/workspace/CommandPalette.tsx`              | `commands.ts` plus commands passed to the shell      | Ctrl/Cmd+Shift+P or F1; never opens inside other dialogs   | Palette component and browser tests                       |
+| Explorer and source           | `frontend/src/features/explorer`, `features/source`      | Snapshot inventory; redacted source-view contract    | Read-only; partial listings are disclosed                  | Tree, source and browser tests                            |
 | Selection restoration         | `frontend/src/App.tsx`                                   | Validated URL identifiers; backend authority         | Repository, snapshot, submission, job, scan                | App restoration and browser tests                         |
 | Buttons                       | `frontend/src/ui/Button.tsx`                             | `DESIGN.md`                                          | Neutral, primary, danger; pending                          | Button component tests                                    |
 | Panels                        | `frontend/src/ui/Panel.tsx`                              | `DESIGN.md`                                          | Labelled section, optional actions                         | Browser checks of session recovery                        |
@@ -53,8 +57,8 @@ URL parameters. Browser history restores those selections and resets inventory
 pagination; section navigation preserves local form input. The home link targets
 the mounted overview rather than reloading the application. URLs never contain
 source, questions or memory text. Backend authorization remains authoritative.
-Browser navigation alone must not cancel durable jobs. Pane links use validated hashes; dedicated repository paths and resizable panels
-are not implemented. Saved investigation and finding/run identifiers also restore
+Browser navigation alone must not cancel durable jobs. Pane links use validated hashes; dedicated repository paths are not
+implemented. The workbench's only resizable parts are the explorer and the bottom panel (separators with keyboard resizing). Saved investigation and finding/run identifiers also restore
 from the URL, scoped to the selected repository and snapshot.
 
 ## Interaction and failure
