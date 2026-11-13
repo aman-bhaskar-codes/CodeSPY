@@ -122,7 +122,12 @@ def _verify_sentence(
             return no(f"the number {number} does not appear in the cited statements")
     kinds = {str(entry.get("kind")) for entry in entries}
     lowered = sentence.text.lower()
-    if "unknown" in kinds and not any(word in lowered for word in _UNKNOWN_WORDS):
+    says_unknown = any(word in lowered for word in _UNKNOWN_WORDS) or all(
+        str(entry.get("text", "")).strip().lower() in lowered
+        for entry in entries
+        if entry.get("kind") == "unknown"
+    )
+    if "unknown" in kinds and not says_unknown:
         return no("an unknown statement cannot support a definite claim")
     weakest = max((_STRENGTH.get(k, "inferred") for k in kinds), key=_ORDER.index)
     return NarrativeVerificationV1(claim_id=sentence.claim_id, status="confirmed", basis=weakest)

@@ -72,3 +72,18 @@ class NarrativeOutcomeV1(Contract):
     @property
     def ratio(self) -> float:
         return self.confirmed / self.total if self.total else 0.0
+
+
+class NarrativeDraftV1(Contract):
+    """The structured narrative a published report carries: sentences, verdicts and coverage."""
+
+    sentences: tuple[NarrativeSentenceV1, ...] = Field(default=(), max_length=MAX_SENTENCES)
+    verifications: tuple[NarrativeVerificationV1, ...] = Field(default=(), max_length=MAX_SENTENCES)
+    confirmed: int = Field(ge=0)
+    total: int = Field(ge=0)
+    grounded: bool
+    unnarrated_sections: tuple[str, ...] = Field(default=(), max_length=16)
+    unparsed_units: int = Field(default=0, ge=0)
+    dropped_sentences: int = Field(default=0, ge=0)
+    prompt_revision: str = Field(min_length=1, max_length=128)
+    report_digest: str = Field(pattern=r"^[0-9a-f]{64}$")

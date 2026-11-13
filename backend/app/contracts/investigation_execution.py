@@ -15,6 +15,7 @@ from uuid import UUID, uuid5
 
 from pydantic import AwareDatetime, Field, field_validator, model_validator
 
+from app.contracts.report_narrative import NarrativeDraftV1
 from app.domain.canonical_json import canonical_bytes
 from app.domain.scope import Contract
 
@@ -553,6 +554,8 @@ class InvestigationReportDraftV1(Contract):
     held_usage_micros: int = Field(default=0, ge=0)
     stop_reason: InvestigationStopReason
     current_support_available: bool = True
+    # Only a report narrative has one; left out of the digest when None (older drafts hash alike).
+    narrative: NarrativeDraftV1 | None = None
     draft_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
 
     @model_validator(mode="after")
@@ -565,6 +568,8 @@ class InvestigationReportDraftV1(Contract):
 
     def compute_draft_digest(self) -> str:
         d = self.model_dump(mode="json", exclude={"draft_digest"})
+        if d.get("narrative") is None:
+            d.pop("narrative", None)
         return hashlib.sha256(canonical_bytes(d)).hexdigest()
 
 
@@ -626,6 +631,11 @@ class InvestigationExecutionStateV1(Contract):
     stop_reason: InvestigationStopReason | None = None
     usage_projection_micros: int = Field(default=0, ge=0)
 
+    # Report narrative cursor (section index, statement offset); None for every other mode and
+    # left out of the state digest when None, so older checkpoints hash as before.
+    narrative_section: int | None = Field(default=None, ge=0, le=64)
+    narrative_offset: int | None = Field(default=None, ge=0, le=100_000)
+
     @model_validator(mode="after")
     def _bounded_size(self) -> Self:
         if len(canonical_bytes(self.model_dump())) > MAX_CHECKPOINT_BYTES:
@@ -633,7 +643,11 @@ class InvestigationExecutionStateV1(Contract):
         return self
 
     def compute_state_digest(self) -> str:
-        return hashlib.sha256(canonical_bytes(self.model_dump())).hexdigest()
+        dump = self.model_dump()
+        for key in ("narrative_section", "narrative_offset"):
+            if dump.get(key) is None:
+                dump.pop(key, None)
+        return hashlib.sha256(canonical_bytes(dump)).hexdigest()
 
 
 class InvestigationExecutionCheckpointV1(Contract):
