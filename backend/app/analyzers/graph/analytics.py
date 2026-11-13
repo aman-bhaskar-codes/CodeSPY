@@ -63,7 +63,7 @@ def _budget() -> GraphBudget:
         max_scanned_edges=MAX_EDGES * 6,
         max_frontier=MAX_NODES,
         max_depth=MAX_NODES,
-        wall_seconds=20.0,
+        wall_seconds=120.0,  # safety net only: the count bounds decide every real outcome
     )
 
 

@@ -83,8 +83,9 @@ Review follow-ups (documented bounds):
   are refused with `report_too_large` (HTTP 422); nothing is truncated silently.
 - A failed or cancelled shard is retried by calling prepare again (a new analysis with an attempt-suffixed key).
   the viewer shows failures, stops polling, and the Prepare button retries them.
-- Graph analytics keep a wall-clock budget; on a very slow machine an exhausted budget is recorded
-  as a disposition in the report, so the stored report is what that machine produced.
+- Graph analytics are bounded by node, edge and scanned-edge counts, which decide every real outcome;
+  the 120 s wall clock is only a safety net, so a report does not depend on machine speed for any input
+  within the documented bounds (test: the outcome is identical under a 120 s and a 3600 s budget).
 - `/graph` pages reuse a cached component grouping (16 reports, keyed by inputs digest).
 
 ## Verification

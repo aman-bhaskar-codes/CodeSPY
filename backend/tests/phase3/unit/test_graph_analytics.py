@@ -97,3 +97,25 @@ def test_output_is_independent_of_input_order_and_a_budget_stop_is_reported():
     assert analyze(graph_of(files)) == analyze(graph_of(dict(items)))
     starved = analyze(graph_of(files), GraphBudget(max_nodes=1, max_edges=1))
     assert starved.disposition != "complete"  # an incomplete computation says so
+
+
+def test_analytics_outcome_does_not_depend_on_the_wall_clock_budget(monkeypatch):
+    """Bounded input gives the same structure whatever the (generous) wall budget is."""
+    from dataclasses import replace
+
+    from app.analyzers.graph import analytics, build_graph
+
+    from tests.phase3.unit.test_dependency_graph import entries
+
+    files = {f"p{i}/m.py": f"from p{(i + 1) % 6}.m import x\n" for i in range(6)}
+    graph = build_graph(entries(files), list(files))
+    base = analytics.analyze(graph)
+    original = analytics._budget
+    monkeypatch.setattr(analytics, "_budget", lambda: replace(original(), wall_seconds=3600.0))
+    again = analytics.analyze(graph)
+    assert (base.disposition, base.file_cycles, base.layers) == (
+        again.disposition,
+        again.file_cycles,
+        again.layers,
+    )
+    assert base.disposition == "complete" and base.file_cycles
