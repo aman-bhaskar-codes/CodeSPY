@@ -31,6 +31,92 @@ export type AnalysisAcceptedV1 = {
 };
 
 /**
+ * ArchitectureGraphPageV1
+ *
+ * A slice of the graph in D3's nodes-and-links shape; unknown edges are only counted.
+ */
+export type ArchitectureGraphPageV1 = {
+    /**
+     * Ambiguous
+     */
+    ambiguous: number;
+    /**
+     * Links
+     */
+    links: Array<GraphLinkOutV1>;
+    /**
+     * Links Total
+     */
+    links_total: number;
+    /**
+     * Nodes
+     */
+    nodes: Array<GraphNodeOutV1>;
+    /**
+     * Nodes Total
+     */
+    nodes_total: number;
+    /**
+     * Offset
+     */
+    offset: number;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+    /**
+     * Unresolved
+     */
+    unresolved: number;
+};
+
+/**
+ * ArchitectureReportRefV1
+ */
+export type ArchitectureReportRefV1 = {
+    /**
+     * Analyzed Files
+     */
+    analyzed_files: number;
+    /**
+     * Complete
+     */
+    complete: boolean;
+    /**
+     * Eligible Files
+     */
+    eligible_files: number;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Inputs Digest
+     */
+    inputs_digest: string;
+    /**
+     * Report Digest
+     */
+    report_digest: string;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+    /**
+     * Size Bytes
+     */
+    size_bytes: number;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+};
+
+/**
  * ArchitectureReportV1
  */
 export type ArchitectureReportV1 = {
@@ -105,6 +191,50 @@ export type ArchitectureReportV1 = {
      * Toolchain Hash
      */
     toolchain_hash: string;
+};
+
+/**
+ * ArchitectureShardsV1
+ */
+export type ArchitectureShardsV1 = {
+    /**
+     * Plan Digest
+     */
+    plan_digest: string;
+    /**
+     * Ready
+     */
+    ready: boolean;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+    /**
+     * Shards
+     */
+    shards?: Array<ShardStatusV1>;
+    /**
+     * Skipped Files
+     */
+    skipped_files: number;
+    /**
+     * Total Files
+     */
+    total_files: number;
+};
+
+/**
+ * ArchitectureStartRequestV1
+ */
+export type ArchitectureStartRequestV1 = {
+    /**
+     * Request Key
+     */
+    request_key: string;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
 };
 
 /**
@@ -799,6 +929,32 @@ export type ContextPreviewV1 = {
 };
 
 /**
+ * CoverageV1
+ */
+export type CoverageV1 = {
+    /**
+     * Analyzed Files
+     */
+    analyzed_files: number;
+    /**
+     * Eligible Files
+     */
+    eligible_files: number;
+    /**
+     * Fact Runs
+     */
+    fact_runs?: Array<string>;
+    /**
+     * Omitted Files
+     */
+    omitted_files: number;
+    /**
+     * Partial Files
+     */
+    partial_files: number;
+};
+
+/**
  * CreateScanRequestV1
  */
 export type CreateScanRequestV1 = {
@@ -983,6 +1139,20 @@ export type DependencyFileV1 = {
      * Size Bytes
      */
     size_bytes: number;
+};
+
+/**
+ * DependencyGraphV1
+ */
+export type DependencyGraphV1 = {
+    /**
+     * Edges
+     */
+    edges?: Array<GraphEdgeV1>;
+    /**
+     * Nodes
+     */
+    nodes?: Array<GraphNodeV1>;
 };
 
 /**
@@ -1320,6 +1490,25 @@ export type EvidencePointerV1 = {
      * Symbol Name
      */
     symbol_name?: string | null;
+};
+
+/**
+ * EvidenceRefV1
+ */
+export type EvidenceRefV1 = {
+    /**
+     * Fact
+     */
+    fact: 'file' | 'import' | 'export' | 'route' | 'model' | 'config' | 'symbol';
+    /**
+     * File Id
+     */
+    file_id: string;
+    /**
+     * Path
+     */
+    path: string;
+    range?: SourceRangeV1 | null;
 };
 
 /**
@@ -1689,6 +1878,107 @@ export type GitHubImportV1 = {
      * Url
      */
     url: string;
+};
+
+/**
+ * GraphEdgeV1
+ */
+export type GraphEdgeV1 = {
+    /**
+     * Candidates
+     */
+    candidates?: Array<string>;
+    evidence: EvidenceRefV1;
+    /**
+     * Import Kind
+     */
+    import_kind: string;
+    /**
+     * Module
+     */
+    module: string;
+    /**
+     * Resolution
+     */
+    resolution: 'resolved' | 'ambiguous' | 'external' | 'unresolved';
+    /**
+     * Source
+     */
+    source: string;
+    /**
+     * Target
+     */
+    target?: string | null;
+};
+
+/**
+ * GraphLinkOutV1
+ */
+export type GraphLinkOutV1 = {
+    /**
+     * Resolution
+     */
+    resolution: 'resolved' | 'ambiguous' | 'external' | 'unresolved';
+    /**
+     * Source
+     */
+    source: string;
+    /**
+     * Target
+     */
+    target: string;
+};
+
+/**
+ * GraphNodeOutV1
+ */
+export type GraphNodeOutV1 = {
+    /**
+     * Group
+     */
+    group?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Kind
+     */
+    kind: 'file' | 'package' | 'external';
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Language
+     */
+    language?: string | null;
+};
+
+/**
+ * GraphNodeV1
+ */
+export type GraphNodeV1 = {
+    /**
+     * File Id
+     */
+    file_id?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Kind
+     */
+    kind: 'file' | 'package' | 'external';
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Language
+     */
+    language?: string | null;
 };
 
 /**
@@ -4084,6 +4374,38 @@ export type RepositoryRecord = {
 };
 
 /**
+ * RepositoryReportV1
+ */
+export type RepositoryReportV1 = {
+    coverage: CoverageV1;
+    graph: DependencyGraphV1;
+    /**
+     * Inputs Digest
+     */
+    inputs_digest: string;
+    /**
+     * Org Id
+     */
+    org_id: string;
+    /**
+     * Repository Id
+     */
+    repository_id: string;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+    /**
+     * Sections
+     */
+    sections: Array<SectionV1>;
+    /**
+     * Snapshot Id
+     */
+    snapshot_id: string;
+};
+
+/**
  * ResolutionV1
  */
 export type ResolutionV1 = {
@@ -4718,6 +5040,24 @@ export type SearchScopeV1 = {
 };
 
 /**
+ * SectionV1
+ */
+export type SectionV1 = {
+    /**
+     * Name
+     */
+    name: 'overview' | 'components' | 'dependencies' | 'api_surface' | 'data_model' | 'configuration' | 'entry_points' | 'coverage';
+    /**
+     * Statements
+     */
+    statements?: Array<StatementV1>;
+    /**
+     * Tables
+     */
+    tables?: Array<TableV1>;
+};
+
+/**
  * SessionV1
  */
 export type SessionV1 = {
@@ -4737,6 +5077,36 @@ export type SessionV1 = {
      * Schema Version
      */
     schema_version?: 1;
+};
+
+/**
+ * ShardStatusV1
+ */
+export type ShardStatusV1 = {
+    /**
+     * Files
+     */
+    files: number;
+    /**
+     * Index
+     */
+    index: number;
+    /**
+     * Job Id
+     */
+    job_id?: string | null;
+    /**
+     * Prefixes
+     */
+    prefixes: number;
+    /**
+     * Run Id
+     */
+    run_id?: string | null;
+    /**
+     * State
+     */
+    state: 'not_started' | 'queued' | 'running' | 'retry_wait' | 'cancelling' | 'succeeded' | 'partial' | 'failed' | 'cancelled';
 };
 
 /**
@@ -4879,6 +5249,34 @@ export type SourceViewResultV1 = {
      * Total File Size
      */
     total_file_size: number;
+};
+
+/**
+ * StatementV1
+ */
+export type StatementV1 = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Evidence
+     */
+    evidence?: Array<EvidenceRefV1>;
+    /**
+     * Evidence Total
+     */
+    evidence_total?: number | null;
+    /**
+     * Kind
+     */
+    kind: 'observation' | 'derivation' | 'inference' | 'unknown';
+    /**
+     * Params
+     */
+    params?: {
+        [key: string]: string | number | number | boolean;
+    };
 };
 
 /**
@@ -5342,6 +5740,28 @@ export type SymbolObservationV1 = {
      * Type Only
      */
     type_only?: boolean;
+};
+
+/**
+ * TableV1
+ */
+export type TableV1 = {
+    /**
+     * Columns
+     */
+    columns: Array<string>;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Rows
+     */
+    rows?: Array<Array<string | number | number | boolean>>;
+    /**
+     * Rows Total
+     */
+    rows_total?: number;
 };
 
 /**
@@ -6784,6 +7204,305 @@ export type CreateScanApiV1RepositoriesRepositoryIdScansPostResponses = {
 };
 
 export type CreateScanApiV1RepositoriesRepositoryIdScansPostResponse = CreateScanApiV1RepositoriesRepositoryIdScansPostResponses[keyof CreateScanApiV1RepositoriesRepositoryIdScansPostResponses];
+
+export type BuildArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPostData = {
+    body: ArchitectureStartRequestV1;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports';
+};
+
+export type BuildArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BuildArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPostError = BuildArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPostErrors[keyof BuildArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPostErrors];
+
+export type BuildArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: ArchitectureReportRefV1;
+};
+
+export type BuildArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPostResponse = BuildArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPostResponses[keyof BuildArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPostResponses];
+
+export type LatestArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsLatestGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/latest';
+};
+
+export type LatestArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsLatestGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type LatestArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsLatestGetError = LatestArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsLatestGetErrors[keyof LatestArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsLatestGetErrors];
+
+export type LatestArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsLatestGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArchitectureReportRefV1;
+};
+
+export type LatestArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsLatestGetResponse = LatestArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsLatestGetResponses[keyof LatestArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsLatestGetResponses];
+
+export type ArchitectureReportStatusApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPrepareGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/prepare';
+};
+
+export type ArchitectureReportStatusApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPrepareGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ArchitectureReportStatusApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPrepareGetError = ArchitectureReportStatusApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPrepareGetErrors[keyof ArchitectureReportStatusApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPrepareGetErrors];
+
+export type ArchitectureReportStatusApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPrepareGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArchitectureShardsV1;
+};
+
+export type ArchitectureReportStatusApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPrepareGetResponse = ArchitectureReportStatusApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPrepareGetResponses[keyof ArchitectureReportStatusApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPrepareGetResponses];
+
+export type PrepareArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPreparePostData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/prepare';
+};
+
+export type PrepareArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPreparePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PrepareArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPreparePostError = PrepareArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPreparePostErrors[keyof PrepareArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPreparePostErrors];
+
+export type PrepareArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPreparePostResponses = {
+    /**
+     * Successful Response
+     */
+    202: ArchitectureShardsV1;
+};
+
+export type PrepareArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPreparePostResponse = PrepareArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPreparePostResponses[keyof PrepareArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsPreparePostResponses];
+
+export type GetArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Report Id
+         */
+        report_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}';
+};
+
+export type GetArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGetError = GetArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGetErrors[keyof GetArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGetErrors];
+
+export type GetArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: RepositoryReportV1;
+};
+
+export type GetArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGetResponse = GetArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGetResponses[keyof GetArchitectureReportApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGetResponses];
+
+export type ArchitectureReportGraphApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGraphGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Report Id
+         */
+        report_id: string;
+    };
+    query?: {
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}/graph';
+};
+
+export type ArchitectureReportGraphApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGraphGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ArchitectureReportGraphApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGraphGetError = ArchitectureReportGraphApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGraphGetErrors[keyof ArchitectureReportGraphApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGraphGetErrors];
+
+export type ArchitectureReportGraphApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGraphGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArchitectureGraphPageV1;
+};
+
+export type ArchitectureReportGraphApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGraphGetResponse = ArchitectureReportGraphApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGraphGetResponses[keyof ArchitectureReportGraphApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdGraphGetResponses];
+
+export type ArchitectureReportMarkdownApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdMarkdownGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Report Id
+         */
+        report_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}/markdown';
+};
+
+export type ArchitectureReportMarkdownApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdMarkdownGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ArchitectureReportMarkdownApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdMarkdownGetError = ArchitectureReportMarkdownApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdMarkdownGetErrors[keyof ArchitectureReportMarkdownApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdMarkdownGetErrors];
+
+export type ArchitectureReportMarkdownApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdMarkdownGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type ArchitectureReportSectionApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdSectionsNameGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Report Id
+         */
+        report_id: string;
+        /**
+         * Name
+         */
+        name: 'overview' | 'components' | 'dependencies' | 'api_surface' | 'data_model' | 'configuration' | 'entry_points' | 'coverage';
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}/sections/{name}';
+};
+
+export type ArchitectureReportSectionApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdSectionsNameGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ArchitectureReportSectionApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdSectionsNameGetError = ArchitectureReportSectionApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdSectionsNameGetErrors[keyof ArchitectureReportSectionApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdSectionsNameGetErrors];
+
+export type ArchitectureReportSectionApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdSectionsNameGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: SectionV1;
+};
+
+export type ArchitectureReportSectionApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdSectionsNameGetResponse = ArchitectureReportSectionApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdSectionsNameGetResponses[keyof ArchitectureReportSectionApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdSectionsNameGetResponses];
 
 export type AstFactsSummaryApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdAstFactsGetData = {
     body?: never;

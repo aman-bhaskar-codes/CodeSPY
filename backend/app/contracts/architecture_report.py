@@ -162,7 +162,7 @@ class CoverageV1(Contract):
         return self.analyzed_files == self.eligible_files and self.omitted_files == 0
 
 
-class ArchitectureReportV1(Contract):
+class RepositoryReportV1(Contract):
     schema_version: Literal[1] = 1
     org_id: UUID
     repository_id: UUID
@@ -242,3 +242,30 @@ class ArchitectureReportRefV1(Contract):
     complete: bool
     analyzed_files: int = Field(ge=0)
     eligible_files: int = Field(ge=0)
+
+
+class GraphNodeOutV1(Contract):
+    id: str
+    label: str
+    kind: Literal["file", "package", "external"]
+    language: str | None = None
+    group: str | None = None
+
+
+class GraphLinkOutV1(Contract):
+    source: str
+    target: str
+    resolution: Resolution
+
+
+class ArchitectureGraphPageV1(Contract):
+    """A slice of the graph in D3's nodes-and-links shape; unknown edges are only counted."""
+
+    schema_version: Literal[1] = 1
+    nodes: tuple[GraphNodeOutV1, ...]
+    links: tuple[GraphLinkOutV1, ...]
+    nodes_total: int = Field(ge=0)
+    links_total: int = Field(ge=0)
+    offset: int = Field(ge=0)
+    ambiguous: int = Field(ge=0)
+    unresolved: int = Field(ge=0)

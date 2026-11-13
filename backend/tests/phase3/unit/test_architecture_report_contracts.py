@@ -4,12 +4,12 @@ from uuid import uuid4
 
 import pytest
 from app.contracts.architecture_report import (
-    ArchitectureReportV1,
     CoverageV1,
     DependencyGraphV1,
     EvidenceRefV1,
     GraphEdgeV1,
     GraphNodeV1,
+    RepositoryReportV1,
     SectionV1,
     StatementV1,
     TableV1,
@@ -115,7 +115,7 @@ def report(**overrides):
         "graph": DependencyGraphV1(),
         "sections": (SectionV1(name="overview"),),
     }
-    return ArchitectureReportV1(**{**values, **overrides})
+    return RepositoryReportV1(**{**values, **overrides})
 
 
 def test_a_report_is_deterministic_and_rejects_duplicate_sections():

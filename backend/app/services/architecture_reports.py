@@ -23,8 +23,8 @@ from app.analyzers.graph.report import assemble_report
 from app.analyzers.graph.shards import ShardPlan, plan_shards
 from app.contracts.architecture_report import (
     ArchitectureReportRefV1,
-    ArchitectureReportV1,
     ArchitectureShardsV1,
+    RepositoryReportV1,
     ShardStatusV1,
 )
 from app.contracts.ast_facts import FileFactsV1
@@ -227,7 +227,7 @@ class ArchitectureReportService:
 
     @staticmethod
     def _ref(
-        report_id: UUID, report: ArchitectureReportV1, digest: str, size: int
+        report_id: UUID, report: RepositoryReportV1, digest: str, size: int
     ) -> ArchitectureReportRefV1:
         return ArchitectureReportRefV1(
             id=report_id,
@@ -243,7 +243,7 @@ class ArchitectureReportService:
 
     async def get(
         self, ctx: TenantContext, repository_id: UUID, snapshot_id: UUID, report_id: UUID
-    ) -> ArchitectureReportV1:
+    ) -> RepositoryReportV1:
         async with transaction(self.factory) as session:
             await require_snapshot(session, ctx, repository_id, snapshot_id)
             found = await _rows(
@@ -257,7 +257,25 @@ class ArchitectureReportService:
             )
         if not found:
             raise ScopeViolation("report unavailable")
-        return _load(ArchitectureReportV1, found[0].report_json)
+        return _load(RepositoryReportV1, found[0].report_json)
+
+    async def latest_ref(
+        self, ctx: TenantContext, repository_id: UUID, snapshot_id: UUID
+    ) -> ArchitectureReportRefV1 | None:
+        report_id = await self.latest(ctx, repository_id, snapshot_id)
+        if report_id is None:
+            return None
+        report = await self.get(ctx, repository_id, snapshot_id, report_id)
+        async with transaction(self.factory) as session:
+            row = (
+                await _rows(
+                    session,
+                    "SELECT report_digest,size_bytes FROM architecture_reports WHERE org_id=:o AND id=:i",
+                    o=ctx.org_id,
+                    i=report_id,
+                )
+            )[0]
+        return self._ref(report_id, report, row.report_digest, row.size_bytes)
 
     async def latest(
         self, ctx: TenantContext, repository_id: UUID, snapshot_id: UUID

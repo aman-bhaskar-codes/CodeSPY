@@ -14,10 +14,10 @@ from uuid import UUID
 from app.analyzers.graph.analytics import Analytics, analyze
 from app.analyzers.graph.build import FileEntry, build_graph
 from app.contracts.architecture_report import (
-    ArchitectureReportV1,
     CoverageV1,
     DependencyGraphV1,
     EvidenceRefV1,
+    RepositoryReportV1,
     Scalar,
     SectionV1,
     StatementV1,
@@ -398,7 +398,7 @@ def assemble_report(
     eligible_files: int,
     omitted_files: int,
     fact_runs: tuple[UUID, ...],
-) -> ArchitectureReportV1:
+) -> RepositoryReportV1:
     ordered = sorted(files, key=lambda f: f.path)
     graph = build_graph(ordered, inventory)
     analytics = analyze(graph)
@@ -411,7 +411,7 @@ def assemble_report(
         fact_runs=tuple(sorted(fact_runs)),
     )
     digests = tuple(FileFactsV1.facts_sha256(f.facts) for f in ordered)
-    report = ArchitectureReportV1(
+    report = RepositoryReportV1(
         org_id=org_id,
         repository_id=repository_id,
         snapshot_id=snapshot_id,

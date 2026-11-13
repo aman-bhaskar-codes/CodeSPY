@@ -5,8 +5,11 @@ from typing import Any
 
 from app.analyzers.graph.analytics import analyze
 from app.contracts.architecture_report import (
-    ArchitectureReportV1,
+    ArchitectureGraphPageV1,
     EvidenceRefV1,
+    GraphLinkOutV1,
+    GraphNodeOutV1,
+    RepositoryReportV1,
     SectionV1,
     StatementV1,
     TableV1,
@@ -107,7 +110,7 @@ def _section(section: SectionV1) -> list[str]:
     return lines
 
 
-def render_markdown(report: ArchitectureReportV1) -> str:
+def render_markdown(report: RepositoryReportV1) -> str:
     cov = report.coverage
     lines = ["# Architecture report", ""]
     if not cov.complete:
@@ -127,7 +130,7 @@ def render_markdown(report: ArchitectureReportV1) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def graph_payload(report: ArchitectureReportV1) -> dict[str, Any]:
+def graph_payload(report: RepositoryReportV1) -> dict[str, Any]:
     """D3-compatible ``{nodes, links}`` for resolved and external edges; unknowns are counted."""
     components = analyze(report.graph).component_by_file
     counts = report.graph.counts()
@@ -149,3 +152,20 @@ def graph_payload(report: ArchitectureReportV1) -> dict[str, Any]:
         ],
         "unknown": {"ambiguous": counts["ambiguous"], "unresolved": counts["unresolved"]},
     }
+
+
+def graph_page(
+    report: RepositoryReportV1, offset: int = 0, limit: int = 2000
+) -> ArchitectureGraphPageV1:
+    """A bounded slice of the graph payload; nodes and links page independently by ``offset``."""
+    payload = graph_payload(report)
+    nodes, links = payload["nodes"], payload["links"]
+    return ArchitectureGraphPageV1(
+        nodes=tuple(GraphNodeOutV1(**n) for n in nodes[offset : offset + limit]),
+        links=tuple(GraphLinkOutV1(**link) for link in links[offset : offset + limit]),
+        nodes_total=len(nodes),
+        links_total=len(links),
+        offset=offset,
+        ambiguous=payload["unknown"]["ambiguous"],
+        unresolved=payload["unknown"]["unresolved"],
+    )

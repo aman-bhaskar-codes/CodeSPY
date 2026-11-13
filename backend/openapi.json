@@ -40,6 +40,136 @@
         "title": "AnalysisAcceptedV1",
         "type": "object"
       },
+      "ArchitectureGraphPageV1": {
+        "additionalProperties": false,
+        "description": "A slice of the graph in D3's nodes-and-links shape; unknown edges are only counted.",
+        "properties": {
+          "ambiguous": {
+            "minimum": 0.0,
+            "title": "Ambiguous",
+            "type": "integer"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/GraphLinkOutV1"
+            },
+            "title": "Links",
+            "type": "array"
+          },
+          "links_total": {
+            "minimum": 0.0,
+            "title": "Links Total",
+            "type": "integer"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeOutV1"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "nodes_total": {
+            "minimum": 0.0,
+            "title": "Nodes Total",
+            "type": "integer"
+          },
+          "offset": {
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "unresolved": {
+            "minimum": 0.0,
+            "title": "Unresolved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "nodes",
+          "links",
+          "nodes_total",
+          "links_total",
+          "offset",
+          "ambiguous",
+          "unresolved"
+        ],
+        "title": "ArchitectureGraphPageV1",
+        "type": "object"
+      },
+      "ArchitectureReportRefV1": {
+        "additionalProperties": false,
+        "properties": {
+          "analyzed_files": {
+            "minimum": 0.0,
+            "title": "Analyzed Files",
+            "type": "integer"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "eligible_files": {
+            "minimum": 0.0,
+            "title": "Eligible Files",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inputs_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Inputs Digest",
+            "type": "string"
+          },
+          "report_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Report Digest",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "size_bytes": {
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "repository_id",
+          "snapshot_id",
+          "inputs_digest",
+          "report_digest",
+          "size_bytes",
+          "complete",
+          "analyzed_files",
+          "eligible_files"
+        ],
+        "title": "ArchitectureReportRefV1",
+        "type": "object"
+      },
       "ArchitectureReportV1": {
         "additionalProperties": false,
         "properties": {
@@ -218,6 +348,75 @@
           "run_ref"
         ],
         "title": "ArchitectureReportV1",
+        "type": "object"
+      },
+      "ArchitectureShardsV1": {
+        "additionalProperties": false,
+        "properties": {
+          "plan_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Plan Digest",
+            "type": "string"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "shards": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ShardStatusV1"
+            },
+            "maxItems": 1000,
+            "title": "Shards",
+            "type": "array"
+          },
+          "skipped_files": {
+            "minimum": 0.0,
+            "title": "Skipped Files",
+            "type": "integer"
+          },
+          "total_files": {
+            "minimum": 0.0,
+            "title": "Total Files",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "plan_digest",
+          "total_files",
+          "skipped_files",
+          "ready"
+        ],
+        "title": "ArchitectureShardsV1",
+        "type": "object"
+      },
+      "ArchitectureStartRequestV1": {
+        "additionalProperties": false,
+        "properties": {
+          "request_key": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Request Key",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "request_key"
+        ],
+        "title": "ArchitectureStartRequestV1",
         "type": "object"
       },
       "AstConfigItemV1": {
@@ -1571,6 +1770,49 @@
         "title": "ContextPreviewV1",
         "type": "object"
       },
+      "CoverageV1": {
+        "additionalProperties": false,
+        "properties": {
+          "analyzed_files": {
+            "minimum": 0.0,
+            "title": "Analyzed Files",
+            "type": "integer"
+          },
+          "eligible_files": {
+            "minimum": 0.0,
+            "title": "Eligible Files",
+            "type": "integer"
+          },
+          "fact_runs": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 64,
+            "title": "Fact Runs",
+            "type": "array"
+          },
+          "omitted_files": {
+            "minimum": 0.0,
+            "title": "Omitted Files",
+            "type": "integer"
+          },
+          "partial_files": {
+            "minimum": 0.0,
+            "title": "Partial Files",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "eligible_files",
+          "analyzed_files",
+          "partial_files",
+          "omitted_files"
+        ],
+        "title": "CoverageV1",
+        "type": "object"
+      },
       "CreateScanRequestV1": {
         "additionalProperties": false,
         "properties": {
@@ -1984,6 +2226,31 @@
           "format"
         ],
         "title": "DependencyFileV1",
+        "type": "object"
+      },
+      "DependencyGraphV1": {
+        "additionalProperties": false,
+        "properties": {
+          "edges": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/GraphEdgeV1"
+            },
+            "maxItems": 100000,
+            "title": "Edges",
+            "type": "array"
+          },
+          "nodes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeV1"
+            },
+            "maxItems": 20000,
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "title": "DependencyGraphV1",
         "type": "object"
       },
       "DependencySelectionV1": {
@@ -2629,6 +2896,52 @@
           "end_line"
         ],
         "title": "EvidencePointerV1",
+        "type": "object"
+      },
+      "EvidenceRefV1": {
+        "additionalProperties": false,
+        "properties": {
+          "fact": {
+            "enum": [
+              "file",
+              "import",
+              "export",
+              "route",
+              "model",
+              "config",
+              "symbol"
+            ],
+            "title": "Fact",
+            "type": "string"
+          },
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Path",
+            "type": "string"
+          },
+          "range": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceRangeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "file_id",
+          "path",
+          "fact"
+        ],
+        "title": "EvidenceRefV1",
         "type": "object"
       },
       "ExactSearchRequestV1": {
@@ -3323,6 +3636,209 @@
           "url"
         ],
         "title": "GitHubImportV1",
+        "type": "object"
+      },
+      "GraphEdgeV1": {
+        "additionalProperties": false,
+        "properties": {
+          "candidates": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Candidates",
+            "type": "array"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/EvidenceRefV1"
+          },
+          "import_kind": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Import Kind",
+            "type": "string"
+          },
+          "module": {
+            "maxLength": 512,
+            "title": "Module",
+            "type": "string"
+          },
+          "resolution": {
+            "enum": [
+              "resolved",
+              "ambiguous",
+              "external",
+              "unresolved"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 1100,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "maxLength": 1100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "required": [
+          "source",
+          "module",
+          "import_kind",
+          "resolution",
+          "evidence"
+        ],
+        "title": "GraphEdgeV1",
+        "type": "object"
+      },
+      "GraphLinkOutV1": {
+        "additionalProperties": false,
+        "properties": {
+          "resolution": {
+            "enum": [
+              "resolved",
+              "ambiguous",
+              "external",
+              "unresolved"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "resolution"
+        ],
+        "title": "GraphLinkOutV1",
+        "type": "object"
+      },
+      "GraphNodeOutV1": {
+        "additionalProperties": false,
+        "properties": {
+          "group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "file",
+              "package",
+              "external"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kind"
+        ],
+        "title": "GraphNodeOutV1",
+        "type": "object"
+      },
+      "GraphNodeV1": {
+        "additionalProperties": false,
+        "properties": {
+          "file_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Id"
+          },
+          "id": {
+            "maxLength": 1100,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "file",
+              "package",
+              "external"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label"
+        ],
+        "title": "GraphNodeV1",
         "type": "object"
       },
       "GraphPage": {
@@ -7912,6 +8428,62 @@
         "title": "RepositoryRecord",
         "type": "object"
       },
+      "RepositoryReportV1": {
+        "additionalProperties": false,
+        "properties": {
+          "coverage": {
+            "$ref": "#/components/schemas/CoverageV1"
+          },
+          "graph": {
+            "$ref": "#/components/schemas/DependencyGraphV1"
+          },
+          "inputs_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Inputs Digest",
+            "type": "string"
+          },
+          "org_id": {
+            "format": "uuid",
+            "title": "Org Id",
+            "type": "string"
+          },
+          "repository_id": {
+            "format": "uuid",
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/SectionV1"
+            },
+            "maxItems": 8,
+            "title": "Sections",
+            "type": "array"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_id",
+          "repository_id",
+          "snapshot_id",
+          "inputs_digest",
+          "coverage",
+          "graph",
+          "sections"
+        ],
+        "title": "RepositoryReportV1",
+        "type": "object"
+      },
       "ResolutionV1": {
         "additionalProperties": false,
         "properties": {
@@ -9133,6 +9705,48 @@
         "title": "SearchScopeV1",
         "type": "object"
       },
+      "SectionV1": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "enum": [
+              "overview",
+              "components",
+              "dependencies",
+              "api_surface",
+              "data_model",
+              "configuration",
+              "entry_points",
+              "coverage"
+            ],
+            "title": "Name",
+            "type": "string"
+          },
+          "statements": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/StatementV1"
+            },
+            "maxItems": 200,
+            "title": "Statements",
+            "type": "array"
+          },
+          "tables": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TableV1"
+            },
+            "maxItems": 8,
+            "title": "Tables",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "SectionV1",
+        "type": "object"
+      },
       "SessionV1": {
         "additionalProperties": false,
         "properties": {
@@ -9167,6 +9781,73 @@
           "auth_backend"
         ],
         "title": "SessionV1",
+        "type": "object"
+      },
+      "ShardStatusV1": {
+        "additionalProperties": false,
+        "properties": {
+          "files": {
+            "minimum": 0.0,
+            "title": "Files",
+            "type": "integer"
+          },
+          "index": {
+            "minimum": 0.0,
+            "title": "Index",
+            "type": "integer"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "prefixes": {
+            "minimum": 0.0,
+            "title": "Prefixes",
+            "type": "integer"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "state": {
+            "enum": [
+              "not_started",
+              "queued",
+              "running",
+              "retry_wait",
+              "cancelling",
+              "succeeded",
+              "partial",
+              "failed",
+              "cancelled"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "files",
+          "prefixes",
+          "state"
+        ],
+        "title": "ShardStatusV1",
         "type": "object"
       },
       "SignatureV1": {
@@ -9420,6 +10101,76 @@
           "total_file_size"
         ],
         "title": "SourceViewResultV1",
+        "type": "object"
+      },
+      "StatementV1": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 96,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "title": "Code",
+            "type": "string"
+          },
+          "evidence": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/EvidenceRefV1"
+            },
+            "maxItems": 8,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "evidence_total": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Total"
+          },
+          "kind": {
+            "enum": [
+              "observation",
+              "derivation",
+              "inference",
+              "unknown"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "maxProperties": 16,
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "kind",
+          "code"
+        ],
+        "title": "StatementV1",
         "type": "object"
       },
       "StructuralAnalysisRequestV1": {
@@ -10366,6 +11117,64 @@
           "role"
         ],
         "title": "SymbolObservationV1",
+        "type": "object"
+      },
+      "TableV1": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Columns",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Name",
+            "type": "string"
+          },
+          "rows": {
+            "default": [],
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "maxItems": 200,
+            "title": "Rows",
+            "type": "array"
+          },
+          "rows_total": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Rows Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "columns"
+        ],
+        "title": "TableV1",
         "type": "object"
       },
       "ToolCallV1": {
@@ -12760,6 +13569,491 @@
           }
         },
         "summary": "Create Scan"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports": {
+      "post": {
+        "operationId": "build_architecture_report_api_v1_repositories__repository_id__snapshots__snapshot_id__architecture_reports_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchitectureStartRequestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchitectureReportRefV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Build Architecture Report"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/latest": {
+      "get": {
+        "operationId": "latest_architecture_report_api_v1_repositories__repository_id__snapshots__snapshot_id__architecture_reports_latest_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchitectureReportRefV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Latest Architecture Report"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/prepare": {
+      "get": {
+        "operationId": "architecture_report_status_api_v1_repositories__repository_id__snapshots__snapshot_id__architecture_reports_prepare_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchitectureShardsV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Architecture Report Status"
+      },
+      "post": {
+        "operationId": "prepare_architecture_report_api_v1_repositories__repository_id__snapshots__snapshot_id__architecture_reports_prepare_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchitectureShardsV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Prepare Architecture Report"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}": {
+      "get": {
+        "operationId": "get_architecture_report_api_v1_repositories__repository_id__snapshots__snapshot_id__architecture_reports__report_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryReportV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Architecture Report"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}/graph": {
+      "get": {
+        "operationId": "architecture_report_graph_api_v1_repositories__repository_id__snapshots__snapshot_id__architecture_reports__report_id__graph_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Report Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 2000,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchitectureGraphPageV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Architecture Report Graph"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}/markdown": {
+      "get": {
+        "operationId": "architecture_report_markdown_api_v1_repositories__repository_id__snapshots__snapshot_id__architecture_reports__report_id__markdown_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Architecture Report Markdown"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}/sections/{name}": {
+      "get": {
+        "operationId": "architecture_report_section_api_v1_repositories__repository_id__snapshots__snapshot_id__architecture_reports__report_id__sections__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Report Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "enum": [
+                "overview",
+                "components",
+                "dependencies",
+                "api_surface",
+                "data_model",
+                "configuration",
+                "entry_points",
+                "coverage"
+              ],
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Architecture Report Section"
       }
     },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/ast-facts": {
