@@ -100,6 +100,7 @@ class InvestigationToolName(StrEnum):
     CHECK_MEMORY = "check_memory"
     INSPECT_FINDING = "inspect_finding"
     TRACE_CONTEXT = "trace_context"
+    READ_REPORT_SECTION = "read_report_section"
 
 
 class InvestigationToolStatus(StrEnum):

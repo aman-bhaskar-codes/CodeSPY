@@ -23,8 +23,12 @@ from urllib.parse import unquote
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
+from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.analyzers.graph.render import statement_text
+from app.analyzers.graph.statement_ids import statement_ids
+from app.contracts.architecture_report import RepositoryReportV1
 from app.contracts.context_manifest import MemoryContextSettingsV1
 from app.contracts.investigation_execution import (
     MAX_MEMORY_HITS,
@@ -188,6 +192,39 @@ TOOL_DEF_TRACE_CONTEXT = ToolDefinitionV1(
             },
         },
         "required": ["finding_id"],
+        "additionalProperties": False,
+    },
+)
+
+
+REPORT_SECTIONS = (
+    "overview",
+    "components",
+    "dependencies",
+    "api_surface",
+    "data_model",
+    "configuration",
+    "entry_points",
+    "coverage",
+)
+REPORT_PAGE_BYTES = 24 * 1024
+REPORT_PAGE_STATEMENTS = 40
+
+TOOL_DEF_READ_REPORT_SECTION = ToolDefinitionV1(
+    name=InvestigationToolName.READ_REPORT_SECTION.value,
+    description=(
+        "Read statements of the pinned architecture report, one section at a time. Each "
+        "statement has an id (sid), a kind (observation, derivation, inference or unknown), "
+        "a code, rendered text and parameters. Cite statements by sid. next_offset, when "
+        "present, is where the next page starts."
+    ),
+    parameters_schema={
+        "type": "object",
+        "properties": {
+            "section": {"type": "string", "enum": list(REPORT_SECTIONS)},
+            "offset": {"type": "integer", "minimum": 0, "description": "First statement to read"},
+        },
+        "required": ["section"],
         "additionalProperties": False,
     },
 )
@@ -437,6 +474,20 @@ def validate_tool_arguments(
                 return ValidationResult(False, f"Invalid UUID string for finding_id: {fid}")
         return ValidationResult(False, "finding_id must be a valid UUID string or UUID")
 
+    if tool_name == InvestigationToolName.READ_REPORT_SECTION:
+        extra = set(arguments.keys()) - {"section", "offset"}
+        if extra:
+            return ValidationResult(
+                False, f"Undeclared arguments for read_report_section: {', '.join(sorted(extra))}"
+            )
+        section = arguments.get("section")
+        if not isinstance(section, str) or section not in REPORT_SECTIONS:
+            return ValidationResult(False, "section must be one of the report section names")
+        offset = arguments.get("offset", 0)
+        if not _is_strict_int(offset) or offset < 0 or offset > 100_000:
+            return ValidationResult(False, "offset must be an integer between 0 and 100000")
+        return ValidationResult(True, cleaned={"section": section, "offset": offset})
+
     return ValidationResult(False, f"Unsupported tool name: {tool_name}")
 
 
@@ -487,6 +538,10 @@ class InvestigationToolService(InvestigationToolPort):
             tools.append(TOOL_DEF_TRACE_CONTEXT)
         return tuple(tools)
 
+    def get_report_tool_definitions(self) -> tuple[ToolDefinitionV1, ...]:
+        """The report-reading tool: offered only to narrative runs, never advertised elsewhere."""
+        return (TOOL_DEF_READ_REPORT_SECTION,) if self.session_factory is not None else ()
+
     async def execute(
         self,
         request: InvestigationToolRequestV1,
@@ -528,7 +583,9 @@ class InvestigationToolService(InvestigationToolPort):
         context: InvestigationExecutionContextV1,
     ) -> InvestigationToolResultV1:
         # 2. Check capability registration
-        available_tools = {t.name for t in self.get_tool_definitions()}
+        available_tools = {
+            t.name for t in (*self.get_tool_definitions(), *self.get_report_tool_definitions())
+        }
         if request.tool_name.value not in available_tools:
             return InvestigationToolResultV1(
                 status=InvestigationToolStatus.UNAVAILABLE,
@@ -556,6 +613,8 @@ class InvestigationToolService(InvestigationToolPort):
             return await self._exec_inspect_finding(args, context)
         if request.tool_name == InvestigationToolName.TRACE_CONTEXT:
             return await self._exec_trace_context(args, context)
+        if request.tool_name == InvestigationToolName.READ_REPORT_SECTION:
+            return await self._exec_read_report_section(args, context)
 
         return InvestigationToolResultV1(
             status=InvestigationToolStatus.INVALID,
@@ -762,6 +821,144 @@ class InvestigationToolService(InvestigationToolPort):
             evidence_refs=(evidence_id,),
             omission_reason=omit_reason,
             result_digest=result_digest,
+        )
+
+    # -----------------------------------------------------------------------
+    # Tool 6: read_report_section (statements of the pinned architecture report)
+    # -----------------------------------------------------------------------
+
+    async def _exec_read_report_section(
+        self,
+        args: dict[str, Any],
+        context: InvestigationExecutionContextV1,
+    ) -> InvestigationToolResultV1:
+        if self.session_factory is None:
+            return InvestigationToolResultV1(
+                status=InvestigationToolStatus.UNAVAILABLE,
+                omission_reason="report_reader_unavailable",
+            )
+        section: str = args["section"]
+        offset: int = args["offset"]
+        scope = context.scope
+
+        def denied(reason: str) -> InvestigationToolResultV1:
+            return InvestigationToolResultV1(
+                status=InvestigationToolStatus.DENIED, omission_reason=reason
+            )
+
+        async with self.session_factory() as session:
+            pin = (
+                await session.execute(
+                    sa_text(
+                        "SELECT s.architecture_report_id, s.architecture_report_digest "
+                        "FROM investigations i JOIN investigation_specs s "
+                        "ON s.org_id=i.org_id AND s.spec_hash=i.spec_hash "
+                        "WHERE i.org_id=:o AND i.id=:i"
+                    ),
+                    {"o": scope.org_id, "i": scope.investigation_id},
+                )
+            ).first()
+            if pin is None or pin[0] is None:
+                return denied("no_pinned_report")
+            try:
+                await require_repository(
+                    session, scope.org_id, scope.principal_id, scope.repository_id
+                )
+            except ScopeViolation:
+                return denied("repository_access_unavailable")
+            row = (
+                await session.execute(
+                    sa_text(
+                        "SELECT report_json, report_digest FROM architecture_reports "
+                        "WHERE org_id=:o AND id=:i AND repository_id=:r AND snapshot_id=:s"
+                    ),
+                    {
+                        "o": scope.org_id,
+                        "i": pin[0],
+                        "r": scope.repository_id,
+                        "s": scope.snapshot_id,
+                    },
+                )
+            ).first()
+            if row is None:
+                return denied("report_unavailable")
+            if row[1] != pin[1]:
+                return denied("report_changed")
+            report_digest: str = row[1]
+            raw = row[0] if isinstance(row[0], str) else json.dumps(row[0])
+            report = RepositoryReportV1.model_validate_json(raw)
+            rows = statement_ids(report).get(section)
+            if rows is None:
+                return InvestigationToolResultV1(
+                    status=InvestigationToolStatus.INVALID, omission_reason="unknown_section"
+                )
+            entries: list[dict[str, Any]] = []
+            size = 0
+            index = offset
+            while index < len(rows) and len(entries) < REPORT_PAGE_STATEMENTS:
+                sid, statement = rows[index]
+                params = {
+                    k: (
+                        transform_model_safe(v.encode("utf-8"), self.privacy_policy).safe_text
+                        if isinstance(v, str)
+                        else v
+                    )
+                    for k, v in statement.params.items()
+                }
+                shown = statement.model_copy(update={"params": params})
+                entry = {
+                    "sid": sid,
+                    "kind": statement.kind,
+                    "code": statement.code,
+                    "text": statement_text(shown),
+                    "params": params,
+                }
+                cost = len(canonical_bytes(entry)) + 1
+                if entries and size + cost > REPORT_PAGE_BYTES:
+                    break
+                entries.append(entry)
+                size += cost
+                index += 1
+            next_offset = index if index < len(rows) else None
+            payload = json.dumps(
+                {
+                    "section": section,
+                    "total": len(rows),
+                    "offset": offset,
+                    "next_offset": next_offset,
+                    "statements": entries,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            excerpt_sha = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+            evidence_ids: list[UUID] = []
+            for entry in entries:
+                evidence = InvestigationEvidenceV1(
+                    id=uuid4(),
+                    org_id=scope.org_id,
+                    investigation_id=scope.investigation_id,
+                    snapshot_id=scope.snapshot_id,
+                    fact_ref=f"{report_digest}:{entry['sid']}",
+                    excerpt_sha256=excerpt_sha,
+                    observation_type="report_fact",
+                    coverage_summary=f"{section} statements {offset + 1}-{index} of {len(rows)}",
+                )
+                await self.evidence_repo.record_evidence(session, evidence)
+                evidence_ids.append(evidence.id)
+            await session.commit()
+
+        return InvestigationToolResultV1(
+            status=(
+                InvestigationToolStatus.PARTIAL
+                if next_offset is not None
+                else InvestigationToolStatus.OK
+            ),
+            payload=payload,
+            evidence_refs=tuple(evidence_ids),
+            coverage_notes=f"{len(entries)} of {len(rows)} statements of {section}",
+            omission_reason="more_statements_available" if next_offset is not None else "",
+            result_digest=hashlib.sha256(canonical_bytes(payload)).hexdigest(),
         )
 
     def _slice_and_bound_source(
