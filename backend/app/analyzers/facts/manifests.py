@@ -38,7 +38,14 @@ def _name(value: Any, limit: int = 256) -> str | None:
     if not isinstance(value, str):
         return None
     value = value.strip()
-    if not value or len(value) > limit or "://" in value or any(ord(c) < 32 for c in value):
+    if (
+        not value
+        or len(value) > limit
+        or "://" in value
+        or "@" in value[1:]
+        or any(c in value for c in "?# ")
+        or any(ord(c) < 32 for c in value)
+    ):
         return None
     return str(value)
 
@@ -112,8 +119,9 @@ def parse_go_mod(text: str) -> ManifestFactV1:
             elif block == "require":
                 out.dep(line.split()[0])
             continue
-        head, _, rest = line.partition(" ")
-        rest = rest.strip()
+        pieces = line.split(None, 1)
+        head = pieces[0]
+        rest = pieces[1].strip() if len(pieces) > 1 else ""
         if head == "module":
             module = rest.strip('"`')
         elif head == "require":
@@ -198,7 +206,8 @@ def parse_pyproject(text: str) -> ManifestFactV1:
     tool = _table(data.get("tool"))
     poetry = _table(tool.get("poetry"))
     name = project.get("name") or poetry.get("name")
-    for requirement in project.get("dependencies") or []:
+    requirements = project.get("dependencies")
+    for requirement in requirements if isinstance(requirements, list) else []:
         out.dep(_requirement(requirement))
     for table in (
         _table(project.get("optional-dependencies")),
@@ -221,7 +230,7 @@ _SWIFT_TARGET = re.compile(
     r"\.(?:target|executableTarget|testTarget|macro|plugin|systemLibrary|binaryTarget)"
     r"\s*\(\s*name\s*:\s*\"([^\"\n]{1,256})\""
 )
-_SWIFT_PACKAGE_DEP = re.compile(r"\.package\s*\([^)]*?url\s*:\s*\"([^\"\n]{1,512})\"")
+_SWIFT_PACKAGE_DEP = re.compile(r"\.package\s*\([^)]{0,512}?url\s*:\s*\"([^\"\n]{1,512})\"")
 
 
 def parse_package_swift(text: str) -> ManifestFactV1:
@@ -230,7 +239,8 @@ def parse_package_swift(text: str) -> ManifestFactV1:
         out.target(match.group(1))
     for match in _SWIFT_PACKAGE_DEP.finditer(text):
         # Only the repository's own name is kept; the host, owner and any credentials are dropped.
-        last = match.group(1).rstrip("/").rsplit("/", 1)[-1].removesuffix(".git")
+        url = match.group(1).split("?", 1)[0].split("#", 1)[0]
+        last = url.rstrip("/").rsplit("/", 1)[-1].removesuffix(".git")
         out.dep(last)
     package = _SWIFT_PACKAGE.search(text)
     return out.fact("swift", package.group(1) if package else None)
@@ -251,8 +261,8 @@ def parse_manifest(path: str, data: bytes) -> ManifestFactV1 | None:
     if ecosystem is None or len(data) > MAX_MANIFEST_BYTES:
         return None
     try:
-        return PARSERS[ecosystem](data.decode("utf-8"))
-    except (ValueError, UnicodeDecodeError, RecursionError):
+        return PARSERS[ecosystem](data.decode("utf-8-sig"))
+    except (ValueError, UnicodeDecodeError, RecursionError, TypeError, AttributeError, KeyError):
         return None  # tomllib.TOMLDecodeError and json errors are ValueErrors
 
 

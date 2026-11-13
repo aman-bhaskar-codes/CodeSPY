@@ -237,3 +237,17 @@ def test_go_mod_is_read_under_policy_v4(tmp_path):
     by_path = {f.path: f for f in draft.files}
     assert by_path["go.mod"].manifest.name == "example.com/app"
     assert [d.name for d in by_path["go.mod"].manifest.dependencies] == ["github.com/x/y"]
+
+
+def test_package_swift_is_read_as_a_manifest_through_the_real_pipeline(tmp_path):
+    from app.contracts.ingestion import AdmissionPolicyV3
+
+    files = {
+        "Package.swift": b'let package = Package(name: "Kit", targets: [.target(name: "Kit")])\n',
+        "Sources/Kit/Kit.swift": b"public func a() {}\n",
+    }
+    source = source_input(tmp_path, files, None, AdmissionPolicyV3())
+    by_path = {f.path: f for f in analyze_facts(source, tmp_path).files}
+    assert by_path["Package.swift"].language == "manifest"
+    assert by_path["Package.swift"].manifest.targets == ("Kit",)
+    assert by_path["Sources/Kit/Kit.swift"].language == "swift"

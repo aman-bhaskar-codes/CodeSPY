@@ -377,3 +377,25 @@ def test_cargo_crate_names_resolve_across_a_workspace():
     )
     assert ("my_core::util::f", "resolved", "file:crates/core/src/util.rs") in got
     assert ("serde::Serialize", "external", "ext:rust:serde") in got
+
+
+def test_go_module_without_a_dot_resolves_and_sample_manifests_do_not_capture_imports():
+    got = resolutions(
+        {
+            "go.mod": "module myapp\n",
+            "main.go": 'package main\nimport "myapp/internal/db"\nimport "fmt"\n',
+            "internal/db/db.go": "package db\n",
+        }
+    )
+    assert ("myapp/internal/db", "resolved", "pkg:internal/db") in got
+    assert ("fmt", "external", "ext:go:fmt") in got
+    shared = resolutions(
+        {
+            "examples/x/package.json": '{"name": "foo"}',
+            "examples/x/index.js": "export const a = 1;\n",
+            "packages/foo/package.json": '{"name": "foo"}',
+            "packages/foo/index.js": "export const a = 1;\n",
+            "app/main.js": 'import a from "foo";\n',
+        }
+    )
+    assert ("foo", "resolved", "pkg:packages/foo") in shared

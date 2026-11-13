@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
+from app.analyzers.graph.analytics import _is_test_path
 from app.analyzers.graph.index import EXTERNAL, FILE, PACKAGE, PathIndex, parent
 from app.analyzers.graph.resolvers import RESOLVERS, Ctx, Outcome
 from app.contracts.architecture_report import (
@@ -39,13 +40,16 @@ def declared_identity(manifests: Iterable[FileEntry]) -> dict[str, Any]:
     go_modules: list[tuple[str, str]] = []
     npm: dict[str, str] = {}
     cargo: dict[str, str] = {}
-    for entry in sorted(manifests, key=lambda m: m.path):
+    # The shallowest manifest names a package first, and manifests under examples, tests, fixtures
+    # or docs never name one: a sample project called "foo" must not capture imports of "foo".
+    for entry in sorted(manifests, key=lambda m: (m.path.count("/"), m.path)):
         fact = entry.facts.manifest
-        if fact is None or not fact.name:
+        if fact is None or not fact.name or _is_test_path(entry.path):
             continue
         directory = parent(entry.path)
         if fact.ecosystem == "go":
-            go_modules.append((fact.name, directory))
+            if all(fact.name != m for m, _ in go_modules):
+                go_modules.append((fact.name, directory))
         elif fact.ecosystem == "npm":
             npm.setdefault(fact.name, directory)
         elif fact.ecosystem == "cargo":

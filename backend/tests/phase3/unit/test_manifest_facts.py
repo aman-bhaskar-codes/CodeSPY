@@ -95,3 +95,67 @@ def test_dependency_lists_are_bounded_and_deterministic():
         "package.json", json.dumps({"dependencies": dict(reversed(many.items()))}).encode()
     )
     assert len(a.dependencies) == 512 and a.truncated and a == b
+
+
+def test_hostile_and_odd_manifests_never_raise():
+    assert parse_manifest("pyproject.toml", b"[project]\ndependencies = 5\n").dependencies == ()
+    assert (
+        parse_manifest("pyproject.toml", b'[project]\ndependencies = "requests"\n').dependencies
+        == ()
+    )
+    assert parse_manifest("pyproject.toml", b"[project]\nname = 3\n").name is None
+    assert parse_manifest("package.json", b'{"dependencies": ["a"], "workspaces": 7}') is not None
+    assert parse_manifest("Cargo.toml", b"[dependencies]\nx = 5\n[target]\nfoo = 1\n") is not None
+
+
+def test_byte_order_marks_and_tabs_are_tolerated():
+    assert parse_manifest("package.json", b'\xef\xbb\xbf{"name": "bom"}').name == "bom"
+    assert parse_manifest("Cargo.toml", b'\xef\xbb\xbf[package]\nname = "bom"\n').name == "bom"
+    fact = parse_manifest(
+        "go.mod", b"module\texample.com/tab\nrequire\t(\n\texample.com/dep v1\n)\n"
+    )
+    assert fact.name == "example.com/tab" and [d.name for d in fact.dependencies] == [
+        "example.com/dep"
+    ]
+
+
+def test_swift_urls_keep_only_a_plain_name_and_the_scan_is_bounded():
+    import time
+
+    fact = parse_manifest(
+        "Package.swift",
+        b'.package(url: "https://github.com/o/r?token=abc", from: "1")\n'
+        b'.package(url: "https://TOKEN@host/x/y.git", from: "1")\n',
+    )
+    assert [d.name for d in fact.dependencies] == ["r", "y"]  # query and credentials stripped
+    assert "token" not in fact.model_dump_json() and "TOKEN" not in fact.model_dump_json()
+    started = time.perf_counter()
+    parse_manifest("Package.swift", b".package(" * 25000)
+    assert time.perf_counter() - started < 2.0
+
+
+def test_scoped_npm_names_survive_the_name_hardening():
+    fact = parse_manifest(
+        "package.json", b'{"name": "@acme/ui", "dependencies": {"@scope/pkg": "1"}}'
+    )
+    assert fact.name == "@acme/ui" and [d.name for d in fact.dependencies] == ["@scope/pkg"]
+
+
+def test_digest_is_unchanged_for_facts_without_a_manifest():
+    import hashlib
+    from uuid import uuid4
+
+    from app.contracts.ast_facts import FileFactsV1
+    from app.domain.canonical_json import semantic_digest
+
+    facts = FileFactsV1(
+        file_id=uuid4(),
+        path="a.py",
+        sha256="a" * 64,
+        language="python",
+        grammar="g",
+        status="parsed",
+    )
+    legacy = facts.model_dump(mode="json")
+    legacy.pop("manifest")
+    assert facts.facts_sha256() == semantic_digest(legacy) and hashlib

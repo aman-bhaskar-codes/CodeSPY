@@ -220,6 +220,16 @@ def _manifests(
                 )
             )
         rows.extend((entry.path[:512], fact.ecosystem, d.name, d.scope) for d in fact.dependencies)
+    cut = [e for e in manifests if e.facts.manifest is not None and e.facts.manifest.truncated]
+    if cut or len(rows) > 200 or len(manifests) > 20:
+        statements.append(
+            _statement(
+                "unknown",
+                "manifest.truncated",
+                {"manifests": len(manifests), "rows": len(rows), "cut": len(cut)},
+                [_ref(e, "manifest", None) for e in cut],
+            )
+        )
     if unparsed:
         statements.append(
             _statement("unknown", "manifest.unparsed", {"count": len(unparsed)}, unparsed)

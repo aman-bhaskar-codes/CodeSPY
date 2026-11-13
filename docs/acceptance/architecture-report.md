@@ -74,6 +74,19 @@ Manifest facts (names only, never executed, no new dependency):
   an unsupported file and Go keeps the inferred-prefix heuristic. The corpus runs under v4: gin's `go.mod` is read and its 31 internal imports resolve exactly as the heuristic had inferred. `Package.swift` is admitted by V3 and
   later. Adding manifests changes the facts digest of rows published afterwards.
 
+Orphans and declared-versus-observed:
+
+- **Orphan files** (no import edge in either direction, not an ambiguous candidate, not a test, example,
+  docs or entry-like file) are reported only for Python, JavaScript/TypeScript and Rust, where a file must be
+  named by an import to be used. Go, Java, PHP and Swift share packages implicitly, C and C++ files are
+  compiled, and Ruby files are often autoloaded, so absence of an import proves nothing there. The statement
+  is a derivation only when every import was located; otherwise it is an inference that says so.
+- **Declared but not observed**: runtime dependencies of npm, Cargo and Go manifests with no matching import
+  root, as an inference (build tooling and plugins legitimately look unused). Python distribution names and
+  Swift package names differ from import names, so they are not compared.
+- Manifest identity prefers the shallowest manifest and ignores those under examples, tests, fixtures and
+  docs. Cargo `[lib] name` and `path` overrides are not read, so such crates resolve as external.
+
 Review follow-ups (documented bounds):
 
 - Route handlers are reported only when they are plain dotted names; other expressions show as

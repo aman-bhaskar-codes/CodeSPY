@@ -155,7 +155,11 @@ class FileFactsV1(Contract):
         return self
 
     def facts_sha256(self) -> str:
-        return semantic_digest(self.model_dump(mode="json"))
+        document = self.model_dump(mode="json")
+        if document.get("manifest") is None:
+            # Facts stored before manifests existed have no such key; keep their digests stable.
+            document.pop("manifest", None)
+        return semantic_digest(document)
 
 
 class AstDraftV1(Contract):

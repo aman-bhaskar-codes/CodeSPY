@@ -207,14 +207,14 @@ def go_suffix_match(ctx: Ctx, path: str, minimum: int = 2) -> tuple[list[str], i
 def go(imp: ImportFactV1, ctx: Ctx) -> list[Outcome]:
     path = imp.module
     segments = path.split("/")
-    if "." not in segments[0]:
-        return [_external(path)]  # standard library
     for module, base in sorted(ctx.declared.get("go_modules", ()), key=lambda m: -len(m[0])):
         if path == module or path.startswith(module + "/"):  # the declared module path is exact
             target = join(base, path[len(module) + 1 :]) if path != module else base
             if target in _go_dirs(ctx):
                 return [Outcome("resolved", (pkg_id(target),))]
             return [UNRESOLVED]
+    if "." not in segments[0]:
+        return [_external(path)]  # standard library
     prefixes: set[str] = ctx.state.setdefault("go_prefixes", set())  # type: ignore[assignment]
     matched = go_suffix_match(ctx, path)
     if matched is None:

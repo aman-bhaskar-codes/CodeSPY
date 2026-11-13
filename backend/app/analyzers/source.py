@@ -130,8 +130,8 @@ class AdmittedSourceReader:
                 if not stored.eligible or not in_scope:
                     continue
                 language: UnitLanguage | None = dialects.get(Path(path).suffix.casefold())
-                if language is None and dialects is FACT_DIALECTS and is_manifest(path):
-                    language = "manifest"
+                if dialects is FACT_DIALECTS and is_manifest(path):
+                    language = "manifest"  # a manifest wins over its suffix (Package.swift)
                 is_config = (language is None and Path(path).name == "package.json") or (
                     Path(path).name.startswith("tsconfig") and path.endswith((".json", ".jsonc"))
                 )

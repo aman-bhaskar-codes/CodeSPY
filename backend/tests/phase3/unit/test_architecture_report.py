@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """The assembled report: typed statements, honest unknowns, no source values, deterministic."""
 
 import json
