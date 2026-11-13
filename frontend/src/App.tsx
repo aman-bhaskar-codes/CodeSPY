@@ -3,6 +3,8 @@ import { GitHubImportForm } from "./features/intake/GitHubImportForm";
 import { GitHubUrlImportForm } from "./features/intake/GitHubUrlImportForm";
 import { RepositoryCreateForm } from "./features/intake/RepositoryCreateForm";
 import { useEffect, useRef, useState } from "react";
+import { FileTree } from "./features/explorer/FileTree";
+import { SourceEditor } from "./features/source/SourceEditor";
 import {
   WorkspaceHeading,
   WorkspacePane,
@@ -507,6 +509,11 @@ function WorkspaceApp() {
         repositoryItems.find((item) => item.id === repository)?.display_name
       }
       snapshotId={snapshot}
+      explorer={
+        session.data && snapshot && repository ? (
+          <FileTree repositoryId={repository} snapshotId={snapshot} />
+        ) : undefined
+      }
       destinations={[
         { id: "workspace-home", label: "Overview", enabled: true },
         { id: "upload-title", label: "Add codebase", enabled: !!session.data },
@@ -1145,6 +1152,11 @@ function WorkspaceApp() {
                   </div>
                 )}
               </section>
+            </WorkspacePane>
+          )}
+          {snapshot && repository && (
+            <WorkspacePane id="source-title">
+              <SourceEditor repositoryId={repository} snapshotId={snapshot} />
             </WorkspacePane>
           )}
           {snapshot && repository && (

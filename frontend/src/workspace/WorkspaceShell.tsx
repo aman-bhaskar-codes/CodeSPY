@@ -10,6 +10,7 @@ import {
 import {
   Braces,
   FileCode2,
+  FileText,
   Files,
   GitBranch,
   LayoutDashboard,
@@ -42,6 +43,8 @@ interface Props {
   destinations: readonly WorkspaceDestination[];
   repositoryLabel?: string;
   snapshotId?: string | null;
+  /** Content for the explorer side bar, below the repository and snapshot. */
+  explorer?: ReactNode;
   onSignOut?: () => void;
   signingOut?: boolean;
 }
@@ -53,6 +56,7 @@ const icons = {
   "findings-title": ListChecks,
   "retrieval-title": Search,
   "workbench-title": Workflow,
+  "source-title": FileText,
 };
 const WorkspaceView = createContext("workspace-home");
 
@@ -107,6 +111,10 @@ export function WorkspaceHeading() {
       "Search & memory",
       "Build source indexes, inspect context and review repository knowledge.",
     ],
+    "source-title": [
+      "Source",
+      "Read one file as the analysis sees it, read-only and redacted.",
+    ],
     "workbench-title": [
       "Investigations",
       "Ask a bounded question, inspect evidence and recover saved work.",
@@ -138,6 +146,7 @@ function ShellContent({
   destinations,
   repositoryLabel,
   snapshotId,
+  explorer,
   onSignOut,
   signingOut,
 }: Props) {
@@ -267,6 +276,7 @@ function ShellContent({
                 : "No snapshot selected"}
             </span>
           </div>
+          {explorer}
           {destinations.some((item) => !item.enabled) && (
             <p id="workspace-access-hint" className={styles.hint}>
               {sessionState === "available"
