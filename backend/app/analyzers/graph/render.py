@@ -31,6 +31,8 @@ TEXT: dict[str, str] = {
     "dependencies.top_imported": "{node} is the most imported file ({count} importers).",
     "dependencies.unresolved": "{edges} imports could not be located ({permille_of_internal} per mille of internal imports); their targets are unknown.",
     "dependencies.ambiguous": "{edges} imports match several files equally well; the target is unknown.",
+    "dependencies.orphans": "{count} files neither import nor are imported by any other analyzed file.",
+    "dependencies.orphans_possible": "{count} files have no observed import in either direction, but {unresolved} imports could not be located, so some of these may still be imported.",
     "api.routes": "{count} routes were found.",
     "api.framework": "{routes} routes use {framework}.",
     "data.models": "{count} data models were found.",
@@ -45,6 +47,7 @@ TEXT: dict[str, str] = {
     "limitation.aliases_and_build_configuration": "Path aliases, bundler settings and build-system classpaths are not read, so such imports are unknown.",
     "limitation.manifests_names_only": "go.mod, Cargo.toml, package.json, pyproject.toml and Package.swift are read for names only (no versions or scripts); other build manifests are not read.",
     "manifest.declared": "{path} declares {name} ({ecosystem}) with {runtime} runtime and {dev} development dependencies.",
+    "manifest.unobserved": "{count} declared runtime dependencies have no matching import in the analyzed source (possibly used by build tooling, plugins or files that were not analyzed).",
     "manifest.unparsed": "{count} manifests could not be parsed; what they declare is unknown.",
     "limitation.config_values_not_recorded": "Only configuration names are recorded, never values.",
     "limitation.component_grouping_is_heuristic": "Component boundaries are a directory-based heuristic, not a declared architecture.",
@@ -87,7 +90,7 @@ def statement_text(statement: StatementV1) -> str:
 
 
 def _location(ref: EvidenceRefV1) -> str:
-    return f"{ref.path}:{ref.range.start_line}" if ref.range else ref.path
+    return _clean(f"{ref.path}:{ref.range.start_line}" if ref.range else ref.path)
 
 
 def _cell(value: object) -> str:

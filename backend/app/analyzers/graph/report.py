@@ -227,6 +227,45 @@ def _manifests(
     return statements, rows
 
 
+_FAMILY = {"npm": "js", "cargo": "rust", "go": "go"}
+
+
+def _observed_roots(graph: DependencyGraphV1) -> dict[str, set[str]]:
+    roots: dict[str, set[str]] = defaultdict(set)
+    for node in graph.nodes:
+        if node.kind == "external":
+            family, _, root = node.id[len("ext:") :].partition(":")
+            roots[family].add(root)
+    return roots
+
+
+def _unobserved(
+    manifests: Sequence[FileEntry], graph: DependencyGraphV1
+) -> list[tuple[FileEntry, str]]:
+    """Runtime dependencies declared by a manifest that no import of the same ecosystem names.
+
+    Only ecosystems where the declared name is the import name are compared (npm, Cargo, Go);
+    Python distributions and Swift packages are named differently from what code imports.
+    """
+    observed = _observed_roots(graph)
+    found: list[tuple[FileEntry, str]] = []
+    for entry in manifests:
+        fact = entry.facts.manifest
+        family = _FAMILY.get(fact.ecosystem) if fact else None
+        if fact is None or family is None:
+            continue
+        roots = {r.replace("-", "_") if family == "rust" else r for r in observed.get(family, ())}
+        for dep in fact.dependencies:
+            if dep.scope != "runtime" or dep.name.startswith("@types/"):
+                continue
+            name = dep.name.replace("-", "_") if family == "rust" else dep.name
+            if not any(
+                r == name or r.startswith(name + "/") or name.startswith(r + "/") for r in roots
+            ):
+                found.append((entry, dep.name))
+    return found
+
+
 def _dependencies(
     files: Sequence[FileEntry],
     graph: DependencyGraphV1,
@@ -283,11 +322,43 @@ def _dependencies(
                 [e.evidence for e in ambiguous],
             )
         )
+    unobserved = _unobserved(manifests, graph)
+    if unobserved:
+        statements.append(
+            _statement(
+                "inference",
+                "manifest.unobserved",
+                {"count": len(unobserved)},
+                [_ref(entry, "manifest", None) for entry, _ in unobserved],
+            )
+        )
+    if a.orphans:
+        by_id = {f.path: f for f in files}
+        evidence = [
+            _ref(by_id[o.removeprefix("file:")], "file", None)
+            for o in a.orphans
+            if o.removeprefix("file:") in by_id
+        ]
+        sure = not unresolved
+        statements.append(
+            _statement(
+                "derivation" if sure else "inference",
+                "dependencies.orphans" if sure else "dependencies.orphans_possible",
+                {"count": len(a.orphans), "unresolved": len(unresolved)},
+                evidence,
+            )
+        )
     modules = Counter(e.module for e in unresolved)
     tables = (
         _table(
             "declared_dependencies", ("manifest", "ecosystem", "dependency", "scope"), declared_rows
         ),
+        _table(
+            "declared_not_observed",
+            ("manifest", "dependency"),
+            [(entry.path[:512], name) for entry, name in unobserved],
+        ),
+        _table("orphan_files", ("file",), [(o.removeprefix("file:"),) for o in a.orphans]),
         _table(
             "hubs_imported",
             ("file", "importers"),

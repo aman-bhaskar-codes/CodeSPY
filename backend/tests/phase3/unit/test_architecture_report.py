@@ -222,3 +222,40 @@ def test_manifests_become_declared_observations_and_not_graph_nodes():
         if t.name == "declared_dependencies"
     )
     assert ("go.mod", "go", "github.com/gin-gonic/gin", "runtime") in table.rows
+
+
+def test_orphans_and_declared_but_unobserved_dependencies_are_typed_honestly():
+    files = {
+        "package.json": '{"name": "app", "dependencies": {"react": "1", "left-pad": "1", "@types/node": "1"}, "devDependencies": {"eslint": "1"}}',
+        "src/main.ts": 'import react from "react";\nimport "./used";\n',
+        "src/used.ts": "export const a = 1;\n",
+        "src/lonely.ts": "export const b = 2;\n",
+        "src/lonely.test.ts": "export const t = 1;\n",
+    }
+    report, _ = build(files, inventory=list(files))
+    deps = statements(report, "dependencies")
+    orphan = next(s for s in deps if s.code == "dependencies.orphans")
+    assert orphan.kind == "derivation" and orphan.params["count"] == 1
+    assert [e.path for e in orphan.evidence] == [
+        "src/lonely.ts"
+    ]  # tests and entry files are exempt
+    unobserved = next(s for s in deps if s.code == "manifest.unobserved")
+    assert unobserved.kind == "inference" and unobserved.params["count"] == 1  # left-pad only
+    table = next(
+        t
+        for t in next(s for s in report.sections if s.name == "dependencies").tables
+        if t.name == "declared_not_observed"
+    )
+    assert table.rows == (("package.json", "left-pad"),)
+
+
+def test_orphans_become_possible_when_some_imports_could_not_be_located():
+    files = {
+        "src/main.ts": 'import "./missing";\n',
+        "src/lonely.ts": "export const b = 2;\n",
+    }
+    report, _ = build(files, inventory=list(files))
+    deps = statements(report, "dependencies")
+    possible = next(s for s in deps if s.code == "dependencies.orphans_possible")
+    assert possible.kind == "inference" and possible.params["unresolved"] == 1
+    assert not any(s.code == "dependencies.orphans" for s in deps)

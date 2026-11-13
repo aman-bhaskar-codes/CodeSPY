@@ -24,6 +24,37 @@ ENTRY_NAMES = frozenset(
 )
 
 
+# Orphans are only claimed where a file must be named by an explicit import to be used. Go, Java,
+# PHP and Swift share a package or namespace implicitly, C and C++ files are compiled rather than
+# imported, and Ruby files are often autoloaded, so absence of an import proves nothing there.
+ORPHAN_LANGUAGES = frozenset({"python", "javascript", "jsx", "typescript", "tsx", "rust"})
+PACKAGE_MARKERS = frozenset({"__init__", "mod", "lib", "index"})
+
+
+def _is_test_path(path: str) -> bool:
+    name = path.rsplit("/", 1)[-1].lower()
+    parts = {p.lower() for p in path.split("/")[:-1]}
+    return bool(
+        parts
+        & {
+            "test",
+            "tests",
+            "__tests__",
+            "spec",
+            "specs",
+            "testdata",
+            "fixtures",
+            "examples",
+            "docs",
+            "doc",
+            "documentation",
+        }
+        or any(p.endswith(".docset") for p in parts)
+        or name.startswith(("test_", "conftest"))
+        or any(m in name for m in ("_test.", ".test.", ".spec.", "_spec."))
+    )
+
+
 @dataclass(frozen=True)
 class Hub:
     node: str
@@ -51,6 +82,7 @@ class Analytics:
     components: tuple[ComponentSummary, ...] = ()
     layers: tuple[tuple[str, ...], ...] = ()
     entry_candidates: tuple[str, ...] = ()
+    orphans: tuple[str, ...] = ()  # files nothing imports and that import nothing
     external: tuple[tuple[str, int], ...] = ()  # (external node id, importing files)
     counts: dict[str, int] = field(default_factory=dict)
     component_by_file: dict[str, str] = field(default_factory=dict)  # file node id -> component
@@ -270,6 +302,25 @@ def analyze(graph: DependencyGraphV1, budget: GraphBudget | None = None) -> Anal
             and indeg[n.id] == 0
         )
     )
+    # An orphan has no edge of any kind in or out and is no ambiguous edge's candidate. Unresolved
+    # imports may still point at it, which the report states rather than hides.
+    touched: set[str] = set()
+    for e in graph.edges:
+        touched.add(e.source)
+        if e.target is not None:
+            touched.add(e.target)
+        touched.update(e.candidates)
+    orphans = tuple(
+        sorted(
+            n.id
+            for n in files
+            if n.id not in touched
+            and n.language in ORPHAN_LANGUAGES
+            and not _is_test_path(n.label)
+            and n.label.rsplit("/", 1)[-1].rsplit(".", 1)[0].lower()
+            not in ENTRY_NAMES | PACKAGE_MARKERS
+        )
+    )
     return Analytics(
         disposition=disposition,
         file_cycles=tuple(sorted(file_cycles)),
@@ -279,6 +330,7 @@ def analyze(graph: DependencyGraphV1, budget: GraphBudget | None = None) -> Anal
         components=tuple(summaries),
         layers=layers,
         entry_candidates=entries,
+        orphans=orphans,
         external=external,
         counts={**graph.counts(), "files": len(files), "components": len(component_names)},
         component_by_file={n.id: c for n in files if (c := component_of(n.id)) is not None},
