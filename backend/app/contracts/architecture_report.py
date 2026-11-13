@@ -8,7 +8,7 @@ values or quotes; evidence points at files and ranges instead.
 """
 
 import hashlib
-from typing import Any, Literal, Self
+from typing import Literal, Self
 from uuid import UUID
 
 from pydantic import Field, model_validator
@@ -49,15 +49,14 @@ class StatementV1(Contract):
     code: str = Field(min_length=1, max_length=96, pattern=r"^[a-z][a-z0-9_.]*$")
     params: dict[str, Scalar] = Field(default_factory=dict, max_length=16)
     evidence: tuple[EvidenceRefV1, ...] = Field(default=(), max_length=8)
-    evidence_total: int = Field(default=0, ge=0)
+    evidence_total: int | None = Field(default=None, ge=0)
 
-    @model_validator(mode="before")
-    @classmethod
-    def default_total(cls, data: Any) -> Any:
+    @model_validator(mode="after")
+    def default_total(self) -> Self:
         # Unless a caller says more evidence exists than is shown, the total is what is shown.
-        if isinstance(data, dict) and "evidence_total" not in data:
-            return {**data, "evidence_total": len(data.get("evidence", ()))}
-        return data
+        if self.evidence_total is None:
+            object.__setattr__(self, "evidence_total", len(self.evidence))
+        return self
 
     @model_validator(mode="after")
     def bounded(self) -> Self:
@@ -65,7 +64,7 @@ class StatementV1(Contract):
             raise ValueError("parameter names must be 1-64 characters")
         if any(isinstance(v, str) and len(v) > 512 for v in self.params.values()):
             raise ValueError("parameter values are bounded")
-        if self.evidence_total < len(self.evidence):
+        if self.evidence_total is not None and self.evidence_total < len(self.evidence):
             raise ValueError("evidence_total cannot be below the evidence shown")
         # An observation must point at something; an unknown may not claim to be observed.
         if self.kind == "observation" and not self.evidence:
@@ -195,3 +194,51 @@ def inputs_digest(run_ids: tuple[UUID, ...], facts_digests: tuple[str, ...]) -> 
     """Identity of a report's inputs: the fact runs and the digest of every file's facts."""
     material = "\n".join([*(str(r) for r in sorted(run_ids)), *sorted(facts_digests)])
     return hashlib.sha256(material.encode()).hexdigest()
+
+
+ShardState = Literal[
+    "not_started", "queued", "running", "retry_wait", "cancelling", "succeeded", "partial",
+    "failed", "cancelled",
+]  # fmt: skip
+
+
+class ShardStatusV1(Contract):
+    index: int = Field(ge=0)
+    files: int = Field(ge=0)
+    prefixes: int = Field(ge=0)
+    state: ShardState
+    job_id: UUID | None = None
+    run_id: UUID | None = None
+
+
+class ArchitectureShardsV1(Contract):
+    schema_version: Literal[1] = 1
+    plan_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    total_files: int = Field(ge=0)
+    skipped_files: int = Field(ge=0)
+    shards: tuple[ShardStatusV1, ...] = Field(default=(), max_length=1000)
+    ready: bool  # every shard finished: a report can be built
+
+
+class ArchitectureStartRequestV1(Contract):
+    schema_version: Literal[1] = 1
+    request_key: str = Field(min_length=1, max_length=128)
+
+    @model_validator(mode="after")
+    def reserved(self) -> Self:
+        if self.request_key.startswith(("job:", "child:")):
+            raise ValueError("invalid request key")
+        return self
+
+
+class ArchitectureReportRefV1(Contract):
+    schema_version: Literal[1] = 1
+    id: UUID
+    repository_id: UUID
+    snapshot_id: UUID
+    inputs_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    report_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    size_bytes: int = Field(ge=0)
+    complete: bool
+    analyzed_files: int = Field(ge=0)
+    eligible_files: int = Field(ge=0)

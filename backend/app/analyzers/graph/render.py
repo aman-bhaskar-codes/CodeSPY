@@ -98,7 +98,7 @@ def _section(section: SectionV1) -> list[str]:
     lines = [f"## {TITLE[section.name]}", ""]
     for s in section.statements:
         refs = ", ".join(_location(r) for r in s.evidence[:3])
-        more = s.evidence_total - min(3, len(s.evidence))
+        more = (s.evidence_total or len(s.evidence)) - min(3, len(s.evidence))
         evidence = f" (evidence: {refs}{f' and {more} more' if more > 0 else ''})" if refs else ""
         lines.append(f"- **{BADGE[s.kind]}** {statement_text(s)}{evidence}")
     lines.append("")
