@@ -1,0 +1,93 @@
+# Architecture report
+
+An evidence-first architecture report is built from the published AST facts of a snapshot and stored
+immutably. It has no model in the loop: every number and statement is computed from facts, every
+statement is typed, and what the facts cannot settle is stated as unknown.
+
+## Implemented boundary
+
+- **Typed statements.** Observation (read from a fact, evidence required), derivation (computed
+  mechanically), inference (a judgment such as "uses Flask" or "looks like an entry point") and unknown
+  (unresolved or ambiguous imports, partial files, truncated coverage, fixed limitations). A statement
+  is a template code plus scalar parameters with evidence references (file and range); no source value
+  or quote can appear. Text is rendered from `GET /api/v1/architecture-report-templates`, so the
+  server owns the wording.
+- **Dependency graph** (`analyzers/graph/`). Per-language resolution of every import fact against the
+  analyzed paths for Python, JavaScript/TypeScript, Go, Java, Rust, C/C++, Ruby, PHP and Swift. An edge
+  is resolved, ambiguous (all candidates kept), external (standard library or third party) or
+  unresolved (may be internal but cannot be located). Go and Swift imports target package nodes
+  (directories). Python resolves only when one file matches, or one sits beside the importer.
+- **Analytics.** From resolved edges only: file import cycles and component cycles, most-imported and
+  most-importing files, directory-based components (single-child chains collapsed, at most 40),
+  layers from the component condensation, entry-point candidates and external packages. Bounded
+  computations report when they stop early.
+- **Sections.** overview, components, dependencies, API surface, data model, configuration (names only),
+  entry points, and coverage and limitations. A Markdown renderer and a D3-shaped nodes-and-links
+  payload (paged) are served from the same stored document.
+- **Coverage coordinator.** One AST-facts analysis reads at most 128 files, 16 MiB and 16 include
+  prefixes. `POST .../architecture-reports/prepare` plans disjoint shards (a pure function of the
+  inventory; every analyzable path in exactly one shard) and creates one existing analysis per shard,
+  at most eight per call and within the organization's pending-job quota (call again for the rest).
+  `GET .../prepare` aggregates shard status.
+- **Storage.** Migration `0048_architecture_reports` adds an immutable table. The insert guard requires
+  every cited run to be a published AST-facts analysis of the same snapshot, no file in two runs, the
+  inputs digest recomputed from the stored facts rows to match, and the document to agree with its
+  columns. One report per (repository, snapshot, inputs digest); updates and deletes are rejected.
+- **Routes** (all tenant-scoped through the repository authorization): `POST .../prepare`,
+  `GET .../prepare`, `POST .../architecture-reports` (builds once every shard is published, else 409
+  `report_inputs_pending`), `GET .../latest`, `GET .../{id}`, `/markdown`, `/graph?offset&limit`,
+  `/sections/{name}`.
+- **Viewer.** The structural pane shows prepare and shard status, a build button, a partial-coverage
+  banner, typed statements with evidence locations, tables, Markdown export and a layered SVG of
+  component-to-component import counts. No new frontend dependency.
+
+## Limitations
+
+- Resolution is syntactic. Path aliases, bundler configuration, `go.mod`, Cargo workspaces, build
+  classpaths and Swift package manifests are not read; such imports are unresolved, ambiguous or
+  external, never guessed. Swift imports of the repository's own module therefore read as external
+  (Alamofire: 0 resolved of 191).
+- Rust `mod x;` declarations and inline modules are not import facts, so Rust edges come from `use`
+  paths only (anyhow: 7 of 34 internal imports unresolved).
+- Component boundaries are a directory-based heuristic. Package manifests are not parsed: the stack is
+  inferred from imports and framework facts.
+- The model-written narrative (component analysis and synthesis) is not built; it needs the Bedrock
+  runtime composed and qualified, and will attach to the report as inference unless verified.
+- The coordinator relies on the existing analysis runtime; a large snapshot needs several shard jobs
+  and the organization's pending-job quota (default 20) bounds how many exist at once.
+- No retry or rebuild route: building again from the same facts returns the same report.
+
+## Verification
+
+Owned disposable PostgreSQL 16 at schema head:
+
+- **Unit:** contracts (typed statements, closed graphs, bounded documents), per-language resolution
+  golden tests over real extracted facts, graph analytics, report assembly (typed statements, unknowns,
+  no source value in the report, Markdown or graph, determinism, every emitted code has a template),
+  shard plans (exactly-once coverage, 128 files, 16 prefixes, 15 MiB, determinism).
+- **PostgreSQL:** prepare idempotent and quota-aware; build refused until every shard is published; one
+  immutable report per inputs; the guard refuses missing runs, altered digests, document/column
+  disagreement and duplicates; tenant isolation; HTTP flow with CSRF, key mismatch, 409, 404 and the
+  section, graph and Markdown routes.
+- **Frontend:** 76 tests including the viewer (prepare, build, refusal text, typed statements,
+  evidence, partial-coverage banner, component graph).
+- **Corpus** (`evals/ast/report_eval.py`, live marker, measured 2026-11-13, floors in `corpus.json`):
+
+| Repository | Files | Resolved | Ambiguous | External | Unresolved | Components | File cycles | Report | Shards |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| pallets/flask | 83 | 256 | 77 | 291 | 5 | 6 | 2 | 266 KiB | 1 |
+| expressjs/express | 142 | 160 | 0 | 245 | 0 | 30 | 0 | 180 KiB | 2 |
+| gin-gonic/gin | 99 | 31 | 0 | 490 | 0 | 7 | 0 | 210 KiB | 1 |
+| spring-projects/spring-petclinic | 50 | 24 | 0 | 451 | 0 | 6 | 0 | 269 KiB | 1 |
+| dtolnay/anyhow | 37 | 27 | 0 | 98 | 7 | 7 | 1 | 58 KiB | 1 |
+| antirez/kilo | 1 | 0 | 0 | 15 | 0 | 1 | 0 | 10 KiB | 1 |
+| gabime/spdlog | 154 | 446 | 0 | 380 | 2 | 11 | 21 | 366 KiB | 2 |
+| sinatra/sinatra | 147 | 130 | 0 | 62 | 0 | 8 | 0 | 110 KiB | 2 |
+| slimphp/Slim | 72 | 112 | 0 | 242 | 0 | 8 | 1 | 170 KiB | 1 |
+| Alamofire/Alamofire | 111 | 0 | 0 | 191 | 0 | 9 | 0 | 102 KiB | 1 |
+
+  Every report built in 0.11 s or less. Running the corpus found three resolver defects now fixed with
+  regression tests: Java treated a framework's shared directory prefix as internal, Go missed a
+  module's root package, and a test fixture named like a library captured every importer in Python.
+- **Regression:** the retrieval, job, accounting, memory, investigation, AST and model suites show the
+  same 42 failures as the unchanged base branch (all pre-existing).

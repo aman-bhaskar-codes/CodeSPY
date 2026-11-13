@@ -67,7 +67,5 @@ async def fetch() -> list[tuple[str, str, Path, str]]:
                         handle.write(block)
                 tmp.rename(path)
                 print("downloaded", name, path.stat().st_size)
-            out.append(
-                (name, commit, path, hashlib.sha256(path.read_bytes()).hexdigest())
-            )
+            out.append((name, commit, path, hashlib.sha256(path.read_bytes()).hexdigest()))
     return out

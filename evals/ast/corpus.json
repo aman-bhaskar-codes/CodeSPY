@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Public repositories pinned by full commit SHA; archives are never vendored. Floors are ~5-20% below a measured run (2026-11-12) so a regression fails but noise does not. Re-measure with `scripts/ast_corpus.py run` and review before changing a floor.",
+  "note": "Public repositories pinned by full commit SHA; archives are never vendored. Floors are ~5-20% below a measured run (2026-11-12) so a regression fails but noise does not. Re-measure with `scripts/ast_corpus.py run` and review before changing a floor. Report floors (report_floors) were measured on 2026-11-13 and sit 20-50% inside the measured values.",
   "repos": [
     {
       "name": "pallets/flask",
@@ -13,6 +13,14 @@
         "min_symbols": 812,
         "min_routes": 32,
         "min_models": 0
+      },
+      "report_floors": {
+        "min_resolved": 204,
+        "max_unresolved_permille": 40,
+        "max_ambiguous_permille": 351,
+        "min_components": 4,
+        "max_report_kib": 409,
+        "max_seconds": 5.0
       }
     },
     {
@@ -26,6 +34,14 @@
         "min_symbols": 44,
         "min_routes": 0,
         "min_models": 0
+      },
+      "report_floors": {
+        "min_resolved": 128,
+        "max_unresolved_permille": 40,
+        "max_ambiguous_permille": 50,
+        "min_components": 21,
+        "max_report_kib": 280,
+        "max_seconds": 5.0
       }
     },
     {
@@ -39,6 +55,14 @@
         "min_symbols": 1615,
         "min_routes": 10,
         "min_models": 0
+      },
+      "report_floors": {
+        "min_resolved": 24,
+        "max_unresolved_permille": 40,
+        "max_ambiguous_permille": 50,
+        "min_components": 4,
+        "max_report_kib": 325,
+        "max_seconds": 5.0
       }
     },
     {
@@ -52,6 +76,14 @@
         "min_symbols": 258,
         "min_routes": 13,
         "min_models": 7
+      },
+      "report_floors": {
+        "min_resolved": 19,
+        "max_unresolved_permille": 40,
+        "max_ambiguous_permille": 50,
+        "min_components": 4,
+        "max_report_kib": 414,
+        "max_seconds": 5.0
       }
     },
     {
@@ -65,6 +97,14 @@
         "min_symbols": 302,
         "min_routes": 0,
         "min_models": 0
+      },
+      "report_floors": {
+        "min_resolved": 21,
+        "max_unresolved_permille": 318,
+        "max_ambiguous_permille": 50,
+        "min_components": 4,
+        "max_report_kib": 97,
+        "max_seconds": 5.0
       }
     },
     {
@@ -78,6 +118,14 @@
         "min_symbols": 92,
         "min_routes": 0,
         "min_models": 0
+      },
+      "report_floors": {
+        "min_resolved": 0,
+        "max_unresolved_permille": 40,
+        "max_ambiguous_permille": 50,
+        "min_components": 1,
+        "max_report_kib": 25,
+        "max_seconds": 5.0
       }
     },
     {
@@ -91,6 +139,14 @@
         "min_symbols": 1711,
         "min_routes": 0,
         "min_models": 0
+      },
+      "report_floors": {
+        "min_resolved": 356,
+        "max_unresolved_permille": 40,
+        "max_ambiguous_permille": 50,
+        "min_components": 7,
+        "max_report_kib": 559,
+        "max_seconds": 5.0
       }
     },
     {
@@ -104,6 +160,14 @@
         "min_symbols": 799,
         "min_routes": 0,
         "min_models": 0
+      },
+      "report_floors": {
+        "min_resolved": 104,
+        "max_unresolved_permille": 40,
+        "max_ambiguous_permille": 50,
+        "min_components": 5,
+        "max_report_kib": 175,
+        "max_seconds": 5.0
       }
     },
     {
@@ -117,6 +181,14 @@
         "min_symbols": 452,
         "min_routes": 0,
         "min_models": 0
+      },
+      "report_floors": {
+        "min_resolved": 89,
+        "max_unresolved_permille": 40,
+        "max_ambiguous_permille": 50,
+        "min_components": 5,
+        "max_report_kib": 265,
+        "max_seconds": 5.0
       }
     },
     {
@@ -130,6 +202,14 @@
         "min_symbols": 2939,
         "min_routes": 0,
         "min_models": 0
+      },
+      "report_floors": {
+        "min_resolved": 0,
+        "max_unresolved_permille": 40,
+        "max_ambiguous_permille": 50,
+        "min_components": 6,
+        "max_report_kib": 163,
+        "max_seconds": 5.0
       }
     }
   ]
