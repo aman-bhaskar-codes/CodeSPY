@@ -11,6 +11,7 @@ import { InlineNotice } from "../../ui/InlineNotice";
 import { Panel } from "../../ui/Panel";
 import { StatusBadge } from "../../ui/StatusBadge";
 import { ComponentGraph } from "./ComponentGraph";
+import { NarrativeView } from "./NarrativeView";
 import { RuleChecks } from "./RuleChecks";
 import { prefixSuggestions } from "./ruleSuggestions";
 import {
@@ -281,6 +282,7 @@ function ReportView({
           <ComponentGraph layers={layers} graph={graph} fileCounts={counts} />
         </section>
       )}
+      {rules.reportId && <NarrativeView {...rules} />}
       {rules.reportId && (
         <RuleChecks
           {...rules}

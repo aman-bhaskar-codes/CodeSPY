@@ -87,3 +87,26 @@ class NarrativeDraftV1(Contract):
     dropped_sentences: int = Field(default=0, ge=0)
     prompt_revision: str = Field(min_length=1, max_length=128)
     report_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class CitedStatementV1(Contract):
+    """A report statement a narrative sentence cites, rendered for display."""
+
+    sid: str = Field(pattern=SID_PATTERN)
+    section: str = Field(max_length=64)
+    kind: Literal["observation", "derivation", "inference", "unknown"]
+    code: str = Field(max_length=96)
+    text: str = Field(max_length=2048)
+    evidence: tuple[str, ...] = Field(default=(), max_length=3)  # "path:line"
+
+
+class ArchitectureNarrativeV1(Contract):
+    """The latest published narrative of one stored architecture report."""
+
+    schema_version: Literal[1] = 1
+    architecture_report_id: str
+    investigation_id: str
+    investigation_report_id: str
+    created_at: str
+    narrative: NarrativeDraftV1
+    cited: tuple[CitedStatementV1, ...] = Field(default=(), max_length=400)

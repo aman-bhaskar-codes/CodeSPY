@@ -114,6 +114,7 @@ from app.contracts.memory import (
 from app.contracts.model_availability import ModelAvailabilityV1
 from app.contracts.persistence import GraphPage, RepositoryCreate, RepositoryRecord
 from app.contracts.provider_budget import DisclosurePolicyV1
+from app.contracts.report_narrative import ArchitectureNarrativeV1
 from app.contracts.scan_jobs import (
     DependencySelectionV1,
     NativeSelectionV1,
@@ -1788,6 +1789,16 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
     ) -> RepositoryReportV1:
         ctx = await repository_context(request, repository_id)
         return await architecture.get(ctx, repository_id, snapshot_id, report_id)
+
+    @app.get(reports_base + "/{report_id}/narrative")
+    async def get_architecture_narrative(
+        request: Request, repository_id: UUID, snapshot_id: UUID, report_id: UUID
+    ) -> ArchitectureNarrativeV1:
+        ctx = await repository_context(request, repository_id)
+        found = await architecture.narrative(ctx, repository_id, snapshot_id, report_id)
+        if found is None:
+            raise HTTPException(404, detail="narrative_not_found")
+        return found
 
     @app.post(reports_base + "/{report_id}/rule-check")
     async def check_architecture_rules(

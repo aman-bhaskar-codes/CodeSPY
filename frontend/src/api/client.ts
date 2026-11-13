@@ -12,6 +12,7 @@ import type {
   ArchitectureGraphPageV1,
   ArchitectureReportRefV1,
   ArchitectureShardsV1,
+  ArchitectureNarrativeV1,
   ArchitectureTemplatesV1,
   RuleCheckV1,
   RepositoryReportV1,
@@ -133,6 +134,54 @@ export const api = {
         body: JSON.stringify(rules),
       },
     ),
+  architectureNarrative: async (
+    repoId: string,
+    snapshotId: string,
+    reportId: string,
+  ) => {
+    try {
+      return await request<ArchitectureNarrativeV1>(
+        `${reportsPath(repoId, snapshotId)}/${reportId}/narrative`,
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) return null;
+      throw error;
+    }
+  },
+  /** Creates the pinned narrative investigation and starts it; returns the investigation id. */
+  architectureNarrativeStart: async (
+    repoId: string,
+    snapshotId: string,
+    reportId: string,
+    csrf: string,
+  ) => {
+    const key = crypto.randomUUID();
+    const created = await request<{ id: string }>(
+      `/repositories/${repoId}/investigations`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf, key),
+        body: JSON.stringify({
+          repository_id: repoId,
+          snapshot_id: snapshotId,
+          query: "Narrate the architecture report.",
+          target_type: "architecture_report",
+          mode: "report_narrative",
+          architecture_report_id: reportId,
+          depth: "standard",
+          max_steps: 25,
+        }),
+      },
+    );
+    await request(
+      `/repositories/${repoId}/investigations/${created.id}/execute`,
+      {
+        method: "POST",
+        headers: mutationHeaders(csrf, `${key}-start`),
+      },
+    );
+    return created.id;
+  },
   architectureTemplates: () =>
     request<ArchitectureTemplatesV1>("/architecture-report-templates"),
   repositoryMetadata: (repoId: string, signal?: AbortSignal) =>

@@ -102,6 +102,55 @@
         "title": "ArchitectureGraphPageV1",
         "type": "object"
       },
+      "ArchitectureNarrativeV1": {
+        "additionalProperties": false,
+        "description": "The latest published narrative of one stored architecture report.",
+        "properties": {
+          "architecture_report_id": {
+            "title": "Architecture Report Id",
+            "type": "string"
+          },
+          "cited": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CitedStatementV1"
+            },
+            "maxItems": 400,
+            "title": "Cited",
+            "type": "array"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "investigation_id": {
+            "title": "Investigation Id",
+            "type": "string"
+          },
+          "investigation_report_id": {
+            "title": "Investigation Report Id",
+            "type": "string"
+          },
+          "narrative": {
+            "$ref": "#/components/schemas/NarrativeDraftV1"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "architecture_report_id",
+          "investigation_id",
+          "investigation_report_id",
+          "created_at",
+          "narrative"
+        ],
+        "title": "ArchitectureNarrativeV1",
+        "type": "object"
+      },
       "ArchitectureReportRefV1": {
         "additionalProperties": false,
         "properties": {
@@ -1028,6 +1077,60 @@
         ],
         "title": "ChunkKind",
         "type": "string"
+      },
+      "CitedStatementV1": {
+        "additionalProperties": false,
+        "description": "A report statement a narrative sentence cites, rendered for display.",
+        "properties": {
+          "code": {
+            "maxLength": 96,
+            "title": "Code",
+            "type": "string"
+          },
+          "evidence": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "observation",
+              "derivation",
+              "inference",
+              "unknown"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "section": {
+            "maxLength": 64,
+            "title": "Section",
+            "type": "string"
+          },
+          "sid": {
+            "pattern": "^[0-9a-f]{16}$",
+            "title": "Sid",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 2048,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sid",
+          "section",
+          "kind",
+          "code",
+          "text"
+        ],
+        "title": "CitedStatementV1",
+        "type": "object"
       },
       "ClaimVerificationStatus": {
         "description": "Verification outcome for a claim.",
@@ -8290,6 +8393,165 @@
         "title": "ModelRole",
         "type": "string"
       },
+      "NarrativeDraftV1": {
+        "additionalProperties": false,
+        "description": "The structured narrative a published report carries: sentences, verdicts and coverage.",
+        "properties": {
+          "confirmed": {
+            "minimum": 0.0,
+            "title": "Confirmed",
+            "type": "integer"
+          },
+          "dropped_sentences": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Dropped Sentences",
+            "type": "integer"
+          },
+          "grounded": {
+            "title": "Grounded",
+            "type": "boolean"
+          },
+          "prompt_revision": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Prompt Revision",
+            "type": "string"
+          },
+          "report_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Report Digest",
+            "type": "string"
+          },
+          "sentences": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/NarrativeSentenceV1"
+            },
+            "maxItems": 50,
+            "title": "Sentences",
+            "type": "array"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "unnarrated_sections": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Unnarrated Sections",
+            "type": "array"
+          },
+          "unparsed_units": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Unparsed Units",
+            "type": "integer"
+          },
+          "verifications": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/NarrativeVerificationV1"
+            },
+            "maxItems": 50,
+            "title": "Verifications",
+            "type": "array"
+          }
+        },
+        "required": [
+          "confirmed",
+          "total",
+          "grounded",
+          "prompt_revision",
+          "report_digest"
+        ],
+        "title": "NarrativeDraftV1",
+        "type": "object"
+      },
+      "NarrativeSentenceV1": {
+        "additionalProperties": false,
+        "description": "One sentence of the narrative and the report statements it cites.",
+        "properties": {
+          "claim_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "title": "Claim Id",
+            "type": "string"
+          },
+          "sids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Sids",
+            "type": "array"
+          },
+          "text": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "text"
+        ],
+        "title": "NarrativeSentenceV1",
+        "type": "object"
+      },
+      "NarrativeVerificationV1": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "anyOf": [
+              {
+                "enum": [
+                  "observed",
+                  "derived",
+                  "inferred",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basis"
+          },
+          "claim_id": {
+            "title": "Claim Id",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "confirmed",
+              "unsupported"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "claim_id",
+          "status"
+        ],
+        "title": "NarrativeVerificationV1",
+        "type": "object"
+      },
       "NativeSelectionV1": {
         "additionalProperties": false,
         "properties": {
@@ -14270,6 +14532,66 @@
           }
         },
         "summary": "Architecture Report Markdown"
+      }
+    },
+    "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}/narrative": {
+      "get": {
+        "operationId": "get_architecture_narrative_api_v1_repositories__repository_id__snapshots__snapshot_id__architecture_reports__report_id__narrative_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repository_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Repository Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchitectureNarrativeV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Architecture Narrative"
       }
     },
     "/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}/rule-check": {

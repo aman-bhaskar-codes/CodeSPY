@@ -15,6 +15,7 @@ from sqlalchemy import table as sa_table
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.contracts.investigation import (
+    InvestigationMode,
     InvestigationStatus,
 )
 from app.contracts.investigation_execution import (
@@ -136,10 +137,19 @@ class InvestigationJobService:
                     raise ScopeViolation("architecture report unavailable")
                 report_digest = found[0]
 
-            limits = InvestigationLimitsV1(
-                max_steps=request.max_steps,
-                budget_limit_micros=request.budget_limit_micros,
-            )
+            if request.mode == InvestigationMode.REPORT_NARRATIVE:
+                # A narrative page plus its prompt needs the largest context the gateway allows.
+                limits = InvestigationLimitsV1(
+                    max_steps=request.max_steps,
+                    budget_limit_micros=request.budget_limit_micros,
+                    max_context_tokens=8192,
+                    max_context_bytes=65536,
+                )
+            else:
+                limits = InvestigationLimitsV1(
+                    max_steps=request.max_steps,
+                    budget_limit_micros=request.budget_limit_micros,
+                )
             mode_str: Any = (
                 request.mode.value if hasattr(request.mode, "value") else str(request.mode)
             )

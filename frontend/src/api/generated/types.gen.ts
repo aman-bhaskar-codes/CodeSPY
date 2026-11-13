@@ -71,6 +71,39 @@ export type ArchitectureGraphPageV1 = {
 };
 
 /**
+ * ArchitectureNarrativeV1
+ *
+ * The latest published narrative of one stored architecture report.
+ */
+export type ArchitectureNarrativeV1 = {
+    /**
+     * Architecture Report Id
+     */
+    architecture_report_id: string;
+    /**
+     * Cited
+     */
+    cited?: Array<CitedStatementV1>;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Investigation Id
+     */
+    investigation_id: string;
+    /**
+     * Investigation Report Id
+     */
+    investigation_report_id: string;
+    narrative: NarrativeDraftV1;
+    /**
+     * Schema Version
+     */
+    schema_version?: 1;
+};
+
+/**
  * ArchitectureReportRefV1
  */
 export type ArchitectureReportRefV1 = {
@@ -582,6 +615,38 @@ export type ChatMessageV1 = {
  * ChunkKind
  */
 export type ChunkKind = 'module' | 'class' | 'function' | 'method' | 'window' | 'file';
+
+/**
+ * CitedStatementV1
+ *
+ * A report statement a narrative sentence cites, rendered for display.
+ */
+export type CitedStatementV1 = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Evidence
+     */
+    evidence?: Array<string>;
+    /**
+     * Kind
+     */
+    kind: 'observation' | 'derivation' | 'inference' | 'unknown';
+    /**
+     * Section
+     */
+    section: string;
+    /**
+     * Sid
+     */
+    sid: string;
+    /**
+     * Text
+     */
+    text: string;
+};
 
 /**
  * ClaimVerificationStatus
@@ -4289,6 +4354,96 @@ export type ModelFactV1 = {
 export type ModelRole = 'system' | 'user' | 'assistant' | 'tool';
 
 /**
+ * NarrativeDraftV1
+ *
+ * The structured narrative a published report carries: sentences, verdicts and coverage.
+ */
+export type NarrativeDraftV1 = {
+    /**
+     * Confirmed
+     */
+    confirmed: number;
+    /**
+     * Dropped Sentences
+     */
+    dropped_sentences?: number;
+    /**
+     * Grounded
+     */
+    grounded: boolean;
+    /**
+     * Prompt Revision
+     */
+    prompt_revision: string;
+    /**
+     * Report Digest
+     */
+    report_digest: string;
+    /**
+     * Sentences
+     */
+    sentences?: Array<NarrativeSentenceV1>;
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Unnarrated Sections
+     */
+    unnarrated_sections?: Array<string>;
+    /**
+     * Unparsed Units
+     */
+    unparsed_units?: number;
+    /**
+     * Verifications
+     */
+    verifications?: Array<NarrativeVerificationV1>;
+};
+
+/**
+ * NarrativeSentenceV1
+ *
+ * One sentence of the narrative and the report statements it cites.
+ */
+export type NarrativeSentenceV1 = {
+    /**
+     * Claim Id
+     */
+    claim_id: string;
+    /**
+     * Sids
+     */
+    sids?: Array<string>;
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * NarrativeVerificationV1
+ */
+export type NarrativeVerificationV1 = {
+    /**
+     * Basis
+     */
+    basis?: 'observed' | 'derived' | 'inferred' | 'unknown' | null;
+    /**
+     * Claim Id
+     */
+    claim_id: string;
+    /**
+     * Reason
+     */
+    reason?: string;
+    /**
+     * Status
+     */
+    status: 'confirmed' | 'unsupported';
+};
+
+/**
  * NativeSelectionV1
  */
 export type NativeSelectionV1 = {
@@ -7621,6 +7776,44 @@ export type ArchitectureReportMarkdownApiV1RepositoriesRepositoryIdSnapshotsSnap
      */
     200: unknown;
 };
+
+export type GetArchitectureNarrativeApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdNarrativeGetData = {
+    body?: never;
+    path: {
+        /**
+         * Repository Id
+         */
+        repository_id: string;
+        /**
+         * Snapshot Id
+         */
+        snapshot_id: string;
+        /**
+         * Report Id
+         */
+        report_id: string;
+    };
+    query?: never;
+    url: '/api/v1/repositories/{repository_id}/snapshots/{snapshot_id}/architecture-reports/{report_id}/narrative';
+};
+
+export type GetArchitectureNarrativeApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdNarrativeGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetArchitectureNarrativeApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdNarrativeGetError = GetArchitectureNarrativeApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdNarrativeGetErrors[keyof GetArchitectureNarrativeApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdNarrativeGetErrors];
+
+export type GetArchitectureNarrativeApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdNarrativeGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ArchitectureNarrativeV1;
+};
+
+export type GetArchitectureNarrativeApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdNarrativeGetResponse = GetArchitectureNarrativeApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdNarrativeGetResponses[keyof GetArchitectureNarrativeApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdNarrativeGetResponses];
 
 export type CheckArchitectureRulesApiV1RepositoriesRepositoryIdSnapshotsSnapshotIdArchitectureReportsReportIdRuleCheckPostData = {
     body?: never;

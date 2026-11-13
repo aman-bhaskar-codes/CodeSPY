@@ -22,9 +22,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.analyzers.facts import FACT_LANGUAGES
 from app.analyzers.facts.manifests import is_manifest
 from app.analyzers.graph import FileEntry
+from app.analyzers.graph.render import statement_text
 from app.analyzers.graph.report import assemble_report
 from app.analyzers.graph.rules import check_rules
 from app.analyzers.graph.shards import ShardPlan, plan_shards
+from app.analyzers.graph.statement_ids import statement_ids
 from app.contracts.architecture_report import (
     MAX_FACT_RUNS,
     ArchitectureReportRefV1,
@@ -35,6 +37,11 @@ from app.contracts.architecture_report import (
 )
 from app.contracts.architecture_rules import RuleCheckV1, RuleSetV1
 from app.contracts.ast_facts import FileFactsV1
+from app.contracts.report_narrative import (
+    ArchitectureNarrativeV1,
+    CitedStatementV1,
+    NarrativeDraftV1,
+)
 from app.contracts.structure import AnalysisConfigV1
 from app.db.transaction import transaction
 from app.domain.errors import CapacityExceeded, DuplicateConflict, ScopeViolation
@@ -335,6 +342,54 @@ class ArchitectureReportService:
         report = await self.get(ctx, repository_id, snapshot_id, report_id)
         return await asyncio.to_thread(
             check_rules, report.graph, rules, str(report_id), report.inputs_digest
+        )
+
+    async def narrative(
+        self, ctx: TenantContext, repository_id: UUID, snapshot_id: UUID, report_id: UUID
+    ) -> ArchitectureNarrativeV1 | None:
+        """The latest published narrative of a report with the statements it cites, or None."""
+        report = await self.get(ctx, repository_id, snapshot_id, report_id)
+        async with transaction(self.factory) as session:
+            rows = await _rows(
+                session,
+                "SELECT investigation_id, investigation_report_id, narrative_json, created_at "
+                "FROM architecture_report_narratives WHERE org_id=:o AND architecture_report_id=:i "
+                "AND repository_id=:r AND snapshot_id=:s ORDER BY created_at DESC, id DESC LIMIT 1",
+                o=ctx.org_id,
+                i=report_id,
+                r=repository_id,
+                s=snapshot_id,
+            )
+        if not rows:
+            return None
+        row = rows[0]
+        draft = _load(NarrativeDraftV1, row.narrative_json)
+        wanted = {sid for sentence in draft.sentences for sid in sentence.sids}
+        cited: list[CitedStatementV1] = []
+        for section, statements in statement_ids(report).items():
+            for sid, statement in statements:
+                if sid not in wanted:
+                    continue
+                cited.append(
+                    CitedStatementV1(
+                        sid=sid,
+                        section=section,
+                        kind=statement.kind,
+                        code=statement.code,
+                        text=statement_text(statement)[:2048],
+                        evidence=tuple(
+                            f"{ref.path}:{ref.range.start_line}" if ref.range else ref.path
+                            for ref in statement.evidence[:3]
+                        ),
+                    )
+                )
+        return ArchitectureNarrativeV1(
+            architecture_report_id=str(report_id),
+            investigation_id=str(row.investigation_id),
+            investigation_report_id=str(row.investigation_report_id),
+            created_at=row.created_at.isoformat(),
+            narrative=draft,
+            cited=tuple(cited[:400]),
         )
 
     async def latest_ref(
