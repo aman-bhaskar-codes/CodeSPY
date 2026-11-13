@@ -87,6 +87,16 @@ Orphans and declared-versus-observed:
 - Manifest identity prefers the shallowest manifest and ignores those under examples, tests, fixtures and
   docs. Cargo `[lib] name` and `path` overrides are not read, so such crates resolve as external.
 
+Architecture rules (on demand, never stored):
+
+- `POST .../architecture-reports/{id}/rule-check` takes up to 16 rules (kinds `forbidden`, `layers`,
+  `independence`; groups of path prefixes, same semantics as Import Linter's contracts) and evaluates them
+  over the stored report's graph. Nothing is stored, so rules cannot change a report's identity.
+- Only resolved imports are dependencies. Violations carry the import chain and the first import as
+  evidence (at most 50 shown, the total is counted). A rule with no violation but unlocated imports from its
+  files is `unknown`, not `passed`. `allow_indirect` limits forbidden and independence to direct imports.
+- Same authorization as reading the report (repository scope, CSRF on the POST); malformed rules are 422.
+
 Review follow-ups (documented bounds):
 
 - Route handlers are reported only when they are plain dotted names; other expressions show as
