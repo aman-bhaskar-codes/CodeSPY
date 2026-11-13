@@ -156,9 +156,10 @@ function ShellContent({
     available: "Session active",
     unavailable: "Sign-in required",
   }[sessionState];
+  const activeLabel = destinations.find((d) => d.id === active)?.label;
   return (
     <WorkspaceView.Provider value={active}>
-      <div className={styles.shell}>
+      <div className={styles.shell} data-workbench="">
         <a className={styles.skip} href="#workspace-content">
           Skip to workspace
         </a>
@@ -169,11 +170,14 @@ function ShellContent({
             aria-label="CodeSPY home"
           >
             <span className={styles.mark}>
-              <Braces size={22} aria-hidden="true" />
+              <Braces size={16} aria-hidden="true" />
             </span>
             <span>CodeSPY</span>
           </a>
-          <span className={styles.productLabel}>Source workspace</span>
+          <span className={styles.productLabel}>
+            {repositoryLabel ? `${repositoryLabel} · ` : ""}
+            Source workspace
+          </span>
           <div className={styles.controls}>
             <StatusBadge
               tone={sessionState === "available" ? "success" : "neutral"}
@@ -181,12 +185,47 @@ function ShellContent({
               {sessionLabel}
             </StatusBadge>
             <ThemeToggle />
-          {onSignOut && <Button pending={signingOut} onClick={onSignOut}>Sign out</Button>}
+            {onSignOut && (
+              <Button pending={signingOut} onClick={onSignOut}>
+                Sign out
+              </Button>
+            )}
           </div>
         </header>
-        <aside className={styles.sidebar}>
+        <nav className={styles.activityBar} aria-label="Workspace sections">
+          {destinations.map((item) => {
+            const Icon = icons[item.id as keyof typeof icons] ?? FileCode2;
+            const content = (
+              <>
+                <Icon size={22} aria-hidden="true" />
+                <span className={styles.label}>{item.label}</span>
+              </>
+            );
+            return item.enabled ? (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                title={item.label}
+                aria-current={active === item.id ? "location" : undefined}
+              >
+                {content}
+              </a>
+            ) : (
+              <span
+                key={item.id}
+                className={styles.unavailable}
+                title={item.label}
+                aria-disabled="true"
+                aria-describedby="workspace-access-hint"
+              >
+                {content}
+              </span>
+            );
+          })}
+        </nav>
+        <aside className={styles.sidebar} aria-label="Explorer">
+          <p className={styles.caption}>Explorer</p>
           <div className={styles.context}>
-            <p className={styles.caption}>Workspace</p>
             <strong className={styles.repository}>
               {repositoryLabel || "No repository selected"}
             </strong>
@@ -196,35 +235,6 @@ function ShellContent({
                 : "No snapshot selected"}
             </span>
           </div>
-          <nav className={styles.navigation} aria-label="Workspace sections">
-            {destinations.map((item) => {
-              const Icon = icons[item.id as keyof typeof icons] ?? FileCode2;
-              const content = (
-                <>
-                  <Icon size={18} aria-hidden="true" />
-                  <span>{item.label}</span>
-                </>
-              );
-              return item.enabled ? (
-                <a
-                  key={item.id}
-                  href={`#${item.id}`}
-                  aria-current={active === item.id ? "location" : undefined}
-                >
-                  {content}
-                </a>
-              ) : (
-                <span
-                  key={item.id}
-                  className={styles.unavailable}
-                  aria-disabled="true"
-                  aria-describedby="workspace-access-hint"
-                >
-                  {content}
-                </span>
-              );
-            })}
-          </nav>
           {destinations.some((item) => !item.enabled) && (
             <p id="workspace-access-hint" className={styles.hint}>
               {sessionState === "available"
@@ -233,7 +243,7 @@ function ShellContent({
             </p>
           )}
           <div className={styles.sidebarFoot}>
-            <FileCode2 size={16} aria-hidden="true" /> Evidence starts with
+            <FileCode2 size={14} aria-hidden="true" /> Evidence starts with
             source.
           </div>
         </aside>
@@ -241,11 +251,16 @@ function ShellContent({
           {children}
         </main>
         <footer className={styles.footer}>
+          <span className={styles.statusItems}>
+            <span>{sessionLabel}</span>
+            {repositoryLabel && <span>{repositoryLabel}</span>}
+            {snapshotId && <span>Snapshot {snapshotId.slice(0, 8)}</span>}
+            {activeLabel && <span>{activeLabel}</span>}
+          </span>
           <span>
             <span className={styles.evidenceDot} aria-hidden="true" /> Source
             files are read-only
           </span>
-          <span>CodeSPY · Source analysis workspace</span>
         </footer>
       </div>
     </WorkspaceView.Provider>
