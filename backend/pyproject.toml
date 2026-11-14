@@ -131,7 +131,7 @@ dependencies = [
 
     "structlog>=24.4.0",
 
-    "opentelemetry-api>=1.28.0",
+    "opentelemetry-api>=1.45.2",
 
     "opentelemetry-sdk>=1.28.0",
 
