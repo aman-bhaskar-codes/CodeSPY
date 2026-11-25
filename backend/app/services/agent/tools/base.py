@@ -13,6 +13,7 @@ from app.contracts.agent_tools import (
 )
 from app.contracts.workspace import SandboxHandleV1
 from app.ports.sandbox import SandboxPort
+from app.services.agent.tools.output import OutputSink
 from app.services.agent.tools.ports import (
     BaseFilesPort,
     CodeSearchPort,
@@ -32,6 +33,8 @@ class ToolContext:
     symbols: SymbolIndexPort | None = None
     search: CodeSearchPort | None = None
     workspace: WorkspaceEditPort | None = None
+    #: Receives a running command's output as coalesced batches (the runner emits events).
+    on_output: OutputSink | None = None
 
 
 def succeed(

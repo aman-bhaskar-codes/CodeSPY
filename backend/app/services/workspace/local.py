@@ -13,6 +13,7 @@ class LocalWorkspace:
     sandbox: SandboxPort
     handle: SandboxHandleV1
     revision: int = 0
+    _known: dict[str, str] | None = None
     _records: dict[str, tuple[int, dict[str, str | None], tuple[str, ...]]] = field(
         default_factory=dict
     )
@@ -25,6 +26,7 @@ class LocalWorkspace:
         author: str = "agent",
     ) -> Applied:
         view, replayed = await apply_idempotently(self.sandbox, self.handle, changes)
+        self._known = dict(await self.sandbox.file_hashes(self.handle))
         if not replayed:
             self.revision += 1
             if request_digest is not None:
@@ -45,3 +47,22 @@ class LocalWorkspace:
             return None  # later edits or an undo changed the result: the request is new again
         view = await self.sandbox.status(self.handle)
         return Applied(revision, view.tree_hash, paths, True)
+
+    async def baseline(self) -> None:
+        """Remember the files as they are now, so a later command's changes can be told apart."""
+        self._known = dict(await self.sandbox.file_hashes(self.handle))
+
+    async def sync(self, *, author: str = "agent") -> Applied | None:
+        now = dict(await self.sandbox.file_hashes(self.handle))
+        if self._known is None:
+            self._known = now
+            return None
+        if now == self._known:
+            return None
+        paths = tuple(
+            sorted({p for p in now.keys() | self._known.keys() if now.get(p) != self._known.get(p)})
+        )
+        self._known = now
+        self.revision += 1
+        view = await self.sandbox.status(self.handle)
+        return Applied(self.revision, view.tree_hash, paths, False)

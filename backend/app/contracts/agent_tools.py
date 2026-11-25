@@ -9,7 +9,7 @@ from typing import Annotated, Any
 
 from pydantic import Field, model_validator
 
-from app.contracts.agent_events import EvidenceRef, ToolClass, ToolStatus
+from app.contracts.agent_events import EvidenceRef, TestFailure, ToolClass, ToolStatus
 from app.domain.scope import Contract
 
 MAX_RESULT_CONTENT_BYTES = 32 * 1024
@@ -18,6 +18,18 @@ MAX_RESULT_DATA_BYTES = 2 * 1024
 
 class AgentToolArgs(Contract):
     """Base of every tool's arguments: strict types, no undeclared fields, no coercion."""
+
+
+class TestSummaryV1(Contract):
+    """The outcome of a test run, from which the runner emits a ``test.result`` event."""
+
+    __test__ = False  # not a test class, whatever pytest thinks of the name
+    runner: Annotated[str, Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.:-]+$")]
+    passed: int = Field(ge=0)
+    failed: int = Field(ge=0)
+    skipped: int = Field(ge=0)
+    failures: tuple[TestFailure, ...] = Field(default=(), max_length=50)
+    duration_ms: int | None = Field(default=None, ge=0)
 
 
 class AgentToolResultV1(Contract):
@@ -36,6 +48,8 @@ class AgentToolResultV1(Contract):
     #: A few structured facts for the runner (for example a file hash), not shown to the model.
     data: dict[str, Any] = Field(default_factory=dict)
     error_code: Annotated[str, Field(max_length=64, pattern=r"^[a-z0-9_]+$")] | None = None
+    #: Set by the test tool when it understood the runner's report.
+    tests: TestSummaryV1 | None = None
 
     @model_validator(mode="after")
     def _bounded(self) -> "AgentToolResultV1":

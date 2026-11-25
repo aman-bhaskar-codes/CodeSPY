@@ -169,7 +169,14 @@ def test_plan_mode_offers_only_read_tools_and_act_mode_adds_the_edit_tools():
     assert plan == {s.name for s in read_tools().specs()} and not plan & {
         s.name for s in edit_tools().specs()
     }
-    assert act == plan | {"apply_patch", "create_file", "delete_path", "move_path"}
+    assert act == plan | {
+        "apply_patch",
+        "create_file",
+        "delete_path",
+        "move_path",
+        "run_command",
+        "run_tests",
+    }
     assert {s.tool_class for s in edit_tools().specs()} == {"edit"}
 
 

@@ -8,6 +8,8 @@ it (``recovered``) instead of writing again.
 """
 
 import asyncio
+import hashlib
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -45,6 +47,8 @@ class OpenWorkspace:
     session_id: UUID
     handle: SandboxHandleV1
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    #: File hashes as of the last revision, to tell a command's changes from the edit tools'.
+    known: dict[str, str] | None = None
 
 
 class WorkspaceService:
@@ -101,7 +105,9 @@ class WorkspaceService:
                 .where(workspaces.c.org_id == ctx.org_id, workspaces.c.id == workspace_id)
                 .values(sandbox_ref=str(handle.id))
             )
-        return OpenWorkspace(ctx, workspace_id, session_id, handle)
+        opened = OpenWorkspace(ctx, workspace_id, session_id, handle)
+        opened.known = dict(await self.sandbox.file_hashes(handle))
+        return opened
 
     def bind(self, workspace: OpenWorkspace) -> "BoundWorkspace":
         return BoundWorkspace(self, workspace)
@@ -158,6 +164,7 @@ class WorkspaceService:
                 author,
                 recovered,
             )
+            workspace.known = dict(await self.sandbox.file_hashes(workspace.handle))
             return Applied(revision, view.tree_hash, touched_paths(changes), False, recovered)
 
     async def find_applied(self, workspace: OpenWorkspace, request_digest: str) -> Applied | None:
@@ -219,12 +226,78 @@ class WorkspaceService:
         author: str,
         recovered: bool,
     ) -> int:
-        ctx = workspace.ctx
         touched = {c.path for c in changes}
-        known_before = (
-            {p: h for p, h in dict(before).items() if p in touched}
-            | {c.path: c.expected_hash for c in changes if c.expected_hash}
-        )  # the caller's expectation wins: after a recovery the sandbox shows the new content
+        known_before = {p: h for p, h in dict(before).items() if p in touched} | {
+            c.path: c.expected_hash for c in changes if c.expected_hash
+        }  # the caller's expectation wins: after a recovery the sandbox shows the new content
+        return await self._record_entries(
+            workspace,
+            changes_json(changes, known_before),
+            touched_paths(changes),
+            tree_hash,
+            sandbox_revision,
+            change_id,
+            request_digest,
+            author,
+            recovered,
+        )
+
+    async def sync(self, workspace: OpenWorkspace, *, author: str = "agent") -> Applied | None:
+        """Record what changed in the workspace outside the edit tools, as one revision.
+
+        A command can write any number of files. They are found by comparing file hashes with
+        those of the last revision, so the record and the event say which paths changed.
+        """
+        async with workspace.lock:
+            now = dict(await self.sandbox.file_hashes(workspace.handle))
+            before = workspace.known
+            if before is None:
+                workspace.known = now
+                return None
+            if now == before:
+                return None
+            entries: list[dict[str, Any]] = []
+            for path in sorted(now.keys() | before.keys()):
+                if now.get(path) == before.get(path):
+                    continue
+                entries.append(
+                    {
+                        "op": "delete" if path not in now else "write",
+                        "path": path,
+                        "before_hash": before.get(path),
+                        "after_hash": now.get(path),
+                    }
+                )
+            view = await self.sandbox.status(workspace.handle)
+            change_id = hashlib.sha256(json.dumps(entries, sort_keys=True).encode()).hexdigest()
+            paths = tuple(e["path"] for e in entries)
+            revision = await self._record_entries(
+                workspace,
+                entries,
+                paths,
+                view.tree_hash,
+                view.revision,
+                change_id,
+                None,
+                author,
+                False,
+            )
+            workspace.known = now
+            return Applied(revision, view.tree_hash, paths, False)
+
+    async def _record_entries(
+        self,
+        workspace: OpenWorkspace,
+        entries: list[dict[str, Any]],
+        paths: Sequence[str],
+        tree_hash: str,
+        sandbox_revision: int,
+        change_id: str,
+        request_digest: str | None,
+        author: str,
+        recovered: bool,
+    ) -> int:
+        ctx = workspace.ctx
         async with transaction(self.factory) as s:
             head = await s.scalar(
                 select(workspaces.c.head_revision)
@@ -247,7 +320,7 @@ class WorkspaceService:
                     author=author,
                     change_id=change_id,
                     request_digest=request_digest,
-                    changes_json=changes_json(changes, known_before),
+                    changes_json=entries,
                     tree_hash=tree_hash,
                     sandbox_revision=sandbox_revision,
                     recovered=recovered,
@@ -261,7 +334,7 @@ class WorkspaceService:
                     "workspace.revision",
                     {
                         "revision": revision,
-                        "changed_paths": list(touched_paths(changes))[:MAX_EVENT_PATHS],
+                        "changed_paths": list(paths)[:MAX_EVENT_PATHS],
                         "author": "user" if author == "user" else "agent",
                     },
                     event_key=f"workspace.revision.{revision}",
@@ -288,3 +361,6 @@ class BoundWorkspace:
 
     async def find_applied(self, request_digest: str) -> Applied | None:
         return await self._service.find_applied(self._workspace, request_digest)
+
+    async def sync(self, *, author: str = "agent") -> Applied | None:
+        return await self._service.sync(self._workspace, author=author)

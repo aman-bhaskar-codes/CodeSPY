@@ -119,13 +119,15 @@ async def make_context(
         handle, SnapshotRefV1(org_id=org, repository_id=uuid4(), snapshot_id=SNAPSHOT)
     )
     sandbox.reads.clear()
+    local = LocalWorkspace(sandbox, handle)
+    await local.baseline()
     ctx = ToolContext(
         sandbox=sandbox,
         handle=handle,
         base=FakeBase(files) if base else None,
         symbols=symbols,
         search=search,
-        workspace=LocalWorkspace(sandbox, handle) if workspace else None,
+        workspace=local if workspace else None,
     )
     return ctx, sandbox
 

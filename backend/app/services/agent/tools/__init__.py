@@ -1,6 +1,7 @@
 """The agent's read-only tools. ``read_tools()`` is the set offered in plan mode."""
 
 from app.services.agent.tools.edit_tools import ApplyPatch, CreateFile, DeletePath, MovePath
+from app.services.agent.tools.exec_tools import RunCommand, RunTests
 from app.services.agent.tools.git_tools import GitDiff, GitStatus
 from app.services.agent.tools.registry import ToolRegistry
 from app.services.agent.tools.search_tools import FindSymbol, SearchSemantic
@@ -28,7 +29,14 @@ def edit_tools() -> ToolRegistry:
     return ToolRegistry([ApplyPatch(), CreateFile(), DeletePath(), MovePath()])
 
 
+def exec_tools() -> ToolRegistry:
+    """run_command, run_tests."""
+    return ToolRegistry([RunCommand(), RunTests()])
+
+
 def tools_for_mode(mode: str) -> ToolRegistry:
-    """Plan mode offers the read tools only; act mode adds the edit tools."""
-    tools = [*read_tools().tools(), *(edit_tools().tools() if mode == "act" else [])]
-    return ToolRegistry(tools)
+    """Plan mode offers the read tools only; act mode adds the edit and exec tools."""
+    act = mode == "act"
+    return ToolRegistry(
+        [*read_tools().tools(), *(edit_tools().tools() + exec_tools().tools() if act else [])]
+    )

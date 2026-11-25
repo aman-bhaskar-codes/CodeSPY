@@ -1,0 +1,8 @@
+{"Action":"run","Package":"example.com/m/pkg","Test":"TestAdd"}
+{"Action":"output","Package":"example.com/m/pkg","Test":"TestAdd","Output":"=== RUN   TestAdd\n"}
+{"Action":"pass","Package":"example.com/m/pkg","Test":"TestAdd","Elapsed":0}
+{"Action":"run","Package":"example.com/m/pkg","Test":"TestSub"}
+{"Action":"output","Package":"example.com/m/pkg","Test":"TestSub","Output":"    sub_test.go:12: got 3, want 4\n"}
+{"Action":"fail","Package":"example.com/m/pkg","Test":"TestSub","Elapsed":0}
+{"Action":"skip","Package":"example.com/m/pkg","Test":"TestSlow","Elapsed":0}
+{"Action":"fail","Package":"example.com/m/pkg","Elapsed":0.01}

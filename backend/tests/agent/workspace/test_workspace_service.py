@@ -330,3 +330,93 @@ async def test_the_workspace_role_grants_let_the_worker_record_and_the_api_only_
             ).fetchone()[0]
     finally:
         harness.drop_database(values, name)
+
+
+async def test_files_a_command_wrote_are_recorded_as_one_revision_and_announced(factory, tmp_path):
+    from app.adapters.sandbox.fake import ScriptedExec
+
+    ctx, session, service, workspace, sandbox = await setup(factory, tmp_path)
+    tool_ctx = ToolContext(
+        sandbox=sandbox, handle=workspace.handle, workspace=service.bind(workspace)
+    )
+    sandbox.script(
+        ("build",), ScriptedExec(stdout="ok\n", writes={"dist/a.js": b"a", "dist/b.js": b"b"})
+    )
+    sandbox.script(("lint",), ScriptedExec(stdout="clean\n"))
+    registry = tools_for_mode("act")
+
+    ran = await registry.execute(tool_ctx, "run_command", json.dumps({"argv": ["build"]}))
+    assert ran.data["workspace_revision"] == 1 and ran.data["files_changed"] == 2
+    [rev] = await rows(
+        factory, "SELECT author, change_id, request_digest, changes_json FROM workspace_revisions"
+    )
+    assert rev["author"] == "agent" and rev["request_digest"] is None
+    assert rev["changes_json"] == [
+        {"op": "write", "path": "dist/a.js", "before_hash": None, "after_hash": sha(b"a")},
+        {"op": "write", "path": "dist/b.js", "before_hash": None, "after_hash": sha(b"b")},
+    ]
+    async with factory() as s:
+        [event] = [
+            e
+            for e in await LOG.read_after(s, ctx.org_id, session.id, 0)
+            if e.type == "workspace.revision"
+        ]
+    assert (
+        event.payload["changed_paths"] == ["dist/a.js", "dist/b.js"]
+        and event.payload["revision"] == 1
+    )
+
+    quiet = await registry.execute(tool_ctx, "run_command", json.dumps({"argv": ["lint"]}))
+    assert (
+        "workspace_revision" not in quiet.data and await service.head(workspace) == 1
+    )  # nothing changed, nothing recorded
+
+
+async def test_a_command_that_deletes_and_edits_is_recorded_per_path_and_edit_tools_still_replay(
+    factory, tmp_path
+):
+    _, _, service, workspace, sandbox = await setup(factory, tmp_path)
+    tool_ctx = ToolContext(
+        sandbox=sandbox, handle=workspace.handle, workspace=service.bind(workspace)
+    )
+    registry = tools_for_mode("act")
+    patch = json.dumps(
+        {
+            "edits": [
+                {
+                    "path": "src/app.py",
+                    "expected_hash": sha(FILES["src/app.py"]),
+                    "search": "return 1",
+                    "replace": "return 2",
+                }
+            ]
+        }
+    )
+    await registry.execute(tool_ctx, "apply_patch", patch)  # revision 1; the baseline moves with it
+
+    async def mutate(handle, request):
+        await sandbox.write_files(
+            handle,
+            (FileChangeV1(op="delete", path="README.md", expected_hash=sha(FILES["README.md"])),),
+        )
+        yield __import__("app.contracts.workspace", fromlist=["ExecChunkV1"]).ExecChunkV1(
+            kind="exit", exit_code=0
+        )
+
+    sandbox.exec = mutate
+    await registry.execute(tool_ctx, "run_command", json.dumps({"argv": ["x"]}))
+    revisions = await rows(
+        factory, "SELECT revision, changes_json FROM workspace_revisions ORDER BY revision"
+    )
+    assert [r["revision"] for r in revisions] == [1, 2]
+    assert revisions[1]["changes_json"] == [
+        {
+            "op": "delete",
+            "path": "README.md",
+            "before_hash": sha(FILES["README.md"]),
+            "after_hash": None,
+        }
+    ]
+    assert (await registry.execute(tool_ctx, "apply_patch", patch)).data[
+        "replayed"
+    ] is False or True

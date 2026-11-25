@@ -62,3 +62,7 @@ class WorkspaceEditPort(Protocol):
     async def find_applied(self, request_digest: str) -> Applied | None:
         """The earlier application of this request, if the workspace still has its result."""
         ...
+
+    async def sync(self, *, author: str = "agent") -> Applied | None:
+        """Record changes made outside the edit tools (a command wrote files); ``None`` if none."""
+        ...

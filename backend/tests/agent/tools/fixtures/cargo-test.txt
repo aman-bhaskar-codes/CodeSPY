@@ -1,0 +1,12 @@
+running 3 tests
+test tests::adds ... ok
+test tests::subs ... FAILED
+test tests::slow ... ignored
+
+failures:
+
+---- tests::subs stdout ----
+thread 'tests::subs' panicked at src/lib.rs:12:9:
+assertion `left == right` failed
+
+test result: FAILED. 1 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
