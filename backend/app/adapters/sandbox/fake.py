@@ -169,6 +169,20 @@ class FakeSandbox:
             raise WorkspaceFileNotFound(rel)
         return text_slice(rel, data, start_line, end_line)
 
+    async def file_hashes(self, handle: SandboxHandleV1) -> dict[str, str]:
+        ws = self._resolve(handle)
+        return {p: content_hash(d) for p, d in sorted(ws.files.items())}
+
+    async def read_bytes(self, handle: SandboxHandleV1, path: str) -> bytes:
+        ws = self._resolve(handle)
+        rel = normalize_workspace_path(path)
+        data = ws.files.get(rel)
+        if data is None:
+            if any(p.startswith(rel + "/") for p in ws.files):
+                raise NotATextFile("path is a directory")
+            raise WorkspaceFileNotFound(rel)
+        return data
+
     async def write_files(
         self, handle: SandboxHandleV1, changes: tuple[FileChangeV1, ...]
     ) -> WorkspaceRevisionV1:

@@ -11,6 +11,10 @@ Every implementation must pass ``tests/agent/sandbox/contract.py``. Rules of the
   the workspace is reachable, and ``.git`` is not addressable through file calls.
 * ``write_files`` and ``restore`` are atomic and serialised per sandbox: a rejected call changes
   nothing, and each successful call advances the revision by exactly one.
+* ``file_hashes`` maps every file of the workspace (at most 100,000) to its SHA-256, for comparing
+  against a snapshot.
+* ``read_bytes`` returns a whole regular file (at most 8 MiB) for tools that edit or search it;
+  it is never sent to a model without redaction.
 * Content is addressed by SHA-256. A change names the hash it expects, so a stale edit is a
   conflict, never a silent overwrite.
 * ``exec`` runs argv without a shell, with no network unless the spec allows a proxy, and ends with
@@ -177,6 +181,10 @@ class SandboxPort(Protocol):
     async def read_file(
         self, handle: SandboxHandleV1, path: str, start_line: int = 1, end_line: int | None = None
     ) -> FileSliceV1: ...
+
+    async def read_bytes(self, handle: SandboxHandleV1, path: str) -> bytes: ...
+
+    async def file_hashes(self, handle: SandboxHandleV1) -> Mapping[str, str]: ...
 
     async def write_files(
         self, handle: SandboxHandleV1, changes: tuple[FileChangeV1, ...]

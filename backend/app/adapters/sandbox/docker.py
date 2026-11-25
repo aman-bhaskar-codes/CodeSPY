@@ -190,6 +190,24 @@ class DockerSandbox:
             raise WorkspaceFileNotFound(rel)
         return text_slice(rel, data, start_line, end_line)
 
+    async def file_hashes(self, handle: SandboxHandleV1) -> dict[str, str]:
+        sbx = self._resolve(handle)
+        facts = await asyncio.to_thread(sbx.tree.facts)
+        return {p: f.sha256 for p, f in facts.items()}
+
+    async def read_bytes(self, handle: SandboxHandleV1, path: str) -> bytes:
+        sbx = self._resolve(handle)
+        rel = normalize_workspace_path(path)
+        kind = await asyncio.to_thread(sbx.tree.kind, rel)
+        if kind is None:
+            raise WorkspaceFileNotFound(rel)
+        if kind != "file":
+            raise NotATextFile("path is not a regular file")
+        data = await asyncio.to_thread(sbx.tree.read, rel)
+        if data is None:
+            raise WorkspaceFileNotFound(rel)
+        return data
+
     async def write_files(
         self, handle: SandboxHandleV1, changes: tuple[FileChangeV1, ...]
     ) -> WorkspaceRevisionV1:

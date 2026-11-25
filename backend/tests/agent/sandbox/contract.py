@@ -205,6 +205,26 @@ class SandboxContract:
             with pytest.raises(PathRejected):
                 await env.sandbox.read_file(env.handle, "README.md", *bad)
 
+    async def test_read_bytes_returns_the_whole_file_and_refuses_what_is_not_a_file(self, env: Env):
+        assert await env.sandbox.read_bytes(env.handle, "src/app.py") == FILES["src/app.py"]
+        assert (
+            await env.sandbox.read_bytes(env.handle, "data.bin") == FILES["data.bin"]
+        )  # not text-checked
+        assert await env.sandbox.read_bytes(env.handle, "big.txt") == BIG
+        with pytest.raises(WorkspaceFileNotFound):
+            await env.sandbox.read_bytes(env.handle, "nope.txt")
+        with pytest.raises(NotATextFile):
+            await env.sandbox.read_bytes(env.handle, "src")
+        for bad in ("../x", "/etc/passwd", ".git/config"):
+            with pytest.raises(PathRejected):
+                await env.sandbox.read_bytes(env.handle, bad)
+
+    async def test_file_hashes_covers_every_file_and_follows_changes(self, env: Env):
+        assert await env.sandbox.file_hashes(env.handle) == {p: sha(d) for p, d in FILES.items()}
+        await env.sandbox.write_files(env.handle, (write("new.txt", b"n"),))
+        hashes = await env.sandbox.file_hashes(env.handle)
+        assert hashes["new.txt"] == sha(b"n") and len(hashes) == len(FILES) + 1
+
     # --- paths ---------------------------------------------------------------------------------
 
     BAD_PATHS: ClassVar[tuple[str, ...]] = (
