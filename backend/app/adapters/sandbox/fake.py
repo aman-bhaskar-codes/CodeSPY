@@ -12,12 +12,12 @@ from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
 
+from app.adapters.sandbox.common import listing, text_slice
 from app.contracts.workspace import (
     CheckpointRefV1,
     ExecChunkV1,
     ExecRequestV1,
     FileChangeV1,
-    FileEntryV1,
     FileListingV1,
     FileSliceV1,
     SandboxCapabilitiesV1,
@@ -27,12 +27,11 @@ from app.contracts.workspace import (
     WorkspaceRevisionV1,
 )
 from app.ports.sandbox import (
+    MAX_BATCH_BYTES,
     MAX_CHANGES_PER_CALL,
     MAX_EXEC_OUTPUT_BYTES,
     MAX_FILE_BYTES,
     MAX_LIST_ENTRIES,
-    MAX_READ_BYTES,
-    MAX_READ_LINES,
     MAX_WORKSPACE_FILES,
     CheckpointUnknown,
     ExecRejected,
@@ -155,14 +154,8 @@ class FakeSandbox:
         self, handle: SandboxHandleV1, prefix: str = ".", limit: int = MAX_LIST_ENTRIES
     ) -> FileListingV1:
         ws = self._resolve(handle)
-        root = normalize_workspace_path(prefix, allow_root=True)
-        limit = max(1, min(limit, MAX_LIST_ENTRIES))
-        names = sorted(p for p in ws.files if root == "." or p == root or p.startswith(root + "/"))
-        entries = tuple(
-            FileEntryV1(path=p, size=len(ws.files[p]), file_hash=content_hash(ws.files[p]))
-            for p in names[:limit]
-        )
-        return FileListingV1(entries=entries, truncated=len(names) > limit)
+        facts = {p: (len(d), content_hash(d)) for p, d in ws.files.items()}
+        return listing(facts, prefix, limit)
 
     async def read_file(
         self, handle: SandboxHandleV1, path: str, start_line: int = 1, end_line: int | None = None
@@ -174,35 +167,7 @@ class FakeSandbox:
             if any(p.startswith(rel + "/") for p in ws.files):
                 raise NotATextFile("path is a directory")
             raise WorkspaceFileNotFound(rel)
-        if start_line < 1 or (end_line is not None and end_line < start_line):
-            raise PathRejected("line range is invalid")
-        try:
-            text = data.decode("utf-8")
-        except UnicodeDecodeError:
-            raise NotATextFile("file is not UTF-8 text") from None
-        if "\x00" in text:
-            raise NotATextFile("file is not text")
-        lines = text.splitlines(keepends=True)
-        total = len(lines)
-        last = total if end_line is None else min(end_line, total)
-        truncated = False
-        if last - start_line + 1 > MAX_READ_LINES:
-            last, truncated = start_line + MAX_READ_LINES - 1, True
-        chosen = lines[start_line - 1 : last] if start_line <= total else []
-        content = "".join(chosen)
-        if len(content.encode()) > MAX_READ_BYTES:
-            content = content.encode()[:MAX_READ_BYTES].decode("utf-8", errors="ignore")
-            truncated = True
-            last = start_line + content.count("\n") - 1
-        return FileSliceV1(
-            path=rel,
-            file_hash=content_hash(data),
-            start_line=start_line,
-            end_line=max(last, 0) if chosen else 0,
-            total_lines=total,
-            content=content,
-            truncated=truncated,
-        )
+        return text_slice(rel, data, start_line, end_line)
 
     async def write_files(
         self, handle: SandboxHandleV1, changes: tuple[FileChangeV1, ...]
@@ -241,6 +206,8 @@ class FakeSandbox:
                         raise WorkspaceConflict(dest, None, content_hash(staged[dest]))
                     staged[dest] = staged.pop(path)
                     touched.extend((path, dest))
+            if sum(len(c.content or b"") for c in changes) > MAX_BATCH_BYTES:
+                raise SandboxLimit("batch exceeds the size limit")
             if len(staged) > MAX_WORKSPACE_FILES:
                 raise SandboxLimit("workspace has too many files")
             if sum(len(v) for v in staged.values()) > ws.spec.disk_mib * 1024 * 1024:

@@ -119,9 +119,7 @@ class FileChangeV1(Contract):
 
 
 class ExecRequestV1(Contract):
-    argv: tuple[Annotated[str, Field(min_length=1, max_length=4096)], ...] = Field(
-        min_length=1, max_length=64
-    )
+    argv: tuple[Annotated[str, Field(max_length=4096)], ...] = Field(min_length=1, max_length=64)
     cwd: RelPath = "."
     timeout_s: int = Field(default=600, ge=1, le=600)
     env: dict[str, Annotated[str, Field(max_length=4096)]] = Field(default_factory=dict)
@@ -137,6 +135,8 @@ class ExecRequestV1(Contract):
                 or key.startswith(_FORBIDDEN_ENV_PREFIXES)
             ):
                 raise ValueError("environment variable not allowed")
+        if not self.argv[0]:
+            raise ValueError("the program name is not empty")
         if any("\x00" in part for part in self.argv):
             raise ValueError("argument contains NUL")
         return self
@@ -150,6 +150,8 @@ class ExecChunkV1(Contract):
     exit_code: int | None = None
     timed_out: bool = False
     truncated: bool = False
+    #: Set when the sandbox stopped the command for using more of a resource than it was given.
+    limit_exceeded: Literal["disk"] | None = None
     duration_ms: int = Field(default=0, ge=0)
 
 

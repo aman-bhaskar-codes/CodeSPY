@@ -43,5 +43,5 @@ ignores expected hashes; three cases failed, which confirms the suite detects th
 
 ## Next
 
-A Docker sandbox subclasses `SandboxContract` (supplying real commands for `cmd`) and must pass the same cases. A
+The Docker sandbox ([docker-sandbox.md](docker-sandbox.md)) subclasses `SandboxContract` and passes the same cases. A
 hosted sandbox does the same. The agent's tools are written against the port, so they run unchanged on the fake.

@@ -14,7 +14,8 @@ Every implementation must pass ``tests/agent/sandbox/contract.py``. Rules of the
 * Content is addressed by SHA-256. A change names the hash it expects, so a stale edit is a
   conflict, never a silent overwrite.
 * ``exec`` runs argv without a shell, with no network unless the spec allows a proxy, and ends with
-  exactly one ``exit`` chunk. A command is never re-run by the port.
+  exactly one ``exit`` chunk. A command is never re-run by the port. A command that changes the
+  workspace advances the revision by one. Processes a command starts do not outlive it.
 * ``suspend`` keeps the workspace; the next call resumes it. A sandbox that cannot suspend keeps
   running and says so in its capabilities.
 """
@@ -41,6 +42,7 @@ from app.contracts.workspace import (
 
 MAX_FILE_BYTES = 8 * 1024 * 1024
 MAX_CHANGES_PER_CALL = 200
+MAX_BATCH_BYTES = 64 * 1024 * 1024
 MAX_WORKSPACE_FILES = 100_000
 MAX_READ_LINES = 2000
 MAX_READ_BYTES = 256 * 1024
@@ -59,6 +61,12 @@ class SandboxError(Exception):
 
 class SandboxGone(SandboxError):  # noqa: N818 -- public contract name
     code = "sandbox_gone"
+
+
+class SandboxUnavailable(SandboxError):  # noqa: N818
+    """The runtime behind the sandbox (daemon, image, host) cannot serve the call."""
+
+    code = "sandbox_unavailable"
 
 
 class SandboxStateError(SandboxError):

@@ -10,7 +10,9 @@ Depends on [ADR 0008](0008-agent-runtime-and-execution-policy.md).
    - a fake sandbox for tests;
    - a Docker sandbox for local and self-hosted use, using the gVisor runtime when present and the scanner hardening
      flags otherwise (read-only root, all capabilities dropped, no-new-privileges, pids and memory limits, noexec tmpfs,
-     default seccomp, no Docker socket, no host mounts except the workspace volume);
+     default seccomp, no Docker socket, no host mounts except the workspace). The workspace persists on the host and each
+     command runs in its own short-lived container, so nothing a command starts outlives it and a fork bomb or stuck
+     process cannot starve later commands;
    - a hosted sandbox. The API and workers never execute workspace code.
 2. **Hosted tier first choice: ECS Fargate in `ap-south-1`.** Per-task isolation boundary managed by AWS, stays in the
    owner's region, no new region to approve. Known limits: no custom runtime (so no gVisor), no suspend, cold start of
@@ -28,6 +30,15 @@ Depends on [ADR 0008](0008-agent-runtime-and-execution-policy.md).
 7. **Rejected:** running commands in the worker container (breaks isolation), WebAssembly as the execution tier (cannot
    run real toolchains such as npm, pytest or cargo), and self-managed Firecracker on bare metal (operating cost for one
    owner).
+
+## Changes from the first draft
+
+- The Docker sandbox runs one container per command over a persistent workspace, not one long-lived container per
+  session. Suspend is therefore a no-op there (it reports that it cannot suspend). The host reads and writes the
+  workspace through a symlink-safe accessor, because a command can plant links in a directory the host also uses.
+- Disk limits on a bind-mounted workspace cannot be enforced by the kernel; the sandbox enforces them with a per-file
+  size limit, a watchdog that stops a command that is still growing the workspace past its quota, and a check after
+  every command. Hosted tiers use the platform's storage limits.
 
 ## Consequences
 

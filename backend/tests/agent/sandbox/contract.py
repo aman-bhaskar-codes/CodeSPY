@@ -19,6 +19,7 @@ from app.contracts.workspace import (
     SnapshotRefV1,
 )
 from app.ports.sandbox import (
+    MAX_BATCH_BYTES,
     MAX_CHANGES_PER_CALL,
     MAX_EXEC_OUTPUT_BYTES,
     MAX_FILE_BYTES,
@@ -57,10 +58,11 @@ class Env:
     session: UUID
     handle: SandboxHandleV1
     ref: SnapshotRefV1
+    image: str = "test:latest"
 
     def spec(self, session: UUID | None = None, **kw) -> SandboxSpecV1:
         return SandboxSpecV1(
-            org_id=self.org, session_id=session or self.session, image="test:latest", **kw
+            org_id=self.org, session_id=session or self.session, image=self.image, **kw
         )
 
 
@@ -78,6 +80,9 @@ async def run(sandbox, handle, argv, **kw):
 
 
 class SandboxContract:
+    #: The image name a sandbox spec asks for. A real sandbox sets the image it is built from.
+    image_name: ClassVar[str] = "test:latest"
+
     async def build(self, snapshots: dict[UUID, dict[str, bytes]]) -> SandboxPort:
         raise NotImplementedError
 
@@ -90,11 +95,11 @@ class SandboxContract:
     async def env(self) -> Env:
         sandbox = await self.build({SNAPSHOT: FILES, OTHER_SNAPSHOT: {"other.txt": b"o\n"}})
         org, repo, session = uuid4(), uuid4(), uuid4()
-        probe = Env(sandbox, org, repo, session, None, None)  # type: ignore[arg-type]
+        probe = Env(sandbox, org, repo, session, None, None, self.image_name)  # type: ignore[arg-type]
         handle = await sandbox.acquire(probe.spec())
         ref = SnapshotRefV1(org_id=org, repository_id=repo, snapshot_id=SNAPSHOT)
         await sandbox.materialize(handle, ref)
-        return Env(sandbox, org, repo, session, handle, ref)
+        return Env(sandbox, org, repo, session, handle, ref, self.image_name)
 
     # --- identity and isolation ----------------------------------------------------------------
 
@@ -346,6 +351,12 @@ class SandboxContract:
             await env.sandbox.write_files(
                 env.handle, (write("huge.bin", b"\x00" * (MAX_FILE_BYTES + 1)),)
             )
+        chunk = b"\x00" * MAX_FILE_BYTES
+        too_many = tuple(
+            write(f"b{i}.bin", chunk) for i in range(MAX_BATCH_BYTES // MAX_FILE_BYTES + 1)
+        )
+        with pytest.raises(SandboxLimit):  # each file is allowed; the batch as a whole is not
+            await env.sandbox.write_files(env.handle, too_many)
         assert (await env.sandbox.status(env.handle)).revision == 0
 
     async def test_change_contracts_reject_malformed_changes(self, env: Env):
@@ -436,6 +447,9 @@ class SandboxContract:
             ExecRequestV1(argv=("echo", "a\x00b"))
         with pytest.raises(ValidationError):
             ExecRequestV1(argv=())
+        with pytest.raises(ValidationError):
+            ExecRequestV1(argv=("",))  # the program is named
+        assert ExecRequestV1(argv=("grep", "", "f")).argv[1] == ""  # later arguments may be empty
         assert ExecRequestV1(argv=("true",), env={"CI": "1", "LANG": "C"}).env == {
             "CI": "1",
             "LANG": "C",
