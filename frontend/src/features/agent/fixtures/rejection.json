@@ -1,0 +1,271 @@
+{
+  "name": "rejection",
+  "description": "A risky command and a patch are both rejected; the agent adapts and the session stays usable.",
+  "session_id": "10000000-0000-4000-8000-000000000002",
+  "events": [
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 1,
+      "type": "session.created",
+      "ts": "2026-11-25T10:00:00.250Z",
+      "turn": 0,
+      "payload": {
+        "mode": "act",
+        "base_snapshot_id": "30000000-0000-4000-8000-000000000001",
+        "model_profile": "agent",
+        "limits": {
+          "max_steps": 60,
+          "max_tool_calls": 150,
+          "cost_micros_limit": 5000000
+        }
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 2,
+      "type": "message.user",
+      "ts": "2026-11-25T10:00:00.500Z",
+      "turn": 1,
+      "payload": {
+        "message_id": "m1",
+        "text": "Clean the build directory and update the version",
+        "context": [
+          {
+            "kind": "file",
+            "ref": "backend/app/auth.py",
+            "start_line": 1
+          }
+        ]
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 3,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:00.750Z",
+      "turn": 1,
+      "payload": {
+        "status": "running"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 4,
+      "type": "tool.call.proposed",
+      "ts": "2026-11-25T10:00:01.000Z",
+      "turn": 1,
+      "parent": "tool_call:tc1",
+      "payload": {
+        "tool_call_id": "tc1",
+        "tool": "run_command",
+        "class": "exec",
+        "args_preview": "rm -rf build dist",
+        "risk": "high"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 5,
+      "type": "approval.requested",
+      "ts": "2026-11-25T10:00:01.250Z",
+      "turn": 1,
+      "payload": {
+        "approval_id": "a1",
+        "subject": {
+          "kind": "tool_call",
+          "ref": "tc1"
+        },
+        "reason": "deletes files",
+        "rule_matched": "exec: rm*",
+        "expires_at": "2026-11-25T10:30:00.000Z"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 6,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:01.500Z",
+      "turn": 1,
+      "payload": {
+        "status": "waiting_approval"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 7,
+      "type": "approval.resolved",
+      "ts": "2026-11-25T10:00:01.750Z",
+      "turn": 1,
+      "payload": {
+        "approval_id": "a1",
+        "decision": "rejected",
+        "scope": "once",
+        "by": "user"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 8,
+      "type": "tool.call.completed",
+      "ts": "2026-11-25T10:00:02.000Z",
+      "turn": 1,
+      "parent": "tool_call:tc1",
+      "payload": {
+        "tool_call_id": "tc1",
+        "status": "denied",
+        "summary": "rejected by the user",
+        "truncated": false,
+        "bytes": 0,
+        "redactions": 0,
+        "evidence": []
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 9,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:02.250Z",
+      "turn": 1,
+      "payload": {
+        "status": "running"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 10,
+      "type": "diff.proposed",
+      "ts": "2026-11-25T10:00:02.500Z",
+      "turn": 1,
+      "parent": "patch:patch1",
+      "payload": {
+        "patch_id": "patch1",
+        "files": [
+          {
+            "path": "pyproject.toml",
+            "change": "modify",
+            "before_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "after_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "hunks": [
+              {
+                "hunk_id": "h1",
+                "old_start": 3,
+                "old_lines": 1,
+                "new_start": 3,
+                "new_lines": 1,
+                "preview": "-version = \"1.0.0\"\n+version = \"1.0.1\""
+              }
+            ]
+          }
+        ],
+        "base_revision": 0
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 11,
+      "type": "approval.requested",
+      "ts": "2026-11-25T10:00:02.750Z",
+      "turn": 1,
+      "payload": {
+        "approval_id": "a2",
+        "subject": {
+          "kind": "patch",
+          "ref": "patch1"
+        },
+        "reason": "edits need approval",
+        "expires_at": "2026-11-25T10:30:00.000Z"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 12,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:03.000Z",
+      "turn": 1,
+      "payload": {
+        "status": "waiting_approval"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 13,
+      "type": "approval.resolved",
+      "ts": "2026-11-25T10:00:03.250Z",
+      "turn": 1,
+      "payload": {
+        "approval_id": "a2",
+        "decision": "rejected",
+        "scope": "once",
+        "by": "user"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 14,
+      "type": "diff.decided",
+      "ts": "2026-11-25T10:00:03.500Z",
+      "turn": 1,
+      "parent": "patch:patch1",
+      "payload": {
+        "patch_id": "patch1",
+        "decision": "rejected",
+        "hunks_applied": [],
+        "by": "user"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 15,
+      "type": "message.started",
+      "ts": "2026-11-25T10:00:03.750Z",
+      "turn": 1,
+      "parent": "message:m2",
+      "payload": {
+        "message_id": "m2",
+        "role": "assistant",
+        "model_id": "agent-v1"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 16,
+      "type": "message.completed",
+      "ts": "2026-11-25T10:00:04.000Z",
+      "turn": 1,
+      "parent": "message:m2",
+      "payload": {
+        "message_id": "m2",
+        "text": "Understood. I did not delete anything or change the version. Tell me what to do instead.",
+        "stop_reason": "end_turn",
+        "claims": []
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000002",
+      "seq": 17,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:04.250Z",
+      "turn": 1,
+      "payload": {
+        "status": "idle"
+      }
+    }
+  ]
+}

@@ -1,0 +1,575 @@
+{
+  "name": "happy-path",
+  "description": "Read a file, propose a patch, approve it, apply it, run the tests, and finish.",
+  "session_id": "10000000-0000-4000-8000-000000000001",
+  "events": [
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 1,
+      "type": "session.created",
+      "ts": "2026-11-25T10:00:00.250Z",
+      "turn": 0,
+      "payload": {
+        "mode": "act",
+        "base_snapshot_id": "30000000-0000-4000-8000-000000000001",
+        "model_profile": "agent",
+        "limits": {
+          "max_steps": 60,
+          "max_tool_calls": 150,
+          "cost_micros_limit": 5000000
+        }
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 2,
+      "type": "message.user",
+      "ts": "2026-11-25T10:00:00.500Z",
+      "turn": 1,
+      "payload": {
+        "message_id": "m1",
+        "text": "Fix the failing test in auth.py",
+        "context": [
+          {
+            "kind": "file",
+            "ref": "backend/app/auth.py",
+            "start_line": 1
+          }
+        ]
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 3,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:00.750Z",
+      "turn": 1,
+      "payload": {
+        "status": "running"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 4,
+      "type": "plan.proposed",
+      "ts": "2026-11-25T10:00:01.000Z",
+      "turn": 1,
+      "payload": {
+        "plan_id": "p1",
+        "steps": [
+          {
+            "id": "s1",
+            "title": "Read the failing test and auth.py",
+            "status": "pending"
+          },
+          {
+            "id": "s2",
+            "title": "Fix the token expiry check",
+            "status": "pending"
+          },
+          {
+            "id": "s3",
+            "title": "Run the tests",
+            "status": "pending"
+          }
+        ],
+        "requires_approval": false
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 5,
+      "type": "message.started",
+      "ts": "2026-11-25T10:00:01.250Z",
+      "turn": 1,
+      "parent": "message:m2",
+      "payload": {
+        "message_id": "m2",
+        "role": "assistant",
+        "model_id": "agent-v1"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 6,
+      "type": "message.delta",
+      "ts": "2026-11-25T10:00:01.500Z",
+      "turn": 1,
+      "parent": "message:m2",
+      "payload": {
+        "message_id": "m2",
+        "offset": 0,
+        "text": "I'll read the test "
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 7,
+      "type": "message.delta",
+      "ts": "2026-11-25T10:00:01.750Z",
+      "turn": 1,
+      "parent": "message:m2",
+      "payload": {
+        "message_id": "m2",
+        "offset": 19,
+        "text": "and the code it covers."
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 8,
+      "type": "message.completed",
+      "ts": "2026-11-25T10:00:02.000Z",
+      "turn": 1,
+      "parent": "message:m2",
+      "payload": {
+        "message_id": "m2",
+        "text": "I'll read the test and the code it covers.",
+        "stop_reason": "tool_use",
+        "usage": {
+          "input_tokens": 1200,
+          "output_tokens": 18,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "claims": []
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 9,
+      "type": "tool.call.proposed",
+      "ts": "2026-11-25T10:00:02.250Z",
+      "turn": 1,
+      "parent": "tool_call:tc1",
+      "payload": {
+        "tool_call_id": "tc1",
+        "tool": "read_file",
+        "class": "read",
+        "args_preview": "backend/app/auth.py 1-120",
+        "risk": "low"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 10,
+      "type": "tool.call.started",
+      "ts": "2026-11-25T10:00:02.500Z",
+      "turn": 1,
+      "parent": "tool_call:tc1",
+      "payload": {
+        "tool_call_id": "tc1"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 11,
+      "type": "tool.call.completed",
+      "ts": "2026-11-25T10:00:02.750Z",
+      "turn": 1,
+      "parent": "tool_call:tc1",
+      "payload": {
+        "tool_call_id": "tc1",
+        "status": "ok",
+        "summary": "read 120 lines",
+        "truncated": false,
+        "bytes": 4210,
+        "redactions": 0,
+        "evidence": [
+          {
+            "evidence_id": "e1",
+            "provenance": {
+              "kind": "source_range",
+              "path": "backend/app/auth.py",
+              "start_line": 1,
+              "end_line": 120
+            }
+          }
+        ]
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 12,
+      "type": "plan.updated",
+      "ts": "2026-11-25T10:00:03.000Z",
+      "turn": 1,
+      "payload": {
+        "plan_id": "p1",
+        "steps": [
+          {
+            "id": "s1",
+            "title": "Read the failing test and auth.py",
+            "status": "completed"
+          },
+          {
+            "id": "s2",
+            "title": "Fix the token expiry check",
+            "status": "in_progress"
+          },
+          {
+            "id": "s3",
+            "title": "Run the tests",
+            "status": "pending"
+          }
+        ]
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 13,
+      "type": "diff.proposed",
+      "ts": "2026-11-25T10:00:03.250Z",
+      "turn": 1,
+      "parent": "patch:patch1",
+      "payload": {
+        "patch_id": "patch1",
+        "files": [
+          {
+            "path": "backend/app/auth.py",
+            "change": "modify",
+            "before_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "after_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "hunks": [
+              {
+                "hunk_id": "h1",
+                "old_start": 58,
+                "old_lines": 1,
+                "new_start": 58,
+                "new_lines": 1,
+                "preview": "-    if now > exp:\n+    if now >= exp:"
+              }
+            ]
+          }
+        ],
+        "base_revision": 0
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 14,
+      "type": "approval.requested",
+      "ts": "2026-11-25T10:00:03.500Z",
+      "turn": 1,
+      "payload": {
+        "approval_id": "a1",
+        "subject": {
+          "kind": "patch",
+          "ref": "patch1"
+        },
+        "reason": "edits need approval",
+        "expires_at": "2026-11-25T10:30:00.000Z"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 15,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:03.750Z",
+      "turn": 1,
+      "payload": {
+        "status": "waiting_approval"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 16,
+      "type": "approval.resolved",
+      "ts": "2026-11-25T10:00:04.000Z",
+      "turn": 1,
+      "payload": {
+        "approval_id": "a1",
+        "decision": "approved",
+        "scope": "once",
+        "by": "user"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 17,
+      "type": "diff.decided",
+      "ts": "2026-11-25T10:00:04.250Z",
+      "turn": 1,
+      "parent": "patch:patch1",
+      "payload": {
+        "patch_id": "patch1",
+        "decision": "applied",
+        "hunks_applied": [
+          "h1"
+        ],
+        "by": "user"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 18,
+      "type": "workspace.revision",
+      "ts": "2026-11-25T10:00:04.500Z",
+      "turn": 1,
+      "payload": {
+        "revision": 1,
+        "changed_paths": [
+          "backend/app/auth.py"
+        ],
+        "author": "agent",
+        "checkpoint_id": "cp1"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 19,
+      "type": "checkpoint.created",
+      "ts": "2026-11-25T10:00:04.750Z",
+      "turn": 1,
+      "payload": {
+        "checkpoint_id": "cp1",
+        "revision": 1,
+        "label": "fix expiry",
+        "turn": 1
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 20,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:05.000Z",
+      "turn": 1,
+      "payload": {
+        "status": "running"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 21,
+      "type": "tool.call.proposed",
+      "ts": "2026-11-25T10:00:05.250Z",
+      "turn": 1,
+      "parent": "tool_call:tc2",
+      "payload": {
+        "tool_call_id": "tc2",
+        "tool": "run_tests",
+        "class": "exec",
+        "args_preview": "pytest backend/tests/test_auth.py",
+        "risk": "medium"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 22,
+      "type": "approval.requested",
+      "ts": "2026-11-25T10:00:05.500Z",
+      "turn": 1,
+      "payload": {
+        "approval_id": "a2",
+        "subject": {
+          "kind": "tool_call",
+          "ref": "tc2"
+        },
+        "reason": "commands need approval",
+        "expires_at": "2026-11-25T10:30:00.000Z"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 23,
+      "type": "approval.resolved",
+      "ts": "2026-11-25T10:00:05.750Z",
+      "turn": 1,
+      "payload": {
+        "approval_id": "a2",
+        "decision": "approved",
+        "scope": "session_rule",
+        "rule": "pytest*",
+        "by": "user"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 24,
+      "type": "tool.call.started",
+      "ts": "2026-11-25T10:00:06.000Z",
+      "turn": 1,
+      "parent": "tool_call:tc2",
+      "payload": {
+        "tool_call_id": "tc2"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 25,
+      "type": "tool.call.output",
+      "ts": "2026-11-25T10:00:06.250Z",
+      "turn": 1,
+      "parent": "tool_call:tc2",
+      "payload": {
+        "tool_call_id": "tc2",
+        "stream": "stdout",
+        "offset": 0,
+        "text": "collected 12 items\n"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 26,
+      "type": "tool.call.output",
+      "ts": "2026-11-25T10:00:06.500Z",
+      "turn": 1,
+      "parent": "tool_call:tc2",
+      "payload": {
+        "tool_call_id": "tc2",
+        "stream": "stdout",
+        "offset": 19,
+        "text": "12 passed in 0.8s\n"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 27,
+      "type": "tool.call.completed",
+      "ts": "2026-11-25T10:00:06.750Z",
+      "turn": 1,
+      "parent": "tool_call:tc2",
+      "payload": {
+        "tool_call_id": "tc2",
+        "status": "ok",
+        "summary": "exit 0 in 0.9s",
+        "truncated": false,
+        "bytes": 37,
+        "redactions": 0,
+        "evidence": []
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 28,
+      "type": "test.result",
+      "ts": "2026-11-25T10:00:07.000Z",
+      "turn": 1,
+      "payload": {
+        "tool_call_id": "tc2",
+        "runner": "pytest",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "failures": []
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 29,
+      "type": "evidence.claim",
+      "ts": "2026-11-25T10:00:07.250Z",
+      "turn": 1,
+      "payload": {
+        "claim_id": "c1",
+        "kind": "observation",
+        "text": "All 12 tests in test_auth.py pass after the change.",
+        "provenance": [
+          {
+            "kind": "tool_result",
+            "tool_call_id": "tc2"
+          }
+        ],
+        "verifier": "verified"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 30,
+      "type": "message.started",
+      "ts": "2026-11-25T10:00:07.500Z",
+      "turn": 1,
+      "parent": "message:m3",
+      "payload": {
+        "message_id": "m3",
+        "role": "assistant",
+        "model_id": "agent-v1"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 31,
+      "type": "message.completed",
+      "ts": "2026-11-25T10:00:07.750Z",
+      "turn": 1,
+      "parent": "message:m3",
+      "payload": {
+        "message_id": "m3",
+        "text": "Fixed: the expiry check used `>` instead of `>=`. All 12 tests pass.",
+        "stop_reason": "end_turn",
+        "usage": {
+          "input_tokens": 3400,
+          "output_tokens": 31,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0
+        },
+        "claims": [
+          {
+            "claim_id": "c1"
+          }
+        ]
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 32,
+      "type": "session.limits",
+      "ts": "2026-11-25T10:00:08.000Z",
+      "turn": 1,
+      "payload": {
+        "steps_used": 3,
+        "steps_max": 60,
+        "tool_calls_used": 2,
+        "tool_calls_max": 150,
+        "tokens_in": 4600,
+        "tokens_out": 49,
+        "cost_micros_reserved": 0,
+        "cost_micros_settled": 21000,
+        "cost_micros_limit": 5000000
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000001",
+      "seq": 33,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:08.250Z",
+      "turn": 1,
+      "payload": {
+        "status": "completed"
+      }
+    }
+  ]
+}

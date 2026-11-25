@@ -18,7 +18,8 @@
     "test:e2e": "playwright test",
     "dev:fixture": "vite --config vite.config.fixture.ts",
     "test:e2e:fixture": "playwright test --config playwright.fixture.config.ts",
-    "codegen:api": "openapi-ts -i ../backend/openapi.json -o src/api/generated -c @hey-api/client-fetch"
+    "codegen:api": "openapi-ts -i ../backend/openapi.json -o src/api/generated -c @hey-api/client-fetch",
+    "codegen:agent": "node scripts/generate-agent-types.mjs"
   },
   "dependencies": {
     "@hey-api/client-fetch": "0.13.1",
@@ -44,6 +45,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
+    "@electron/asar": "4.3.1",
     "@eslint/js": "9.39.5",
     "@hey-api/openapi-ts": "0.99.0",
     "@playwright/test": "1.64.1",
@@ -57,6 +59,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
+    "ajv": "8.20.0",
     "axe-core": "4.14.0",
     "eslint": "9.39.5",
     "eslint-plugin-jsx-a11y": "6.10.2",
@@ -64,14 +67,14 @@
     "eslint-plugin-react-refresh": "0.5.7",
     "globals": "17.13.0",
     "jsdom": "30.1.3",
+    "json-schema-to-typescript": "15.0.4",
     "msw": "3.0.3",
     "prettier": "3.9.10",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "typescript-eslint": "8.71.2",
     "vite": "8.3.4",
-    "vitest": "5.0.5",
-    "@electron/asar": "4.3.1"
+    "vitest": "5.0.5"
   },
   "overrides": {
     "dompurify": "$dompurify",
