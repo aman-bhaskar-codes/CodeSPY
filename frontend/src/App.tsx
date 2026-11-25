@@ -27,30 +27,16 @@ import type {
   RetryResponseV2,
 } from "./api/generated/types.gen";
 import { StructuralReportView } from "./features/structure/StructuralReportView";
+import {
+  useSnapshotUrl,
+  useWorkspaceSelection,
+} from "./workspace/useWorkspaceSelection";
 import { ArchitectureWorkbench } from "./features/architecture/ArchitectureWorkbench";
 import { FindingsWorkbench } from "./features/findings/FindingsWorkbench";
 import { RetrievalWorkbench } from "./features/retrieval/RetrievalWorkbench";
 import { InvestigationsWorkbench } from "./features/investigations/InvestigationsWorkbench";
 
 const terminal = new Set(["succeeded", "partial", "failed", "cancelled"]);
-function selectedId(name: string): string | null {
-  const value = new URLSearchParams(window.location.search).get(name);
-  return value &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      value,
-    )
-    ? value
-    : null;
-}
-function findingTargetFromUrl() {
-  const repositoryId = selectedId("repository"),
-    snapshotId = selectedId("snapshot"),
-    findingId = selectedId("finding"),
-    runId = selectedId("finding_run");
-  return repositoryId && snapshotId && findingId && runId
-    ? { repositoryId, snapshotId, findingId, runId }
-    : null;
-}
 const label = (value: string) => value.replaceAll("_", " ");
 function problem(error: unknown): string {
   if (error instanceof ApiError && error.status === 401)
@@ -78,71 +64,36 @@ export default function App() {
 
 function WorkspaceApp() {
   const client = useQueryClient();
-  const [findingTarget, setFindingTarget] = useState(findingTargetFromUrl);
+  const {
+    findingTarget,
+    setFindingTarget,
+    repository,
+    setRepository,
+    submissionId,
+    setSubmissionId,
+    jobId,
+    setJobId,
+    restoredSnapshot,
+    setRestoredSnapshot,
+    confirmCancel,
+    setConfirmCancel,
+    pages,
+    setPages,
+    analysisJobId,
+    setAnalysisJobId,
+    scanJobId,
+    setScanJobId,
+    locationSearchRef,
+    navigationRevisionRef,
+    responseIsCurrent,
+  } = useWorkspaceSelection();
   const [creatingRepository, setCreatingRepository] = useState(false);
-  const [repository, setRepository] = useState(
-    () => selectedId("repository") ?? "",
-  );
   const [file, setFile] = useState<File | null>(null);
-  const [submissionId, setSubmissionId] = useState<string | null>(() =>
-    selectedId("submission"),
-  );
-  const [jobId, setJobId] = useState<string | null>(() => selectedId("job"));
-  const [restoredSnapshot, setRestoredSnapshot] = useState<string | null>(() =>
-    selectedId("snapshot"),
-  );
   const [validation, setValidation] = useState("");
-  const [confirmCancel, setConfirmCancel] = useState(false);
-  const [pages, setPages] = useState<(string | null)[]>([null]);
-  const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
-  const [scanJobId, setScanJobId] = useState<string | null>(() =>
-    selectedId("scan"),
-  );
   const input = useRef<HTMLInputElement>(null);
   const cancelButton = useRef<HTMLButtonElement>(null);
   const uploadKey = useRef(crypto.randomUUID());
   const retryKeys = useRef(new Map<string, string>());
-  const locationSearch = useRef(window.location.search);
-  const navigationRevision = useRef(0);
-  const responseIsCurrent = () => {
-    const revision = navigationRevision.current;
-    return () => revision === navigationRevision.current;
-  };
-  useEffect(() => {
-    const restore = () => {
-      if (locationSearch.current === window.location.search) return;
-      navigationRevision.current += 1;
-      locationSearch.current = window.location.search;
-      setRepository(selectedId("repository") ?? "");
-      setSubmissionId(selectedId("submission"));
-      setJobId(selectedId("job"));
-      setScanJobId(selectedId("scan"));
-      setRestoredSnapshot(selectedId("snapshot"));
-      setFindingTarget(findingTargetFromUrl());
-      setAnalysisJobId(null);
-      setPages([null]);
-      setConfirmCancel(false);
-    };
-    window.addEventListener("popstate", restore);
-    return () => {
-      navigationRevision.current += 1;
-      window.removeEventListener("popstate", restore);
-    };
-  }, []);
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    for (const [name, value] of [
-      ["repository", repository],
-      ["submission", submissionId],
-      ["job", jobId],
-      ["scan", scanJobId],
-    ]) {
-      if (value) url.searchParams.set(name!, value);
-      else url.searchParams.delete(name!);
-    }
-    window.history.replaceState(window.history.state, "", url);
-    locationSearch.current = url.search;
-  }, [repository, submissionId, jobId, scanJobId]);
   const session = useQuery({
     queryKey: ["session"],
     queryFn: ({ signal }) => api.session(signal),
@@ -206,13 +157,7 @@ function WorkspaceApp() {
   });
   const snapshot =
     submission.data?.snapshot_id ?? job.data?.snapshot_id ?? restoredSnapshot;
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    if (snapshot) url.searchParams.set("snapshot", snapshot);
-    else url.searchParams.delete("snapshot");
-    window.history.replaceState(window.history.state, "", url);
-    locationSearch.current = url.search;
-  }, [snapshot]);
+  useSnapshotUrl(snapshot, locationSearchRef);
   const inventory = useQuery({
     queryKey: ["inventory", repository, snapshot, pages.at(-1)],
     queryFn: ({ signal }) =>
@@ -664,7 +609,7 @@ function WorkspaceApp() {
                   disabled={busy || !!submissionId}
                   onChange={(event) => {
                     if (event.target.value === repository) return;
-                    navigationRevision.current += 1;
+                    navigationRevisionRef.current += 1;
                     setRepository(event.target.value);
                     setRestoredSnapshot(null);
                     setSubmissionId(null);
@@ -744,7 +689,9 @@ function WorkspaceApp() {
                 pending={busy || importUrl.isPending}
                 onImport={(url) => importUrl.mutate(url)}
               />
-              {importUrl.isError && <p role="alert">{problem(importUrl.error)}</p>}
+              {importUrl.isError && (
+                <p role="alert">{problem(importUrl.error)}</p>
+              )}
               {acquire.isError && <p role="alert">{problem(acquire.error)}</p>}
               {upload.isError && <p role="alert">{problem(upload.error)}</p>}
             </section>
@@ -827,7 +774,7 @@ function WorkspaceApp() {
                     for (const key of ["submission", "job", "scan", "snapshot"])
                       url.searchParams.delete(key);
                     window.history.replaceState(window.history.state, "", url);
-                    locationSearch.current = url.search;
+                    locationSearchRef.current = url.search;
                     setRestoredSnapshot(null);
                     setSubmissionId(null);
                     setJobId(null);
