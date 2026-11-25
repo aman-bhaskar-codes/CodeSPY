@@ -316,6 +316,9 @@ def grant_app(values, name):
                 "GRANT EXECUTE ON FUNCTION public.codespy_embed_authority(uuid,uuid),"
                 "public.codespy_embed_embedding_digest(uuid,uuid),public.codespy_embed_verify(uuid,uuid) TO p2_broker"
             )
+        if c.execute("SELECT to_regclass('public.architecture_reports')").fetchone()[0]:
+            c.execute("GRANT SELECT ON architecture_reports TO p2_api,p2_broker")
+            c.execute("GRANT INSERT ON architecture_reports TO p2_api")
         if c.execute("SELECT to_regclass('public.embed_spend_ledger')").fetchone()[0]:
             c.execute("GRANT SELECT ON embed_spend_ledger TO p2_api,p2_broker")
             c.execute(

@@ -368,6 +368,15 @@ def extract(unit: SourceUnitV1, budget: AnalysisBudget) -> FileFactsV1:
                     body = node.child_by_field_name("body")
                     if body is not None:
                         items(body, f"{container}.{name}", "module", False)
+                    elif name and owner == "module":
+                        # `mod name;` pulls in name.rs or name/mod.rs: a file dependency.
+                        imports.append(
+                            ImportFactV1(
+                                kind="static",
+                                module=clip(f"self::{name}", 2048),
+                                range=span(node),
+                            )
+                        )
 
     items(tree.root_node, module, "module", True)
 

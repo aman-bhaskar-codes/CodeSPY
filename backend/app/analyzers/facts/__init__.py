@@ -22,9 +22,15 @@ EXTRACTORS: dict[str, str] = {
     "swift": "app.analyzers.facts.swift",
 }
 FACT_LANGUAGES = frozenset(EXTRACTORS)
+# Languages a facts analysis may carry: sources plus package manifests.
+FACT_UNIT_LANGUAGES = FACT_LANGUAGES | {"manifest"}
 
 
 def extract_facts(unit: SourceUnitV1, budget: AnalysisBudget) -> FileFactsV1:
+    if unit.language == "manifest":
+        from app.analyzers.facts.manifests import extract as extract_manifest
+
+        return extract_manifest(unit, budget)  # nothing to enrich or observe in a manifest
     module = EXTRACTORS.get(unit.language)
     if module is None:
         raise ValueError(f"unsupported language: {unit.language}")

@@ -71,7 +71,7 @@ FACT_DIALECTS: dict[str, LanguageName] = {
 
 
 @cache
-def get_language(name: LanguageName) -> Language:
+def get_language(name: str) -> Language:
     spec = BY_NAME.get(name)
     if spec is None:
         raise ValueError(f"unsupported language: {name}")
@@ -79,10 +79,10 @@ def get_language(name: LanguageName) -> Language:
     return Language(getattr(module, spec.factory)())
 
 
-def create_parser(name: LanguageName) -> Parser:
+def create_parser(name: str) -> Parser:
     return Parser(get_language(name))
 
 
-def parse_bytes(name: LanguageName, data: bytes) -> Tree:
+def parse_bytes(name: str, data: bytes) -> Tree:
     """Safe byte parsing: never use progress_callback or removed timeout APIs."""
     return create_parser(name).parse(data)

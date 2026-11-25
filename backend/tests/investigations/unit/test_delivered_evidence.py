@@ -62,3 +62,39 @@ async def test_unsupported_true_positive_cannot_bypass_grounding():
         scope, (), original_verdict="true_positive"
     )
     assert result.adjusted_verdict == "indeterminate"
+
+
+def test_report_fact_evidence_has_a_ref_and_no_source_fields():
+    from uuid import uuid4
+
+    from app.contracts.investigation_execution import InvestigationEvidenceV1
+    from pydantic import ValidationError
+
+    ids = {
+        "id": uuid4(),
+        "org_id": uuid4(),
+        "investigation_id": uuid4(),
+        "snapshot_id": uuid4(),
+        "excerpt_sha256": "a" * 64,
+    }
+    fact = InvestigationEvidenceV1(
+        **ids, observation_type="report_fact", fact_ref="d" * 8 + ":abcd"
+    )
+    assert fact.source_path is None and fact.original_start_line is None
+    for bad in (
+        {"observation_type": "report_fact"},  # no ref
+        {"observation_type": "report_fact", "fact_ref": "x", "source_path": "a.py"},  # mixed
+        {"observation_type": "source_read"},  # source row with no source
+        {
+            "observation_type": "source_read",
+            "fact_ref": "x",
+            "source_path": "a.py",
+            "file_sha256": "b" * 64,
+            "original_start_line": 1,
+            "original_end_line": 2,
+            "safe_start_line": 1,
+            "safe_end_line": 2,
+        },
+    ):
+        with pytest.raises(ValidationError):
+            InvestigationEvidenceV1(**ids, **bad)

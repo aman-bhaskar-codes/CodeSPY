@@ -718,16 +718,35 @@ class InvestigationExecutorService(InvestigationExecutorPort):
 
             # 4. Node Logic
             if current_kind == InvestigationNodeKind.GATHER:
-                packet = {
+                packet: dict[str, str | None] = {
                     "query": spec.query,
                     "target_type": spec.target_type,
                     "mode": spec.mode,
                 }
                 packet_hash = hashlib.sha256(canonical_bytes(packet)).hexdigest()
 
+                narrative_cursor: dict[str, Any] = {}
                 if spec.mode == "short_path":
                     next_kind = InvestigationNodeKind.INVESTIGATE
                     next_role = "investigator"
+                elif spec.mode == "report_narrative":
+                    from app.services.investigation_narrative import route_revision
+
+                    if spec.model_route_revision != route_revision():
+                        return InvestigationAdvanceV1(
+                            status=InvestigationAdvanceStatus.TERMINAL_FAILURE,
+                            node_id=node_id,
+                            checkpoint_sequence=state.checkpoint_sequence,
+                            stop_reason=InvestigationStopReason.CONFIGURATION_MISSING,
+                            message="the narrative prompt changed since this run was created; "
+                            "start a new narrative",
+                        )
+                    next_kind = InvestigationNodeKind.SYNTHESIZE
+                    next_role = "narrator"
+                    narrative_cursor = {"narrative_section": 0, "narrative_offset": 0}
+                    packet["architecture_report_id"] = str(spec.architecture_report_id)
+                    packet["architecture_report_digest"] = spec.architecture_report_digest
+                    packet_hash = hashlib.sha256(canonical_bytes(packet)).hexdigest()
                 else:
                     next_kind = InvestigationNodeKind.PLAN
                     next_role = "planner"
@@ -735,6 +754,7 @@ class InvestigationExecutorService(InvestigationExecutorPort):
                 new_state = state.model_copy(
                     update={
                         "context_packet_hash": packet_hash,
+                        **narrative_cursor,
                         "next_node_kind": next_kind,
                         "next_role": next_role,
                         "next_ordinal": current_ordinal + 1,
@@ -1038,6 +1058,23 @@ class InvestigationExecutorService(InvestigationExecutorPort):
                     checkpoint_sequence=cp.checkpoint_sequence,
                 )
 
+            elif (
+                current_kind == InvestigationNodeKind.SYNTHESIZE and spec.mode == "report_narrative"
+            ):
+                from app.services.investigation_narrative import narrate_node
+
+                return await narrate_node(
+                    self,
+                    session,
+                    state,
+                    context,
+                    lease,
+                    spec,
+                    node_id,
+                    current_ordinal,
+                    current_role,
+                )
+
             elif current_kind == InvestigationNodeKind.SYNTHESIZE:
                 step_key = f"inv-{scope.investigation_id}-synthesize-{current_ordinal}"
                 messages = [
@@ -1094,6 +1131,21 @@ class InvestigationExecutorService(InvestigationExecutorPort):
                     status=InvestigationAdvanceStatus.PROGRESS,
                     node_id=node_id,
                     checkpoint_sequence=cp.checkpoint_sequence,
+                )
+
+            elif current_kind == InvestigationNodeKind.VERIFY and spec.mode == "report_narrative":
+                from app.services.investigation_narrative import verify_narrative_node
+
+                return await verify_narrative_node(
+                    self,
+                    session,
+                    state,
+                    context,
+                    lease,
+                    spec,
+                    node_id,
+                    current_ordinal,
+                    current_role,
                 )
 
             elif current_kind == InvestigationNodeKind.VERIFY:

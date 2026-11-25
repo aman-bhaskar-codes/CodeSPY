@@ -1,6 +1,8 @@
 """Independent DB-time recovery; queue availability is not a prerequisite."""
 
+import logging
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID, uuid4
 
 from app.db.time import database_now
@@ -15,6 +17,8 @@ from app.workers.retention import RetentionWorker
 from sqlalchemy import func, literal, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+logger = logging.getLogger(__name__)
 
 
 def _ensure_utc(dt: datetime | None) -> datetime:
@@ -63,7 +67,12 @@ class RecoveryWorker:
         for org, identity in pending:
             self._authority_cursor = (org, identity)
             async with transaction(self.factory) as s:
-                job, _ = await self.jobs._locked(s, org, identity, access=False)
+                try:
+                    job, _ = await self.jobs._locked(s, org, identity, access=False)
+                except ScopeViolation:
+                    # One job whose scope is gone must not abort the sweep or the sections below.
+                    logger.warning("recovery_scope_unavailable org=%s job=%s", org, identity)
+                    continue
                 if job["state"] in TERMINAL:
                     continue
                 if job["state"] == "cancelling":
@@ -236,21 +245,7 @@ class RecoveryWorker:
                 )
                 changed += 1
         async with transaction(self.factory) as s:
-            due = (
-                (
-                    await s.execute(
-                        select(objects)
-                        .where(
-                            objects.c.expires_at <= func.clock_timestamp(),
-                            objects.c.state.not_in(["available", "deleted", "deleting"]),
-                        )
-                        .order_by(objects.c.org_id, objects.c.id)
-                        .limit(100)
-                    )
-                )
-                .mappings()
-                .all()
-            )
+            due = await self._due_objects(s)
             for obj in due:
                 await s.execute(
                     insert(tasks)
@@ -267,3 +262,33 @@ class RecoveryWorker:
                     )
                 )
         return changed
+
+    async def _due_objects(self, s: AsyncSession) -> list[Any]:
+        """Expired objects that have no cleanup queued yet, oldest scope first (at most 100)."""
+        objects = PHASE2_TABLES["object_records"]
+        tasks = PHASE2_TABLES["cleanup_tasks"]
+        return list(
+            (
+                await s.execute(
+                    select(objects)
+                    .where(
+                        objects.c.expires_at <= func.clock_timestamp(),
+                        objects.c.state.not_in(["available", "deleted", "deleting"]),
+                        # An object whose cleanup is already queued must not keep filling the
+                        # batch ahead of objects that have no task yet.
+                        ~select(tasks.c.id)
+                        .where(
+                            tasks.c.org_id == objects.c.org_id,
+                            tasks.c.object_id == objects.c.id,
+                            tasks.c.reason == "retention_expired",
+                            tasks.c.state != "done",
+                        )
+                        .exists(),
+                    )
+                    .order_by(objects.c.org_id, objects.c.id)
+                    .limit(100)
+                )
+            )
+            .mappings()
+            .all()
+        )

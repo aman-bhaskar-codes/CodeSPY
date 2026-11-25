@@ -752,8 +752,99 @@ class TestSpecCanonicalHash:
 
     def test_spec_hash_matches_canonical_bytes(self):
         spec = _make_spec()
-        expected = hashlib.sha256(canonical_bytes(spec.model_dump())).hexdigest()
+        dump = spec.model_dump()
+        # The report pin is part of identity only when set, so older hashes never change.
+        assert dump["architecture_report_id"] is None
+        del dump["architecture_report_id"], dump["architecture_report_digest"]
+        expected = hashlib.sha256(canonical_bytes(dump)).hexdigest()
         assert spec.compute_spec_hash() == expected
+
+    def test_spec_hash_of_an_existing_kind_is_pinned(self):
+        """Computed with the contract as it was before report pins existed (commit eb986d7)."""
+        spec = InvestigationSpecV1(
+            org_id=UUID(int=1),
+            repository_id=UUID(int=2),
+            snapshot_id=UUID(int=3),
+            principal_id=UUID(int=4),
+            target_type="repository",
+            query="Audit security findings",
+            mode="short_path",
+            depth="standard",
+            disclosure_policy_digest="0" * 64,
+            tool_policy_revision="v1",
+            model_route_revision="v1",
+            model_profile_revision="v1",
+            runtime_revision=1,
+            privacy_policy_revision="v1",
+        )
+        assert (
+            spec.compute_spec_hash()
+            == "249ceea262455dc2bc8e82a41e39f22e68b51b8f4706f8771070d0e217767b93"
+        )
+
+    def test_a_pinned_report_changes_the_hash_and_is_validated(self):
+        base = {
+            "org_id": UUID(int=1),
+            "repository_id": UUID(int=2),
+            "snapshot_id": UUID(int=3),
+            "principal_id": UUID(int=4),
+            "query": "Narrate",
+            "disclosure_policy_digest": "0" * 64,
+            "tool_policy_revision": "v1",
+            "model_route_revision": "v1",
+            "model_profile_revision": "v1",
+            "privacy_policy_revision": "v1",
+        }
+        pinned = InvestigationSpecV1(
+            **base,
+            target_type="architecture_report",
+            mode="report_narrative",
+            architecture_report_id=UUID(int=9),
+            architecture_report_digest="c" * 64,
+        )
+        other = InvestigationSpecV1(
+            **base,
+            target_type="architecture_report",
+            mode="report_narrative",
+            architecture_report_id=UUID(int=9),
+            architecture_report_digest="d" * 64,
+        )
+        assert pinned.compute_spec_hash() != other.compute_spec_hash()
+        bad = [
+            {"target_type": "architecture_report", "mode": "report_narrative"},  # no pin
+            {
+                "target_type": "architecture_report",
+                "mode": "short_path",
+                "architecture_report_id": UUID(int=9),
+                "architecture_report_digest": "c" * 64,
+            },
+            {
+                "target_type": "repository",
+                "mode": "report_narrative",
+                "architecture_report_id": UUID(int=9),
+                "architecture_report_digest": "c" * 64,
+            },
+            {
+                "target_type": "repository",
+                "mode": "short_path",
+                "architecture_report_id": UUID(int=9),
+                "architecture_report_digest": "c" * 64,
+            },
+            {
+                "target_type": "architecture_report",
+                "mode": "report_narrative",
+                "architecture_report_id": UUID(int=9),
+            },  # id without digest
+            {
+                "target_type": "architecture_report",
+                "mode": "report_narrative",
+                "architecture_report_id": UUID(int=9),
+                "architecture_report_digest": "x",
+            },
+        ]
+        for extra in bad:
+            with pytest.raises((ValidationError, ValueError)):
+                InvestigationSpecV1(**base, **extra)
 
     def test_frozen_spec_is_immutable(self):
         spec = _make_spec()

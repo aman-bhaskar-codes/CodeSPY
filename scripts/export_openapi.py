@@ -10,13 +10,19 @@ sys.path.insert(0, str(ROOT / "backend"))
 
 from app.api.application import ApiSettings, ApplicationPorts, create_app
 from app.ports.object_store import ObjectStore
+from app.services.agent.event_log import EventCipher
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 
 def main() -> None:
     app = create_app(
         ApiSettings(),
-        ApplicationPorts(factory=async_sessionmaker(), store=cast(ObjectStore, None)),
+        ApplicationPorts(
+            factory=async_sessionmaker(),
+            store=cast(ObjectStore, None),
+            # Placeholder key, never used: it only mounts the agent routes so their schema is exported.
+            agent_event_cipher=EventCipher(bytes(32)),
+        ),
     )
     (ROOT / "backend/openapi.json").write_text(
         json.dumps(app.openapi(), sort_keys=True, indent=2) + "\n"

@@ -1,0 +1,112 @@
+"""Contracts of a report narrative: what the model writes and what code concludes about it.
+
+The model writes sentences that each cite statements of one pinned architecture report by id.
+It never decides whether a sentence is supported; ``services/narrative_verification`` does,
+from the statements the investigation was actually shown.
+"""
+
+from typing import Literal
+
+from pydantic import Field, model_validator
+
+from app.domain.scope import Contract
+
+MAX_SENTENCES = 50
+MAX_SIDS_PER_SENTENCE = 8
+SID_PATTERN = r"^[0-9a-f]{16}$"
+
+NarrativeBasis = Literal["observed", "derived", "inferred", "unknown"]
+NarrativeStatus = Literal["confirmed", "unsupported"]
+
+
+class NarrativeSentenceV1(Contract):
+    """One sentence of the narrative and the report statements it cites."""
+
+    claim_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.-]+$")
+    text: str = Field(min_length=1, max_length=600)
+    sids: tuple[str, ...] = Field(default=(), max_length=MAX_SIDS_PER_SENTENCE)
+
+    @model_validator(mode="after")
+    def _sids_are_ids(self) -> "NarrativeSentenceV1":
+        import re
+
+        if any(not re.fullmatch(SID_PATTERN, sid) for sid in self.sids):
+            raise ValueError("a cited statement id is 16 lowercase hex characters")
+        if len(set(self.sids)) != len(self.sids):
+            raise ValueError("a statement is cited once per sentence")
+        return self
+
+
+class NarrativeConclusionV1(Contract):
+    """The schema of the model's reply: an overview and cited sentences."""
+
+    schema_version: Literal[1] = 1
+    overview: str = Field(default="", max_length=1200)
+    sentences: tuple[NarrativeSentenceV1, ...] = Field(default=(), max_length=MAX_SENTENCES)
+
+    @model_validator(mode="after")
+    def _unique_claims(self) -> "NarrativeConclusionV1":
+        ids = [s.claim_id for s in self.sentences]
+        if len(set(ids)) != len(ids):
+            raise ValueError("claim ids are unique")
+        return self
+
+
+class NarrativeVerificationV1(Contract):
+    claim_id: str
+    status: NarrativeStatus
+    basis: NarrativeBasis | None = (
+        None  # the weakest kind among the cited statements, when confirmed
+    )
+    reason: str = Field(default="", max_length=300)
+
+
+class NarrativeOutcomeV1(Contract):
+    """What verification concluded; whatever is not confirmed is shown as unverified."""
+
+    verifications: tuple[NarrativeVerificationV1, ...]
+    confirmed: int = Field(ge=0)
+    total: int = Field(ge=0)
+    grounded: bool
+
+    @property
+    def ratio(self) -> float:
+        return self.confirmed / self.total if self.total else 0.0
+
+
+class NarrativeDraftV1(Contract):
+    """The structured narrative a published report carries: sentences, verdicts and coverage."""
+
+    sentences: tuple[NarrativeSentenceV1, ...] = Field(default=(), max_length=MAX_SENTENCES)
+    verifications: tuple[NarrativeVerificationV1, ...] = Field(default=(), max_length=MAX_SENTENCES)
+    confirmed: int = Field(ge=0)
+    total: int = Field(ge=0)
+    grounded: bool
+    unnarrated_sections: tuple[str, ...] = Field(default=(), max_length=16)
+    unparsed_units: int = Field(default=0, ge=0)
+    dropped_sentences: int = Field(default=0, ge=0)
+    prompt_revision: str = Field(min_length=1, max_length=128)
+    report_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class CitedStatementV1(Contract):
+    """A report statement a narrative sentence cites, rendered for display."""
+
+    sid: str = Field(pattern=SID_PATTERN)
+    section: str = Field(max_length=64)
+    kind: Literal["observation", "derivation", "inference", "unknown"]
+    code: str = Field(max_length=96)
+    text: str = Field(max_length=2048)
+    evidence: tuple[str, ...] = Field(default=(), max_length=3)  # "path:line"
+
+
+class ArchitectureNarrativeV1(Contract):
+    """The latest published narrative of one stored architecture report."""
+
+    schema_version: Literal[1] = 1
+    architecture_report_id: str
+    investigation_id: str
+    investigation_report_id: str
+    created_at: str
+    narrative: NarrativeDraftV1
+    cited: tuple[CitedStatementV1, ...] = Field(default=(), max_length=400)

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Protocol
 
 from app.admission.zip_inventory import inspect_zip_bytes
+from app.analyzers.facts.manifests import is_manifest
 from app.analyzers.registry import FACT_DIALECTS, STRUCTURAL_DIALECTS
 from app.contracts.ingestion import ArtifactManifestV1
 from app.contracts.structure import (
@@ -18,6 +19,7 @@ from app.contracts.structure import (
     SourceInputV1,
     SourcePolicyV1,
     SourceUnitV1,
+    UnitLanguage,
 )
 from app.domain.errors import PersistenceError
 
@@ -127,8 +129,10 @@ class AdmittedSourceReader:
                 )
                 if not stored.eligible or not in_scope:
                     continue
-                language = dialects.get(Path(path).suffix.casefold())
-                is_config = Path(path).name == "package.json" or (
+                language: UnitLanguage | None = dialects.get(Path(path).suffix.casefold())
+                if dialects is FACT_DIALECTS and is_manifest(path):
+                    language = "manifest"  # a manifest wins over its suffix (Package.swift)
+                is_config = (language is None and Path(path).name == "package.json") or (
                     Path(path).name.startswith("tsconfig") and path.endswith((".json", ".jsonc"))
                 )
                 if language:

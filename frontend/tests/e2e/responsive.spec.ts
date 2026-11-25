@@ -308,7 +308,7 @@ for (const width of widths) {
       await page.goto(
         `/?repository=${repoId}&snapshot=${snapId}#retrieval-title`,
       );
-      await page.getByRole("tab", { name: "Memory", exact: false }).click();
+      await page.getByRole("tab", { name: "Memory", exact: true }).click();
       await expect(
         page.getByRole("heading", {
           name: "Multimodal and distributed architecture",

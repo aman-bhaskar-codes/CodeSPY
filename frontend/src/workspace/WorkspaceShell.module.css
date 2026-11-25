@@ -1,11 +1,26 @@
+/* VS Code-like workbench: title bar, activity bar, side bar, editor area, status bar. */
 .shell {
-  min-height: 100dvh;
+  height: 100dvh;
   display: grid;
-  grid-template-columns: 208px minmax(0, 1fr);
-  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 48px var(--workbench-sidebar, 240px) minmax(0, 1fr);
+  grid-template-rows: 35px minmax(0, 1fr) 22px;
+  grid-template-areas:
+    "title title title"
+    "activity side editor"
+    "status status status";
+}
+.shell[data-sidebar="closed"] {
+  grid-template-columns: 48px 0 minmax(0, 1fr);
+}
+.shell[data-sidebar="closed"] .sidebar {
+  visibility: hidden;
+  border-right: 0;
+  overflow: hidden;
   background: var(--cs-canvas);
   color: var(--cs-text);
   font-family: var(--cs-font);
+  font-size: var(--cs-ui-size);
+  overflow: hidden;
 }
 .skip {
   position: fixed;
@@ -21,27 +36,26 @@
   transform: translateY(0);
 }
 .header {
-  grid-column: 1 / -1;
+  grid-area: title;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
   width: 100%;
   max-width: none;
-  min-height: 72px;
+  min-height: 0;
   margin: 0;
-  padding: 12px 24px;
-  gap: 24px;
+  padding: 0 12px;
+  gap: 16px;
   border-bottom: 1px solid var(--cs-border);
-  background: var(--cs-panel);
+  background: var(--cs-titlebar);
+  overflow: hidden;
 }
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: var(--cs-text);
-  font-size: 20px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: -0.6px;
   text-decoration: none;
 }
 .brand:hover {
@@ -50,217 +64,313 @@
 .mark {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  background: var(--cs-raised);
+  width: 20px;
+  height: 20px;
   color: var(--cs-evidence);
-  border: 1px solid var(--cs-border);
-  border-radius: var(--cs-radius);
 }
 .productLabel {
   color: var(--cs-muted);
-  font-size: 13px;
+  font-size: 12px;
   border-left: 1px solid var(--cs-border);
-  padding-left: 24px;
+  padding-left: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .controls {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+}
+.controls button {
+  min-width: 0;
+  margin: 0;
+  min-height: 24px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.activityBar {
+  grid-area: activity;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--cs-activitybar);
+  min-width: 0;
+  overflow-y: auto;
+}
+.activityBar a,
+.unavailable {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 48px;
+  color: var(--cs-activitybar-ink);
+  text-decoration: none;
+  border: 0;
+}
+.activityBar a:hover {
+  color: var(--cs-activitybar-active);
+  text-decoration: none;
+}
+.activityBar a:focus-visible {
+  outline: 2px solid var(--cs-focus);
+  outline-offset: -2px;
+}
+.activityBar a[aria-current] {
+  color: var(--cs-activitybar-active);
+}
+.activityBar a[aria-current]::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--cs-activitybar-active);
+}
+.unavailable {
+  opacity: 0.45;
+}
+.label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 .sidebar {
+  grid-area: side;
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   border-right: 1px solid var(--cs-border);
   background: var(--cs-panel);
-  padding: 24px 12px 16px;
-}
-.context {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 0 12px 24px;
+  padding: 0 0 8px;
+  overflow-y: auto;
+  position: relative;
 }
 .caption {
-  margin: 0 0 4px;
+  margin: 0;
+  padding: 0 20px;
+  height: 35px;
+  display: flex;
+  align-items: center;
   color: var(--cs-muted);
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.context {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 20px 12px;
+}
 .repository {
   overflow-wrap: anywhere;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
 }
 .snapshot {
   color: var(--cs-muted);
   font: 11px/1.6 var(--cs-mono);
   overflow-wrap: anywhere;
 }
-.navigation {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  flex-wrap: nowrap;
-  gap: 4px;
-}
-.navigation a,
-.unavailable {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  border: 1px solid transparent;
-  border-radius: var(--cs-radius);
-  padding: 10px 12px;
-  font-size: 14px;
-  text-decoration: none;
-}
-.navigation a {
-  color: var(--cs-muted);
-}
-.navigation a:hover {
-  color: var(--cs-text);
-  background: var(--cs-raised);
-}
-.navigation a[aria-current] {
-  color: var(--cs-action);
-  border-color: var(--cs-border);
-  background: var(--cs-raised);
-}
-.unavailable {
-  color: var(--cs-muted);
-}
-.unavailable svg {
-  opacity: 0.55;
-}
 .hint {
   color: var(--cs-muted);
   font-size: 12px;
-  line-height: 1.6;
-  padding: 8px 12px;
-  margin: 12px 0;
+  line-height: 1.5;
+  padding: 4px 20px;
+  margin: 0;
 }
 .sidebarFoot {
   margin-top: auto;
-  padding: 48px 12px 0;
+  padding: 24px 20px 0;
   color: var(--cs-muted);
   font-size: 11px;
   display: flex;
   gap: 8px;
   align-items: center;
 }
+.editorArea {
+  grid-area: editor;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
 .main {
+  flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  max-width: 1440px;
-  padding: 32px;
-  margin: 0 auto;
+  min-height: 0;
+  max-width: none;
+  padding: 16px 24px 32px;
+  margin: 0;
+  overflow: auto;
+  background: var(--cs-canvas);
+}
+.main:focus-visible {
+  outline: 1px solid var(--cs-focus);
+  outline-offset: -1px;
 }
 .main h1 {
-  font-size: clamp(26px, 3vw, 36px);
+  font-size: 20px;
   font-weight: 600;
 }
 .main :global(.intro) {
-  margin: 0 0 28px;
+  margin: 0 0 16px;
 }
 .main :global(.intro p:last-child) {
   color: var(--cs-muted);
-  max-width: 64ch;
+  max-width: 72ch;
 }
 .footer {
-  grid-column: 1 / -1;
+  grid-area: status;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 10px 24px;
-  border-top: 1px solid var(--cs-border);
-  color: var(--cs-muted);
-  background: var(--cs-panel);
-  font-size: 11px;
+  padding: 0 12px;
+  border: 0;
+  color: var(--cs-statusbar-ink);
+  background: var(--cs-statusbar);
+  font-size: 12px;
+  overflow: hidden;
+  white-space: nowrap;
 }
-.footer > span:first-child {
+.statusItems {
+  display: flex;
+  gap: 16px;
+  min-width: 0;
+  overflow: hidden;
+}
+.statusActions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+}
+.statusActions button {
+  min-width: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.statusActions button:hover {
+  background: rgb(255 255 255 / 18%);
+}
+.statusActions button:focus-visible {
+  outline: 1px solid var(--cs-statusbar-ink);
+  outline-offset: -1px;
+}
+.statusActions > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .evidenceDot {
   width: 6px;
   height: 6px;
-  background: var(--cs-evidence);
+  background: currentColor;
   border-radius: 50%;
+}
+@media (forced-colors: active) {
+  .footer {
+    border-top: 1px solid ButtonText;
+  }
+  .activityBar {
+    border-right: 1px solid ButtonText;
+  }
 }
 @media (max-width: 1050px) {
   .productLabel {
     display: none;
   }
-  .shell {
-    grid-template-columns: 188px minmax(0, 1fr);
-  }
-  .main {
-    padding: 24px;
-  }
 }
+/* Narrow screens: the activity bar becomes a strip and the explorer folds away. */
 @media (max-width: 760px) {
-  .shell {
+  .shell,
+  .shell[data-sidebar="closed"] {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-areas: "title" "activity" "side" "editor" "status";
   }
   .header {
-    padding: 12px 16px;
-    gap: 12px;
+    padding: 8px 12px;
     flex-wrap: wrap;
+    min-height: 35px;
   }
   .controls {
     gap: 8px;
+    flex-wrap: wrap;
   }
-  .sidebar {
+  .activityBar {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .activityBar a,
+  .unavailable {
+    flex: 0 0 48px;
+  }
+  .activityBar a[aria-current]::before {
+    inset: auto 0 0 0;
+    width: auto;
+    height: 2px;
+  }
+  .sidebar,
+  .shell[data-sidebar="closed"] .sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--cs-border);
-    padding: 12px;
-  }
-  .context {
-    padding: 0 4px 12px;
-    gap: 2px;
+    overflow: visible;
+    visibility: visible;
   }
   .caption,
   .sidebarFoot {
     display: none;
   }
-  .navigation {
-    flex-direction: row;
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
-  .navigation a,
-  .unavailable {
-    flex-shrink: 0;
+  .context {
+    padding: 8px 12px;
   }
   .hint {
-    padding: 4px;
-    margin: 4px 0 0;
+    padding: 0 12px 8px;
   }
   .main {
-    padding: 20px 16px;
+    padding: 16px 12px 24px;
+    overflow: visible;
   }
   .footer {
-    padding: 10px 16px;
+    min-height: 22px;
+    padding: 2px 12px;
+    flex-wrap: wrap;
+    white-space: normal;
   }
-}
-@media (max-width: 420px) {
-  .header {
-    align-items: start;
+  .statusActions {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    min-width: 0;
   }
-  .controls {
-    width: 100%;
-    justify-content: space-between;
+  .statusItems {
+    flex-wrap: wrap;
+    gap: 0 12px;
   }
 }

@@ -1,0 +1,65 @@
+{
+  "$defs": {
+    "NarrativeSentenceV1": {
+      "additionalProperties": false,
+      "description": "One sentence of the narrative and the report statements it cites.",
+      "properties": {
+        "claim_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "sids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Sids",
+          "type": "array"
+        },
+        "text": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_id",
+        "text"
+      ],
+      "title": "NarrativeSentenceV1",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The schema of the model's reply: an overview and cited sentences.",
+  "properties": {
+    "overview": {
+      "default": "",
+      "maxLength": 1200,
+      "title": "Overview",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "sentences": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/NarrativeSentenceV1"
+      },
+      "maxItems": 50,
+      "title": "Sentences",
+      "type": "array"
+    }
+  },
+  "title": "NarrativeConclusionV1",
+  "type": "object"
+}

@@ -51,9 +51,12 @@ investigations = sa.Table(
     ),
     ck(
         "ck_investigation_target_type",
-        "target_type IN ('finding', 'repository', 'commit', 'diff')",
+        "target_type IN ('finding', 'repository', 'commit', 'diff', 'architecture_report')",
     ),
-    ck("ck_investigation_mode", "mode IN ('short_path', 'two_specialist')"),
+    ck(
+        "ck_investigation_mode",
+        "mode IN ('short_path', 'two_specialist', 'report_narrative')",
+    ),
     ck("ck_investigation_depth", "depth IN ('quick', 'standard', 'deep')"),
     ck(
         "ck_investigation_verdict",

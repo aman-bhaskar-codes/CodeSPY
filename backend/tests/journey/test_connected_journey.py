@@ -106,7 +106,7 @@ from tests.phase2.integration.test_submission_ingestion import chunks
 from tests.phase4.storage.test_scan_jobs import Registry
 
 pytestmark = [
-    pytest.mark.schema_revision("0040_investigation_runtime_permissions"),
+    pytest.mark.schema_revision("0049_report_narrative"),
     pytest.mark.skipif(
         not os.environ.get("CODESPY_TEST_MARKER"),
         reason="owned disposable PostgreSQL environment required",

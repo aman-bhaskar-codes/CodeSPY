@@ -31,6 +31,23 @@ Language = Literal[
     "php",
     "swift",
 ]
+# A source unit is a source language or a package manifest (read for names only).
+UnitLanguage = Literal[
+    "python",
+    "javascript",
+    "jsx",
+    "typescript",
+    "tsx",
+    "go",
+    "rust",
+    "java",
+    "c",
+    "cpp",
+    "ruby",
+    "php",
+    "swift",
+    "manifest",
+]
 
 
 def normalize_prefixes(values: tuple[str, ...]) -> tuple[str, ...]:
@@ -216,7 +233,7 @@ class SourceUnitV1(Contract):
     path: str
     sha256: Hash
     data: bytes = Field(max_length=2 * 1024 * 1024)
-    language: Language
+    language: UnitLanguage
 
     @model_validator(mode="after")
     def coherent(self) -> Self:

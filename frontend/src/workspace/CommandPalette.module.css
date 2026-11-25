@@ -1,0 +1,85 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--cs-overlay);
+  z-index: 60;
+}
+.content {
+  position: fixed;
+  top: 12vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 61;
+  width: min(600px, calc(100vw - 24px));
+  background: var(--cs-panel);
+  color: var(--cs-text);
+  border: 1px solid var(--cs-border);
+  box-shadow: var(--cs-shadow);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--cs-border);
+  border-radius: 0;
+  background: var(--cs-canvas);
+  color: var(--cs-text);
+  font: inherit;
+  font-size: 13px;
+}
+.input:focus-visible {
+  outline: 1px solid var(--cs-focus);
+  outline-offset: -1px;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 320px;
+  overflow: auto;
+}
+.option {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  min-height: 24px;
+  align-items: center;
+  font-size: 13px;
+  cursor: pointer;
+}
+.option[aria-selected="true"] {
+  background: var(--cs-info-bg);
+  outline: 1px solid var(--cs-focus);
+  outline-offset: -1px;
+}
+.option kbd {
+  color: var(--cs-muted);
+  font: 11px var(--cs-mono);
+}
+.empty {
+  padding: 4px 12px;
+  color: var(--cs-muted);
+  font-size: 13px;
+}
+.live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

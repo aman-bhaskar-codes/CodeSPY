@@ -1,0 +1,224 @@
+{
+  "name": "crash-resume",
+  "description": "The worker is lost while a command runs; on resume the command is reported as outcome unknown, never re-run.",
+  "session_id": "10000000-0000-4000-8000-000000000003",
+  "events": [
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 1,
+      "type": "session.created",
+      "ts": "2026-11-25T10:00:00.250Z",
+      "turn": 0,
+      "payload": {
+        "mode": "act",
+        "base_snapshot_id": "30000000-0000-4000-8000-000000000001",
+        "model_profile": "agent",
+        "limits": {
+          "max_steps": 60,
+          "max_tool_calls": 150,
+          "cost_micros_limit": 5000000
+        }
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 2,
+      "type": "message.user",
+      "ts": "2026-11-25T10:00:00.500Z",
+      "turn": 1,
+      "payload": {
+        "message_id": "m1",
+        "text": "Run the migration check",
+        "context": [
+          {
+            "kind": "file",
+            "ref": "backend/app/auth.py",
+            "start_line": 1
+          }
+        ]
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 3,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:00.750Z",
+      "turn": 1,
+      "payload": {
+        "status": "running"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 4,
+      "type": "tool.call.proposed",
+      "ts": "2026-11-25T10:00:01.000Z",
+      "turn": 1,
+      "parent": "tool_call:tc1",
+      "payload": {
+        "tool_call_id": "tc1",
+        "tool": "run_command",
+        "class": "exec",
+        "args_preview": "python manage.py migrate --check",
+        "risk": "medium"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 5,
+      "type": "approval.requested",
+      "ts": "2026-11-25T10:00:01.250Z",
+      "turn": 1,
+      "payload": {
+        "approval_id": "a1",
+        "subject": {
+          "kind": "tool_call",
+          "ref": "tc1"
+        },
+        "reason": "",
+        "expires_at": "2026-11-25T10:30:00.000Z"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 6,
+      "type": "approval.resolved",
+      "ts": "2026-11-25T10:00:01.500Z",
+      "turn": 1,
+      "payload": {
+        "approval_id": "a1",
+        "decision": "approved",
+        "scope": "once",
+        "by": "user"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 7,
+      "type": "tool.call.started",
+      "ts": "2026-11-25T10:00:01.750Z",
+      "turn": 1,
+      "parent": "tool_call:tc1",
+      "payload": {
+        "tool_call_id": "tc1"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 8,
+      "type": "tool.call.output",
+      "ts": "2026-11-25T10:00:02.000Z",
+      "turn": 1,
+      "parent": "tool_call:tc1",
+      "payload": {
+        "tool_call_id": "tc1",
+        "stream": "stdout",
+        "offset": 0,
+        "text": "Checking migrations...\n"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 9,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:02.250Z",
+      "turn": 1,
+      "payload": {
+        "status": "interrupted",
+        "reason": "worker_lost"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 10,
+      "type": "error",
+      "ts": "2026-11-25T10:00:02.500Z",
+      "turn": 1,
+      "payload": {
+        "code": "worker_lost",
+        "message": "The worker stopped while a command was running.",
+        "retryable": true,
+        "scope": "turn"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 11,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:02.750Z",
+      "turn": 1,
+      "payload": {
+        "status": "running"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 12,
+      "type": "tool.call.completed",
+      "ts": "2026-11-25T10:00:03.000Z",
+      "turn": 1,
+      "parent": "tool_call:tc1",
+      "payload": {
+        "tool_call_id": "tc1",
+        "status": "outcome_unknown",
+        "summary": "worker restarted; the command was not re-run",
+        "truncated": false,
+        "bytes": 0,
+        "redactions": 0,
+        "evidence": []
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 13,
+      "type": "message.started",
+      "ts": "2026-11-25T10:00:03.250Z",
+      "turn": 1,
+      "parent": "message:m2",
+      "payload": {
+        "message_id": "m2",
+        "role": "assistant",
+        "model_id": "agent-v1"
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 14,
+      "type": "message.completed",
+      "ts": "2026-11-25T10:00:03.500Z",
+      "turn": 1,
+      "parent": "message:m2",
+      "payload": {
+        "message_id": "m2",
+        "text": "The migration check was interrupted and I cannot tell whether it finished. Run it again?",
+        "stop_reason": "end_turn",
+        "claims": []
+      }
+    },
+    {
+      "v": 1,
+      "session_id": "10000000-0000-4000-8000-000000000003",
+      "seq": 15,
+      "type": "session.status",
+      "ts": "2026-11-25T10:00:03.750Z",
+      "turn": 1,
+      "payload": {
+        "status": "idle"
+      }
+    }
+  ]
+}

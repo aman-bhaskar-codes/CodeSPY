@@ -1,0 +1,85 @@
+.panel {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 1px solid var(--cs-border);
+  background: var(--cs-canvas);
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 35px;
+  padding: 0 8px;
+}
+.header [role="tablist"] {
+  display: flex;
+  gap: 4px;
+}
+.tab,
+.close {
+  min-width: 0;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--cs-muted);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  min-height: 24px;
+}
+.tab {
+  padding: 4px 8px;
+  border-bottom: 1px solid transparent;
+}
+.tab[aria-selected="true"] {
+  color: var(--cs-text);
+  border-bottom-color: var(--cs-focus);
+}
+.tab:focus-visible,
+.close:focus-visible {
+  outline: 1px solid var(--cs-focus);
+  outline-offset: -1px;
+}
+.count {
+  color: var(--cs-statusbar-ink);
+  background: var(--cs-statusbar);
+  border-radius: 8px;
+  padding: 0 5px;
+  margin-left: 4px;
+}
+.body {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 4px 16px 8px;
+  font-size: 12px;
+  line-height: 20px;
+}
+.body:focus-visible {
+  outline: 1px solid var(--cs-focus);
+  outline-offset: -1px;
+}
+.body ul,
+.body ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.body time {
+  color: var(--cs-muted);
+  font-family: var(--cs-mono);
+  margin-right: 8px;
+}
+.empty {
+  color: var(--cs-muted);
+  margin: 4px 0;
+}
