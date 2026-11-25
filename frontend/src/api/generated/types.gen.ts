@@ -6320,6 +6320,164 @@ export type IndexCreateResponseV1Writable = {
     job: IndexJobRecordV5;
 };
 
+export type CreateAgentSessionApiV1AgentSessionsPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agent-sessions';
+};
+
+export type CreateAgentSessionApiV1AgentSessionsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: unknown;
+};
+
+export type ReadAgentSessionApiV1AgentSessionsSessionIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agent-sessions/{session_id}';
+};
+
+export type ReadAgentSessionApiV1AgentSessionsSessionIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadAgentSessionApiV1AgentSessionsSessionIdGetError = ReadAgentSessionApiV1AgentSessionsSessionIdGetErrors[keyof ReadAgentSessionApiV1AgentSessionsSessionIdGetErrors];
+
+export type ReadAgentSessionApiV1AgentSessionsSessionIdGetResponses = {
+    /**
+     * Response Read Agent Session Api V1 Agent Sessions  Session Id  Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadAgentSessionApiV1AgentSessionsSessionIdGetResponse = ReadAgentSessionApiV1AgentSessionsSessionIdGetResponses[keyof ReadAgentSessionApiV1AgentSessionsSessionIdGetResponses];
+
+export type ReadAgentEventsApiV1AgentSessionsSessionIdEventsGetData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: {
+        /**
+         * After
+         */
+        after?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/agent-sessions/{session_id}/events';
+};
+
+export type ReadAgentEventsApiV1AgentSessionsSessionIdEventsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadAgentEventsApiV1AgentSessionsSessionIdEventsGetError = ReadAgentEventsApiV1AgentSessionsSessionIdEventsGetErrors[keyof ReadAgentEventsApiV1AgentSessionsSessionIdEventsGetErrors];
+
+export type ReadAgentEventsApiV1AgentSessionsSessionIdEventsGetResponses = {
+    /**
+     * Response Read Agent Events Api V1 Agent Sessions  Session Id  Events Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadAgentEventsApiV1AgentSessionsSessionIdEventsGetResponse = ReadAgentEventsApiV1AgentSessionsSessionIdEventsGetResponses[keyof ReadAgentEventsApiV1AgentSessionsSessionIdEventsGetResponses];
+
+export type ReadAgentStateApiV1AgentSessionsSessionIdStateGetData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: never;
+    url: '/api/v1/agent-sessions/{session_id}/state';
+};
+
+export type ReadAgentStateApiV1AgentSessionsSessionIdStateGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadAgentStateApiV1AgentSessionsSessionIdStateGetError = ReadAgentStateApiV1AgentSessionsSessionIdStateGetErrors[keyof ReadAgentStateApiV1AgentSessionsSessionIdStateGetErrors];
+
+export type ReadAgentStateApiV1AgentSessionsSessionIdStateGetResponses = {
+    /**
+     * Response Read Agent State Api V1 Agent Sessions  Session Id  State Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadAgentStateApiV1AgentSessionsSessionIdStateGetResponse = ReadAgentStateApiV1AgentSessionsSessionIdStateGetResponses[keyof ReadAgentStateApiV1AgentSessionsSessionIdStateGetResponses];
+
+export type StreamAgentEventsApiV1AgentSessionsSessionIdStreamGetData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query?: {
+        /**
+         * After
+         */
+        after?: number | null;
+    };
+    url: '/api/v1/agent-sessions/{session_id}/stream';
+};
+
+export type StreamAgentEventsApiV1AgentSessionsSessionIdStreamGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StreamAgentEventsApiV1AgentSessionsSessionIdStreamGetError = StreamAgentEventsApiV1AgentSessionsSessionIdStreamGetErrors[keyof StreamAgentEventsApiV1AgentSessionsSessionIdStreamGetErrors];
+
+export type StreamAgentEventsApiV1AgentSessionsSessionIdStreamGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
 export type ArchitectureReportTemplatesApiV1ArchitectureReportTemplatesGetData = {
     body?: never;
     path?: never;

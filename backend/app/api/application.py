@@ -14,6 +14,7 @@ from app.analyzers.graph.render import TEXT as REPORT_TEMPLATES
 from app.analyzers.graph.render import graph_page
 from app.analyzers.graph.render import render_markdown as render_repository_markdown
 from app.analyzers.reporting import render_json, render_markdown
+from app.api.agent_routes import register_agent_routes
 from app.contracts.architecture_report import (
     ArchitectureGraphPageV1,
     ArchitectureReportRefV1,
@@ -196,6 +197,7 @@ from app.security.cursors import CursorCodec
 from app.security.oauth import OAuthRejected, OAuthService
 from app.security.sessions import SessionService, token_digest
 from app.services import ast_reads
+from app.services.agent.event_log import AgentEventLog, EventCipher, LocalWaiter, Waiter
 from app.services.analysis_sources import locate_source
 from app.services.architecture_reports import (
     ArchitectureReportService,
@@ -329,6 +331,9 @@ class ApplicationPorts:
     scan_defaults: ScanConfigV1 | None = None
     embed_config: EmbedConfigV1 | None = None
     embed_policy: Callable[[UUID, UUID], DisclosurePolicyV1] | None = None
+    agent_event_cipher: EventCipher | None = None
+    agent_waiter: Waiter | None = None
+    agent_poll_seconds: float = 2.0
 
 
 def legacy_job_record(value: PublicJobRecord) -> JobRecordV2 | JobRecordV3:
@@ -3105,4 +3110,16 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
         return app.openapi_schema
 
     app.openapi = openapi  # type: ignore[method-assign]  # FastAPI custom schema hook
+    if ports.agent_event_cipher is not None:
+        register_agent_routes(
+            app,
+            factory=ports.factory,
+            log=AgentEventLog(ports.agent_event_cipher),
+            waiter=ports.agent_waiter or LocalWaiter(),
+            repository_context=repository_context,
+            resource_context=resource_context,
+            json_body=json_body,
+            idempotency_key=key,
+            poll_seconds=ports.agent_poll_seconds,
+        )
     return app

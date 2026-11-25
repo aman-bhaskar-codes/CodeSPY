@@ -1,0 +1,1833 @@
+{
+  "$defs": {
+    "ApprovalSubject": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "tool_call",
+            "patch",
+            "plan",
+            "publish"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "ref": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "ref"
+      ],
+      "title": "ApprovalSubject",
+      "type": "object"
+    },
+    "ByteRangeProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "end_offset": {
+          "pattern": "^[0-9a-f]{1,16}$",
+          "title": "End Offset",
+          "type": "string"
+        },
+        "kind": {
+          "const": "byte_range",
+          "default": "byte_range",
+          "title": "Kind",
+          "type": "string"
+        },
+        "start_offset": {
+          "pattern": "^[0-9a-f]{1,16}$",
+          "title": "Start Offset",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "start_offset",
+        "end_offset"
+      ],
+      "title": "ByteRangeProvenance",
+      "type": "object"
+    },
+    "ClaimRef": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Claim Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_id"
+      ],
+      "title": "ClaimRef",
+      "type": "object"
+    },
+    "ContextChip": {
+      "additionalProperties": false,
+      "properties": {
+        "end_line": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Line"
+        },
+        "kind": {
+          "enum": [
+            "file",
+            "symbol",
+            "evidence",
+            "terminal",
+            "selection"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "ref": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Ref",
+          "type": "string"
+        },
+        "start_line": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Line"
+        }
+      },
+      "required": [
+        "kind",
+        "ref"
+      ],
+      "title": "ContextChip",
+      "type": "object"
+    },
+    "DiffFile": {
+      "additionalProperties": false,
+      "properties": {
+        "after_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "After Hash"
+        },
+        "before_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Before Hash"
+        },
+        "change": {
+          "enum": [
+            "modify",
+            "create",
+            "delete",
+            "rename"
+          ],
+          "title": "Change",
+          "type": "string"
+        },
+        "hunks": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Hunk"
+          },
+          "maxItems": 200,
+          "title": "Hunks",
+          "type": "array"
+        },
+        "path": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "renamed_from": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Renamed From"
+        }
+      },
+      "required": [
+        "path",
+        "change"
+      ],
+      "title": "DiffFile",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "byte_range": "#/$defs/ByteRangeProvenance",
+                  "report_fact": "#/$defs/ReportFactProvenance",
+                  "source_range": "#/$defs/SourceRangeProvenance",
+                  "tool_result": "#/$defs/ToolResultProvenance"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/SourceRangeProvenance"
+                },
+                {
+                  "$ref": "#/$defs/ByteRangeProvenance"
+                },
+                {
+                  "$ref": "#/$defs/ReportFactProvenance"
+                },
+                {
+                  "$ref": "#/$defs/ToolResultProvenance"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provenance"
+        }
+      },
+      "required": [
+        "evidence_id"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "Hunk": {
+      "additionalProperties": false,
+      "properties": {
+        "content_ref": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Ref"
+        },
+        "hunk_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Hunk Id",
+          "type": "string"
+        },
+        "new_lines": {
+          "minimum": 0,
+          "title": "New Lines",
+          "type": "integer"
+        },
+        "new_start": {
+          "minimum": 0,
+          "title": "New Start",
+          "type": "integer"
+        },
+        "old_lines": {
+          "minimum": 0,
+          "title": "Old Lines",
+          "type": "integer"
+        },
+        "old_start": {
+          "minimum": 0,
+          "title": "Old Start",
+          "type": "integer"
+        },
+        "preview": {
+          "default": "",
+          "maxLength": 2048,
+          "title": "Preview",
+          "type": "string"
+        }
+      },
+      "required": [
+        "hunk_id",
+        "old_start",
+        "old_lines",
+        "new_start",
+        "new_lines"
+      ],
+      "title": "Hunk",
+      "type": "object"
+    },
+    "Limits": {
+      "additionalProperties": false,
+      "properties": {
+        "cost_micros_limit": {
+          "minimum": 0,
+          "title": "Cost Micros Limit",
+          "type": "integer"
+        },
+        "max_steps": {
+          "minimum": 1,
+          "title": "Max Steps",
+          "type": "integer"
+        },
+        "max_tool_calls": {
+          "minimum": 1,
+          "title": "Max Tool Calls",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_steps",
+        "max_tool_calls",
+        "cost_micros_limit"
+      ],
+      "title": "Limits",
+      "type": "object"
+    },
+    "PlanStep": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "status": {
+          "default": "pending",
+          "enum": [
+            "pending",
+            "in_progress",
+            "completed",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "title": "PlanStep",
+      "type": "object"
+    },
+    "ReportFactProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "report_fact",
+          "default": "report_fact",
+          "title": "Kind",
+          "type": "string"
+        },
+        "report_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Report Id",
+          "type": "string"
+        },
+        "statement_id": {
+          "pattern": "^[0-9a-f]{16}$",
+          "title": "Statement Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "report_id",
+        "statement_id"
+      ],
+      "title": "ReportFactProvenance",
+      "type": "object"
+    },
+    "SourceRangeProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "end_line": {
+          "minimum": 1,
+          "title": "End Line",
+          "type": "integer"
+        },
+        "kind": {
+          "const": "source_range",
+          "default": "source_range",
+          "title": "Kind",
+          "type": "string"
+        },
+        "path": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "start_line": {
+          "minimum": 1,
+          "title": "Start Line",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "start_line",
+        "end_line"
+      ],
+      "title": "SourceRangeProvenance",
+      "type": "object"
+    },
+    "TestFailure": {
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File"
+        },
+        "line": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line"
+        },
+        "message": {
+          "default": "",
+          "maxLength": 2048,
+          "title": "Message",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 512,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "TestFailure",
+      "type": "object"
+    },
+    "ToolResultProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "tool_result",
+          "default": "tool_result",
+          "title": "Kind",
+          "type": "string"
+        },
+        "tool_call_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Tool Call Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_call_id"
+      ],
+      "title": "ToolResultProvenance",
+      "type": "object"
+    },
+    "Usage": {
+      "additionalProperties": false,
+      "properties": {
+        "cache_read_tokens": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Cache Read Tokens",
+          "type": "integer"
+        },
+        "cache_write_tokens": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Cache Write Tokens",
+          "type": "integer"
+        },
+        "input_tokens": {
+          "minimum": 0,
+          "title": "Input Tokens",
+          "type": "integer"
+        },
+        "output_tokens": {
+          "minimum": 0,
+          "title": "Output Tokens",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "input_tokens",
+        "output_tokens"
+      ],
+      "title": "Usage",
+      "type": "object"
+    }
+  },
+  "$id": "https://codespy.local/contracts/AgentEventV1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "envelope": {
+    "additionalProperties": false,
+    "description": "The envelope of every stored and streamed event.",
+    "properties": {
+      "parent": {
+        "anyOf": [
+          {
+            "maxLength": 160,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Parent"
+      },
+      "payload": {
+        "additionalProperties": true,
+        "title": "Payload",
+        "type": "object"
+      },
+      "seq": {
+        "minimum": 0,
+        "title": "Seq",
+        "type": "integer"
+      },
+      "session_id": {
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        "title": "Session Id",
+        "type": "string"
+      },
+      "ts": {
+        "maxLength": 40,
+        "minLength": 20,
+        "title": "Ts",
+        "type": "string"
+      },
+      "turn": {
+        "minimum": 0,
+        "title": "Turn",
+        "type": "integer"
+      },
+      "type": {
+        "maxLength": 64,
+        "minLength": 1,
+        "title": "Type",
+        "type": "string"
+      },
+      "v": {
+        "const": 1,
+        "default": 1,
+        "title": "V",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "session_id",
+      "seq",
+      "type",
+      "ts",
+      "turn",
+      "payload"
+    ],
+    "title": "AgentEventV1",
+    "type": "object"
+  },
+  "payloads": {
+    "approval.requested": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Approval Id",
+          "type": "string"
+        },
+        "expires_at": {
+          "maxLength": 40,
+          "title": "Expires At",
+          "type": "string"
+        },
+        "reason": {
+          "default": "",
+          "maxLength": 512,
+          "title": "Reason",
+          "type": "string"
+        },
+        "rule_matched": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule Matched"
+        },
+        "subject": {
+          "$ref": "#/$defs/ApprovalSubject"
+        }
+      },
+      "required": [
+        "approval_id",
+        "subject",
+        "expires_at"
+      ],
+      "title": "ApprovalRequested",
+      "type": "object"
+    },
+    "approval.resolved": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Approval Id",
+          "type": "string"
+        },
+        "by": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "By",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "approved",
+            "rejected",
+            "expired"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "rule": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule"
+        },
+        "scope": {
+          "default": "once",
+          "enum": [
+            "once",
+            "session_rule"
+          ],
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "approval_id",
+        "decision",
+        "by"
+      ],
+      "title": "ApprovalResolved",
+      "type": "object"
+    },
+    "checkpoint.created": {
+      "additionalProperties": false,
+      "properties": {
+        "checkpoint_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Checkpoint Id",
+          "type": "string"
+        },
+        "label": {
+          "default": "",
+          "maxLength": 256,
+          "title": "Label",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "turn": {
+          "minimum": 0,
+          "title": "Turn",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "checkpoint_id",
+        "revision",
+        "turn"
+      ],
+      "title": "CheckpointCreated",
+      "type": "object"
+    },
+    "checkpoint.restored": {
+      "additionalProperties": false,
+      "properties": {
+        "checkpoint_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Checkpoint Id",
+          "type": "string"
+        },
+        "restore": {
+          "enum": [
+            "files",
+            "conversation",
+            "both"
+          ],
+          "title": "Restore",
+          "type": "string"
+        }
+      },
+      "required": [
+        "checkpoint_id",
+        "restore"
+      ],
+      "title": "CheckpointRestored",
+      "type": "object"
+    },
+    "diff.decided": {
+      "additionalProperties": false,
+      "properties": {
+        "by": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "By",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "applied",
+            "rejected",
+            "partially_applied"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "hunks_applied": {
+          "default": [],
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "type": "string"
+          },
+          "maxItems": 1000,
+          "title": "Hunks Applied",
+          "type": "array"
+        },
+        "patch_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Patch Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "patch_id",
+        "decision",
+        "by"
+      ],
+      "title": "DiffDecided",
+      "type": "object"
+    },
+    "diff.proposed": {
+      "additionalProperties": false,
+      "properties": {
+        "base_revision": {
+          "minimum": 0,
+          "title": "Base Revision",
+          "type": "integer"
+        },
+        "files": {
+          "items": {
+            "$ref": "#/$defs/DiffFile"
+          },
+          "maxItems": 50,
+          "title": "Files",
+          "type": "array"
+        },
+        "patch_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Patch Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "patch_id",
+        "files",
+        "base_revision"
+      ],
+      "title": "DiffProposed",
+      "type": "object"
+    },
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9_]+$",
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 512,
+          "title": "Message",
+          "type": "string"
+        },
+        "retryable": {
+          "default": false,
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "scope": {
+          "default": "turn",
+          "enum": [
+            "turn",
+            "session"
+          ],
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "ErrorPayload",
+      "type": "object"
+    },
+    "evidence.claim": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "observation",
+            "derivation",
+            "inference",
+            "unknown"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "provenance": {
+          "default": [],
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "byte_range": "#/$defs/ByteRangeProvenance",
+                "report_fact": "#/$defs/ReportFactProvenance",
+                "source_range": "#/$defs/SourceRangeProvenance",
+                "tool_result": "#/$defs/ToolResultProvenance"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/SourceRangeProvenance"
+              },
+              {
+                "$ref": "#/$defs/ByteRangeProvenance"
+              },
+              {
+                "$ref": "#/$defs/ReportFactProvenance"
+              },
+              {
+                "$ref": "#/$defs/ToolResultProvenance"
+              }
+            ]
+          },
+          "maxItems": 20,
+          "title": "Provenance",
+          "type": "array"
+        },
+        "text": {
+          "maxLength": 2048,
+          "title": "Text",
+          "type": "string"
+        },
+        "verifier": {
+          "default": "unverified",
+          "enum": [
+            "verified",
+            "unverified",
+            "contradicted"
+          ],
+          "title": "Verifier",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_id",
+        "kind",
+        "text"
+      ],
+      "title": "EvidenceClaim",
+      "type": "object"
+    },
+    "message.completed": {
+      "additionalProperties": false,
+      "properties": {
+        "claims": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ClaimRef"
+          },
+          "maxItems": 50,
+          "title": "Claims",
+          "type": "array"
+        },
+        "message_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Message Id",
+          "type": "string"
+        },
+        "stop_reason": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Stop Reason",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 65536,
+          "title": "Text",
+          "type": "string"
+        },
+        "usage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Usage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "message_id",
+        "text",
+        "stop_reason"
+      ],
+      "title": "MessageCompleted",
+      "type": "object"
+    },
+    "message.delta": {
+      "additionalProperties": false,
+      "properties": {
+        "message_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Message Id",
+          "type": "string"
+        },
+        "offset": {
+          "minimum": 0,
+          "title": "Offset",
+          "type": "integer"
+        },
+        "text": {
+          "maxLength": 4096,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message_id",
+        "offset",
+        "text"
+      ],
+      "title": "MessageDelta",
+      "type": "object"
+    },
+    "message.started": {
+      "additionalProperties": false,
+      "properties": {
+        "message_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Message Id",
+          "type": "string"
+        },
+        "model_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "role": {
+          "const": "assistant",
+          "default": "assistant",
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message_id",
+        "model_id"
+      ],
+      "title": "MessageStarted",
+      "type": "object"
+    },
+    "message.user": {
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ContextChip"
+          },
+          "maxItems": 50,
+          "title": "Context",
+          "type": "array"
+        },
+        "message_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Message Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 32768,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message_id",
+        "text"
+      ],
+      "title": "MessageUser",
+      "type": "object"
+    },
+    "plan.decided": {
+      "additionalProperties": false,
+      "properties": {
+        "by": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "By",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "approved",
+            "rejected",
+            "edited"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "plan_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Plan Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "plan_id",
+        "decision",
+        "by"
+      ],
+      "title": "PlanDecided",
+      "type": "object"
+    },
+    "plan.proposed": {
+      "additionalProperties": false,
+      "properties": {
+        "plan_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Plan Id",
+          "type": "string"
+        },
+        "requires_approval": {
+          "default": false,
+          "title": "Requires Approval",
+          "type": "boolean"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/PlanStep"
+          },
+          "maxItems": 50,
+          "title": "Steps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "plan_id",
+        "steps"
+      ],
+      "title": "PlanProposed",
+      "type": "object"
+    },
+    "plan.updated": {
+      "additionalProperties": false,
+      "properties": {
+        "plan_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Plan Id",
+          "type": "string"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/PlanStep"
+          },
+          "maxItems": 50,
+          "title": "Steps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "plan_id",
+        "steps"
+      ],
+      "title": "PlanUpdated",
+      "type": "object"
+    },
+    "session.created": {
+      "additionalProperties": false,
+      "properties": {
+        "base_snapshot_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Base Snapshot Id",
+          "type": "string"
+        },
+        "limits": {
+          "$ref": "#/$defs/Limits"
+        },
+        "mode": {
+          "enum": [
+            "plan",
+            "act"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "model_profile": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Model Profile",
+          "type": "string"
+        },
+        "workspace_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workspace Id"
+        }
+      },
+      "required": [
+        "mode",
+        "base_snapshot_id",
+        "model_profile",
+        "limits"
+      ],
+      "title": "SessionCreated",
+      "type": "object"
+    },
+    "session.limits": {
+      "additionalProperties": false,
+      "properties": {
+        "cost_micros_limit": {
+          "minimum": 0,
+          "title": "Cost Micros Limit",
+          "type": "integer"
+        },
+        "cost_micros_reserved": {
+          "minimum": 0,
+          "title": "Cost Micros Reserved",
+          "type": "integer"
+        },
+        "cost_micros_settled": {
+          "minimum": 0,
+          "title": "Cost Micros Settled",
+          "type": "integer"
+        },
+        "steps_max": {
+          "minimum": 1,
+          "title": "Steps Max",
+          "type": "integer"
+        },
+        "steps_used": {
+          "minimum": 0,
+          "title": "Steps Used",
+          "type": "integer"
+        },
+        "tokens_in": {
+          "minimum": 0,
+          "title": "Tokens In",
+          "type": "integer"
+        },
+        "tokens_out": {
+          "minimum": 0,
+          "title": "Tokens Out",
+          "type": "integer"
+        },
+        "tool_calls_max": {
+          "minimum": 1,
+          "title": "Tool Calls Max",
+          "type": "integer"
+        },
+        "tool_calls_used": {
+          "minimum": 0,
+          "title": "Tool Calls Used",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "steps_used",
+        "steps_max",
+        "tool_calls_used",
+        "tool_calls_max",
+        "tokens_in",
+        "tokens_out",
+        "cost_micros_reserved",
+        "cost_micros_settled",
+        "cost_micros_limit"
+      ],
+      "title": "SessionLimits",
+      "type": "object"
+    },
+    "session.mode.changed": {
+      "additionalProperties": false,
+      "properties": {
+        "by": {
+          "const": "user",
+          "default": "user",
+          "title": "By",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "plan",
+            "act"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "SessionModeChanged",
+      "type": "object"
+    },
+    "session.status": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "status": {
+          "enum": [
+            "idle",
+            "running",
+            "waiting_approval",
+            "interrupted",
+            "completed",
+            "failed",
+            "cancelled"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "SessionStatusChanged",
+      "type": "object"
+    },
+    "stream.reset": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "enum": [
+            "replay_limit",
+            "backpressure",
+            "schema_upgrade"
+          ],
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "StreamReset",
+      "type": "object"
+    },
+    "terminal.closed": {
+      "additionalProperties": false,
+      "properties": {
+        "exit_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exit Code"
+        },
+        "owner": {
+          "enum": [
+            "agent",
+            "user"
+          ],
+          "title": "Owner",
+          "type": "string"
+        },
+        "terminal_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Terminal Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "terminal_id",
+        "owner"
+      ],
+      "title": "TerminalClosed",
+      "type": "object"
+    },
+    "terminal.opened": {
+      "additionalProperties": false,
+      "properties": {
+        "owner": {
+          "enum": [
+            "agent",
+            "user"
+          ],
+          "title": "Owner",
+          "type": "string"
+        },
+        "terminal_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Terminal Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "terminal_id",
+        "owner"
+      ],
+      "title": "TerminalOpened",
+      "type": "object"
+    },
+    "test.result": {
+      "additionalProperties": false,
+      "properties": {
+        "failed": {
+          "minimum": 0,
+          "title": "Failed",
+          "type": "integer"
+        },
+        "failures": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TestFailure"
+          },
+          "maxItems": 50,
+          "title": "Failures",
+          "type": "array"
+        },
+        "passed": {
+          "minimum": 0,
+          "title": "Passed",
+          "type": "integer"
+        },
+        "runner": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Runner",
+          "type": "string"
+        },
+        "skipped": {
+          "minimum": 0,
+          "title": "Skipped",
+          "type": "integer"
+        },
+        "tool_call_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Tool Call Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_call_id",
+        "runner",
+        "passed",
+        "failed",
+        "skipped"
+      ],
+      "title": "TestResult",
+      "type": "object"
+    },
+    "thinking.summary": {
+      "additionalProperties": false,
+      "properties": {
+        "message_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Message Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 2048,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "message_id",
+        "text"
+      ],
+      "title": "ThinkingSummary",
+      "type": "object"
+    },
+    "tool.call.completed": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "content_ref": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Ref"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "maxItems": 50,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "redactions": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Redactions",
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "partial",
+            "unavailable",
+            "denied",
+            "invalid",
+            "timed_out",
+            "outcome_unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "summary": {
+          "default": "",
+          "maxLength": 1024,
+          "title": "Summary",
+          "type": "string"
+        },
+        "tool_call_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Tool Call Id",
+          "type": "string"
+        },
+        "truncated": {
+          "default": false,
+          "title": "Truncated",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "tool_call_id",
+        "status"
+      ],
+      "title": "ToolCallCompleted",
+      "type": "object"
+    },
+    "tool.call.output": {
+      "additionalProperties": false,
+      "properties": {
+        "offset": {
+          "minimum": 0,
+          "title": "Offset",
+          "type": "integer"
+        },
+        "stream": {
+          "enum": [
+            "stdout",
+            "stderr"
+          ],
+          "title": "Stream",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 4096,
+          "title": "Text",
+          "type": "string"
+        },
+        "tool_call_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Tool Call Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_call_id",
+        "stream",
+        "offset",
+        "text"
+      ],
+      "title": "ToolCallOutput",
+      "type": "object"
+    },
+    "tool.call.proposed": {
+      "additionalProperties": false,
+      "properties": {
+        "args_preview": {
+          "default": "",
+          "maxLength": 2048,
+          "title": "Args Preview",
+          "type": "string"
+        },
+        "class": {
+          "enum": [
+            "read",
+            "edit",
+            "exec",
+            "git",
+            "network",
+            "mcp",
+            "re"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "risk": {
+          "default": "low",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Risk",
+          "type": "string"
+        },
+        "tool": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Tool",
+          "type": "string"
+        },
+        "tool_call_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Tool Call Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_call_id",
+        "tool",
+        "class"
+      ],
+      "title": "ToolCallProposed",
+      "type": "object"
+    },
+    "tool.call.started": {
+      "additionalProperties": false,
+      "properties": {
+        "tool_call_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Tool Call Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_call_id"
+      ],
+      "title": "ToolCallStarted",
+      "type": "object"
+    },
+    "workspace.conflict": {
+      "additionalProperties": false,
+      "properties": {
+        "actual_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Actual Hash",
+          "type": "string"
+        },
+        "author_of_actual": {
+          "enum": [
+            "agent",
+            "user"
+          ],
+          "title": "Author Of Actual",
+          "type": "string"
+        },
+        "expected_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Expected Hash",
+          "type": "string"
+        },
+        "path": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "expected_hash",
+        "actual_hash",
+        "author_of_actual"
+      ],
+      "title": "WorkspaceConflict",
+      "type": "object"
+    },
+    "workspace.revision": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "enum": [
+            "agent",
+            "user"
+          ],
+          "title": "Author",
+          "type": "string"
+        },
+        "changed_paths": {
+          "default": [],
+          "items": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "title": "Changed Paths",
+          "type": "array"
+        },
+        "checkpoint_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checkpoint Id"
+        },
+        "revision": {
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "revision",
+        "author"
+      ],
+      "title": "WorkspaceRevision",
+      "type": "object"
+    }
+  },
+  "protocol_version": 1,
+  "title": "AgentEventV1",
+  "transient_types": [
+    "stream.reset"
+  ]
+}
