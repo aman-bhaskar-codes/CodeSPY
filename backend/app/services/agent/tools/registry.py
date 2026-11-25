@@ -22,7 +22,6 @@ from app.services.agent.tools.base import Tool, ToolContext, fail
 
 logger = logging.getLogger(__name__)
 
-MAX_ARGUMENT_BYTES = 16 * 1024
 TOOL_SECONDS = 20
 
 
@@ -42,6 +41,9 @@ class ToolRegistry:
             for s in self.specs()
         ]
 
+    def tools(self) -> list[Tool]:
+        return list(self._tools.values())
+
     def tool(self, name: str) -> Tool | None:
         return self._tools.get(name)
 
@@ -50,7 +52,7 @@ class ToolRegistry:
         tool = self._tools.get(name)
         if tool is None:
             return fail("invalid", "unknown_tool", f"There is no tool named {name[:64]!r}.")
-        if len(arguments_json.encode()) > MAX_ARGUMENT_BYTES:
+        if len(arguments_json.encode()) > tool.max_argument_bytes:
             return fail("invalid", "arguments_too_large", "The arguments are too large.")
         try:
             parsed = json.loads(arguments_json or "{}")

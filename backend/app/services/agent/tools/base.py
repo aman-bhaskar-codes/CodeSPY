@@ -13,7 +13,12 @@ from app.contracts.agent_tools import (
 )
 from app.contracts.workspace import SandboxHandleV1
 from app.ports.sandbox import SandboxPort
-from app.services.agent.tools.ports import BaseFilesPort, CodeSearchPort, SymbolIndexPort
+from app.services.agent.tools.ports import (
+    BaseFilesPort,
+    CodeSearchPort,
+    SymbolIndexPort,
+    WorkspaceEditPort,
+)
 from app.services.agent.tools.text import redact, truncate_head_tail
 
 
@@ -26,6 +31,7 @@ class ToolContext:
     base: BaseFilesPort | None = None
     symbols: SymbolIndexPort | None = None
     search: CodeSearchPort | None = None
+    workspace: WorkspaceEditPort | None = None
 
 
 def succeed(
@@ -71,6 +77,8 @@ class Tool:
     description: ClassVar[str]
     args_model: ClassVar[type[AgentToolArgs]]
     tool_class: ClassVar[ToolClass] = "read"
+    #: Largest argument string the registry accepts for this tool.
+    max_argument_bytes: ClassVar[int] = 16 * 1024
 
     def spec(self) -> AgentToolSpecV1:
         schema = self.args_model.model_json_schema()

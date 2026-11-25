@@ -5,6 +5,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
+from app.contracts.workspace import FileChangeV1
+from app.services.workspace.changes import Applied
+
 
 @dataclass(frozen=True)
 class SymbolHit:
@@ -41,3 +44,21 @@ class CodeSearchPort(Protocol):
     """Ranked retrieval over the base snapshot (lexical, dense or hybrid)."""
 
     async def search(self, query: str, limit: int) -> list[SearchHit]: ...
+
+
+class WorkspaceEditPort(Protocol):
+    """Applies changes to the session's workspace and records them. Idempotent by content."""
+
+    async def apply(
+        self,
+        changes: tuple[FileChangeV1, ...],
+        *,
+        request_digest: str | None = None,
+        author: str = "agent",
+    ) -> Applied:
+        """Write the changes, or report them already applied. The digest names the tool request."""
+        ...
+
+    async def find_applied(self, request_digest: str) -> Applied | None:
+        """The earlier application of this request, if the workspace still has its result."""
+        ...

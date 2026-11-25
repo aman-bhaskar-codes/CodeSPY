@@ -5,9 +5,10 @@ from uuid import uuid4
 
 from app.adapters.sandbox.fake import FakeSandbox, MappingSnapshots, ScriptedExec
 from app.contracts.workspace import FileChangeV1, SandboxSpecV1, SnapshotRefV1
-from app.services.agent.tools import read_tools
+from app.services.agent.tools import tools_for_mode
 from app.services.agent.tools.base import ToolContext
 from app.services.agent.tools.ports import SearchHit, SymbolHit
+from app.services.workspace.local import LocalWorkspace
 
 SNAPSHOT = uuid4()
 
@@ -106,7 +107,7 @@ class FakeSearch:
 
 
 async def make_context(
-    *, files=None, base=True, symbols=None, search=None
+    *, files=None, base=True, symbols=None, search=None, workspace=True
 ) -> tuple[ToolContext, SpySandbox]:
     files = FILES if files is None else files
     sandbox = SpySandbox(MappingSnapshots({SNAPSHOT: files}))
@@ -124,12 +125,13 @@ async def make_context(
         base=FakeBase(files) if base else None,
         symbols=symbols,
         search=search,
+        workspace=LocalWorkspace(sandbox, handle) if workspace else None,
     )
     return ctx, sandbox
 
 
 def registry():
-    return read_tools()
+    return tools_for_mode("act")
 
 
 async def call(ctx, tool_name, /, **args):

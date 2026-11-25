@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 from app.contracts.workspace import SandboxHandleV1
+from app.services.agent.tools import read_tools
 
 from tests.agent.tools.support import FILES, call, make_context, registry
 
@@ -22,7 +23,8 @@ TRAVERSAL = [
 
 
 def test_the_read_tool_set_and_its_model_definitions():
-    names = [s.name for s in registry().specs()]
+    reads = read_tools()
+    names = [s.name for s in reads.specs()]
     assert names == [
         "list_dir",
         "read_file",
@@ -33,8 +35,8 @@ def test_the_read_tool_set_and_its_model_definitions():
         "git_status",
         "git_diff",
     ]
-    assert {s.tool_class for s in registry().specs()} == {"read"}
-    for definition in registry().model_definitions():
+    assert {s.tool_class for s in reads.specs()} == {"read"}
+    for definition in reads.model_definitions():
         assert definition.parameters_schema["type"] == "object"
         assert definition.parameters_schema.get("additionalProperties") is False
         assert definition.description

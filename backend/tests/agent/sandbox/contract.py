@@ -302,6 +302,25 @@ class SandboxContract:
             deleted.tree_hash == base.tree_hash and deleted.revision == moved.revision + 1
         )  # content-addressed
 
+    async def test_files_and_directories_cannot_occupy_the_same_path(self, env: Env):
+        with pytest.raises(PathRejected):  # a directory is there
+            await env.sandbox.write_files(env.handle, (write("src", b"x"),))
+        with pytest.raises(PathRejected):  # a file is in the way
+            await env.sandbox.write_files(env.handle, (write("src/app.py/inner.txt", b"x"),))
+        with pytest.raises(PathRejected):
+            await env.sandbox.write_files(
+                env.handle,
+                (
+                    FileChangeV1(
+                        op="move",
+                        path="README.md",
+                        expected_hash=sha(FILES["README.md"]),
+                        move_to="src/app.py/x",
+                    ),
+                ),
+            )
+        assert (await env.sandbox.status(env.handle)).revision == 0
+
     async def test_a_batch_is_all_or_nothing(self, env: Env):
         before = await env.sandbox.status(env.handle)
         with pytest.raises(WorkspaceConflict) as conflict:

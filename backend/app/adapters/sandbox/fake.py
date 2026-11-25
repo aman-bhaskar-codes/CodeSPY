@@ -198,6 +198,16 @@ class FakeSandbox:
                 if path in seen:
                     raise PathRejected("a path appears once per batch")
                 seen.add(path)
+                if change.op in {"write", "move"}:
+                    target = (
+                        path
+                        if change.op == "write"
+                        else normalize_workspace_path(change.move_to or "")
+                    )
+                    if any(p.startswith(target + "/") for p in staged) or any(
+                        target.startswith(p + "/") for p in staged
+                    ):
+                        raise PathRejected("path is a directory or sits inside a file")
                 if change.op == "write":
                     assert change.content is not None
                     if len(change.content) > MAX_FILE_BYTES:
