@@ -22,6 +22,9 @@ agent_sessions = sa.Table(
     col("last_seq", "bigint", default="0"),
     col("idempotency_key", nullable=True),
     col("request_digest", nullable=True),
+    col("lease_owner", nullable=True),
+    col("lease_until", "time", nullable=True),
+    col("control", nullable=True),
     created(),
     col("updated_at", "time", default="clock_timestamp()"),
     pk("org_id", "id"),
@@ -84,4 +87,19 @@ agent_approvals = sa.Table(
     created(),
     pk("org_id", "session_id", "approval_id"),
     fk("fk_agent_approval_session", ("org_id", "session_id"), "agent_sessions", ("org_id", "id")),
+)
+
+agent_effects = sa.Table(
+    "agent_effects",
+    md,
+    orgid(),
+    col("session_id", "uuid"),
+    col("effect_id"),
+    col("phase"),
+    col("kind"),
+    col("payload_ciphertext", "bytes"),
+    col("payload_bytes", "int"),
+    created(),
+    pk("org_id", "session_id", "effect_id", "phase"),
+    fk("fk_agent_effect_session", ("org_id", "session_id"), "agent_sessions", ("org_id", "id")),
 )
