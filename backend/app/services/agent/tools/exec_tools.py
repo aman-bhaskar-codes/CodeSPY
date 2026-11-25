@@ -540,3 +540,31 @@ def _test_result(
     if o.timed_out:
         update |= {"status": "timed_out", "error_code": "timed_out"}
     return result.model_copy(update=update)
+
+
+def exec_plan_to_json(plan: ExecPlan) -> dict[str, object]:
+    return {
+        "argv": list(plan.argv),
+        "cwd": plan.cwd,
+        "timeout_s": plan.timeout_s,
+        "env": plan.env,
+        "shell": plan.shell,
+        "risk": plan.risk,
+        "display": plan.display,
+        "rule_key": plan.rule_key,
+        "runner": plan.runner,
+    }
+
+
+def exec_plan_from_json(data: dict[str, Any]) -> ExecPlan:
+    return ExecPlan(
+        argv=tuple(data["argv"]),
+        cwd=data["cwd"],
+        timeout_s=data["timeout_s"],
+        env=dict(data["env"]),
+        shell=data["shell"],
+        risk=data["risk"],
+        display=data["display"],
+        rule_key=data["rule_key"],
+        runner=data["runner"],
+    )

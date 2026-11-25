@@ -232,9 +232,7 @@ async def run(args: argparse.Namespace) -> None:
                 store,
                 ctx,
                 github=github_service(api_factory),
-                admission_policy=policy_class()
-                if extended
-                else AdmissionPolicyV1(),
+                admission_policy=policy_class() if extended else AdmissionPolicyV1(),
                 readiness=ready,
             ),
         )

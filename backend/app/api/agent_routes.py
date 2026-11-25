@@ -4,9 +4,15 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 from uuid import UUID
 
-from app.contracts.agent_session import AgentSessionCreateRequestV1
+from app.contracts.agent_session import (
+    AgentApprovalDecisionV1,
+    AgentMessageRequestV1,
+    AgentModeRequestV1,
+    AgentSessionCreateRequestV1,
+)
 from app.domain.scope import TenantContext
 from app.models.agent_tables import agent_sessions
+from app.services.agent.commands import AgentCommands
 from app.services.agent.event_log import AgentEventLog, Waiter, tail
 from app.services.agent.sessions import AgentSessionService
 from fastapi import FastAPI, HTTPException, Request
@@ -42,6 +48,7 @@ def register_agent_routes(
     json_body: Callable[..., Awaitable[Any]],
     idempotency_key: Callable[[Request], str],
     poll_seconds: float = 2.0,
+    commands: AgentCommands | None = None,
 ) -> AgentSessionService:
     service = AgentSessionService(factory, log)
 
@@ -87,5 +94,50 @@ def register_agent_routes(
                 yield frame
 
         return StreamingResponse(frames(), media_type="text/event-stream", headers=STREAM_HEADERS)
+
+    if commands is not None:
+
+        @app.post("/api/v1/agent-sessions/{session_id}/messages", status_code=202)
+        async def send_agent_message(request: Request, session_id: UUID) -> JSONResponse:
+            body = await json_body(request, AgentMessageRequestV1, 131072)
+            ctx = await resource_context(request, agent_sessions, session_id, write=True)
+            event = await commands.send_message(
+                ctx,
+                session_id,
+                body.text,
+                [c.model_dump(mode="json", exclude_none=True) for c in body.context],
+                request_key=idempotency_key(request),
+            )
+            return JSONResponse(status_code=202, content={"seq": event.seq, "turn": event.turn})
+
+        @app.post("/api/v1/agent-sessions/{session_id}/approvals/{approval_id}")
+        async def answer_agent_approval(
+            request: Request, session_id: UUID, approval_id: str
+        ) -> dict[str, Any]:
+            body = await json_body(request, AgentApprovalDecisionV1)
+            ctx = await resource_context(request, agent_sessions, session_id, write=True)
+            row = await commands.resolve_approval(
+                ctx, session_id, approval_id, body.decision, scope=body.scope, rule=body.rule
+            )
+            return {"approval_id": row.approval_id, "status": row.status}
+
+        @app.post("/api/v1/agent-sessions/{session_id}/interrupt", status_code=202)
+        async def interrupt_agent(request: Request, session_id: UUID) -> JSONResponse:
+            ctx = await resource_context(request, agent_sessions, session_id, write=True)
+            await commands.interrupt(ctx, session_id)
+            return JSONResponse(status_code=202, content={})
+
+        @app.post("/api/v1/agent-sessions/{session_id}/cancel", status_code=202)
+        async def cancel_agent(request: Request, session_id: UUID) -> JSONResponse:
+            ctx = await resource_context(request, agent_sessions, session_id, write=True)
+            await commands.cancel(ctx, session_id)
+            return JSONResponse(status_code=202, content={})
+
+        @app.post("/api/v1/agent-sessions/{session_id}/mode")
+        async def set_agent_mode(request: Request, session_id: UUID) -> dict[str, Any]:
+            body = await json_body(request, AgentModeRequestV1)
+            ctx = await resource_context(request, agent_sessions, session_id, write=True)
+            await commands.set_mode(ctx, session_id, body.mode)
+            return {"mode": body.mode}
 
     return service

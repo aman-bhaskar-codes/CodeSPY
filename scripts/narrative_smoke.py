@@ -58,10 +58,20 @@ def demo_report():
             data=data,
             language=language,
         )
-        entries.append(FileEntry(unit.file_id, path, language, extract_facts(unit, AnalysisBudget())))
+        entries.append(
+            FileEntry(
+                unit.file_id, path, language, extract_facts(unit, AnalysisBudget())
+            )
+        )
     return assemble_report(
-        org_id=uuid4(), repository_id=uuid4(), snapshot_id=uuid4(), files=entries,
-        inventory=list(DEMO_FILES), eligible_files=len(entries), omitted_files=0, fact_runs=(uuid4(),),
+        org_id=uuid4(),
+        repository_id=uuid4(),
+        snapshot_id=uuid4(),
+        files=entries,
+        inventory=list(DEMO_FILES),
+        eligible_files=len(entries),
+        omitted_files=0,
+        fact_runs=(uuid4(),),
     )
 
 
@@ -98,8 +108,15 @@ async def run(profile: str, model: str, report, max_pages: int) -> int:
     async with open_bedrock_runtime(session) as client:
         for unit, page in enumerate(pages):
             marker = boundary_marker(f"smoke-{unit}", digest)
-            user = render(asset, "section.md.tmpl", marker=marker, data=page.payload,
-                          section=page.section, schema=compact_schema(asset), page_number=str(unit))
+            user = render(
+                asset,
+                "section.md.tmpl",
+                marker=marker,
+                data=page.payload,
+                section=page.section,
+                schema=compact_schema(asset),
+                page_number=str(unit),
+            )
             for entry in page.entries:
                 shown[entry["sid"]] = entry
             started = time.perf_counter()
@@ -109,7 +126,9 @@ async def run(profile: str, model: str, report, max_pages: int) -> int:
                 messages=[{"role": "user", "content": [{"text": user}]}],
                 inferenceConfig={"maxTokens": MAX_OUTPUT_TOKENS, "temperature": 0},
             )
-            text = "".join(b.get("text", "") for b in reply["output"]["message"]["content"])
+            text = "".join(
+                b.get("text", "") for b in reply["output"]["message"]["content"]
+            )
             usage = reply.get("usage", {})
             try:
                 found = parse_conclusion(text).sentences
@@ -117,14 +136,21 @@ async def run(profile: str, model: str, report, max_pages: int) -> int:
                 found, unparsed = (), unparsed + 1
                 print(f"page {unit} {page.section}: parse failure {error.code}")
             else:
-                sentences.extend(s.model_copy(update={"claim_id": f"u{unit}-{s.claim_id}"}) for s in found)
-            partial = verify_narrative(NarrativeConclusionV1(sentences=tuple(found)), shown)
+                sentences.extend(
+                    s.model_copy(update={"claim_id": f"u{unit}-{s.claim_id}"})
+                    for s in found
+                )
+            partial = verify_narrative(
+                NarrativeConclusionV1(sentences=tuple(found)), shown
+            )
             print(
                 f"page {unit} {page.section}: statements={len(page.entries)} sentences={len(found)} "
                 f"confirmed={partial.confirmed} in={usage.get('inputTokens')} out={usage.get('outputTokens')} "
                 f"stop={reply.get('stopReason')} ms={(time.perf_counter() - started) * 1000:.0f}"
             )
-    outcome = verify_narrative(NarrativeConclusionV1(sentences=tuple(sentences[:50])), shown)
+    outcome = verify_narrative(
+        NarrativeConclusionV1(sentences=tuple(sentences[:50])), shown
+    )
     print(
         f"total pages={len(pages)} sentences={outcome.total} confirmed={outcome.confirmed} "
         f"ratio={outcome.ratio:.2f} grounded={outcome.grounded} unparsed_pages={unparsed} "
@@ -135,16 +161,24 @@ async def run(profile: str, model: str, report, max_pages: int) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--converse-model", required=True, help="model or inference-profile id")
+    parser.add_argument(
+        "--converse-model", required=True, help="model or inference-profile id"
+    )
     parser.add_argument("--report-file", help="JSON of a stored architecture report")
-    parser.add_argument("--demo", action="store_true", help="use the built-in demo repository")
-    parser.add_argument("--max-pages", type=int, default=3, help="most model calls to make (default 3)")
+    parser.add_argument(
+        "--demo", action="store_true", help="use the built-in demo repository"
+    )
+    parser.add_argument(
+        "--max-pages", type=int, default=3, help="most model calls to make (default 3)"
+    )
     args = parser.parse_args()
     if args.demo == bool(args.report_file):
         print("give exactly one of --demo or --report-file")
         return 2
     if os.environ.get("CODESPY_LIVE_BEDROCK") != "1":
-        print("refusing to run: set CODESPY_LIVE_BEDROCK=1 to make small paid Bedrock calls")
+        print(
+            "refusing to run: set CODESPY_LIVE_BEDROCK=1 to make small paid Bedrock calls"
+        )
         return 2
     profile = os.environ.get("AWS_PROFILE")
     if not profile:
@@ -158,7 +192,9 @@ def main() -> int:
     else:
         from app.contracts.architecture_report import RepositoryReportV1
 
-        report = RepositoryReportV1.model_validate_json(Path(args.report_file).read_text())
+        report = RepositoryReportV1.model_validate_json(
+            Path(args.report_file).read_text()
+        )
     return asyncio.run(run(profile, args.converse_model, report, args.max_pages))
 
 

@@ -197,6 +197,7 @@ from app.security.cursors import CursorCodec
 from app.security.oauth import OAuthRejected, OAuthService
 from app.security.sessions import SessionService, token_digest
 from app.services import ast_reads
+from app.services.agent.commands import AgentCommands
 from app.services.agent.event_log import AgentEventLog, EventCipher, LocalWaiter, Waiter
 from app.services.analysis_sources import locate_source
 from app.services.architecture_reports import (
@@ -334,6 +335,7 @@ class ApplicationPorts:
     agent_event_cipher: EventCipher | None = None
     agent_waiter: Waiter | None = None
     agent_poll_seconds: float = 2.0
+    agent_commands: AgentCommands | None = None
 
 
 def legacy_job_record(value: PublicJobRecord) -> JobRecordV2 | JobRecordV3:
@@ -3121,5 +3123,6 @@ def create_app(settings: ApiSettings, ports: ApplicationPorts) -> FastAPI:
             json_body=json_body,
             idempotency_key=key,
             poll_seconds=ports.agent_poll_seconds,
+            commands=ports.agent_commands,
         )
     return app

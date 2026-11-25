@@ -31,6 +31,7 @@ class ApprovalRow:
     status: str
     rule: str | None
     expired: bool
+    decided_by: str | None = None
 
 
 class ApprovalService:
@@ -243,6 +244,7 @@ class ApprovalService:
             agent_approvals.c.subject_ref,
             agent_approvals.c.status,
             agent_approvals.c.rule_json,
+            agent_approvals.c.decided_by,
             (agent_approvals.c.expires_at < func.clock_timestamp()).label("expired"),
         ).where(
             agent_approvals.c.org_id == org,
@@ -256,7 +258,13 @@ class ApprovalService:
             return None
         rule = (row.rule_json or {}).get("pattern") if row.rule_json else None
         return ApprovalRow(
-            row.approval_id, row.subject_kind, row.subject_ref, row.status, rule, bool(row.expired)
+            row.approval_id,
+            row.subject_kind,
+            row.subject_ref,
+            row.status,
+            rule,
+            bool(row.expired),
+            str(row.decided_by) if row.decided_by else None,
         )
 
 

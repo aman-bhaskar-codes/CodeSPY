@@ -52,9 +52,15 @@ def load_entries(path: Path) -> tuple[list[FileEntry], list[str], dict[str, int]
             raw = archive.read(info)
             sizes[rel] = len(raw)
             unit = SourceUnitV1(
-                file_id=uuid4(), path=rel, sha256=entry.sha256, data=raw, language=language
+                file_id=uuid4(),
+                path=rel,
+                sha256=entry.sha256,
+                data=raw,
+                language=language,
             )
-            entries.append(FileEntry(unit.file_id, rel, language, extract_facts(unit, budget)))
+            entries.append(
+                FileEntry(unit.file_id, rel, language, extract_facts(unit, budget))
+            )
     return entries, inventory, sizes
 
 
@@ -107,7 +113,9 @@ def check_report(results: list[dict[str, Any]], manifest: dict[str, Any]) -> lis
     for result in results:
         name, expected = result["name"], floors.get(result["name"], {})
         if result["sections"] != SECTIONS:
-            problems.append(f"{name}: expected {SECTIONS} sections, got {result['sections']}")
+            problems.append(
+                f"{name}: expected {SECTIONS} sections, got {result['sections']}"
+            )
         if result["analytics"] != "complete":
             problems.append(f"{name}: analytics stopped early ({result['analytics']})")
         limits = {
@@ -124,5 +132,7 @@ def check_report(results: list[dict[str, Any]], manifest: dict[str, Any]) -> lis
                 if (direction > 0 and value < expected[key]) or (
                     direction < 0 and value > expected[key]
                 ):
-                    problems.append(f"{name}: {metric} {value} violates {key} {expected[key]}")
+                    problems.append(
+                        f"{name}: {metric} {value} violates {key} {expected[key]}"
+                    )
     return problems

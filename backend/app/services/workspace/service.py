@@ -109,6 +109,15 @@ class WorkspaceService:
         opened.known = dict(await self.sandbox.file_hashes(handle))
         return opened
 
+    async def close(self, workspace: OpenWorkspace) -> None:
+        """Mark the workspace closed for good; it takes no further revisions."""
+        async with transaction(self.factory) as s:
+            await s.execute(
+                update(workspaces)
+                .where(workspaces.c.org_id == workspace.ctx.org_id, workspaces.c.id == workspace.id)
+                .values(status="closed")
+            )
+
     def bind(self, workspace: OpenWorkspace) -> "BoundWorkspace":
         return BoundWorkspace(self, workspace)
 

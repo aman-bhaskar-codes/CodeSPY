@@ -148,7 +148,7 @@ class SessionControl:
         session: UUID,
         status: str,
         *,
-        key: str,
+        key: str | None = None,
         turn: int = 0,
         reason: str | None = None,
     ) -> None:
@@ -161,12 +161,13 @@ class SessionControl:
             )
             if current is None:
                 raise ScopeViolation("agent session unavailable")
-            if current != status and current not in FINISHED:
-                await s.execute(
-                    update(agent_sessions)
-                    .where(agent_sessions.c.org_id == org, agent_sessions.c.id == session)
-                    .values(status=status)
-                )
+            if current == status or current in FINISHED:
+                return
+            await s.execute(
+                update(agent_sessions)
+                .where(agent_sessions.c.org_id == org, agent_sessions.c.id == session)
+                .values(status=status)
+            )
             payload: dict[str, Any] = {"status": status}
             if reason:
                 payload["reason"] = reason

@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 """Record the three canonical agent sessions used by the frontend and backend tests.
 
 Events are built through the backend contracts, so every payload is canonical and valid, and written
@@ -14,7 +13,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.contracts.agent_events import AgentEventV1, validate_payload  # noqa: E402
+from app.contracts.agent_events import AgentEventV1, validate_payload
 
 TARGET = ROOT / "frontend/src/features/agent/fixtures"
 BASE = datetime(2026, 11, 25, 10, 0, 0, tzinfo=UTC)
@@ -27,10 +26,17 @@ class Recording:
         self.events: list[AgentEventV1] = []
 
     def add(
-        self, kind: str, payload: dict[str, Any], *, turn: int = 1, parent: str | None = None
+        self,
+        kind: str,
+        payload: dict[str, Any],
+        *,
+        turn: int = 1,
+        parent: str | None = None,
     ) -> None:
         seq = len(self.events) + 1
-        ts = (BASE + timedelta(milliseconds=250 * seq)).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        ts = (BASE + timedelta(milliseconds=250 * seq)).strftime(
+            "%Y-%m-%dT%H:%M:%S.%f"
+        )[:-3] + "Z"
         self.events.append(
             AgentEventV1(
                 session_id=self.session_id,
@@ -48,7 +54,9 @@ class Recording:
             "name": self.name,
             "description": self.description,
             "session_id": self.session_id,
-            "events": [json.loads(e.model_dump_json(exclude_none=True)) for e in self.events],
+            "events": [
+                json.loads(e.model_dump_json(exclude_none=True)) for e in self.events
+            ],
         }
 
 
@@ -59,7 +67,11 @@ def created(r: Recording, mode: str = "act") -> None:
             "mode": mode,
             "base_snapshot_id": "30000000-0000-4000-8000-000000000001",
             "model_profile": "agent",
-            "limits": {"max_steps": 60, "max_tool_calls": 150, "cost_micros_limit": 5_000_000},
+            "limits": {
+                "max_steps": 60,
+                "max_tool_calls": 150,
+                "cost_micros_limit": 5_000_000,
+            },
         },
         turn=0,
     )
@@ -71,7 +83,9 @@ def user(r: Recording, text: str) -> None:
         {
             "message_id": "m1",
             "text": text,
-            "context": [{"kind": "file", "ref": "backend/app/auth.py", "start_line": 1}],
+            "context": [
+                {"kind": "file", "ref": "backend/app/auth.py", "start_line": 1}
+            ],
         },
     )
 
@@ -96,7 +110,11 @@ def happy_path() -> Recording:
             ],
         },
     )
-    r.add("message.started", {"message_id": "m2", "model_id": "agent-v1"}, parent="message:m2")
+    r.add(
+        "message.started",
+        {"message_id": "m2", "model_id": "agent-v1"},
+        parent="message:m2",
+    )
     r.add(
         "message.delta",
         {"message_id": "m2", "offset": 0, "text": "I'll read the test "},
@@ -154,8 +172,16 @@ def happy_path() -> Recording:
         {
             "plan_id": "p1",
             "steps": [
-                {"id": "s1", "title": "Read the failing test and auth.py", "status": "completed"},
-                {"id": "s2", "title": "Fix the token expiry check", "status": "in_progress"},
+                {
+                    "id": "s1",
+                    "title": "Read the failing test and auth.py",
+                    "status": "completed",
+                },
+                {
+                    "id": "s2",
+                    "title": "Fix the token expiry check",
+                    "status": "in_progress",
+                },
                 {"id": "s3", "title": "Run the tests"},
             ],
         },
@@ -202,7 +228,12 @@ def happy_path() -> Recording:
     )
     r.add(
         "diff.decided",
-        {"patch_id": "patch1", "decision": "applied", "hunks_applied": ["h1"], "by": "user"},
+        {
+            "patch_id": "patch1",
+            "decision": "applied",
+            "hunks_applied": ["h1"],
+            "by": "user",
+        },
         parent="patch:patch1",
     )
     r.add(
@@ -252,22 +283,43 @@ def happy_path() -> Recording:
     r.add("tool.call.started", {"tool_call_id": "tc2"}, parent="tool_call:tc2")
     r.add(
         "tool.call.output",
-        {"tool_call_id": "tc2", "stream": "stdout", "offset": 0, "text": "collected 12 items\n"},
+        {
+            "tool_call_id": "tc2",
+            "stream": "stdout",
+            "offset": 0,
+            "text": "collected 12 items\n",
+        },
         parent="tool_call:tc2",
     )
     r.add(
         "tool.call.output",
-        {"tool_call_id": "tc2", "stream": "stdout", "offset": 19, "text": "12 passed in 0.8s\n"},
+        {
+            "tool_call_id": "tc2",
+            "stream": "stdout",
+            "offset": 19,
+            "text": "12 passed in 0.8s\n",
+        },
         parent="tool_call:tc2",
     )
     r.add(
         "tool.call.completed",
-        {"tool_call_id": "tc2", "status": "ok", "summary": "exit 0 in 0.9s", "bytes": 37},
+        {
+            "tool_call_id": "tc2",
+            "status": "ok",
+            "summary": "exit 0 in 0.9s",
+            "bytes": 37,
+        },
         parent="tool_call:tc2",
     )
     r.add(
         "test.result",
-        {"tool_call_id": "tc2", "runner": "pytest", "passed": 12, "failed": 0, "skipped": 0},
+        {
+            "tool_call_id": "tc2",
+            "runner": "pytest",
+            "passed": 12,
+            "failed": 0,
+            "skipped": 0,
+        },
     )
     r.add(
         "evidence.claim",
@@ -279,7 +331,11 @@ def happy_path() -> Recording:
             "verifier": "verified",
         },
     )
-    r.add("message.started", {"message_id": "m3", "model_id": "agent-v1"}, parent="message:m3")
+    r.add(
+        "message.started",
+        {"message_id": "m3", "model_id": "agent-v1"},
+        parent="message:m3",
+    )
     r.add(
         "message.completed",
         {
@@ -395,7 +451,11 @@ def rejection() -> Recording:
         {"patch_id": "patch1", "decision": "rejected", "by": "user"},
         parent="patch:patch1",
     )
-    r.add("message.started", {"message_id": "m2", "model_id": "agent-v1"}, parent="message:m2")
+    r.add(
+        "message.started",
+        {"message_id": "m2", "model_id": "agent-v1"},
+        parent="message:m2",
+    )
     r.add(
         "message.completed",
         {
@@ -472,7 +532,11 @@ def crash_resume() -> Recording:
         },
         parent="tool_call:tc1",
     )
-    r.add("message.started", {"message_id": "m2", "model_id": "agent-v1"}, parent="message:m2")
+    r.add(
+        "message.started",
+        {"message_id": "m2", "model_id": "agent-v1"},
+        parent="message:m2",
+    )
     r.add(
         "message.completed",
         {

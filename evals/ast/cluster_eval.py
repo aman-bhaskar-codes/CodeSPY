@@ -38,7 +38,9 @@ def modularity(edges: dict[tuple[str, str], int], group: dict[str, str]) -> floa
     return sum(inside[c] / m - (degree[c] / (2 * m)) ** 2 for c in degree)
 
 
-def greedy_modularity(nodes: list[str], edges: dict[tuple[str, str], int]) -> dict[str, str]:
+def greedy_modularity(
+    nodes: list[str], edges: dict[tuple[str, str], int]
+) -> dict[str, str]:
     m = sum(edges.values())
     if m == 0:
         return {n: n for n in nodes}
@@ -81,7 +83,9 @@ def compare(graph: DependencyGraphV1) -> dict[str, Any]:
 
     def crossing(group: dict[str, str]) -> float:
         return (
-            sum(w for (a, b), w in edges.items() if group[a] != group[b]) / total if total else 0.0
+            sum(w for (a, b), w in edges.items() if group[a] != group[b]) / total
+            if total
+            else 0.0
         )
 
     return {

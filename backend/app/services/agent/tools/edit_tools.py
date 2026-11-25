@@ -7,9 +7,11 @@ that plan for approval and then applies it, so what is approved is exactly what 
 applies atomically: if any part fails, no file changes. Applying twice is a no-op.
 """
 
+import base64
 import difflib
+import json
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import Field
 
@@ -517,3 +519,72 @@ __all__ = [
     "MovePath",
     "PlannedFile",
 ]
+
+
+def edit_plan_to_json(plan: EditPlan) -> dict[str, object]:
+    """A plan as journal data, so the exact approved change can be applied after a restart."""
+    return {
+        "changes": [
+            {
+                "op": c.op,
+                "path": c.path,
+                "expected_hash": c.expected_hash,
+                "content_b64": base64.b64encode(c.content).decode()
+                if c.content is not None
+                else None,
+                "move_to": c.move_to,
+            }
+            for c in plan.changes
+        ],
+        "files": [
+            {
+                "path": f.path,
+                "change": f.change,
+                "before_hash": f.before_hash,
+                "after_hash": f.after_hash,
+                "hunks": [h.model_dump(mode="json") for h in f.hunks],
+                "renamed_from": f.renamed_from,
+                "added": f.added,
+                "removed": f.removed,
+            }
+            for f in plan.files
+        ],
+        "digest": plan.digest,
+        "summary": plan.summary,
+        "preview": plan.preview,
+        "redactions": plan.redactions,
+    }
+
+
+def edit_plan_from_json(data: dict[str, Any]) -> EditPlan:
+    return EditPlan(
+        changes=tuple(
+            FileChangeV1(
+                op=c["op"],
+                path=c["path"],
+                expected_hash=c["expected_hash"],
+                content=base64.b64decode(c["content_b64"])
+                if c["content_b64"] is not None
+                else None,
+                move_to=c["move_to"],
+            )
+            for c in data["changes"]
+        ),
+        files=tuple(
+            PlannedFile(
+                path=f["path"],
+                change=f["change"],
+                before_hash=f["before_hash"],
+                after_hash=f["after_hash"],
+                hunks=tuple(Hunk.model_validate_json(json.dumps(h)) for h in f["hunks"]),
+                renamed_from=f["renamed_from"],
+                added=f["added"],
+                removed=f["removed"],
+            )
+            for f in data["files"]
+        ),
+        digest=data["digest"],
+        summary=data["summary"],
+        preview=data["preview"],
+        redactions=data["redactions"],
+    )

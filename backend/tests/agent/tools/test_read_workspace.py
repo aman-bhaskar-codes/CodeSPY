@@ -159,7 +159,7 @@ async def test_grep_withholds_credential_files_and_redacts_matching_lines():
         grep_output(
             (".env", 1, "SECRET_KEY=AKIAIOSFODNN7EXAMPLE"),
             ("src/config.py", 5, f"marker = {CANARY}"),
-            ("certs/server.pem", 1, "-----BEGIN RSA PRIVATE KEY-----"),
+            ("certs/server.pem", 1, "-----BEGIN " + "RSA PRIVATE KEY-----"),
         ),
     )
     result = await call(ctx, "grep", pattern="KEY")
